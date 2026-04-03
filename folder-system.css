@@ -1,0 +1,285 @@
+/* ========================================
+   iPhone-Style FOLDER SYSTEM STYLES
+   为 index_love_fixed_45.html 添加文件夹功能
+   ======================================== */
+
+/* 文件夹图标容器 */
+.home-app-icon.folder {
+    position: relative;
+}
+
+/* 文件夹内部预览网格（2x2显示前4个应用） */
+.folder-preview {
+    position: absolute;
+    top: 8%;
+    left: 8%;
+    width: 84%;
+    height: 84%;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 3px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 22%;
+    padding: 8%;
+    backdrop-filter: blur(10px);
+}
+
+.folder-preview-app {
+    width: 100%;
+    height: 100%;
+    border-radius: 18%;
+    overflow: hidden;
+    background-size: cover;
+    background-position: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+/* 文件夹背景层 */
+.folder-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 22%;
+    opacity: 0.9;
+}
+
+/* 文件夹打开动画 */
+.folder-view {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(20px);
+    z-index: 999999;
+    display: none;
+    animation: folderFadeIn 0.3s ease;
+}
+
+.folder-view.active {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding-top: 100px;
+}
+
+@keyframes folderFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* 文件夹内容容器 */
+.folder-content {
+    width: 90%;
+    max-width: 400px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 30px;
+    padding: 30px 20px;
+    backdrop-filter: blur(30px);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+/* 文件夹标题 */
+.folder-title {
+    text-align: center;
+    color: white;
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 25px;
+    padding: 0 15px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.folder-title:hover {
+    opacity: 0.8;
+}
+
+/* 文件夹内应用网格 */
+.folder-apps-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 25px 15px;
+    padding: 10px;
+    max-height: 50vh;
+    overflow-y: auto;
+}
+
+.folder-apps-grid::-webkit-scrollbar {
+    width: 4px;
+}
+
+.folder-apps-grid::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+}
+
+/* 文件夹内的应用图标 */
+.folder-app-icon {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.folder-app-icon:active {
+    transform: scale(0.9);
+}
+
+.folder-app-img {
+    width: 60px;
+    height: 60px;
+    border-radius: 22%;
+    background-size: cover;
+    background-position: center;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+    margin-bottom: 8px;
+}
+
+.folder-app-name {
+    font-size: 11px;
+    color: white;
+    text-align: center;
+    max-width: 70px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* 关闭按钮 */
+.folder-close-btn {
+    position: absolute;
+    top: 40px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 24px;
+    color: white;
+    font-weight: 300;
+    transition: all 0.2s;
+    z-index: 10;
+}
+
+.folder-close-btn:hover {
+    background: rgba(255, 255, 255, 0.4);
+    transform: scale(1.1);
+}
+
+.folder-close-btn:active {
+    transform: scale(0.95);
+}
+
+/* 拖拽碰撞高亮效果 */
+.home-app-icon.drop-target {
+    transform: scale(1.1);
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+    z-index: 100;
+}
+
+.home-app-icon.drop-target .home-app-icon-img {
+    filter: brightness(1.3);
+}
+
+/* 编辑模式下的文件夹删除按钮 */
+.home-app-icon.folder.edit-mode .home-app-delete {
+    display: flex !important;
+}
+
+/* 文件夹名称输入框 */
+.folder-name-input {
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    border-radius: 15px;
+    color: white;
+    text-align: center;
+    font-size: 18px;
+    padding: 10px 15px;
+    width: 100%;
+    outline: none;
+    font-weight: 600;
+}
+
+.folder-name-input::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* 文件夹颜色选择器 */
+.folder-color-picker {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 15px;
+    padding: 10px;
+}
+
+.folder-color-option {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 2px solid transparent;
+}
+
+.folder-color-option:hover {
+    transform: scale(1.2);
+}
+
+.folder-color-option.selected {
+    border-color: white;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+/* 从文件夹中移除应用的提示 */
+.folder-remove-hint {
+    position: fixed;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 59, 48, 0.9);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    z-index: 1000000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+    backdrop-filter: blur(10px);
+}
+
+.folder-remove-hint.show {
+    opacity: 1;
+}
+
+/* 文件夹拖拽时的视觉反馈 */
+.home-app-icon.folder.dragging {
+    opacity: 0.5;
+}
+
+/* 文件夹图标文字样式优化 */
+.home-app-icon.folder .home-app-icon-name {
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+    font-weight: 500;
+}

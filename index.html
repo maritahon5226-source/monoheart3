@@ -3,6 +3,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head>
@@ -2128,6 +2129,53 @@ body {
 .moments-comment-reply-input { flex: 1; border: none; background: transparent; outline: none; font-size: calc(12px * var(--fs,1)); font-family: inherit; color: #1a1a1a; }
 .moments-comment-reply-send { padding: 3px 10px; background: #1a1a1a; color: #fff; border: none; border-radius: 12px; font-size: calc(10px * var(--fs,1)); cursor: pointer; font-family: inherit; }
 .moments-comment-item { font-size: calc(12px * var(--fs, 1)); line-height: 1.6; margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px solid #eee; }
+.moments-shell { display:flex; flex-direction:column; height:100%; background:linear-gradient(180deg,#f4f4f4 0%,#ececec 100%); }
+.moments-topbar { padding:14px 16px 10px; border-bottom:1px solid rgba(0,0,0,0.06); background:rgba(255,255,255,0.82); backdrop-filter: blur(14px); display:flex; align-items:center; justify-content:space-between; gap:12px; flex-shrink:0; }
+.moments-topbar-title { font-size:calc(19px * var(--fs,1)); font-weight:800; color:#242424; letter-spacing:0.2px; }
+.moments-topbar-sub { font-size:calc(10px * var(--fs,1)); color:#8d8d8d; margin-top:2px; }
+.moments-topbar-actions { display:flex; gap:8px; flex-shrink:0; }
+.moments-pill-btn { border:none; border-radius:999px; padding:8px 13px; background:#ffffff; color:#4d4d4d; font-size:calc(11px * var(--fs,1)); font-weight:700; box-shadow:0 6px 16px rgba(0,0,0,0.06); cursor:pointer; font-family:inherit; }
+.moments-pill-btn.dark { background:#1f1f1f; color:#fff; }
+.moments-main-scroll { flex:1; overflow-y:auto; padding:14px 14px 24px; }
+.moments-home-hero { background:linear-gradient(145deg, rgba(255,255,255,0.98), rgba(238,238,238,0.96)); border:1px solid rgba(255,255,255,0.8); border-radius:24px; padding:14px; box-shadow:0 12px 40px rgba(0,0,0,0.05); margin-bottom:14px; }
+.moments-home-profile-card { display:flex; align-items:center; gap:12px; padding:12px; border-radius:18px; background:linear-gradient(180deg,#fbfbfb,#f0f0f0); cursor:pointer; }
+.moments-home-profile-card img { width:54px; height:54px; border-radius:50%; object-fit:cover; border:2px solid rgba(255,255,255,0.9); box-shadow:0 6px 12px rgba(0,0,0,0.08); }
+.moments-home-profile-name { font-size:calc(15px * var(--fs,1)); font-weight:800; color:#222; }
+.moments-home-profile-sign { font-size:calc(11px * var(--fs,1)); color:#8a8a8a; line-height:1.55; margin-top:3px; }
+.moments-persona-strip { display:flex; gap:10px; overflow-x:auto; padding-top:12px; margin-top:12px; }
+.moments-persona-chip { min-width:120px; padding:10px; border-radius:18px; background:linear-gradient(180deg,#ffffff,#f1f1f1); box-shadow:0 8px 18px rgba(0,0,0,0.05); cursor:pointer; }
+.moments-persona-chip-head { display:flex; align-items:center; gap:8px; }
+.moments-persona-chip-head img { width:34px; height:34px; border-radius:50%; object-fit:cover; }
+.moments-persona-chip-name { font-size:calc(12px * var(--fs,1)); font-weight:800; color:#232323; }
+.moments-persona-chip-sign { font-size:calc(10px * var(--fs,1)); color:#919191; line-height:1.55; margin-top:8px; max-height:32px; overflow:hidden; }
+.moments-section-title { display:flex; align-items:center; justify-content:space-between; font-size:calc(12px * var(--fs,1)); color:#7c7c7c; font-weight:800; letter-spacing:0.8px; margin:14px 4px 10px; text-transform:uppercase; }
+.moments-weibo-card { background:linear-gradient(180deg,rgba(255,255,255,0.98),rgba(246,246,246,0.98)); border-radius:24px; padding:16px; box-shadow:0 14px 36px rgba(0,0,0,0.055); margin-bottom:12px; border:1px solid rgba(255,255,255,0.9); }
+.moments-weibo-head { display:flex; align-items:flex-start; gap:12px; }
+.moments-weibo-head img { width:46px; height:46px; border-radius:50%; object-fit:cover; cursor:pointer; box-shadow:0 8px 16px rgba(0,0,0,0.08); }
+.moments-weibo-head-main { flex:1; min-width:0; }
+.moments-weibo-name-row { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+.moments-weibo-name { font-size:calc(14px * var(--fs,1)); font-weight:900; color:#222; cursor:pointer; }
+.moments-weibo-handle { font-size:calc(10px * var(--fs,1)); color:#999; }
+.moments-weibo-sign { font-size:calc(10px * var(--fs,1)); color:#9b9b9b; line-height:1.5; margin-top:3px; }
+.moments-weibo-content { margin-top:12px; font-size:calc(14px * var(--fs,1)); color:#323232; line-height:1.82; white-space:pre-wrap; }
+.moments-weibo-meta { margin-top:8px; font-size:calc(10px * var(--fs,1)); color:#a1a1a1; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.moments-weibo-tools { margin-top:12px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.moments-soft-btn { display:flex; align-items:center; gap:5px; border:none; border-radius:999px; padding:7px 12px; background:#efefef; color:#626262; font-size:calc(11px * var(--fs,1)); font-weight:700; cursor:pointer; font-family:inherit; }
+.moments-soft-btn.heart-on { background:#232323; color:#fff; }
+.moments-profile-shell { background:linear-gradient(180deg,#efefef 0%,#e7e7e7 100%); min-height:100%; border-radius:26px; overflow:hidden; box-shadow:0 16px 38px rgba(0,0,0,0.06); }
+.moments-profile-banner { position:relative; height:196px; background:linear-gradient(135deg,#d9d9d9,#f5f5f5); overflow:hidden; }
+.moments-profile-banner img { width:100%; height:100%; object-fit:cover; display:block; }
+.moments-profile-banner-overlay { position:absolute; inset:0; background:linear-gradient(180deg,rgba(22,22,22,0.06),rgba(22,22,22,0.38)); }
+.moments-profile-top-actions { position:absolute; top:14px; left:14px; right:14px; display:flex; justify-content:space-between; z-index:2; }
+.moments-profile-top-actions button { border:none; border-radius:999px; padding:7px 12px; background:rgba(255,255,255,0.86); color:#333; font-size:calc(10px * var(--fs,1)); font-weight:800; cursor:pointer; font-family:inherit; backdrop-filter:blur(8px); }
+.moments-profile-head { position:absolute; left:16px; right:16px; bottom:14px; display:flex; justify-content:flex-end; align-items:flex-end; z-index:2; }
+.moments-profile-head-main { display:flex; align-items:flex-end; gap:12px; color:#fff; text-align:right; }
+.moments-profile-head-main img { width:68px; height:68px; border-radius:50%; object-fit:cover; border:3px solid rgba(255,255,255,0.92); box-shadow:0 10px 24px rgba(0,0,0,0.18); }
+.moments-profile-name { font-size:calc(18px * var(--fs,1)); font-weight:900; }
+.moments-profile-handle { font-size:calc(11px * var(--fs,1)); color:rgba(255,255,255,0.84); margin-top:3px; }
+.moments-profile-signature { font-size:calc(11px * var(--fs,1)); line-height:1.7; color:#787878; padding:16px 18px 6px; background:#f5f5f5; }
+.moments-profile-feed { padding:8px 12px 20px; }
+.moments-profile-empty { text-align:center; color:#9a9a9a; font-size:calc(12px * var(--fs,1)); padding:34px 10px; line-height:1.8; }
 /* Forum persona anon post badge */
 .forum-persona-anon-badge { display: inline-flex; align-items: center; gap: 3px; font-size: calc(9px * var(--fs,1)); color: #555; background: #f0f0f0; border: 1px solid #d0d0d0; border-radius: 10px; padding: 1px 6px; margin-left: 6px; }
 /* Persona forum post modal */
@@ -14137,14 +14185,21 @@ body:not(.ios-fullscreen) .family-widget {
   <!-- 朋友圈页面 -->
   <div id="momentsPage" class="page" style="padding:0;">
     <div class="app-back-bar"><button class="app-back-btn" onclick="goHome()"><i class="fas fa-chevron-left"></i> 主屏幕</button><span class="app-back-title">朋友圈</span></div>
-    <div style="padding:16px 16px 8px; border-bottom:1px solid #eee; display:flex; align-items:center; justify-content:space-between;">
-      <h2 class="text-xl font-bold">朋友圈</h2>
-      <div style="display:flex;gap:8px;">
-        <button class="action-btn" style="margin:0;padding:6px 12px;font-size:10px;" onclick="updateMoments()"><i class="fas fa-robot mr-1"></i>AI动态</button>
-        <button class="action-btn" style="margin:0;padding:6px 12px;font-size:10px;background:#fff;color:#1a1a1a;border:1px solid #1a1a1a;" onclick="openComposeModal('moments')"><i class="fas fa-plus mr-1"></i>发布</button>
+    <div class="moments-shell">
+      <div class="moments-topbar">
+        <div>
+          <div class="moments-topbar-title">朋友圈</div>
+          <div class="moments-topbar-sub">灰白韩系动态流 · 所有人都在同一页里</div>
+        </div>
+        <div class="moments-topbar-actions">
+          <button class="moments-pill-btn" onclick="goHome()"><i class="fas fa-chevron-left"></i> 主屏幕</button>
+          <button class="moments-pill-btn" onclick="updateMoments()"><i class="fas fa-sparkles"></i> AI动态</button>
+          <button class="moments-pill-btn dark" onclick="openComposeModal('moments')"><i class="fas fa-pen"></i> 发布</button>
+        </div>
       </div>
+      <div id="momentsList" class="moments-main-scroll no-scrollbar"></div>
     </div>
-    <div id="momentsList" style="padding:0 16px; overflow-y:auto; flex:1;" class="no-scrollbar"></div>
+    <input type="file" id="momentsBannerInput" hidden accept="image/*" onchange="handleMomentsBannerSelect(this)">
     <div class="compose-modal-overlay" id="momentsComposeModal" onclick="closeComposeModal('moments',event)">
       <div class="compose-modal-box" onclick="event.stopPropagation()">
         <div class="compose-modal-title">发布朋友圈</div>
@@ -17247,9 +17302,9 @@ function getApiUrl() {
 let userProfile = (() => {
   try {
     const saved = JSON.parse(localStorage.getItem('mono_user_profile') || 'null');
-    if (saved && saved.name) return Object.assign({ bio: '', gender: '', avatar: '' }, saved);
+    if (saved && saved.name) return Object.assign({ bio: '', gender: '', avatar: '', momentsNickname: '', momentsSignature: '', momentsBanner: '' }, saved);
   } catch(e) {}
-  return { name: '用户', bio: '', gender: '', avatar: '' };
+  return { name: '用户', bio: '', gender: '', avatar: '', momentsNickname: '', momentsSignature: '', momentsBanner: '' };
 })();
 // 若内存中没有头像（旧格式可能内嵌在 JSON 里），先用文字头像占位
 if (!userProfile.avatar || userProfile.avatar.length < 50) {
@@ -19724,11 +19779,11 @@ function savePersona() {
     const p = personas.find(x=>x.id==currentId);
     const _saveAiColor = document.getElementById('pBubbleAiFontColorEnabled').checked ? (document.getElementById('pBubbleAiFontColor').value||'') : '';
     const _saveUserColor = document.getElementById('pBubbleUserFontColorEnabled').checked ? (document.getElementById('pBubbleUserFontColor').value||'') : '';
-    if(p){ p.name=name; p.nickname=document.getElementById('pNick').value.trim(); p.persona=document.getElementById('pPersona').value.trim()||'一个简单的角色设定'; p.avatar=avatar; p.minReplyCount=minReply; p.maxReplyCount=maxReply; p.temperature=temperature; p.timeAwareness=timeAwareness; p.allowSticker=allowSticker; p.stickerLibraryIds=stickerLibraryIds; p.allowVoice=allowVoice; p.voiceId=voiceId; p.voiceSpeed=voiceSpeed; p.voiceLang=voiceLang; p.outputLang=outputLang; p.enableTranslation=enableTranslation; p.translateLang=translateLang; p.voiceFreq=voiceFreq; p.memoryCount=parseInt(document.getElementById('pMemoryCount').value)||100; p.autoMsg=document.getElementById('pAutoMsg').checked; p.autoMsgInterval=parseInt(document.getElementById('pAutoMsgInterval').value)||1; p.autoDiary=document.getElementById('pAutoDiary').checked; p.autoDiaryTime=document.getElementById('pAutoDiaryTime').value||'21:00'; p.autoMoments=document.getElementById('pAutoMoments').checked; p.autoMomentsTime=document.getElementById('pAutoMomentsTime').value||'20:00'; p.autoSummary=document.getElementById('pAutoSummary').checked; p.autoSummaryInterval=parseInt(document.getElementById('pAutoSummaryInterval').value)||20; p.bubbleAiCss=document.getElementById('pBubbleAiCss').value.trim(); p.bubbleUserCss=document.getElementById('pBubbleUserCss').value.trim(); p.chatRoomCustomCss=(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(); p.bubbleAiFontColor=_saveAiColor; p.bubbleUserFontColor=_saveUserColor; p.bubblePreset=(document.getElementById('pBubblePreset')||{}).value||'none'; if(document.getElementById('pChatBgImg').src && document.getElementById('pChatBgImg').style.display!=='none') p.chatBgImage=document.getElementById('pChatBgImg').src; else p.chatBgImage=''; p.replyMode=_getSelectedReplyMode(); var _spd=document.querySelector('input[name="pReplySpeed"]:checked'); p.replySpeed=_spd?_spd.value:'fast'; p.replySpeedCustomMin=parseInt(document.getElementById('pReplySpeedCustomMin').value)||0; p.replySpeedCustomMax=parseInt(document.getElementById('pReplySpeedCustomMax').value)||10; p.showHeartVoiceInHeader=document.getElementById('pShowHeartVoiceInHeader').checked; p.allowCallTts=document.getElementById('pAllowCallTts').checked; }
+    if(p){ p.name=name; p.nickname=document.getElementById('pNick').value.trim(); p.persona=document.getElementById('pPersona').value.trim()||'一个简单的角色设定'; p.avatar=avatar; p.minReplyCount=minReply; p.maxReplyCount=maxReply; p.temperature=temperature; p.timeAwareness=timeAwareness; p.allowSticker=allowSticker; p.stickerLibraryIds=stickerLibraryIds; p.allowVoice=allowVoice; p.voiceId=voiceId; p.voiceSpeed=voiceSpeed; p.voiceLang=voiceLang; p.outputLang=outputLang; p.enableTranslation=enableTranslation; p.translateLang=translateLang; p.voiceFreq=voiceFreq; p.memoryCount=parseInt(document.getElementById('pMemoryCount').value)||100; p.autoMsg=document.getElementById('pAutoMsg').checked; p.autoMsgInterval=parseInt(document.getElementById('pAutoMsgInterval').value)||1; p.autoDiary=document.getElementById('pAutoDiary').checked; p.autoDiaryTime=document.getElementById('pAutoDiaryTime').value||'21:00'; p.autoMoments=document.getElementById('pAutoMoments').checked; p.autoMomentsTime=document.getElementById('pAutoMomentsTime').value||'20:00'; p.autoSummary=document.getElementById('pAutoSummary').checked; p.autoSummaryInterval=parseInt(document.getElementById('pAutoSummaryInterval').value)||20; p.bubbleAiCss=document.getElementById('pBubbleAiCss').value.trim(); p.bubbleUserCss=document.getElementById('pBubbleUserCss').value.trim(); p.chatRoomCustomCss=(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(); p.bubbleAiFontColor=_saveAiColor; p.bubbleUserFontColor=_saveUserColor; p.bubblePreset=(document.getElementById('pBubblePreset')||{}).value||'none'; if(document.getElementById('pChatBgImg').src && document.getElementById('pChatBgImg').style.display!=='none') p.chatBgImage=document.getElementById('pChatBgImg').src; else p.chatBgImage=''; p.replyMode=_getSelectedReplyMode(); var _spd=document.querySelector('input[name="pReplySpeed"]:checked'); p.replySpeed=_spd?_spd.value:'fast'; p.replySpeedCustomMin=parseInt(document.getElementById('pReplySpeedCustomMin').value)||0; p.replySpeedCustomMax=parseInt(document.getElementById('pReplySpeedCustomMax').value)||10; p.showHeartVoiceInHeader=document.getElementById('pShowHeartVoiceInHeader').checked; p.allowCallTts=document.getElementById('pAllowCallTts').checked; if (p.momentsNickname == null || !String(p.momentsNickname).trim()) p.momentsNickname = name; if (p.momentsSignature == null) p.momentsSignature = ''; if (p.momentsBanner == null) p.momentsBanner = ''; }
   } else {
     const _saveAiColor = document.getElementById('pBubbleAiFontColorEnabled').checked ? (document.getElementById('pBubbleAiFontColor').value||'') : '';
     const _saveUserColor = document.getElementById('pBubbleUserFontColorEnabled').checked ? (document.getElementById('pBubbleUserFontColor').value||'') : '';
-    const newP = { id:Date.now(), name, nickname:document.getElementById('pNick').value.trim()||name, persona:document.getElementById('pPersona').value.trim()||'一个简单的角色设定', avatar, history:[], memoryCore:[], lastHeartVoice:null, autoSummary:document.getElementById('pAutoSummary').checked, autoSummaryInterval:parseInt(document.getElementById('pAutoSummaryInterval').value)||20, minReplyCount:minReply, maxReplyCount:maxReply, temperature:temperature, timeAwareness:timeAwareness, allowSticker:allowSticker, stickerLibraryIds:stickerLibraryIds, allowVoice:allowVoice, voiceId:voiceId, voiceSpeed:voiceSpeed, voiceLang:voiceLang, outputLang:outputLang, enableTranslation:enableTranslation, translateLang:translateLang, voiceFreq:voiceFreq, memoryCount:parseInt(document.getElementById('pMemoryCount').value)||100, autoMsg:document.getElementById('pAutoMsg').checked, autoMsgInterval:parseInt(document.getElementById('pAutoMsgInterval').value)||1, autoDiary:document.getElementById('pAutoDiary').checked, autoDiaryTime:document.getElementById('pAutoDiaryTime').value||'21:00', autoMoments:document.getElementById('pAutoMoments').checked, autoMomentsTime:document.getElementById('pAutoMomentsTime').value||'20:00', bubbleAiCss:document.getElementById('pBubbleAiCss').value.trim(), bubbleUserCss:document.getElementById('pBubbleUserCss').value.trim(), chatRoomCustomCss:(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(), bubbleAiFontColor:_saveAiColor, bubbleUserFontColor:_saveUserColor, bubblePreset:(document.getElementById('pBubblePreset')||{}).value||'none', chatBgImage:(document.getElementById('pChatBgImg').style.display!=='none'?document.getElementById('pChatBgImg').src:''), replyMode:_getSelectedReplyMode(), replySpeed:(document.querySelector('input[name="pReplySpeed"]:checked')||{}).value||'fast', replySpeedCustomMin:parseInt(document.getElementById('pReplySpeedCustomMin').value)||0, replySpeedCustomMax:parseInt(document.getElementById('pReplySpeedCustomMax').value)||10, showHeartVoiceInHeader:document.getElementById('pShowHeartVoiceInHeader').checked, allowCallTts:document.getElementById('pAllowCallTts').checked };
+    const newP = { id:Date.now(), name, nickname:document.getElementById('pNick').value.trim()||name, momentsNickname:name, momentsSignature:'', momentsBanner:'', persona:document.getElementById('pPersona').value.trim()||'一个简单的角色设定', avatar, history:[], memoryCore:[], lastHeartVoice:null, autoSummary:document.getElementById('pAutoSummary').checked, autoSummaryInterval:parseInt(document.getElementById('pAutoSummaryInterval').value)||20, minReplyCount:minReply, maxReplyCount:maxReply, temperature:temperature, timeAwareness:timeAwareness, allowSticker:allowSticker, stickerLibraryIds:stickerLibraryIds, allowVoice:allowVoice, voiceId:voiceId, voiceSpeed:voiceSpeed, voiceLang:voiceLang, outputLang:outputLang, enableTranslation:enableTranslation, translateLang:translateLang, voiceFreq:voiceFreq, memoryCount:parseInt(document.getElementById('pMemoryCount').value)||100, autoMsg:document.getElementById('pAutoMsg').checked, autoMsgInterval:parseInt(document.getElementById('pAutoMsgInterval').value)||1, autoDiary:document.getElementById('pAutoDiary').checked, autoDiaryTime:document.getElementById('pAutoDiaryTime').value||'21:00', autoMoments:document.getElementById('pAutoMoments').checked, autoMomentsTime:document.getElementById('pAutoMomentsTime').value||'20:00', bubbleAiCss:document.getElementById('pBubbleAiCss').value.trim(), bubbleUserCss:document.getElementById('pBubbleUserCss').value.trim(), chatRoomCustomCss:(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(), bubbleAiFontColor:_saveAiColor, bubbleUserFontColor:_saveUserColor, bubblePreset:(document.getElementById('pBubblePreset')||{}).value||'none', chatBgImage:(document.getElementById('pChatBgImg').style.display!=='none'?document.getElementById('pChatBgImg').src:''), replyMode:_getSelectedReplyMode(), replySpeed:(document.querySelector('input[name="pReplySpeed"]:checked')||{}).value||'fast', replySpeedCustomMin:parseInt(document.getElementById('pReplySpeedCustomMin').value)||0, replySpeedCustomMax:parseInt(document.getElementById('pReplySpeedCustomMax').value)||10, showHeartVoiceInHeader:document.getElementById('pShowHeartVoiceInHeader').checked, allowCallTts:document.getElementById('pAllowCallTts').checked };
     personas.push(newP); currentId=newP.id;
   }
   saveData(); renderContactList(); if(currentId) selectPersona(currentId); closeEditor(); renderDiaryTabs();
@@ -21846,7 +21901,7 @@ function saveProfile() {
   userProfile.bio  = document.getElementById('profileBio').value.trim();
   // 头像单独存入 IndexedDB blob store，避免 localStorage quota 超限导致丢失
   const avatarToSave = userProfile.avatar || '';
-  const profileWithoutAvatar = { name: userProfile.name, bio: userProfile.bio, gender: userProfile.gender };
+  const profileWithoutAvatar = { name: userProfile.name, bio: userProfile.bio, gender: userProfile.gender, momentsNickname: userProfile.momentsNickname || '', momentsSignature: userProfile.momentsSignature || '', momentsBanner: userProfile.momentsBanner || '' };
   localStorage.setItem('mono_user_profile', JSON.stringify(profileWithoutAvatar));
   // 异步写入头像到 IDB（大字段）
   if (avatarToSave && window._monoIdbBlobSet) {
@@ -21860,6 +21915,7 @@ function saveProfile() {
   }
   updateProfilePreview();
   renderMessages();
+  if (typeof renderMoments === 'function') renderMoments();
   alert('资料已保存！');
 }
 // ===================== API设定 =====================
@@ -22016,29 +22072,446 @@ function closeComposeModal(type, e) {
     clearMomentsImage();
   }
 }
-function renderMoments() {
-  document.getElementById('momentsList').innerHTML = momentsData.map((item) => {
+let momentsViewState = { mode: 'feed', profileType: '', profileId: null };
+let _momentsBannerEditTarget = null;
+function _escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+function _momentsUserHandle() {
+  const raw = ((userProfile.momentsNickname || userProfile.name || 'user').toLowerCase().replace(/[^\w\u4e00-\u9fff]+/g, '') || 'user');
+  return '@' + raw.slice(0, 18);
+}
+function _inferPersonaMoodTag(p) {
+  const text = ((p && p.persona) || '') + ' ' + ((p && p.nickname) || '');
+  if (/冷|淡|疏离|安静|寡言|薄情|克制|禁欲/.test(text)) return '安静一点也没关系';
+  if (/温柔|治愈|体贴|姐姐|照顾|柔软/.test(text)) return '把情绪收好也算一种温柔';
+  if (/嘴硬|傲娇|倔强|别扭/.test(text)) return '有些话不说 也还是会留在心里';
+  if (/疯|热烈|张扬|直球|活泼|元气/.test(text)) return '今天也想把一点热度留给熟悉的人';
+  if (/学生|校园|少年|少女/.test(text)) return '晚一点再长大 也没什么不好';
+  if (/画家|摄影|艺术|写作|设计|乐队/.test(text)) return '把没说出口的东西 留给颜色和光';
+  return '有些话不适合发消息 适合留在动态里';
+}
+function _isPollutedPersonaMomentsName(p, value) {
+  const val = String(value || '').trim();
+  if (!p || !val) return false;
+  const personaName = String(p.name || '').trim();
+  if (!personaName) return false;
+  if (val === personaName) return false;
+  const suspicious = [
+    userProfile && userProfile.name ? String(userProfile.name).trim() : '',
+    userProfile && userProfile.momentsNickname ? String(userProfile.momentsNickname).trim() : ''
+  ].filter(Boolean);
+  return suspicious.includes(val);
+}
+function repairPersonaMomentsIdentityLeaks() {
+  let changed = false;
+  personas.forEach(function(p) {
+    if (!p) return;
+    if (_isPollutedPersonaMomentsName(p, p.momentsNickname)) {
+      p.momentsNickname = (p.name || '角色').trim();
+      changed = true;
+    }
+  });
+  if (changed) saveData();
+  return changed;
+}
+function ensureMomentsProfileDefaults() {
+  repairPersonaMomentsIdentityLeaks();
+  userProfile.momentsNickname = (userProfile.momentsNickname || userProfile.name || '用户').trim();
+  if (!userProfile.momentsSignature) userProfile.momentsSignature = userProfile.bio || '今天也在认真生活';
+  if (!userProfile.momentsBanner) userProfile.momentsBanner = '';
+  personas.forEach(function(p) {
+    if (!p.momentsNickname) p.momentsNickname = (p.name || '').trim();
+    if (!p.momentsSignature) p.momentsSignature = _inferPersonaMoodTag(p);
+    if (!p.momentsBanner) p.momentsBanner = '';
+  });
+}
+function _buildPersonaUnsaidSignature(p) {
+  const pool = [
+    _inferPersonaMoodTag(p),
+    '有些话发在这里 会比直接说出来容易一点',
+    '删掉又重发的那一条 其实也算说过了',
+    '今天不适合解释 适合留白',
+    '如果你看懂了 那就当我说过',
+    '有些情绪不该出现在聊天框里'
+  ];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+function maybeEvolvePersonaMomentsIdentity(p) {
+  if (!p) return;
+  let changed = false;
+  if (_isPollutedPersonaMomentsName(p, p.momentsNickname)) { p.momentsNickname = p.name || '角色'; changed = true; }
+  if (!p.momentsNickname) { p.momentsNickname = p.name || '角色'; changed = true; }
+  if (!p.momentsSignature) { p.momentsSignature = _inferPersonaMoodTag(p); changed = true; }
+  if (Math.random() < 0.14) { p.momentsSignature = _buildPersonaUnsaidSignature(p); changed = true; }
+  if (changed) saveData();
+}
+function normalizeMomentsAuthorProfiles() {
+  repairPersonaMomentsIdentityLeaks();
+  let changed = false;
+  momentsData.forEach(function(item) {
+    if (!item || typeof item !== 'object') return;
+    if (item.authorType === 'user') {
+      const desired = userProfile.momentsNickname || userProfile.name || '用户';
+      if (item.authorProfileName !== desired) {
+        item.authorProfileName = desired;
+        changed = true;
+      }
+      return;
+    }
+    const p = item.personaId
+      ? personas.find(function(x) { return String(x.id) === String(item.personaId); })
+      : personas.find(function(x) { return x.name === item.author; });
+    if (p) {
+      const desired = p.momentsNickname || p.name;
+      if (item.authorProfileName !== desired) {
+        item.authorProfileName = desired;
+        changed = true;
+      }
+      if (item.authorType !== 'persona') {
+        item.authorType = 'persona';
+        changed = true;
+      }
+      if (String(item.personaId || '') !== String(p.id)) {
+        item.personaId = p.id;
+        changed = true;
+      }
+    }
+  });
+  if (changed) {
+    try { localStorage.setItem('mono_moments', JSON.stringify(momentsData)); } catch(e) {}
+  }
+}
+function persistMomentsUserProfile() {
+  const profileWithoutAvatar = {
+    name: userProfile.name || '用户',
+    bio: userProfile.bio || '',
+    gender: userProfile.gender || '',
+    momentsNickname: userProfile.momentsNickname || '',
+    momentsSignature: userProfile.momentsSignature || '',
+    momentsBanner: userProfile.momentsBanner || ''
+  };
+  try { localStorage.setItem('mono_user_profile', JSON.stringify(profileWithoutAvatar)); } catch(e) {}
+}
+function getMomentsProfileMeta(type, id) {
+  ensureMomentsProfileDefaults();
+  if (type === 'user') {
+    return {
+      type: 'user',
+      id: 'user',
+      name: userProfile.name || '用户',
+      displayName: userProfile.momentsNickname || userProfile.name || '用户',
+      handle: _momentsUserHandle(),
+      signature: userProfile.momentsSignature || userProfile.bio || '',
+      avatar: userProfile.avatar || makeUserAvatar(userProfile.name || '用户'),
+      banner: userProfile.momentsBanner || '',
+      canEdit: true
+    };
+  }
+  const p = personas.find(function(x) { return String(x.id) === String(id); });
+  if (!p) return null;
+  if (_isPollutedPersonaMomentsName(p, p.momentsNickname)) {
+    p.momentsNickname = p.name || '角色';
+    saveData();
+  }
+  return {
+    type: 'persona',
+    id: p.id,
+    name: p.name,
+    displayName: p.momentsNickname || p.name,
+    handle: '@' + String((p.momentsNickname || p.name || 'persona')).toLowerCase().replace(/[^\w\u4e00-\u9fff]+/g, '').slice(0, 18),
+    signature: p.momentsSignature || _inferPersonaMoodTag(p),
+    avatar: p.avatar,
+    banner: p.momentsBanner || '',
+    canEdit: true
+  };
+}
+function getMomentAuthorMeta(item) {
+  const explicitUser = item.authorType === 'user';
+  if (explicitUser) return getMomentsProfileMeta('user', 'user');
+  const matchedPersona = item.personaId
+    ? personas.find(function(p) { return String(p.id) === String(item.personaId); })
+    : personas.find(function(p) { return p.name === item.author; });
+  if (matchedPersona) {
+    return getMomentsProfileMeta('persona', matchedPersona.id);
+  }
+  const legacyUserFallback = !item.authorType && item.author === userProfile.name;
+  if (legacyUserFallback) return getMomentsProfileMeta('user', 'user');
+  return {
+    type: 'persona',
+    id: item.personaId || item.author,
+    name: item.author || '角色',
+    displayName: item.authorProfileName || item.author || '角色',
+    handle: '@' + String(item.authorProfileName || item.author || 'persona').replace(/[^\w\u4e00-\u9fff]+/g, '').toLowerCase(),
+    signature: '',
+    avatar: item.avatar || '',
+    banner: '',
+    canEdit: false
+  };
+}
+function openMomentsProfile(type, id) {
+  momentsViewState = { mode: 'profile', profileType: type, profileId: id };
+  renderMoments();
+}
+function openMomentAuthorProfile(itemId) {
+  const item = momentsData.find(function(m) { return m.id === itemId; });
+  if (!item) return;
+  const meta = getMomentAuthorMeta(item);
+  openMomentsProfile(meta.type, meta.id);
+}
+function showMomentsFeed() {
+  momentsViewState = { mode: 'feed', profileType: '', profileId: null };
+  renderMoments();
+}
+function editMomentsProfile(type, id) {
+  const meta = getMomentsProfileMeta(type, id);
+  if (!meta) return;
+  const nextName = prompt('修改朋友圈网名：', meta.displayName || meta.name || '');
+  if (nextName === null) return;
+  const nextSign = prompt('修改个性签名：', meta.signature || '');
+  if (nextSign === null) return;
+  if (type === 'user') {
+    userProfile.momentsNickname = nextName.trim() || userProfile.name || '用户';
+    userProfile.momentsSignature = nextSign.trim();
+    persistMomentsUserProfile();
+  } else {
+    const p = personas.find(function(x) { return String(x.id) === String(id); });
+    if (!p) return;
+    p.momentsNickname = nextName.trim() || p.name;
+    p.momentsSignature = nextSign.trim();
+    saveData();
+  }
+  renderMoments();
+}
+function _stripMomentsAiFences(text) {
+  return String(text || '')
+    .trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim();
+}
+function _parseMomentsIdentityResult(rawText, fallbackName, fallbackSignature) {
+  const cleaned = _stripMomentsAiFences(rawText);
+  let nickname = fallbackName || '';
+  let signature = fallbackSignature || '';
+  try {
+    const parsed = JSON.parse(cleaned);
+    nickname = String(parsed.nickname || parsed.name || nickname || '').trim() || nickname;
+    signature = String(parsed.signature || parsed.bio || parsed.status || signature || '').trim();
+    return { nickname, signature };
+  } catch (e) {}
+  const nickMatch = cleaned.match(/(?:nickname|name|网名|昵称)\s*[:：]\s*(.+)/i);
+  const signMatch = cleaned.match(/(?:signature|sign|个性签名|签名)\s*[:：]\s*(.+)/i);
+  if (nickMatch) nickname = nickMatch[1].trim() || nickname;
+  if (signMatch) signature = signMatch[1].trim() || signature;
+  if (!nickMatch && !signMatch) {
+    const lines = cleaned.split(/\n+/).map(function(line) { return line.trim(); }).filter(Boolean);
+    if (lines[0]) nickname = lines[0].replace(/^(?:昵称|网名|nickname|name)\s*[:：]/i, '').trim() || nickname;
+    if (lines[1]) signature = lines[1].replace(/^(?:签名|个性签名|signature|sign)\s*[:：]/i, '').trim() || signature;
+  }
+  return { nickname, signature };
+}
+function _buildMomentsIdentityPrompt(type, id, field) {
+  ensureMomentsProfileDefaults();
+  const regenSeed = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+  const mode = field === 'nickname' ? 'nickname' : (field === 'signature' ? 'signature' : 'both');
+  if (type === 'user') {
+    const recentUserPosts = momentsData
+      .filter(function(item) { return item && item.authorType === 'user'; })
+      .slice(-8)
+      .map(function(item) { return '- ' + (item.content || ''); })
+      .join('\n');
+    return `你是一个社交主页资料设计助手。请根据以下资料，为这个用户生成适合“朋友圈主页”的资料。
+
+要求：
+1. 网名自然、好记、有风格，不要太长，最好 2 到 12 个字。
+2. 个性签名像真实人在社交主页会写的内容，要简洁、有氛围感，不要像说明书。
+3. 不要输出解释，不要输出多组方案。
+4. 本次生成模式：${mode === 'nickname' ? '只生成网名' : (mode === 'signature' ? '只生成个性签名' : '同时生成网名和个性签名')}
+5. 只返回 JSON，格式必须是：
+{"nickname":"...","signature":"..."}
+6. 如果本次是只生成网名，就必须保留 signature 为当前签名内容不变。
+7. 如果本次是只生成个性签名，就必须保留 nickname 为当前网名内容不变。
+8. 这次生成的目标字段必须和当前主页资料明显不同，不要复用当前值。
+9. 本次生成标记：${regenSeed}
+
+用户当前资料：
+- 原名：${userProfile.name || '用户'}
+- 简介：${userProfile.bio || '暂无'}
+- 当前朋友圈网名：${userProfile.momentsNickname || userProfile.name || '用户'}
+- 当前朋友圈签名：${userProfile.momentsSignature || '暂无'}
+
+用户最近发过的朋友圈：
+${recentUserPosts || '（暂无）'}`;
+  }
+  const p = personas.find(function(x) { return String(x.id) === String(id); });
+  if (!p) return '';
+  const memoryCore = buildMemoryCoreContext(p) || '（暂无）';
+  const recentChat = (p.history || [])
+    .slice(-16)
+    .map(function(m) {
+      if (!m) return '';
+      const speaker = m.role === 'user' ? (userProfile.name || '用户') : (p.name || '角色');
+      return speaker + '：' + (m.content || '');
+    })
+    .filter(Boolean)
+    .join('\n');
+  const recentPosts = momentsData
+    .filter(function(item) { return item && item.authorType === 'persona' && String(item.personaId || '') === String(p.id); })
+    .slice(-8)
+    .map(function(item) { return '- ' + (item.content || ''); })
+    .join('\n');
+  return `你是一个角色社交主页资料设计助手。请根据角色的人设、记忆和近期互动，为该角色生成适合“朋友圈主页”的资料。
+
+风格要求：
+1. 必须贴合角色性格、人设、语气和记忆，不要像用户本人。
+2. 网名要像角色自己会使用的社交平台名字，最好 2 到 12 个字。
+3. 个性签名要像真实人会写的主页签名，可以含蓄、有情绪、有留白，但不要直接解释设定。
+4. 如果角色有“说不出口”的情绪，可以轻微体现在签名里，但要自然。
+5. 不要输出解释，不要输出多组方案。
+6. 本次生成模式：${mode === 'nickname' ? '只生成网名' : (mode === 'signature' ? '只生成个性签名' : '同时生成网名和个性签名')}
+7. 只返回 JSON，格式必须是：
+{"nickname":"...","signature":"..."}
+8. 如果本次是只生成网名，就必须保留 signature 为当前签名内容不变。
+9. 如果本次是只生成个性签名，就必须保留 nickname 为当前网名内容不变。
+10. 这次生成的目标字段必须和当前主页资料明显不同，不要复用当前朋友圈网名或当前签名。
+11. 若当前还没有自定义朋友圈网名，默认身份请以角色名为基准，不要使用用户给角色设置的 nickname。
+12. 本次生成标记：${regenSeed}
+
+角色资料：
+- 角色名：${p.name || '角色'}
+- 当前昵称：${p.nickname || p.name || '角色'}
+- 当前朋友圈网名：${p.momentsNickname || p.name || '角色'}
+- 当前朋友圈签名：${p.momentsSignature || '暂无'}
+- 人设：${p.persona || '暂无'}
+
+核心记忆：
+${memoryCore}
+
+近期聊天记录：
+${recentChat || '（暂无）'}
+
+该角色最近发过的朋友圈：
+${recentPosts || '（暂无）'}`;
+}
+async function aiGenerateMomentsProfile(type, id, field, btnEl) {
+  if (!apiConfig || !apiConfig.url || !apiConfig.key || !apiConfig.model) {
+    alert('请先在设置里配置可用的 API。');
+    return;
+  }
+  const meta = getMomentsProfileMeta(type, id);
+  if (!meta) return;
+  const mode = field === 'nickname' ? 'nickname' : (field === 'signature' ? 'signature' : 'both');
+  const prompt = _buildMomentsIdentityPrompt(type, id, mode);
+  if (!prompt) {
+    alert('找不到对应资料，暂时无法生成。');
+    return;
+  }
+  const btn = btnEl || null;
+  const oldHtml = btn ? btn.innerHTML : '';
+  try {
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 生成中';
+    }
+    const resp = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiConfig.key}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: apiConfig.model,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.9,
+        max_tokens: 220
+      })
+    });
+    if (!resp.ok) {
+      throw new Error('接口返回异常：' + resp.status);
+    }
+    const data = await resp.json();
+    const rawText = (((data || {}).choices || [])[0] || {}).message ? ((((data || {}).choices || [])[0] || {}).message.content || '') : '';
+    const parsed = _parseMomentsIdentityResult(rawText, meta.displayName || meta.name || '', meta.signature || '');
+    if (type === 'user') {
+      if (mode !== 'signature') userProfile.momentsNickname = parsed.nickname || userProfile.name || '用户';
+      if (mode !== 'nickname') userProfile.momentsSignature = parsed.signature || '';
+      persistMomentsUserProfile();
+    } else {
+      const p = personas.find(function(x) { return String(x.id) === String(id); });
+      if (!p) throw new Error('角色不存在');
+      if (mode !== 'signature') p.momentsNickname = parsed.nickname || p.name;
+      if (mode !== 'nickname') p.momentsSignature = parsed.signature || '';
+      saveData();
+    }
+    renderMoments();
+  } catch (e) {
+    alert('AI 生成主页资料失败：' + (e && e.message ? e.message : e));
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = oldHtml || '<i class="fas fa-sparkles"></i> AI生成';
+    }
+  }
+}
+function triggerMomentsBannerUpload(type, id) {
+  _momentsBannerEditTarget = { type: type, id: id };
+  const input = document.getElementById('momentsBannerInput');
+  if (input) input.click();
+}
+async function handleMomentsBannerSelect(input) {
+  try {
+    if (!input.files || !input.files[0] || !_momentsBannerEditTarget) return;
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+      try {
+        const compressed = await compressImage(e.target.result, 1400, 0.84);
+        if (_momentsBannerEditTarget.type === 'user') {
+          userProfile.momentsBanner = compressed;
+          persistMomentsUserProfile();
+        } else {
+          const p = personas.find(function(x) { return String(x.id) === String(_momentsBannerEditTarget.id); });
+          if (p) {
+            p.momentsBanner = compressed;
+            saveData();
+          }
+        }
+        renderMoments();
+      } catch(err) {
+        alert('封面图处理失败：' + err.message);
+      } finally {
+        input.value = '';
+        _momentsBannerEditTarget = null;
+      }
+    };
+    reader.readAsDataURL(input.files[0]);
+  } catch(e) {
+    input.value = '';
+    _momentsBannerEditTarget = null;
+  }
+}
+function _buildMomentsCommentsHtml(item) {
+  return (item.comments || []).map((c, cIdx) => {
     // Check if the post author's persona has translation enabled
-    const _momentAuthorPersona = personas.find(px => px.name === item.author);
-    const _momentTrEnabled = _momentAuthorPersona ? (_momentAuthorPersona.enableTranslation !== false) : true;
-    const commentsHtml = (item.comments || []).map((c, cIdx) => {
-      // c can be string (legacy) or {text, translation} object
-      const cText = typeof c === 'object' && c.text ? c.text : (c.content || c);
-      const cTr = typeof c === 'object' && c.translation ? c.translation : '';
-      const cAuthor = c.author || '';
-      // Check comment author's enableTranslation
-      const _cAuthorPersona = personas.find(px => px.name === cAuthor);
-      const _cTrEnabled = _cAuthorPersona ? (_cAuthorPersona.enableTranslation !== false) : true;
-      // Nested replies under this comment
-      const nestedRepliesHtml = (c.replies && c.replies.length > 0)
-        ? `<div class="moments-comment-nested-replies">${c.replies.map(r => {
-            const rText = r.content || r.text || '';
-            return `<div class="moments-comment-nested-reply">
-              <span class="mncr-author">${r.author}</span>${r.replyTo ? `<span class="mncr-to"> 回复 ${r.replyTo}</span>` : ''}：${rText}
-            </div>`;
-          }).join('')}</div>`
-        : '';
-      return `<div class="moments-comment-item" style="display:flex;flex-direction:column;gap:2px;" id="mc_${item.id}_${cIdx}">
+    const cText = typeof c === 'object' && c.text ? c.text : (c.content || c);
+    const cTr = typeof c === 'object' && c.translation ? c.translation : '';
+    const cAuthor = c.author || '';
+    const _cAuthorPersona = personas.find(px => px.name === cAuthor);
+    const _cTrEnabled = _cAuthorPersona ? (_cAuthorPersona.enableTranslation !== false) : true;
+    const nestedRepliesHtml = (c.replies && c.replies.length > 0)
+      ? `<div class="moments-comment-nested-replies">${c.replies.map(function(r) {
+          const rText = r.content || r.text || '';
+          return `<div class="moments-comment-nested-reply">
+            <span class="mncr-author">${r.author}</span>${r.replyTo ? `<span class="mncr-to"> 回复 ${r.replyTo}</span>` : ''}：${rText}
+          </div>`;
+        }).join('')}</div>`
+      : '';
+    return `<div class="moments-comment-item" style="display:flex;flex-direction:column;gap:2px;" id="mc_${item.id}_${cIdx}">
         <div style="display:flex;align-items:flex-start;gap:6px;">
           <div style="flex:1;"><span class="moments-comment-author">${cAuthor}：</span><span class="moments-comment-text">${cText}</span>${(cTr && _cTrEnabled) ? _buildKoreanTranslation(cTr) : ''}</div>
           <button class="moments-comment-reply-btn" onclick="openMomentsCommentReply(${item.id},${cIdx},'${cAuthor.replace(/'/g,"\\'")}')" title="回复"><i class="fas fa-reply" style="font-size:9px;"></i> 回复</button>
@@ -22050,56 +22523,57 @@ function renderMoments() {
           <button class="moments-comment-reply-send" onclick="postMomentsCommentReply(${item.id},${cIdx},'${cAuthor.replace(/'/g,"\\'")}')">发送</button>
         </div>
       </div>`;
-    }).join('');
-    const likes = item.likes || [];
-    const userLiked = likes.includes(userProfile.name);
-    const likedByHtml = likes.length > 0
-      ? `<div class="moments-liked-by"><i class="fas fa-heart"></i>${likes.join('、')} 觉得很赞</div>`
-      : '';
-    const commentCount = (item.comments || []).length;
-    const isUserPost = item.authorType === 'user' || item.author === userProfile.name;
-    const userControls = `
-      <div style="display:flex;gap:6px;margin-left:auto;">
-        ${isUserPost ? `<div class="moments-like-btn" style="background:#f5f5f5;color:#666;font-size:10px;" onclick="editMoment(${item.id})" title="编辑">
-          <i class="fas fa-pen" style="font-size:9px;"></i>编辑
-        </div>` : ''}
-        <div class="moments-like-btn" style="background:#fff0f0;color:#e74c3c;font-size:10px;" onclick="deleteMoment(${item.id})" title="删除">
-          <i class="fas fa-trash" style="font-size:9px;"></i>删除
-        </div>
-      </div>`;
-    // Build images HTML for moments post
-    let imagesHtml = '';
-    if (item.images && item.images.length > 0) {
-      if (item.images.length === 1) {
-        imagesHtml = `<div class="moments-image-single" onclick="showImagePreview('${item.images[0]}')"><img src="${item.images[0]}" alt="moments image" loading="lazy"></div>`;
-      } else {
-        imagesHtml = '<div class="moments-images">' + item.images.map((img, imgIdx) =>
-          `<div class="moments-image-thumb" onclick="showImagePreview('${img}')"><img src="${img}" alt="moments image ${imgIdx+1}" loading="lazy"></div>`
-        ).join('') + '</div>';
-      }
+  }).join('');
+}
+function _buildMomentsCard(item, compact) {
+  const _momentAuthorPersona = personas.find(px => px.name === item.author);
+  const _momentTrEnabled = _momentAuthorPersona ? (_momentAuthorPersona.enableTranslation !== false) : true;
+  const commentsHtml = _buildMomentsCommentsHtml(item);
+  const likes = item.likes || [];
+  const userLiked = likes.includes(userProfile.name);
+  const likedByHtml = likes.length > 0
+    ? `<div class="moments-liked-by"><i class="fas fa-heart"></i>${likes.join('、')} 觉得很赞</div>`
+    : '';
+  const commentCount = (item.comments || []).length;
+  const isUserPost = item.authorType === 'user';
+  const userControls = `
+    <div style="display:flex;gap:6px;margin-left:auto;">
+      ${isUserPost ? `<button class="moments-soft-btn" style="padding:6px 10px;" onclick="editMoment(${item.id})"><i class="fas fa-pen"></i>编辑</button>` : ''}
+      <button class="moments-soft-btn" style="padding:6px 10px;color:#c54d5c;background:#f6ebee;" onclick="deleteMoment(${item.id})"><i class="fas fa-trash"></i>删除</button>
+    </div>`;
+  const meta = getMomentAuthorMeta(item);
+  let imagesHtml = '';
+  if (item.images && item.images.length > 0) {
+    if (item.images.length === 1) {
+      imagesHtml = `<div class="moments-image-single" onclick="showImagePreview('${item.images[0]}')"><img src="${item.images[0]}" alt="moments image" loading="lazy"></div>`;
+    } else {
+      imagesHtml = '<div class="moments-images">' + item.images.map(function(img, imgIdx) {
+        return `<div class="moments-image-thumb" onclick="showImagePreview('${img}')"><img src="${img}" alt="moments image ${imgIdx + 1}" loading="lazy"></div>`;
+      }).join('') + '</div>';
     }
-    return `<div class="moments-item">
-      <div class="moments-header"><img src="${item.avatar}" class="moments-avatar"><span class="moments-name">${item.author}</span>${userControls}</div>
-      ${item.content ? `<div class="moments-content" id="momentContent_${item.id}">${item.content}</div>` : ''}
+  }
+  return `<div class="moments-weibo-card ${compact ? 'moments-weibo-card-compact' : ''}">
+      <div class="moments-weibo-head">
+        <img src="${meta.avatar}" onclick="openMomentAuthorProfile(${item.id})">
+        <div class="moments-weibo-head-main">
+          <div class="moments-weibo-name-row">
+            <span class="moments-weibo-name" onclick="openMomentAuthorProfile(${item.id})">${_escapeHtml(meta.displayName)}</span>
+            <span class="moments-weibo-handle">${_escapeHtml(meta.handle)}</span>
+          </div>
+          <div class="moments-weibo-sign">${_escapeHtml(meta.signature || '')}</div>
+        </div>
+        ${userControls}
+      </div>
+      ${item.content ? `<div class="moments-weibo-content" id="momentContent_${item.id}">${_escapeHtml(item.content)}</div>` : ''}
       ${imagesHtml}
       ${(item.translation && _momentTrEnabled) ? _buildKoreanTranslation(item.translation) : ''}
-      <div class="moments-time">${formatTime(item.time)}</div>
       ${likedByHtml}
-      <div class="moments-footer">
-        <div class="moments-footer-left">
-          <div class="moments-like-btn ${userLiked?'liked':''}" onclick="toggleMomentsLike(${item.id})">
-            <i class="fas fa-heart"></i>${likes.length > 0 ? likes.length : ''}
-          </div>
-          <div class="moments-comment-toggle-btn" id="cmtToggleBtn_${item.id}" onclick="toggleMomentsComments(${item.id})">
-            <i class="fas fa-comment"></i>${commentCount > 0 ? commentCount : '留言'}
-          </div>
-          <div class="moments-auto-comment-btn" id="autoCommentBtn_${item.id}" onclick="autoGenerateMomentsComments(${item.id})" title="AI自动生成留言">
-            <i class="fas fa-magic"></i>自动留言
-          </div>
-        </div>
-        <div class="moments-like-btn" style="background:#fafafa;color:#666;" onclick='openFwdPersonaModal(${JSON.stringify({source:"moments",id:item.id,author:item.author,avatar:item.avatar,content:item.content,time:item.time,comments:(item.comments||[])}).replace(/'/g,"&#39;")})'>
-          <i class="fas fa-share" style="font-size:9px;"></i>转发
-        </div>
+      <div class="moments-weibo-meta"><span>${formatTime(item.time)}</span>${item.editedRepost ? '<span>删掉重发了</span>' : ''}</div>
+      <div class="moments-weibo-tools">
+        <button class="moments-soft-btn ${userLiked ? 'heart-on' : ''}" onclick="toggleMomentsLike(${item.id})"><i class="fas fa-heart"></i>${likes.length > 0 ? likes.length : '喜欢'}</button>
+        <button class="moments-soft-btn" id="cmtToggleBtn_${item.id}" onclick="toggleMomentsComments(${item.id})"><i class="fas fa-comment"></i>${commentCount > 0 ? commentCount : '留言'}</button>
+        <button class="moments-soft-btn" id="autoCommentBtn_${item.id}" onclick="autoGenerateMomentsComments(${item.id})"><i class="fas fa-magic"></i>自动留言</button>
+        <button class="moments-soft-btn" onclick='openFwdPersonaModal(${JSON.stringify({source:"moments",id:item.id,author:item.author,avatar:item.avatar,content:item.content,time:item.time,comments:(item.comments||[])}).replace(/'/g,"&#39;")})'><i class="fas fa-share"></i>转发</button>
       </div>
       <div class="moments-comments" id="momentsComments_${item.id}">
         ${commentsHtml}
@@ -22109,7 +22583,80 @@ function renderMoments() {
         </div>
       </div>
     </div>`;
+}
+function _buildMomentsHome() {
+  const featured = getMomentsProfileMeta('user', 'user');
+  const personaChips = personas.map(function(p) {
+    const meta = getMomentsProfileMeta('persona', p.id);
+    return `<div class="moments-persona-chip" onclick="openMomentsProfile('persona', ${p.id})">
+      <div class="moments-persona-chip-head">
+        <img src="${meta.avatar}">
+        <div>
+          <div class="moments-persona-chip-name">${_escapeHtml(meta.displayName)}</div>
+          <div class="moments-weibo-handle">${_escapeHtml(meta.handle)}</div>
+        </div>
+      </div>
+      <div class="moments-persona-chip-sign">${_escapeHtml(meta.signature || '')}</div>
+    </div>`;
   }).join('');
+  const postsHtml = momentsData.map(function(item) { return _buildMomentsCard(item, false); }).join('');
+  return `<div class="moments-home-hero">
+      <div class="moments-home-profile-card" onclick="openMomentsProfile('user','user')">
+        <img src="${featured.avatar}">
+        <div style="min-width:0;flex:1;">
+          <div class="moments-home-profile-name">${_escapeHtml(featured.displayName)}</div>
+          <div class="moments-home-profile-sign">${_escapeHtml(featured.signature || '')}</div>
+        </div>
+        <button class="moments-pill-btn dark" onclick="event.stopPropagation();openMomentsProfile('user','user')">我的主页</button>
+      </div>
+      <div class="moments-persona-strip no-scrollbar">${personaChips}</div>
+    </div>
+    <div class="moments-section-title"><span>All Posts</span><span>${momentsData.length} 条动态</span></div>
+    ${postsHtml || '<div class="moments-profile-empty">还没有动态<br>先发第一条试试看</div>'}`;
+}
+function _buildMomentsProfileView() {
+  const meta = getMomentsProfileMeta(momentsViewState.profileType, momentsViewState.profileId);
+  if (!meta) return '<div class="moments-profile-empty">找不到这个主页</div>';
+  const posts = momentsData.filter(function(item) {
+    const itemMeta = getMomentAuthorMeta(item);
+    return itemMeta && itemMeta.type === meta.type && String(itemMeta.id) === String(meta.id);
+  });
+  return `<div class="moments-profile-shell">
+    <div class="moments-profile-banner">
+      ${meta.banner ? `<img src="${meta.banner}">` : ''}
+      <div class="moments-profile-banner-overlay"></div>
+      <div class="moments-profile-top-actions">
+        <button onclick="showMomentsFeed()"><i class="fas fa-chevron-left"></i> 返回广场</button>
+        <div style="display:flex;gap:8px;">
+          <button onclick="aiGenerateMomentsProfile('${meta.type}', '${meta.id}', 'nickname', this)"><i class="fas fa-user-pen"></i> AI网名</button>
+          <button onclick="aiGenerateMomentsProfile('${meta.type}', '${meta.id}', 'signature', this)"><i class="fas fa-feather-pointed"></i> AI签名</button>
+          <button onclick="editMomentsProfile('${meta.type}', '${meta.id}')"><i class="fas fa-pen"></i> 编辑主页</button>
+          <button onclick="triggerMomentsBannerUpload('${meta.type}', '${meta.id}')"><i class="fas fa-image"></i> 换封面</button>
+        </div>
+      </div>
+      <div class="moments-profile-head">
+        <div class="moments-profile-head-main">
+          <div>
+            <div class="moments-profile-name">${_escapeHtml(meta.displayName)}</div>
+            <div class="moments-profile-handle">${_escapeHtml(meta.handle)}</div>
+          </div>
+          <img src="${meta.avatar}">
+        </div>
+      </div>
+    </div>
+    <div class="moments-profile-signature">${_escapeHtml(meta.signature || '这个人什么都没有写')}</div>
+    <div class="moments-profile-feed">
+      <div class="moments-section-title"><span>${posts.length ? 'Latest Posts' : 'No Posts Yet'}</span><span>${posts.length} 条动态</span></div>
+      ${posts.length ? posts.map(function(item) { return _buildMomentsCard(item, true); }).join('') : '<div class="moments-profile-empty">这里还没有发布任何动态</div>'}
+    </div>
+  </div>`;
+}
+function renderMoments() {
+  ensureMomentsProfileDefaults();
+  normalizeMomentsAuthorProfiles();
+  const box = document.getElementById('momentsList');
+  if (!box) return;
+  box.innerHTML = momentsViewState.mode === 'profile' ? _buildMomentsProfileView() : _buildMomentsHome();
 }
 function deleteMoment(itemId) {
   if (!confirm('确定要删除这条朋友圈吗？')) return;
@@ -22359,7 +22906,7 @@ async function autoGenerateMomentsComments(itemId) {
   if (!item) return;
   const btn = document.getElementById('autoCommentBtn_' + itemId);
   if (btn) { btn.classList.add('loading'); btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>生成中...'; }
-  const isUserPost = item.authorType === 'user' || item.author === userProfile.name;
+  const isUserPost = item.authorType === 'user';
   if (!item.comments) item.comments = [];
   // Build image context for auto-comment generation
   const _imageDescForComment = (item.imageDescs && item.imageDescs[0]) ? item.imageDescs[0] : '';
@@ -22528,6 +23075,7 @@ function postMoments() {
     author: userProfile.name,
     avatar: userProfile.avatar,
     authorType: 'user',
+    authorProfileName: userProfile.momentsNickname || userProfile.name,
     content: content || '',
     images: hasImage ? [_momentsPendingImage] : [],
     imageDescs: hasImage ? [_momentsPendingImageDesc] : [],
@@ -22668,7 +23216,7 @@ async function updateMoments() {
   const _mLang = _detectPersonaLang(p);
   const _mLangOv = _langOverridePrompt(_mLang);
   const _relCtxManualMoment = (typeof _mwBuildRelInjectForChar === 'function') ? _mwBuildRelInjectForChar(p.name, null, false) : '';
-  const prompt = `${LANG_SYSTEM_PREFIX}你是${p.name}，根据你的人设「${p.persona}」，以及你最近和${userProfile.name}的聊天记录：\n${recentChat}${_mLangOv}${_relCtxManualMoment}\n\n根据这段对话，以${_mLang ? '你的语言设定' : '简体中文'}发布一条朋友圈动态，语气符合你的性格，约50-100字。如动态中提及有关系设定的角色，措辞和情感必须符合该关系。只返回朋友圈内容本身。`;
+  const prompt = `${LANG_SYSTEM_PREFIX}你是${p.name}，根据你的人设「${p.persona}」，以及你最近和${userProfile.name}的聊天记录：\n${recentChat}${_mLangOv}${_relCtxManualMoment}\n\n根据这段对话，以${_mLang ? '你的语言设定' : '简体中文'}发布一条朋友圈动态，语气符合你的性格，约50-100字。如动态中提及有关系设定的角色，措辞和情感必须符合该关系。允许出现“无法直接说出口，只能借朋友圈轻轻泄露”的表达，但不要写得过于直白。只返回朋友圈内容本身。`;
   try {
     const r = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, { method: 'POST', headers: { 'Authorization': `Bearer ${apiConfig.key}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ model: apiConfig.model, messages: [{ role: 'user', content: prompt }], temperature: 0.85 }) });
     if (!r.ok) throw new Error(`API Error: ${r.status}`);
@@ -22682,7 +23230,8 @@ async function updateMoments() {
       } catch(e) {}
     }
     const likes = Math.random() > 0.4 ? [userProfile.name] : [];
-    momentsData.unshift({ id: Date.now(), author: p.name, avatar: p.avatar, content, translation, time: new Date().getTime(), comments: [], likes });
+    maybeEvolvePersonaMomentsIdentity(p);
+    momentsData.unshift({ id: Date.now(), author: p.name, avatar: p.avatar, authorType: 'persona', personaId: p.id, authorProfileName: p.momentsNickname || p.name, content, translation, time: new Date().getTime(), comments: [], likes });
     localStorage.setItem('mono_moments', JSON.stringify(momentsData));
     renderMoments();
     alert("朋友圈已根据最近对话更新！");
@@ -29126,6 +29675,9 @@ function normalizeImportData(raw) {
     if (np.autoDiaryTime == null) np.autoDiaryTime = '21:00';
     if (np.autoMoments == null) np.autoMoments = false;
     if (np.autoMomentsTime == null) np.autoMomentsTime = '20:00';
+    if (np.momentsNickname == null) np.momentsNickname = '';
+    if (np.momentsSignature == null) np.momentsSignature = '';
+    if (np.momentsBanner == null) np.momentsBanner = '';
     if (np.bubbleAiCss == null) np.bubbleAiCss = '';
     if (np.bubbleUserCss == null) np.bubbleUserCss = '';
     if (np.bubbleAiFontColor == null) np.bubbleAiFontColor = '';
@@ -34329,7 +34881,7 @@ async function generateAutoMomentsPost(personaId) {
   const _mLang = _detectPersonaLang(p);
   const _mLangOv = _langOverridePrompt(_mLang);
   const _relCtxMoment = (typeof _mwBuildRelInjectForChar === 'function') ? _mwBuildRelInjectForChar(p.name, null, false) : '';
-  const momentsPrompt = `${LANG_SYSTEM_PREFIX}你是${p.name}，根据你的人设「${p.persona}」，以及你最近和${userProfile.name}的聊天记录：\n${recentChat || '(暫無对话)'}${_mLangOv}${_relCtxMoment}\n\n以${_mLang ? '你的语言设定' : '简体中文'}发布一条朋友圈动态，语气符合你的性格，約30-80字。如动态中提及有关系设定的角色，措辞和情感必须符合该关系。只返回朋友圈內容本身。`;
+  const momentsPrompt = `${LANG_SYSTEM_PREFIX}你是${p.name}，根据你的人设「${p.persona}」，以及你最近和${userProfile.name}的聊天记录：\n${recentChat || '(暫無对话)'}${_mLangOv}${_relCtxMoment}\n\n以${_mLang ? '你的语言设定' : '简体中文'}发布一条朋友圈动态，语气符合你的性格，約30-80字。如动态中提及有关系设定的角色，措辞和情感必须符合该关系。可以偶尔带一点“说不出口的话只能拐弯发在朋友圈里”的感觉，但不要直接表白或说破。只返回朋友圈內容本身。`;
   try {
     const r = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, {
       method: 'POST',
@@ -34339,7 +34891,16 @@ async function generateAutoMomentsPost(personaId) {
     if (!r.ok) return;
     const data = await r.json();
     const momentsContent = data.choices[0].message.content.trim();
-    momentsData.unshift({ id: Date.now(), author: p.name, avatar: p.avatar, content: momentsContent, time: new Date().getTime(), comments: [], likes: [] });
+    maybeEvolvePersonaMomentsIdentity(p);
+    let editedRepost = false;
+    if (Math.random() < 0.16) {
+      const idx = momentsData.findIndex(function(m) { return String(m.personaId || '') === String(p.id); });
+      if (idx >= 0) {
+        momentsData.splice(idx, 1);
+        editedRepost = true;
+      }
+    }
+    momentsData.unshift({ id: Date.now(), author: p.name, avatar: p.avatar, authorType: 'persona', personaId: p.id, authorProfileName: p.momentsNickname || p.name, content: momentsContent, time: new Date().getTime(), comments: [], likes: [], editedRepost: editedRepost });
     localStorage.setItem('mono_moments', JSON.stringify(momentsData));
     renderMoments();
     dispatchNotification(p.id, p.name, '发布了新的朋友圈动态', p.avatar);

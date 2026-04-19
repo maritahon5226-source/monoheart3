@@ -17292,11 +17292,261 @@ let personas = JSON.parse(localStorage.getItem('mono_personas')) || [];
 let currentId = null;
 let isWechatMode = true; // 强制微信模式，永久开啟
 let apiConfig = JSON.parse(localStorage.getItem('mono_api')) || { url: '', key: '', model: '' };
+const AUTO_MODEL_SENTINEL = '__auto__';
+function _uniqStrings(arr) {
+  return Array.from(new Set((arr || []).filter(Boolean)));
+}
+function _stripApiKnownSuffix(rawUrl) {
+  return String(rawUrl || '')
+    .trim()
+    .replace(/\/+$/, '')
+    .replace(/\/chat\/completions$/i, '')
+    .replace(/\/completions$/i, '')
+    .replace(/\/models$/i, '');
+}
+function _normalizeApiBaseUrl(rawUrl) {
+  return _stripApiKnownSuffix(rawUrl);
+}
+function _buildApiBaseCandidates(rawUrl) {
+  const base = _normalizeApiBaseUrl(rawUrl);
+  if (!base) return [];
+  const out = [base];
+  if (/\/v\d+$/i.test(base)) out.push(base.replace(/\/v\d+$/i, ''));
+  else out.push(base + '/v1');
+  return _uniqStrings(out.map(function(item) { return item.replace(/\/+$/, ''); }));
+}
+function _buildApiChatCandidates(rawUrl) {
+  const raw = String(rawUrl || '').trim().replace(/\/+$/, '');
+  const direct = /\/chat\/completions$/i.test(raw) ? [raw] : [];
+  return _uniqStrings(direct.concat(_buildApiBaseCandidates(raw).map(function(base) { return base + '/chat/completions'; })));
+}
+function _buildApiModelsCandidates(rawUrl) {
+  const raw = String(rawUrl || '').trim().replace(/\/+$/, '');
+  const direct = /\/models$/i.test(raw) ? [raw] : [];
+  return _uniqStrings(direct.concat(_buildApiBaseCandidates(raw).map(function(base) { return base + '/models'; })));
+}
+function _getApiModelCacheKey(rawUrl) {
+  return 'mono_api_models_cache_' + btoa(unescape(encodeURIComponent(_normalizeApiBaseUrl(rawUrl || apiConfig.url || '')))).replace(/[=+/]/g, '');
+}
+function _getCachedApiModels(rawUrl) {
+  try {
+    const data = JSON.parse(localStorage.getItem(_getApiModelCacheKey(rawUrl)) || '[]');
+    return Array.isArray(data) ? data.filter(Boolean) : [];
+  } catch (e) {
+    return [];
+  }
+}
+function _cacheApiModels(rawUrl, models) {
+  try {
+    const ids = _uniqStrings((models || []).map(function(m) { return String(m || '').trim(); }).filter(Boolean)).slice(0, 200);
+    localStorage.setItem(_getApiModelCacheKey(rawUrl), JSON.stringify(ids));
+  } catch (e) {}
+}
+function _getCommonModelFallbacks() {
+  return [
+    'gpt-4o-mini',
+    'gpt-4.1-mini',
+    'gpt-4o',
+    'gpt-4.1',
+    'deepseek-chat',
+    'deepseek-v3',
+    'deepseek-r1',
+    'gemini-2.0-flash',
+    'gemini-2.5-flash',
+    'claude-3-5-sonnet',
+    'claude-3-7-sonnet',
+    'qwen-plus',
+    'qwen-max',
+    'glm-4-flash'
+  ];
+}
+function _getEffectiveApiModel(candidate) {
+  const val = String(candidate || '').trim();
+  if (!val || val === AUTO_MODEL_SENTINEL) return '';
+  return val;
+}
+function _normalizeApiConfigObject(cfg) {
+  const obj = cfg && typeof cfg === 'object' ? Object.assign({}, cfg) : {};
+  return {
+    url: _normalizeApiBaseUrl(obj.url || obj.baseUrl || ''),
+    key: String(obj.key || obj.apiKey || '').trim(),
+    model: String(obj.model || '').trim() || AUTO_MODEL_SENTINEL
+  };
+}
+function _buildApiHeaders(key, sourceHeaders, includeJsonContentType) {
+  const headers = new Headers(sourceHeaders || {});
+  const realKey = String(key || '').trim();
+  if (realKey) {
+    if (!headers.has('Authorization')) headers.set('Authorization', 'Bearer ' + realKey);
+    if (!headers.has('api-key')) headers.set('api-key', realKey);
+    if (!headers.has('x-api-key')) headers.set('x-api-key', realKey);
+  }
+  if (includeJsonContentType !== false && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+  return headers;
+}
+function _safeJsonParse(text) {
+  try { return JSON.parse(text); } catch (e) { return null; }
+}
+function _cloneJsonSafe(obj) {
+  try { return JSON.parse(JSON.stringify(obj)); } catch (e) { return obj ? Object.assign({}, obj) : {}; }
+}
+function _extractApiModelIds(payload) {
+  const found = [];
+  const walk = function(node, depth) {
+    if (!node || depth > 4) return;
+    if (Array.isArray(node)) {
+      node.forEach(function(item) { walk(item, depth + 1); });
+      return;
+    }
+    if (typeof node === 'object') {
+      const modelId = node.id || node.name || node.model || node.model_id || node.modelId;
+      if (typeof modelId === 'string' && modelId.trim()) found.push(modelId.replace(/^models\//, '').trim());
+      Object.keys(node).forEach(function(key) {
+        const val = node[key];
+        if (Array.isArray(val) || (val && typeof val === 'object')) walk(val, depth + 1);
+      });
+    }
+  };
+  walk(payload, 0);
+  return _uniqStrings(found);
+}
+function _buildChatPayloadVariants(payload, forcedModel, rawUrl) {
+  const original = _cloneJsonSafe(payload || {});
+  if (!Array.isArray(original.messages) || !original.messages.length) {
+    original.messages = [{ role: 'user', content: 'Hi' }];
+  }
+  const preferredModel = _getEffectiveApiModel(forcedModel || original.model || apiConfig.model);
+  const modelCandidates = _uniqStrings(
+    []
+      .concat(preferredModel ? [preferredModel] : [])
+      .concat(_getCachedApiModels(rawUrl))
+      .concat(_getCommonModelFallbacks())
+  );
+  const base = _cloneJsonSafe(original);
+  delete base.stream;
+  if (base.temperature != null) {
+    const temp = Number(base.temperature);
+    if (!isFinite(temp)) delete base.temperature;
+    else base.temperature = Math.max(0, Math.min(temp, 1.2));
+  }
+  // Do not cap output tokens in the compatibility layer.
+  // We strip token limit fields so the upstream API/model can decide.
+  delete base.max_tokens;
+  delete base.max_completion_tokens;
+  const relaxed = _cloneJsonSafe(base);
+  delete relaxed.temperature;
+  delete relaxed.top_p;
+  delete relaxed.frequency_penalty;
+  delete relaxed.presence_penalty;
+  delete relaxed.stop;
+  delete relaxed.response_format;
+  const variants = [];
+  [base, relaxed].forEach(function(shape) {
+    if (!shape) return;
+    const noModel = _cloneJsonSafe(shape);
+    delete noModel.model;
+    variants.push(noModel);
+    modelCandidates.forEach(function(modelId) {
+      const withModel = _cloneJsonSafe(shape);
+      withModel.model = modelId;
+      variants.push(withModel);
+    });
+  });
+  const seen = new Set();
+  return variants.filter(function(item) {
+    const key = JSON.stringify(item);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+async function _compatibleFetchModelList(rawUrl, key) {
+  const endpoints = _buildApiModelsCandidates(rawUrl);
+  let lastResponse = null;
+  let lastError = null;
+  for (const endpoint of endpoints) {
+    try {
+      const headers = _buildApiHeaders(key, null, false);
+      let res = await window._monoNativeFetch(endpoint, { method: 'GET', headers: headers });
+      if (res.ok) return res;
+      lastResponse = res;
+      if (res.status === 405) {
+        res = await window._monoNativeFetch(endpoint, { method: 'POST', headers: headers });
+        if (res.ok) return res;
+        lastResponse = res;
+      }
+      if ([401, 403, 429].includes(lastResponse.status)) return lastResponse;
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  if (lastResponse) return lastResponse;
+  throw lastError || new Error('无法连接模型列表接口');
+}
+async function _compatibleChatCompletion(rawUrl, key, payload, extraInit) {
+  const endpoints = _buildApiChatCandidates(rawUrl);
+  const variants = _buildChatPayloadVariants(payload, payload && payload.model, rawUrl);
+  let lastResponse = null;
+  let lastError = null;
+  for (const endpoint of endpoints) {
+    for (const bodyPayload of variants) {
+      try {
+        const res = await window._monoNativeFetch(endpoint, Object.assign({}, extraInit || {}, {
+          method: 'POST',
+          headers: _buildApiHeaders(key, extraInit && extraInit.headers, true),
+          body: JSON.stringify(bodyPayload)
+        }));
+        if (res.ok) {
+          if (bodyPayload && bodyPayload.model) _cacheApiModels(rawUrl, [bodyPayload.model].concat(_getCachedApiModels(rawUrl)));
+          return res;
+        }
+        lastResponse = res;
+        if ([401, 403, 429].includes(res.status)) return res;
+      } catch (e) {
+        lastError = e;
+      }
+    }
+  }
+  if (lastResponse) return lastResponse;
+  throw lastError || new Error('无法连接聊天接口');
+}
+function _looksLikeCurrentMainApiRequest(requestUrl) {
+  const url = String(requestUrl || '');
+  if (!url) return false;
+  const candidates = _buildApiChatCandidates(apiConfig.url).concat(_buildApiModelsCandidates(apiConfig.url));
+  return candidates.some(function(item) {
+    return item && url.indexOf(item) === 0;
+  });
+}
+window._monoNativeFetch = window.fetch.bind(window);
+window.fetch = async function(input, init) {
+  const requestUrl = typeof input === 'string' ? input : ((input && input.url) || '');
+  const method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
+  const isChat = /\/chat\/completions(?:\?|$)/i.test(requestUrl);
+  const isModels = /\/models(?:\?|$)/i.test(requestUrl);
+  if (!_looksLikeCurrentMainApiRequest(requestUrl) || (!isChat && !isModels)) {
+    return window._monoNativeFetch(input, init);
+  }
+  if (isModels) {
+    return _compatibleFetchModelList(requestUrl, apiConfig.key);
+  }
+  if (isChat && method === 'POST') {
+    const bodyText = init && typeof init.body === 'string'
+      ? init.body
+      : (typeof input !== 'string' && input && typeof input.text === 'function' ? await input.clone().text().catch(function() { return ''; }) : '');
+    const parsed = _safeJsonParse(bodyText);
+    if (parsed && typeof parsed === 'object') {
+      return _compatibleChatCompletion(requestUrl, apiConfig.key, parsed, init || {});
+    }
+  }
+  return window._monoNativeFetch(input, init);
+};
+apiConfig = _normalizeApiConfigObject(apiConfig || {});
 // Normalize API URL — avoid duplicate /chat/completions regardless of what user saved
 function getApiUrl() {
-  let u = (apiConfig.url || '').replace(/\/+$/, '');
-  if (u.endsWith('/chat/completions')) return u;
-  return u + '/chat/completions';
+  return _buildApiChatCandidates(apiConfig.url)[0] || '';
 }
 // userProfile 初始化：从 localStorage 读文字字段，头像从 IDB blob 异步加载
 let userProfile = (() => {
@@ -21040,18 +21290,17 @@ function _getApiConfig() {
   try {
     const raw = localStorage.getItem('mono_api') || localStorage.getItem('mono_api_config');
     if (raw) {
-      const cfg = JSON.parse(raw);
-      return { key: cfg.key || cfg.apiKey || '', url: cfg.url || cfg.baseUrl || 'https://api.openai.com/v1', model: cfg.model || 'gpt-4o' };
+      return _normalizeApiConfigObject(JSON.parse(raw));
     }
     // Try older format
     const key = localStorage.getItem('mono_api_key') || '';
     const url = localStorage.getItem('mono_api_url') || 'https://api.openai.com/v1';
-    const model = localStorage.getItem('mono_api_model') || 'gpt-4o';
-    if (key) return { key, url, model };
+    const model = localStorage.getItem('mono_api_model') || AUTO_MODEL_SENTINEL;
+    if (key) return _normalizeApiConfigObject({ key, url, model });
     // Try apiConfig global
-    if (window.apiConfig && window.apiConfig.key) return window.apiConfig;
+    if (window.apiConfig && window.apiConfig.key) return _normalizeApiConfigObject(window.apiConfig);
   } catch(e) {}
-  return window.apiConfig || null;
+  return window.apiConfig ? _normalizeApiConfigObject(window.apiConfig) : null;
 }
 function _ccGetPersonas() {
   try { return JSON.parse(localStorage.getItem('mono_personas') || '[]'); } catch(e) { return []; }
@@ -21926,7 +22175,7 @@ function toggleApiSettings() {
   if(!modal.classList.contains('hidden')){
     document.getElementById('apiUrl').value=apiConfig.url||'';
     document.getElementById('apiKey').value=apiConfig.key||'';
-    if(apiConfig.model) document.getElementById('modelManual').value=apiConfig.model;
+    document.getElementById('modelManual').value=(apiConfig.model && apiConfig.model !== AUTO_MODEL_SENTINEL) ? apiConfig.model : '';
     document.getElementById('fetchStatus').classList.add('hidden');
     // Load vision API settings
     loadVisionApiSettings();
@@ -21957,69 +22206,60 @@ function setFetchStatus(msg,isError) {
   el.classList.remove('hidden');
 }
 async function fetchModels() {
-  const url=document.getElementById('apiUrl').value.trim().replace(/\/$/,'');
+  const url=_normalizeApiBaseUrl(document.getElementById('apiUrl').value.trim());
   const key=document.getElementById('apiKey').value.trim();
   if(!url||!key){ alert("请先填写 API URL 和 API Key！"); return; }
   setFetchStatus('正在获取模型列表...',false);
   try {
-    const res=await fetch(`${url}/models`,{headers:{'Authorization':`Bearer ${key}`,'api-key':key}});
-    if(!res.ok){ const t=await res.text().catch(()=>''); throw new Error(`HTTP ${res.status}${t?': '+t.slice(0,100):''}`); }
+    const res = await _compatibleFetchModelList(url, key);
+    if(!res.ok){ const t=await res.text().catch(()=>''); throw new Error(`HTTP ${res.status}${t?': '+t.slice(0,160):''}`); }
     const data=await res.json();
-    let models=[];
-    if(Array.isArray(data)) models=data;
-    else if(Array.isArray(data.data)) models=data.data;
-    else if(Array.isArray(data.models)) models=data.models;
-    else { const fa=Object.values(data).find(v=>Array.isArray(v)); if(fa) models=fa; }
-    if(models.length===0) throw new Error('找不到模型列表，请尝试手动输入模型名称');
-    document.getElementById('modelSelect').innerHTML=models.map(m=>{ const id=(m.id||m.name||m.model_id||String(m)).replace(/^models\//,''); return `<option value="${id}">${id}</option>`; }).join('');
+    const models=_extractApiModelIds(data);
+    if(models.length===0) {
+      document.getElementById('modelSelect').innerHTML = '<option value="">该站点未返回可识别模型，可直接手动输入或保存为自动模式</option>';
+      setFetchStatus('△ 已连通，但该站点没有返回标准模型列表。你可以直接手动输入模型，或不填模型后保存为自动适配模式。',false);
+      return;
+    }
+    _cacheApiModels(url, models);
+    document.getElementById('modelSelect').innerHTML=models.map(function(id){ return `<option value="${id}">${id}</option>`; }).join('');
     setFetchStatus(`✓ 成功获取 ${models.length} 个模型`,false);
-    document.getElementById('modelManual').value='';
+    if (!document.getElementById('modelManual').value.trim()) document.getElementById('modelManual').value=models[0]||'';
   } catch(e) {
     setFetchStatus(`✗ ${e.message}`,true);
   }
 }
 function saveApi() {
-  const url=document.getElementById('apiUrl').value.trim();
+  const url=_normalizeApiBaseUrl(document.getElementById('apiUrl').value.trim());
   const key=document.getElementById('apiKey').value.trim();
-  const model=getSelectedModel();
+  const model=getSelectedModel() || AUTO_MODEL_SENTINEL;
   if(!url||!key){ alert("请先填写 API URL 和 API Key！"); return; }
-  if(!model){ alert("请选择或输入模型名称！"); return; }
   apiConfig={url,key,model};
   localStorage.setItem('mono_api',JSON.stringify(apiConfig));
-  setFetchStatus(`✓ 已保存：${model}`,false);
+  setFetchStatus(`✓ 已保存：${model===AUTO_MODEL_SENTINEL?'自动适配模型模式':model}`,false);
   setTimeout(()=>toggleApiSettings(),800);
 }
 async function testApi() {
   // Read directly from input fields so test works even before saving
   const urlInput = document.getElementById('apiUrl');
   const keyInput = document.getElementById('apiKey');
-  const url = (urlInput ? urlInput.value.trim() : '') || apiConfig.url;
+  const url = _normalizeApiBaseUrl((urlInput ? urlInput.value.trim() : '') || apiConfig.url);
   const key = (keyInput ? keyInput.value.trim() : '') || apiConfig.key;
-  const model = getSelectedModel() || apiConfig.model;
-  if (!url || !key || !model) { alert('请填写完整的API配置（URL、Key、Model）'); return; }
+  const model = getSelectedModel() || apiConfig.model || AUTO_MODEL_SENTINEL;
+  if (!url || !key) { alert('请填写完整的API配置（URL、Key）'); return; }
   
   const statusEl = document.getElementById('apiStatus');
   statusEl.textContent = '正在测试连接...';
   statusEl.style.color = '#f0ad4e';
   
   try {
-    // 清理URL格式 - 更宽容地处理各种URL格式
-    let apiUrl = url.replace(/\/+$/, '');
-    if (apiUrl.endsWith('/v1')) {
-      apiUrl = apiUrl + '/chat/completions';
-    } else if (!apiUrl.endsWith('/chat/completions')) {
-      apiUrl = apiUrl + '/chat/completions';
-    }
-    
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
-    
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: model, messages: [{role:'user',content:'Hi'}], max_tokens: 10 }),
-      signal: controller.signal
-    });
+    const response = await _compatibleChatCompletion(url, key, {
+      model: model,
+      messages: [{role:'user',content:'Hi'}],
+      max_tokens: 16,
+      temperature: 0.2
+    }, { signal: controller.signal });
     clearTimeout(timeoutId);
     
     if (!response.ok) {
@@ -22042,7 +22282,7 @@ async function testApi() {
     if (data.choices && data.choices.length > 0) {
       statusEl.textContent = '连接成功';
       statusEl.style.color = '#5cb85c';
-      alert('API连接测试成功！\n\n模型: ' + model + '\n状态: 正常运行');
+      alert('API连接测试成功！\n\n模型: ' + (_getEffectiveApiModel(model) || '自动适配') + '\n状态: 正常运行');
     } else {
       statusEl.textContent = '返回格式异常';
       statusEl.style.color = '#f0ad4e';
@@ -44115,7 +44355,9 @@ function _getOfflineModeConfig(mode, session) {
   var key = _getOfflineModeKey(mode);
   var base = (_offlineState.settings.modeConfigs && _offlineState.settings.modeConfigs[key]) || OFFLINE_MODE_CONFIG_DEFAULTS[key];
   var sessionConfig = session && session.modeConfig && _getOfflineModeKey(session.mode) === key ? session.modeConfig : null;
-  return Object.assign({}, OFFLINE_MODE_CONFIG_DEFAULTS[key], base || {}, sessionConfig || {});
+  // Current settings should override older session snapshots so editing the panel
+  // takes effect immediately even inside an existing offline archive/session.
+  return Object.assign({}, OFFLINE_MODE_CONFIG_DEFAULTS[key], sessionConfig || {}, base || {});
 }
 function _loadOfflineSessions() {
   try { _offlineState.sessions = JSON.parse(localStorage.getItem(OFFLINE_STORAGE_KEY) || '{}'); } catch(e) { _offlineState.sessions = {}; }
@@ -44973,7 +45215,10 @@ function _getIfLineSystemPrompt(p, session) {
   var charName = p ? p.name : '角色';
   var isShort = session.ifSubMode === 'short';
   var styleIdx = _offlineState.settings.style || 0;
-  var styleNote = OFFLINE_STYLE_PROMPTS[styleIdx] || OFFLINE_STYLE_PROMPTS[0];
+  var fallbackStyleNote = OFFLINE_STYLE_PROMPTS[styleIdx] || OFFLINE_STYLE_PROMPTS[0];
+  var modeConfig = _getOfflineModeConfig(isShort ? 'short' : 'long', session);
+  var styleNote = modeConfig.styleText || fallbackStyleNote;
+  var targetWords = _offlineClampNumber(modeConfig.targetWords, isShort ? 70 : 140, 20, 5000);
   var worldBlock = [
     s.worldSetting   ? '【世界】' + s.worldSetting : '',
     s.charPersona    ? '【' + charName + '】' + s.charPersona : '',
@@ -45077,8 +45322,8 @@ function _getIfLineSystemPrompt(p, session) {
     ].join('\n');
   }
   var narrativeRule = isShort
-    ? '用简短的对话与动作推进，自然轻快，每次回应1-3句。'
-    : '用第三人称或混合视角细腻叙事，描写场景、动作、情绪与心理，每次回应80-220字，像在共写小说。';
+    ? '用简短自然的对话、动作和临场反应推进剧情。句数按内容需要自然决定，但整体篇幅尽量贴近 ' + targetWords + ' 字，允许小幅浮动，不要为了凑字数变空，也不要突然写很短。'
+    : '用第三人称或混合视角细腻叙事，描写场景、动作、情绪与心理。整体篇幅尽量贴近 ' + targetWords + ' 字，允许小幅浮动，不要硬凑，也不要在情绪或情节正要展开时突然收断。';
   return [
     '你是「' + charName + '」，正在与「' + uName + '」共同创作一段完全沉浸式的互动故事。',
     '你的存在、思维、语言、行动，全部根植于以下设定的世界之中。',
@@ -45103,7 +45348,7 @@ function _getIfLineSystemPrompt(p, session) {
     '1. 你完全不记得现实聊天室里的任何内容——那个世界对你来说不存在。',
     '2. 保留你原本的说话语气、口头禅与核心性格，但完全融入新身份与新世界。',
     '3. ' + narrativeRule,
-    '4. 风格：' + styleNote + '。每次回应有情节推进，留有互动空间，不要停在原地。',
+    '4. 风格：' + styleNote + '。这条要求优先级很高，你的措辞、节奏、画面感、情绪推进都必须尽量贴近这个文风。',
     '5. 用户发送的【】内容为剧情引导，将其自然融入故事推进，不要打破叙事。',
     '6. 不重复刚才说过的内容，不用陈述性总结代替场景描写，始终保持临场感。',
     session.entries.length === 0
@@ -45229,9 +45474,9 @@ async function _generateOfflineResponse(session) {
           locationNote,
           offlineWbInjection,
           bgmNote,
-          '文风要求：' + styleNote,
-          '字数要求：尽量接近 ' + targetWords + ' 字，可以略多或略少，不要硬凑字数，也不要为了卡字数强行截断剧情。',
-          '根据以下线下剧情继续发展：用第三人称或直接对话，1-3句，自然推进。',
+          '文风要求：' + styleNote + '。这条要求优先级很高，措辞、句式、节奏、情绪推进都必须明显体现这个文风。',
+          '字数要求：目标约 ' + targetWords + ' 字，允许小幅浮动，不要硬凑字数，也不要为了卡字数强行截断剧情。',
+          '根据以下线下剧情继续发展：用第三人称或直接对话自然推进。句数按情节需要决定，不要被固定句数束缚，但也不要拖沓。',
           '严格按照你的人设和性格，不要背离角色。',
           '你的回应要融入场景、动作、对话。',
           autoSummaryEvery > 0 ? '系统会按剧情互动自动总结，所以你的每次回应都要有明确推进，方便后续记忆承接。' : '',
@@ -45244,8 +45489,8 @@ async function _generateOfflineResponse(session) {
           '你是「' + p.name + '」，人设：' + (p.persona || '').slice(0, 200) + '。',
           '你和「' + uName + '」正在进行一段线下沉浸式敘事剧情，像小说一样细膩描写。',
           '模式：长篇敘事——用第三人称或混合视角，详细描写场景、氛围、角色的动作、表情、心理感受。',
-          '文风要求：' + styleNote + '。',
-          '字数要求：尽量接近 ' + targetWords + ' 字，可略多或略少，不要硬凑字数，也不要为了卡字数强行截断剧情。',
+          '文风要求：' + styleNote + '。这条要求优先级很高，措辞、句式密度、镜头感、情绪纹理都必须尽量贴近这个文风。',
+          '字数要求：目标约 ' + targetWords + ' 字，可略多或略少，不要硬凑字数，也不要为了卡字数强行截断剧情。',
           '语言精緻，画面感强，像在写真实的故事。',
           
           offlineWbInjection,
@@ -50760,7 +51005,7 @@ function initApiSwitcher() {
 function applyActiveApi() {
   if (activeApiId === 'preset') {
     // Restore preset API from localStorage
-    const preset = JSON.parse(localStorage.getItem('mono_api') || '{}');
+    const preset = _normalizeApiConfigObject(JSON.parse(localStorage.getItem('mono_api') || '{}'));
     if (preset.url) {
       apiConfig.url = preset.url;
       apiConfig.key = preset.key;
@@ -50769,9 +51014,10 @@ function applyActiveApi() {
   } else {
     const secApi = secondaryApis.find(a => a.id === activeApiId);
     if (secApi) {
-      apiConfig.url = secApi.url;
-      apiConfig.key = secApi.key;
-      apiConfig.model = secApi.model;
+      const normalized = _normalizeApiConfigObject(secApi);
+      apiConfig.url = normalized.url;
+      apiConfig.key = normalized.key;
+      apiConfig.model = normalized.model;
     }
   }
 }
@@ -61147,7 +61393,7 @@ if (document.readyState === 'loading') {
   // ─── Helpers ───
   function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function delay(ms) { return new Promise(function(r){setTimeout(r,ms);}); }
-  function getApi() { try{return JSON.parse(localStorage.getItem('mono_api')||'{}');}catch(e){return{};} }
+  function getApi() { try{return _normalizeApiConfigObject(JSON.parse(localStorage.getItem('mono_api')||'{}'));}catch(e){return _normalizeApiConfigObject({});} }
   function getUser() { try{return JSON.parse(localStorage.getItem('mono_user_profile')||'{}');}catch(e){return{};} }
   function getPersona(pid) {
     if (!pid) return null;

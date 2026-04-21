@@ -27483,6 +27483,105 @@ function getPersonaWithBg(p) {
   return restored;
 }
 // ---- PERSONA STICKER SENDING ----
+function _shuffleStickerArray(arr) {
+  const out = Array.isArray(arr) ? arr.slice() : [];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = out[i];
+    out[i] = out[j];
+    out[j] = tmp;
+  }
+  return out;
+}
+function _normalizeStickerDescKey(text) {
+  const raw = String(text || '').toLowerCase();
+  const cleaned = raw
+    .replace(/[\s\-_,.!?;:'"“”‘’`~@#$%^&*+=<>\/\\|()\[\]{}，。！？；：、】【《》、…]+/g, ' ')
+    .trim();
+  return cleaned || '__empty__';
+}
+function _collectRecentStickerUsage(history) {
+  const recent = (Array.isArray(history) ? history : [])
+    .filter(function(m) { return m && m.role === 'assistant' && m.msgType === 'sticker'; })
+    .slice(-10)
+    .reverse();
+  const usage = {
+    recentSrc5: new Set(),
+    recentSrc10: new Set(),
+    recentDesc5: Object.create(null),
+    recentDesc10: Object.create(null)
+  };
+  recent.forEach(function(msg, idx) {
+    const src = String(msg.stickerSrc || '').trim();
+    const descKey = _normalizeStickerDescKey(msg.caption || '');
+    if (src) {
+      usage.recentSrc10.add(src);
+      if (idx < 5) usage.recentSrc5.add(src);
+    }
+    if (descKey !== '__empty__') {
+      usage.recentDesc10[descKey] = (usage.recentDesc10[descKey] || 0) + 1;
+      if (idx < 5) usage.recentDesc5[descKey] = (usage.recentDesc5[descKey] || 0) + 1;
+    }
+  });
+  return usage;
+}
+function _buildPersonaStickerCandidates(stickers, history, limit) {
+  const usage = _collectRecentStickerUsage(history);
+  const buckets = Object.create(null);
+  (Array.isArray(stickers) ? stickers : []).forEach(function(sticker, index) {
+    const desc = sticker._visionDesc || sticker.caption || '';
+    const descKey = _normalizeStickerDescKey(desc);
+    let weight = 1;
+    if (usage.recentSrc5.has(sticker.src)) weight *= 0.12;
+    else if (usage.recentSrc10.has(sticker.src)) weight *= 0.4;
+    if (descKey !== '__empty__') {
+      if (usage.recentDesc5[descKey]) weight *= 0.28;
+      else if (usage.recentDesc10[descKey]) weight *= 0.6;
+    } else {
+      weight *= 0.85;
+    }
+    weight *= 0.92 + Math.random() * 0.24;
+    const item = Object.assign({}, sticker, {
+      _descKey: descKey,
+      _weight: Math.max(weight, 0.05),
+      _stickerIndex: index
+    });
+    if (!buckets[descKey]) buckets[descKey] = [];
+    buckets[descKey].push(item);
+  });
+  const bucketQueue = _shuffleStickerArray(Object.keys(buckets).map(function(key) {
+    return _shuffleStickerArray(buckets[key]);
+  }));
+  const diversified = [];
+  let hasMore = true;
+  while (hasMore) {
+    hasMore = false;
+    for (let i = 0; i < bucketQueue.length; i++) {
+      if (bucketQueue[i].length) {
+        diversified.push(bucketQueue[i].shift());
+        hasMore = true;
+      }
+    }
+  }
+  const pool = diversified.slice();
+  const picked = [];
+  const maxCount = Math.min(limit || 24, pool.length);
+  while (pool.length && picked.length < maxCount) {
+    let total = 0;
+    for (let i = 0; i < pool.length; i++) total += pool[i]._weight || 0.05;
+    let roll = Math.random() * total;
+    let chosenIdx = pool.length - 1;
+    for (let i = 0; i < pool.length; i++) {
+      roll -= pool[i]._weight || 0.05;
+      if (roll <= 0) {
+        chosenIdx = i;
+        break;
+      }
+    }
+    picked.push(pool.splice(chosenIdx, 1)[0]);
+  }
+  return _shuffleStickerArray(picked);
+}
 async function tryPersonaSendSticker(p) {
   const allowedLibraryIds = Array.isArray(p.stickerLibraryIds) && p.stickerLibraryIds.length ? p.stickerLibraryIds : null;
   const stickers = getStickers(allowedLibraryIds);
@@ -27500,15 +27599,17 @@ async function tryPersonaSendSticker(p) {
   const recentText = recentMsgs.map(m => m.content || '').join(' ');
   const seriousKeywords = ['去世','死','病','分手','离婚','抑郁','自杀','出事','急救','癌','手术','葬礼','丧','悲痛','绝望'];
   if (seriousKeywords.some(k => recentText.includes(k))) return;
+  const stickerCandidates = _buildPersonaStickerCandidates(stickers, p.history, 24);
+  if (stickerCandidates.length === 0) return;
   // Build sticker descriptions for AI understanding
-  const stickerDescList = stickers.map((s, i) => {
+  const stickerDescList = stickerCandidates.map((s, i) => {
     const desc = s._visionDesc || s.caption || '无描述';
     return `${i}: ${desc}`;
   }).join('\n');
   // Ask AI which sticker to pick based on descriptions
   if (!apiConfig.url || !apiConfig.key || !apiConfig.model) {
     // No API — pick random sticker
-    const s = stickers[Math.floor(Math.random() * stickers.length)];
+    const s = stickerCandidates[Math.floor(Math.random() * stickerCandidates.length)];
     await new Promise(r => setTimeout(r, 600 + Math.random() * 1000));
     const stickerDesc = s._visionDesc || s.caption || '无描述';
     p.history.push({ role: 'assistant', msgType: 'sticker', stickerSrc: s.src, caption: s.caption, content: '[角色发送了表情包: ' + stickerDesc + ']' });
@@ -27537,8 +27638,8 @@ ${recentChat}
     const data = await r.json();
     const rawReply = (data.choices[0].message.content || '').trim();
     const idx = parseInt(rawReply);
-    if (isNaN(idx) || idx < 0 || idx >= stickers.length) return; // AI decided not to send or invalid
-    const s = stickers[idx];
+    if (isNaN(idx) || idx < 0 || idx >= stickerCandidates.length) return; // AI decided not to send or invalid
+    const s = stickerCandidates[idx];
     const stickerDesc = s._visionDesc || s.caption || '无描述';
     await new Promise(res => setTimeout(res, 700 + Math.random() * 1000));
     p.history.push({ role: 'assistant', msgType: 'sticker', stickerSrc: s.src, caption: s.caption, content: '[角色发送了表情包: ' + stickerDesc + ']' });

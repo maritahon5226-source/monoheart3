@@ -6,6 +6,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head>
@@ -17782,6 +17783,52 @@ function _buildApiHeaders(key, sourceHeaders, includeJsonContentType) {
 
 function _safeJsonParse(text) {
   try { return JSON.parse(text); } catch (e) { return null; }
+}
+function _extractBalancedJsonBlock(text, startChar) {
+  var raw = String(text || '');
+  var endChar = startChar === '[' ? ']' : '}';
+  var start = raw.indexOf(startChar);
+  while (start >= 0) {
+    var depth = 0;
+    var inString = false;
+    var escaped = false;
+    for (var i = start; i < raw.length; i++) {
+      var ch = raw.charAt(i);
+      if (inString) {
+        if (escaped) {
+          escaped = false;
+        } else if (ch === '\\') {
+          escaped = true;
+        } else if (ch === '"') {
+          inString = false;
+        }
+        continue;
+      }
+      if (ch === '"') {
+        inString = true;
+        continue;
+      }
+      if (ch === startChar) {
+        depth++;
+      } else if (ch === endChar) {
+        depth--;
+        if (depth === 0) return raw.slice(start, i + 1);
+      }
+    }
+    start = raw.indexOf(startChar, start + 1);
+  }
+  return '';
+}
+function _parseJsonFromText(text, fallback, preferredShape) {
+  var direct = _safeJsonParse(String(text || '').trim());
+  if (direct !== null) return direct;
+  var shapes = preferredShape === 'array' ? ['[', '{'] : ['{', '['];
+  for (var i = 0; i < shapes.length; i++) {
+    var snippet = _extractBalancedJsonBlock(text, shapes[i]);
+    var parsed = snippet ? _safeJsonParse(snippet) : null;
+    if (parsed !== null) return parsed;
+  }
+  return fallback;
 }
 function _cloneJsonSafe(obj) {
   try { return JSON.parse(JSON.stringify(obj)); } catch (e) { return obj ? Object.assign({}, obj) : {}; }
@@ -67030,6 +67077,14 @@ var iccState = {
   messages: [],      // [{char:'inspector'|'target', name, text, emotion}]
   saved: false
 };
+function iccGetFriendlyErrorMessage(err) {
+  var msg = String((err && err.message) || '').trim();
+  if (!msg || msg === 'empty') return '生成失败，请重试';
+  if (/unexpected non-whitespace character after json|unexpected token|json/i.test(msg)) {
+    return '生成失败：返回格式不完整，请重试';
+  }
+  return msg;
+}
 /* ── 检测是否应触发角色间私聊 ──
    在 enterChatRoom 读完内容、生成心声后调用 */
 function iccCheckAndMaybeTrigger(inspector, contact, summary, thoughtText) {
@@ -67058,7 +67113,7 @@ function iccCheckAndMaybeTrigger(inspector, contact, summary, thoughtText) {
 只返回JSON。';
   rpc2CallAI(assessPrompt, function(resp) {
     try {
-      var obj = JSON.parse(resp.match(/\{[\s\S]*\}/)?.[0] || '{}');
+      var obj = _parseJsonFromText(resp, {}, 'object');
       if (obj.trigger && (obj.intensity || 0) >= 5) {
         /* 显示触发横幅 */
         iccShowBanner(inspector, targetPersona, summary, obj.opening || '');
@@ -67173,19 +67228,19 @@ function iccGenerateDialogue(inspector, target, evidence, opening) {
     '只返回JSON数组。';
   rpc2CallAI(prompt, function(resp) {
     try {
-      var msgs = JSON.parse(resp.match(/\[[\s\S]*\]/)?.[0] || '[]');
+      var msgs = _parseJsonFromText(resp, [], 'array');
       if (!Array.isArray(msgs) || !msgs.length) throw new Error('empty');
       iccState.messages = msgs;
       iccRenderDialogue(inspector, target, msgs);
     } catch(e) {
       var chatArea = document.getElementById('iccChatArea');
       if (chatArea) chatArea.innerHTML =
-        '<div class="icc-loading"><div class="icc-loading-text" style="color:#e05050;">生成失败，请重试</div></div>';
+        '<div class="icc-loading"><div class="icc-loading-text" style="color:#e05050;">' + iccGetFriendlyErrorMessage(e) + '</div></div>';
     }
   }, function(e) {
     var chatArea = document.getElementById('iccChatArea');
     if (chatArea) chatArea.innerHTML =
-      '<div class="icc-loading"><div class="icc-loading-text" style="color:#e05050;">' + (e && e.message ? e.message : '连接失败') + '</div></div>';
+      '<div class="icc-loading"><div class="icc-loading-text" style="color:#e05050;">' + iccGetFriendlyErrorMessage(e) + '</div></div>';
   });
 }
 /* ── 逐条渲染消息（打字机效果，每条间隔 0.8~1.6 秒） ── */

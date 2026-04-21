@@ -1,4 +1,11 @@
 
+
+
+
+
+
+
+
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head>
@@ -19270,9 +19277,7 @@ function renderContactList() {
     return;
   }
   list.innerHTML = personas.map(p => {
-    const lastMsg = p.history && p.history.length > 0
-      ? p.history[p.history.length-1].content.substring(0,20) + (p.history[p.history.length-1].content.length > 20 ? '...' : '')
-      : '开始对话...';
+    const lastMsg = _getChatListPreviewText(p);
     const isPinned = (window._pinnedChatId == p.id);
     if (_bulkSelectMode) {
       // 多选模式：显示勾选框
@@ -19302,6 +19307,35 @@ function renderContactList() {
     </div>`;
   }).join('');
 }
+function _safeMsgText(value) {
+  if (typeof value === 'string') return value;
+  if (value == null) return '';
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (Array.isArray(value)) {
+    return value.map(function(part) { return _safeMsgText(part); }).filter(Boolean).join(' ');
+  }
+  if (typeof value === 'object') {
+    if (typeof value.text === 'string') return value.text;
+    if (typeof value.content === 'string') return value.content;
+    try { return JSON.stringify(value); } catch(e) { return ''; }
+  }
+  return String(value || '');
+}
+function _getChatListPreviewText(persona) {
+  const history = persona && Array.isArray(persona.history) ? persona.history : [];
+  if (!history.length) return '开始对话...';
+  const lastMsg = history[history.length - 1] || {};
+  if (lastMsg.msgType === 'image') return '[图片]';
+  if (lastMsg.msgType === 'sticker') return '[表情包]';
+  if (lastMsg.msgType === 'voice') return '[语音] ' + (_safeMsgText(lastMsg.transcript || lastMsg.content) || '');
+  if (lastMsg.msgType === 'call') return '[通话记录]';
+  if (lastMsg.msgType === 'transfer') return '[转账]';
+  if (lastMsg.msgType === 'order_notify' || lastMsg.msgType === 'pay_request' || lastMsg.msgType === 'receive_notify') return '[订单通知]';
+  if (lastMsg.msgType === 'forwarded_post') return '[转发动态]';
+  const text = _safeMsgText(lastMsg.content).replace(/\n/g, ' ').trim();
+  if (!text) return '开始对话...';
+  return text.slice(0, 20) + (text.length > 20 ? '...' : '');
+}
 function openDirectChatRoom(id) {
   document.getElementById('contactsDrawer').classList.remove('open');
   selectPersona(id);
@@ -19316,6 +19350,7 @@ function openDirectChatRoom(id) {
 }
 function selectPersona(id) {
   currentId = id;
+  _resetChatRenderWindow(id);
   const p = personas.find(x => x.id == id);
   if (!p) return;
   // 确保 history 已加载（防止 saveData 存储后变成 __hist_ref__ 未还原）
@@ -19344,11 +19379,19 @@ function selectPersona(id) {
   spyDataCache = {};
   cancelQuote();
   if (isMultiSelectMode) cancelMultiSelect();
-  applyChatBackground(p);
-  applyBubbleStyles(p);
-  applyChatRoomCustomCss(p);
-  renderMessages();
-  renderContactList();
+  try { applyChatBackground(p); } catch(e) { console.warn('[chat] applyChatBackground failed:', e); }
+  try { applyBubbleStyles(p); } catch(e) { console.warn('[chat] applyBubbleStyles failed:', e); }
+  try { applyChatRoomCustomCss(p); } catch(e) { console.warn('[chat] applyChatRoomCustomCss failed:', e); }
+  try {
+    renderMessages();
+  } catch(e) {
+    console.error('[chat] renderMessages failed:', e);
+    var _chatBox = document.getElementById('chatBox');
+    if (_chatBox) {
+      _chatBox.innerHTML = '<div class="empty-state"><i class="fas fa-triangle-exclamation"></i><p class="text-sm font-medium">此聊天室有一条旧数据格式异常的消息</p><p style="font-size:11px;color:#999;margin-top:6px;">已阻止页面崩溃。若需要我也可以继续帮你清洗旧聊天数据。</p></div>';
+    }
+  }
+  try { renderContactList(); } catch(e) { console.error('[chat] renderContactList failed:', e); }
   // Auto-scroll to latest messages
   setTimeout(function() {
     var chatBox = document.getElementById('chatBox');
@@ -19658,21 +19701,57 @@ ${lines}
 ⚠️ 重要：在线上聊天中，你必须自然地记得这些线下经历。不要表现得好像用户"消失了"或"不见了"，因为你们可能刚刚在线下见过面或有过互动。对话应当流畅衔接，就像现实中的朋友一样自然过渡。`;
   } catch(e) { return ''; }
 }
-function renderMessages() {
+let _chatRenderVisibleCount = 0;
+let _chatRenderPersonaId = null;
+function _getChatRenderBatchSize() {
+  return window.innerWidth <= 768 ? 60 : 120;
+}
+function _resetChatRenderWindow(personaId) {
+  _chatRenderPersonaId = personaId == null ? null : String(personaId);
+  _chatRenderVisibleCount = _getChatRenderBatchSize();
+}
+function loadOlderMessages() {
+  if (!currentId) return;
+  const p = personas.find(x => x.id == currentId);
+  if (!p || !Array.isArray(p.history)) return;
+  const oldBox = document.getElementById('chatBox');
+  const oldScrollHeight = oldBox ? oldBox.scrollHeight : 0;
+  const oldScrollTop = oldBox ? oldBox.scrollTop : 0;
+  _chatRenderVisibleCount = Math.min(p.history.length, (_chatRenderVisibleCount || _getChatRenderBatchSize()) + _getChatRenderBatchSize());
+  renderMessages({ preserveScrollPosition: true, oldScrollHeight, oldScrollTop });
+}
+function renderMessages(opts) {
+  opts = opts || {};
   if (!currentId) return;
   const p = personas.find(x => x.id == currentId);
   const box = document.getElementById('chatBox');
   if (!p || !box) return;
+  if (_chatRenderPersonaId !== String(p.id) || !_chatRenderVisibleCount) {
+    _resetChatRenderWindow(p.id);
+  }
   // 用户打开聊天室时，标记角色消息为已读
   _markCharMsgsAsRead(p);
-  if (!p.history || p.history.length === 0) {
+  const fullHistory = Array.isArray(p.history) ? p.history : [];
+  if (fullHistory.length === 0) {
     box.innerHTML = `<div class="empty-state"><i class="fas fa-comment-dots"></i><p class="text-sm font-medium">和 ${p.name} 开始对话吧</p></div>`;
     return;
   }
-  box.innerHTML = p.history.map((m, idx) => {
+  const visibleCount = Math.min(fullHistory.length, Math.max(_chatRenderVisibleCount || _getChatRenderBatchSize(), _getChatRenderBatchSize()));
+  const startIdx = Math.max(0, fullHistory.length - visibleCount);
+  let html = '';
+  if (startIdx > 0) {
+    html += `<div style="display:flex;justify-content:center;padding:10px 0 14px;">
+      <button onclick="loadOlderMessages()" style="border:none;background:#f3f3f3;color:#666;font-size:11px;padding:8px 14px;border-radius:999px;cursor:pointer;font-family:inherit;">查看更早消息（还有 ${startIdx} 条）</button>
+    </div>`;
+  }
+  html += fullHistory.slice(startIdx).map((m, offset) => {
+    const idx = startIdx + offset;
     const _personaLangCode = typeof _detectPersonaLang === 'function' ? _detectPersonaLang(p) : '';
     // Hidden context messages — injected into AI system prompt but never shown in UI
     if (m._transferContext || m._systemNote || m._hiddenContext) return '';
+    const msgContent = _safeMsgText(m.content);
+    const recalledContent = _safeMsgText(m._recalledContent);
+    const quoteContent = m.quote ? _safeMsgText(m.quote.content) : '';
     const isUser = m.role === 'user';
     const isSelected = selectedMsgIndices.has(idx);
     const avatarSrc = isUser ? userProfile.avatar : p.avatar;
@@ -19695,7 +19774,7 @@ function renderMessages() {
       } else {
         return `<div class="msg-row ai ${isSelected?'selected':''}" data-idx="${idx}">
           <div class="msg-meta"><img src="${avatarSrc}" class="msg-avatar"><span class="msg-name">${authorName.substring(0,4)}</span></div>
-          <div class="msg-content"><div class="bubble-recalled" style="font-size:11px;color:#bbb;font-style:italic;padding:6px 10px;background:rgba(0,0,0,0.04);border-radius:12px;">${authorName} 撤回了一条消息${m._recalledContent ? `<span style="color:#ccc;margin-left:4px;">（${m._recalledContent.slice(0,20)}${m._recalledContent.length>20?'…':''}）</span>` : ''}</div>${_msgMetaHtml}</div>
+          <div class="msg-content"><div class="bubble-recalled" style="font-size:11px;color:#bbb;font-style:italic;padding:6px 10px;background:rgba(0,0,0,0.04);border-radius:12px;">${authorName} 撤回了一条消息${recalledContent ? `<span style="color:#ccc;margin-left:4px;">（${recalledContent.slice(0,20)}${recalledContent.length>20?'…':''}）</span>` : ''}</div>${_msgMetaHtml}</div>
         </div>`;
       }
     }
@@ -19779,7 +19858,7 @@ function renderMessages() {
     if (m.msgType === 'voice') {
       const dur = m.duration || '0:05';
       // Show transcript automatically for user voice messages (content = transcription)
-      const displayText = m.transcript || m.content || null;  // both user & AI have text
+      const displayText = _safeMsgText(m.transcript || msgContent) || null;  // both user & AI have text
       const autoShow = isUser && displayText;  // AI: click to expand; user: auto-show
       const _hasAudio = !isUser && !!m.audioUrl;
       const _isSimulated = !isUser && !m.audioUrl;
@@ -19890,8 +19969,8 @@ function renderMessages() {
       return renderTransferBubble(m, idx, isUser, avatarSrc, authorName, isSelected);
     }
     // 剧本邀请消息
-    if (m.content && m.content.startsWith('__SCRIPT_INVITE__|')) {
-      const parts = m.content.split('|');
+    if (msgContent && msgContent.startsWith('__SCRIPT_INVITE__|')) {
+      const parts = msgContent.split('|');
       const bubbleHtml = scriptBuildInviteBubbleHTML(parts[1] || '', parts[2] || '', parts[3] || '', parts[4] || '', parts[5] || '');
       return `<div class="msg-row user ${isSelected?'selected':''}" data-idx="${idx}">
         <div class="msg-content" style="align-items:flex-end;">${bubbleHtml}</div>
@@ -19899,8 +19978,8 @@ function renderMessages() {
       </div>`;
     }
     // 剧本邀请回覆
-    if (m.content && m.content.startsWith('__SCRIPT_INVITE_RESPONSE__|')) {
-      const parts = m.content.split('|');
+    if (msgContent && msgContent.startsWith('__SCRIPT_INVITE_RESPONSE__|')) {
+      const parts = msgContent.split('|');
       const bubbleHtml = scriptBuildInviteResponseHTML(parts[1] || 'declined', parts[2] || '');
       return `<div class="msg-row ai ${isSelected?'selected':''}" data-idx="${idx}">
         <div class="msg-meta"><img src="${avatarSrc}" class="msg-avatar"><span class="msg-name">${authorName.substring(0,4)}</span></div>
@@ -19912,7 +19991,7 @@ function renderMessages() {
       ? (p.bubbleUserFontColor ? ' style="color:' + p.bubbleUserFontColor + '"' : '')
       : (p.bubbleAiFontColor  ? ' style="color:' + p.bubbleAiFontColor  + '"' : '');
     // ── 处理 [reply:原文] 引用指令，转为引用气泡 ──
-    let displayContent = (m.content || '').replace(/\\n/g, '\n').replace(/\n/g, '<br>');
+    let displayContent = msgContent.replace(/\\n/g, '\n').replace(/\n/g, '<br>');
     if (!isUser && displayContent) {
       const replyMatch = displayContent.match(/^\[reply:([\s\S]*?)\]\s*/);
       if (replyMatch) {
@@ -19929,7 +20008,7 @@ function renderMessages() {
     let quoteHtml = '';
     if (m.quote) {
       const qAuthor = m.quote.role === 'user' ? userProfile.name : p.name;
-      quoteHtml = `<div class="quote-block">${qAuthor}：${m.quote.content.slice(0,50)}${m.quote.content.length>50?'…':''}</div>`;
+      quoteHtml = `<div class="quote-block">${qAuthor}：${quoteContent.slice(0,50)}${quoteContent.length>50?'…':''}</div>`;
     }
     // Extract prepended quote block from displayContent if present
     let prependedQuoteHtml = '';
@@ -19943,8 +20022,8 @@ function renderMessages() {
     const combinedQuoteHtml = prependedQuoteHtml + quoteHtml;
     const blockedIndicator = (!isUser && p.isBlocked) ? '<span class="blocked-indicator" title="拉黑状态下发送"><i class="fas fa-exclamation"></i></span>' : '';
     // Translation — detect if message content is predominantly non-Chinese
-    const _needTranslate = _isNonChineseText(m.content || '') && (p.enableTranslation !== false);
-    const _tClean = (m.content || '').replace(/<[^>]*>/g, '').trim().slice(0, 500);
+    const _needTranslate = _isNonChineseText(msgContent || '') && (p.enableTranslation !== false);
+    const _tClean = msgContent.replace(/<[^>]*>/g, '').trim().slice(0, 500);
     const _tHash = _needTranslate ? _strHash(_tClean) : '';
     // Use persisted translation on message object first, then cache fallback
     const _cachedTranslation = _needTranslate
@@ -19990,7 +20069,12 @@ function renderMessages() {
       </div>`;
     }
   }).join('');
-  box.scrollTop = box.scrollHeight;
+  box.innerHTML = html;
+  if (opts.preserveScrollPosition) {
+    box.scrollTop = Math.max(0, box.scrollHeight - (opts.oldScrollHeight || 0) + (opts.oldScrollTop || 0));
+  } else {
+    box.scrollTop = box.scrollHeight;
+  }
   initMessageLongPress();
   setTimeout(_runPendingTranslations, 0);
 }

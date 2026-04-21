@@ -2263,6 +2263,64 @@ body {
 .moments-profile-signature { font-size:calc(11px * var(--fs,1)); line-height:1.7; color:#787878; padding:16px 18px 6px; background:#f5f5f5; }
 .moments-profile-feed { padding:8px 12px 20px; }
 .moments-profile-empty { text-align:center; color:#9a9a9a; font-size:calc(12px * var(--fs,1)); padding:34px 10px; line-height:1.8; }
+
+/* === Moments Social Stats Bar === */
+.moments-stats-bar { display:flex; justify-content:space-around; align-items:stretch; padding:14px 10px 12px; background:#f5f5f5; border-bottom:1px solid #ebebeb; }
+.moments-stats-item { display:flex; flex-direction:column; align-items:center; gap:3px; flex:1; cursor:pointer; border-radius:12px; padding:8px 4px; transition:background 0.15s; }
+.moments-stats-item.clickable:active { background:rgba(0,0,0,0.05); }
+.moments-stats-divider { width:1px; background:#e0e0e0; margin:4px 0; }
+.moments-stats-count { font-size:calc(16px * var(--fs,1)); font-weight:900; color:#1a1a1a; line-height:1; }
+.moments-stats-label { font-size:calc(10px * var(--fs,1)); color:#9a9a9a; margin-top:2px; letter-spacing:0.3px; }
+.moments-stats-item.clickable:hover .moments-stats-count { color:#4f6ef7; }
+
+/* === Network List Modal (Followers / Following) === */
+.moments-network-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.48); z-index:9900; display:none; align-items:flex-end; justify-content:center; backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); }
+.moments-network-overlay.open { display:flex; }
+.moments-network-modal { background:#fff; width:100%; max-height:78vh; border-radius:24px 24px 0 0; overflow:hidden; display:flex; flex-direction:column; animation:slideUp 0.22s ease; }
+.moments-network-header { padding:16px 18px 12px; border-bottom:1px solid #ebebeb; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+.moments-network-header-left { display:flex; flex-direction:column; gap:2px; }
+.moments-network-modal-title { font-size:calc(14px * var(--fs,1)); font-weight:800; color:#1a1a1a; }
+.moments-network-modal-subtitle { font-size:calc(10px * var(--fs,1)); color:#aaa; }
+.moments-network-modal-close { background:none; border:none; width:32px; height:32px; border-radius:50%; background:#f0f0f0; color:#888; font-size:15px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.moments-network-list { overflow-y:auto; padding:6px 14px 28px; flex:1; }
+.moments-network-account-item { display:flex; align-items:center; gap:12px; padding:12px 4px; border-bottom:1px solid #f4f4f4; cursor:pointer; transition:background 0.12s; border-radius:10px; }
+.moments-network-account-item:last-child { border-bottom:none; }
+.moments-network-account-item:active { background:#f7f7f7; }
+.moments-network-acct-avatar { width:48px; height:48px; border-radius:50%; object-fit:cover; flex-shrink:0; border:2px solid rgba(0,0,0,0.06); }
+.moments-network-acct-info { flex:1; min-width:0; }
+.moments-network-acct-name { font-size:calc(13px * var(--fs,1)); font-weight:700; color:#1a1a1a; }
+.moments-network-acct-handle { font-size:calc(11px * var(--fs,1)); color:#aaa; margin-top:1px; }
+.moments-network-acct-bio { font-size:calc(11px * var(--fs,1)); color:#888; margin-top:3px; line-height:1.45; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+.moments-network-acct-badge { font-size:calc(9px * var(--fs,1)); color:#4f6ef7; background:#eef1ff; border-radius:999px; padding:3px 8px; font-weight:700; flex-shrink:0; white-space:nowrap; }
+.moments-network-loading { text-align:center; padding:36px 16px; color:#bbb; font-size:calc(12px * var(--fs,1)); line-height:2; }
+.moments-network-loading i { font-size:22px; display:block; margin-bottom:8px; }
+
+/* === Connected Account Profile View === */
+.moments-ca-shell { background:linear-gradient(180deg,#efefef 0%,#e8e8e8 100%); min-height:100%; border-radius:26px; overflow:hidden; }
+.moments-ca-post-card { background:#fff; border-radius:16px; margin-bottom:10px; padding:14px 14px 10px; box-shadow:0 3px 10px rgba(0,0,0,0.05); }
+.moments-ca-post-author { display:flex; align-items:center; gap:9px; margin-bottom:10px; }
+.moments-ca-post-author img { width:36px; height:36px; border-radius:50%; object-fit:cover; border:1px solid rgba(0,0,0,0.07); }
+.moments-ca-post-author-name { font-size:calc(12px * var(--fs,1)); font-weight:700; color:#1a1a1a; }
+.moments-ca-post-author-handle { font-size:calc(10px * var(--fs,1)); color:#bbb; margin-top:1px; }
+.moments-ca-post-content { font-size:calc(13px * var(--fs,1)); color:#333; line-height:1.78; margin:4px 0 8px; white-space:pre-wrap; }
+.moments-ca-post-img { width:100%; max-height:220px; object-fit:cover; border-radius:10px; margin-bottom:8px; }
+.moments-ca-post-meta { font-size:calc(10px * var(--fs,1)); color:#bbb; }
+.moments-ca-post-stats { display:flex; gap:14px; margin-top:10px; padding-top:9px; border-top:1px solid #f0f0f0; align-items:center; flex-wrap:wrap; }
+.moments-ca-stat-chip { display:flex; align-items:center; gap:4px; font-size:calc(11px * var(--fs,1)); color:#888; }
+.moments-ca-stat-chip.liked { color:#e0465a; font-weight:700; }
+.moments-ca-stat-chip.commented-by-persona { color:#4f6ef7; font-weight:700; }
+.moments-ca-persona-interaction { background:linear-gradient(135deg,#f0f3ff,#edf0ff); border-radius:10px; padding:8px 11px; margin-top:8px; border-left:3px solid #4f6ef7; }
+.moments-ca-persona-interaction-label { font-size:calc(9px * var(--fs,1)); color:#7b89e8; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px; }
+.moments-ca-persona-interaction-text { font-size:calc(12px * var(--fs,1)); color:#333; line-height:1.5; }
+.moments-ca-comments-block { margin-top:10px; padding-top:8px; border-top:1px solid #f3f3f3; }
+.moments-ca-comment-row { display:flex; gap:6px; margin-bottom:6px; align-items:flex-start; }
+.moments-ca-comment-row img { width:22px; height:22px; border-radius:50%; object-fit:cover; flex-shrink:0; margin-top:1px; }
+.moments-ca-comment-body { flex:1; }
+.moments-ca-comment-author { font-size:calc(11px * var(--fs,1)); font-weight:700; color:#1a1a1a; }
+.moments-ca-comment-text { font-size:calc(11px * var(--fs,1)); color:#555; line-height:1.5; }
+.moments-ca-forward-btn { display:flex; align-items:center; gap:5px; border:none; border-radius:999px; padding:7px 13px; background:#efefef; color:#626262; font-size:calc(11px * var(--fs,1)); font-weight:700; cursor:pointer; font-family:inherit; }
+.moments-ca-forward-btn:active { background:#e0e0e0; }
+
 /* Forum persona anon post badge */
 .forum-persona-anon-badge { display: inline-flex; align-items: center; gap: 3px; font-size: calc(9px * var(--fs,1)); color: #555; background: #f0f0f0; border: 1px solid #d0d0d0; border-radius: 10px; padding: 1px 6px; margin-left: 6px; }
 /* Persona forum post modal */
@@ -14377,6 +14435,21 @@ body:not(.ios-fullscreen) .family-widget {
       <div class="fwd-persona-cancel" onclick="closeFwdPersonaModal()">取消</div>
     </div>
   </div>
+  <!-- 朋友圈社交网络列表弹窗 (粉丝/追踪) -->
+  <div class="moments-network-overlay" id="momentsNetworkOverlay" onclick="closeMomentsNetworkList(event)">
+    <div class="moments-network-modal" onclick="event.stopPropagation()">
+      <div class="moments-network-header">
+        <div class="moments-network-header-left">
+          <div class="moments-network-modal-title" id="momentsNetworkTitle">粉丝</div>
+          <div class="moments-network-modal-subtitle" id="momentsNetworkSubtitle"></div>
+        </div>
+        <button class="moments-network-modal-close" onclick="closeMomentsNetworkList()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="moments-network-list" id="momentsNetworkList">
+        <div class="moments-network-loading"><i class="fas fa-circle-notch fa-spin"></i>生成中…</div>
+      </div>
+    </div>
+  </div>
   <!-- Forum comment input sheet (global, inside phone-container for absolute positioning) -->
   <div id="forumCommentSheetOverlay" onclick="closeForumCommentSheet()"></div>
   <div id="forumCommentSheet">
@@ -23335,8 +23408,10 @@ function _buildMomentsCard(item, compact) {
 }
 function _buildMomentsHome() {
   const featured = getMomentsProfileMeta('user', 'user');
+  const userStats = _getMomentsStats('user', 'user');
   const personaChips = personas.map(function(p) {
     const meta = getMomentsProfileMeta('persona', p.id);
+    const pStats = _getMomentsStats('persona', p.id);
     return `<div class="moments-persona-chip" onclick="openMomentsProfile('persona', ${p.id})">
       <div class="moments-persona-chip-head">
         <img src="${meta.avatar}">
@@ -23346,6 +23421,10 @@ function _buildMomentsHome() {
         </div>
       </div>
       <div class="moments-persona-chip-sign">${_escapeHtml(meta.signature || '')}</div>
+      <div style="display:flex;gap:10px;margin-top:8px;padding-top:7px;border-top:1px solid rgba(0,0,0,0.06);">
+        <div style="font-size:calc(10px * var(--fs,1));color:#aaa;"><strong style="color:#333;font-size:calc(12px * var(--fs,1));">${_formatSocialCount(pStats.followers)}</strong> 粉丝</div>
+        <div style="font-size:calc(10px * var(--fs,1));color:#aaa;"><strong style="color:#333;font-size:calc(12px * var(--fs,1));">${_formatSocialCount(pStats.following)}</strong> 追踪</div>
+      </div>
     </div>`;
   }).join('');
   const postsHtml = momentsData.map(function(item) { return _buildMomentsCard(item, false); }).join('');
@@ -23355,6 +23434,10 @@ function _buildMomentsHome() {
         <div style="min-width:0;flex:1;">
           <div class="moments-home-profile-name">${_escapeHtml(featured.displayName)}</div>
           <div class="moments-home-profile-sign">${_escapeHtml(featured.signature || '')}</div>
+          <div style="display:flex;gap:12px;margin-top:5px;">
+            <span style="font-size:calc(10px * var(--fs,1));color:#aaa;"><strong style="color:#444;">${_formatSocialCount(userStats.followers)}</strong> 粉丝</span>
+            <span style="font-size:calc(10px * var(--fs,1));color:#aaa;"><strong style="color:#444;">${_formatSocialCount(userStats.following)}</strong> 追踪</span>
+          </div>
         </div>
         <button class="moments-pill-btn dark" onclick="event.stopPropagation();openMomentsProfile('user','user')">我的主页</button>
       </div>
@@ -23370,6 +23453,25 @@ function _buildMomentsProfileView() {
     const itemMeta = getMomentAuthorMeta(item);
     return itemMeta && itemMeta.type === meta.type && String(itemMeta.id) === String(meta.id);
   });
+  const stats = _getMomentsStats(meta.type, meta.id);
+  const isPersona = meta.type === 'persona';
+  const statsBar = `
+    <div class="moments-stats-bar">
+      <div class="moments-stats-item ${isPersona ? 'clickable' : ''}" ${isPersona ? `onclick="openNetworkList('${meta.type}','${meta.id}','followers')"` : ''}>
+        <div class="moments-stats-count">${_formatSocialCount(stats.followers)}</div>
+        <div class="moments-stats-label">粉丝</div>
+      </div>
+      <div class="moments-stats-divider"></div>
+      <div class="moments-stats-item ${isPersona ? 'clickable' : ''}" ${isPersona ? `onclick="openNetworkList('${meta.type}','${meta.id}','following')"` : ''}>
+        <div class="moments-stats-count">${_formatSocialCount(stats.following)}</div>
+        <div class="moments-stats-label">追踪</div>
+      </div>
+      <div class="moments-stats-divider"></div>
+      <div class="moments-stats-item">
+        <div class="moments-stats-count">${posts.length}</div>
+        <div class="moments-stats-label">动态</div>
+      </div>
+    </div>`;
   return `<div class="moments-profile-shell">
     <div class="moments-profile-banner">
       ${meta.banner ? `<img src="${meta.banner}">` : ''}
@@ -23393,6 +23495,7 @@ function _buildMomentsProfileView() {
         </div>
       </div>
     </div>
+    ${statsBar}
     <div class="moments-profile-signature">${_escapeHtml(meta.signature || '这个人什么都没有写')}</div>
     <div class="moments-profile-feed">
       <div class="moments-section-title"><span>${posts.length ? 'Latest Posts' : 'No Posts Yet'}</span><span>${posts.length} 条动态</span></div>
@@ -23405,8 +23508,520 @@ function renderMoments() {
   normalizeMomentsAuthorProfiles();
   const box = document.getElementById('momentsList');
   if (!box) return;
-  box.innerHTML = momentsViewState.mode === 'profile' ? _buildMomentsProfileView() : _buildMomentsHome();
+  if (momentsViewState.mode === 'account') {
+    box.innerHTML = _buildConnectedAccountProfileView();
+  } else {
+    box.innerHTML = momentsViewState.mode === 'profile' ? _buildMomentsProfileView() : _buildMomentsHome();
+  }
 }
+// ═══════════════════════════════════════════════════════════
+//  MOMENTS SOCIAL STATS & NETWORK SYSTEM
+// ═══════════════════════════════════════════════════════════
+
+// ── Storage helpers ──────────────────────────────────────────
+function _getMomentsNetworkStore() {
+  try { return JSON.parse(localStorage.getItem('mono_moments_network') || '{}'); } catch(e) { return {}; }
+}
+function _saveMomentsNetworkStore(store) {
+  try { localStorage.setItem('mono_moments_network', JSON.stringify(store)); } catch(e) {}
+}
+function _getMomentsStatsStore() {
+  try { return JSON.parse(localStorage.getItem('mono_moments_stats') || '{}'); } catch(e) { return {}; }
+}
+function _saveMomentsStatsStore(store) {
+  try { localStorage.setItem('mono_moments_stats', JSON.stringify(store)); } catch(e) {}
+}
+
+// ── Count formatter ──────────────────────────────────────────
+function _formatSocialCount(n) {
+  n = Math.floor(n || 0);
+  if (n >= 100000000) return (n / 100000000).toFixed(1).replace(/\.0$/, '') + '亿';
+  if (n >= 10000) return (n / 10000).toFixed(1).replace(/\.0$/, '') + '万';
+  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+  return String(n);
+}
+
+// ── Persona personality analysis for count seeding ────────────
+function _analyzePersonaSocialTrait(p) {
+  if (!p) return { base: 200, growthRate: 1.0 };
+  const text = ((p.persona || '') + ' ' + (p.name || '') + ' ' + (p.nickname || '')).toLowerCase();
+  let base = 200, followingBase = 80, growthRate = 1.0;
+
+  // Identity / role boost
+  if (/idol|偶像|爱豆|明星|歌手|演员|网红|博主|主播|up主|导演|模特/.test(text)) {
+    base = 80000 + Math.floor(Math.random() * 200000);
+    followingBase = 300 + Math.floor(Math.random() * 500);
+    growthRate = 8.0;
+  } else if (/知名|著名|有名|popular|famous|出名/.test(text)) {
+    base = 15000 + Math.floor(Math.random() * 30000);
+    followingBase = 200 + Math.floor(Math.random() * 300);
+    growthRate = 4.0;
+  } else if (/学生|高中|大学|校园|同学/.test(text)) {
+    base = 80 + Math.floor(Math.random() * 400);
+    followingBase = 100 + Math.floor(Math.random() * 200);
+    growthRate = 0.6;
+  } else if (/商人|总裁|老板|ceo|企业家|律师|医生|教授/.test(text)) {
+    base = 500 + Math.floor(Math.random() * 2000);
+    followingBase = 80 + Math.floor(Math.random() * 150);
+    growthRate = 1.5;
+  } else if (/作家|画家|艺术家|设计师|摄影|创作/.test(text)) {
+    base = 800 + Math.floor(Math.random() * 5000);
+    followingBase = 300 + Math.floor(Math.random() * 500);
+    growthRate = 2.0;
+  } else {
+    base = 150 + Math.floor(Math.random() * 800);
+    followingBase = 60 + Math.floor(Math.random() * 200);
+    growthRate = 1.0;
+  }
+
+  // Personality modifier
+  if (/外向|活泼|开朗|张扬|热情|健谈|社交|爱交朋友/.test(text)) {
+    base = Math.floor(base * 1.6);
+    followingBase = Math.floor(followingBase * 1.5);
+    growthRate *= 1.4;
+  } else if (/内向|安静|寡言|冷淡|疏离|孤僻/.test(text)) {
+    base = Math.floor(base * 0.4);
+    followingBase = Math.floor(followingBase * 0.5);
+    growthRate *= 0.55;
+  } else if (/冷|淡漠|傲慢|高冷/.test(text)) {
+    base = Math.floor(base * 0.7);
+    growthRate *= 0.75;
+  }
+
+  return { base: Math.max(base, 10), followingBase: Math.max(followingBase, 5), growthRate };
+}
+
+function _analyzeUserSocialTrait() {
+  // User gets moderate defaults
+  return { base: 120 + Math.floor(Math.random() * 300), followingBase: 80 + Math.floor(Math.random() * 150), growthRate: 1.0 };
+}
+
+// ── Stats initialization & auto-growth ───────────────────────
+function _getMomentsStats(type, id) {
+  const storeKey = type + '_' + id;
+  const store = _getMomentsStatsStore();
+  const now = Date.now();
+
+  if (!store[storeKey]) {
+    // First time: seed based on persona traits
+    let trait;
+    if (type === 'persona') {
+      const p = personas.find(x => String(x.id) === String(id));
+      trait = _analyzePersonaSocialTrait(p);
+    } else {
+      trait = _analyzeUserSocialTrait();
+    }
+    // Add slight randomness with a seeded offset based on id
+    const seed = String(id).split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+    store[storeKey] = {
+      followers: trait.base + (seed % 47),
+      following: trait.followingBase + (seed % 13),
+      growthRate: trait.growthRate,
+      lastUpdate: now - Math.floor(Math.random() * 86400000 * 7) // pretend it started up to 7 days ago
+    };
+    _saveMomentsStatsStore(store);
+  }
+
+  // Auto-increment based on elapsed time
+  const entry = store[storeKey];
+  const elapsedHours = (now - entry.lastUpdate) / 3600000;
+  if (elapsedHours >= 0.5) { // update at most every 30 min
+    const baseHourlyGrowth = entry.growthRate * (entry.followers < 1000 ? 0.08 : entry.followers < 10000 ? 0.3 : entry.followers < 100000 ? 1.2 : 4);
+    const followerGain = Math.floor(elapsedHours * baseHourlyGrowth * (0.7 + Math.random() * 0.6));
+    const followingGain = Math.floor(elapsedHours * entry.growthRate * 0.02 * (0.5 + Math.random() * 1.0));
+    entry.followers += Math.max(0, followerGain);
+    entry.following += Math.max(0, followingGain);
+    entry.lastUpdate = now;
+    _saveMomentsStatsStore(store);
+  }
+
+  return { followers: entry.followers, following: entry.following };
+}
+
+// ── Open network list (粉丝 / 追踪) ──────────────────────────
+let _networkListState = { type: '', id: '', listType: '' }; // listType: 'followers' | 'following'
+
+async function openNetworkList(type, id, listType) {
+  _networkListState = { type, id, listType };
+  const overlay = document.getElementById('momentsNetworkOverlay');
+  const titleEl = document.getElementById('momentsNetworkTitle');
+  const subtitleEl = document.getElementById('momentsNetworkSubtitle');
+  const listEl = document.getElementById('momentsNetworkList');
+  const stats = _getMomentsStats(type, id);
+  titleEl.textContent = listType === 'followers' ? '粉丝' : '正在追踪';
+  subtitleEl.textContent = _formatSocialCount(listType === 'followers' ? stats.followers : stats.following) + ' 人';
+  listEl.innerHTML = '<div class="moments-network-loading"><i class="fas fa-circle-notch fa-spin"></i>生成中，请稍候…</div>';
+  overlay.classList.add('open');
+
+  // Get or generate account list
+  const store = _getMomentsNetworkStore();
+  const storeKey = type + '_' + id;
+  if (!store[storeKey]) store[storeKey] = {};
+  const listKey = listType + 'List'; // 'followersList' or 'followingList'
+
+  if (!store[storeKey][listKey] || store[storeKey][listKey].length === 0) {
+    try {
+      const accounts = await _generateNetworkAccounts(type, id, listType);
+      store[storeKey][listKey] = accounts;
+      _saveMomentsNetworkStore(store);
+    } catch(e) {
+      listEl.innerHTML = '<div class="moments-network-loading">生成失败，请重试</div>';
+      return;
+    }
+  }
+
+  _renderNetworkList(store[storeKey][listKey], listType, type, id);
+}
+
+function closeMomentsNetworkList(e) {
+  if (e && e.target !== document.getElementById('momentsNetworkOverlay')) return;
+  document.getElementById('momentsNetworkOverlay').classList.remove('open');
+}
+
+function _renderNetworkList(accounts, listType, contextType, contextId) {
+  const listEl = document.getElementById('momentsNetworkList');
+  if (!accounts || accounts.length === 0) {
+    listEl.innerHTML = '<div class="moments-network-loading">暂无记录</div>';
+    return;
+  }
+  listEl.innerHTML = accounts.map(function(acc) {
+    const badge = listType === 'followers' ? '粉丝' : '追踪中';
+    const avatarSrc = acc.avatar || makeAvatar(acc.name || '?', acc.avatarBg || '#888', '#fff');
+    return `<div class="moments-network-account-item" onclick="openConnectedAccountProfile('${acc.id}','${contextType}','${contextId}')">
+      <img class="moments-network-acct-avatar" src="${avatarSrc}" onerror="this.src='${makeAvatar(acc.name||'?','#888','#fff')}'">
+      <div class="moments-network-acct-info">
+        <div class="moments-network-acct-name">${_escapeHtml(acc.name)}</div>
+        <div class="moments-network-acct-handle">${_escapeHtml(acc.handle)}</div>
+        <div class="moments-network-acct-bio">${_escapeHtml(acc.bio || acc.signature || '')}</div>
+      </div>
+      <div class="moments-network-acct-badge">${badge}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── AI generate network accounts ─────────────────────────────
+async function _generateNetworkAccounts(type, id, listType) {
+  const apiCfg = _getCurrentActiveApiConfig();
+  if (!apiCfg.url || !apiCfg.key || !apiCfg.model) {
+    // Fallback: generate placeholder accounts without AI
+    return _generateFallbackAccounts(type, id, listType);
+  }
+  let personaDesc = '';
+  let personaName = '';
+  if (type === 'persona') {
+    const p = personas.find(x => String(x.id) === String(id));
+    if (p) {
+      personaName = p.momentsNickname || p.name || '角色';
+      personaDesc = (p.persona || '').substring(0, 600);
+    }
+  } else {
+    personaName = userProfile.momentsNickname || userProfile.name || '用户';
+    personaDesc = userProfile.bio || '';
+  }
+  const count = listType === 'followers' ? 12 : 10;
+  const roleDesc = listType === 'followers'
+    ? `这些账号是「${personaName}」在社交平台上的粉丝（关注了TA的人）`
+    : `这些账号是「${personaName}」在社交平台上正在追踪的人（TA关注的账号）`;
+  const prompt = `你是一个社交媒体账号生成器。\n角色资料：${personaName}，人设：${personaDesc}\n\n请根据上面的角色背景，生成${count}个真实感的社交账号。${roleDesc}。\n账号要有各种年龄、身份、性格，符合该角色的生活圈子和交际范围。每个账号有：name（昵称）、handle（@开头的账号，英文小写+数字）、bio（个性签名/简介，15-30字，简体中文）、relationship（和「${personaName}」的关系，如：高中同学、同事、网友、粉丝等，10字内）、avatarBg（头像背景色hex，如#e74c3c）。\n\n严格只返回JSON数组，不加任何说明：\n[{"name":"昵称","handle":"@xxx","bio":"简介","relationship":"关系","avatarBg":"#xxxxxx"}]`;
+
+  const resp = await fetch(apiCfg.url.replace(/\/$/, '') + '/chat/completions', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + apiCfg.key, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: apiCfg.model, messages: [{ role: 'user', content: prompt }], max_tokens: 1200, temperature: 0.92 })
+  });
+  if (!resp.ok) throw new Error('API error ' + resp.status);
+  const data = await resp.json();
+  const raw = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '[]';
+  const parsed = safeParseJSON(raw.replace(/```json|```/g, '').trim());
+  if (!Array.isArray(parsed) || parsed.length === 0) return _generateFallbackAccounts(type, id, listType);
+  return parsed.map(function(a, i) {
+    return {
+      id: 'acc_' + type + '_' + id + '_' + listType + '_' + i,
+      name: a.name || '用户' + i,
+      handle: a.handle || ('@user' + i),
+      bio: a.bio || '',
+      signature: a.bio || '',
+      relationship: a.relationship || '',
+      avatarBg: a.avatarBg || '#888888',
+      avatar: makeAvatar((a.name || 'U').charAt(0), a.avatarBg || '#888888', '#fff')
+    };
+  });
+}
+
+function _generateFallbackAccounts(type, id, listType) {
+  const names = ['小鱼儿','云朵','向阳花','深夜书房','静静','温柔的风','格调','笑忘书','半夏','暗香','凌云','傍晚','阿梦'];
+  const bios = ['记录美好生活','喜欢拍照和旅行','佛系养花中','每天都要开心哦','普通人的普通日子','热爱音乐与咖啡','摄影/美食/生活','人间值得','慢慢来','读书改变气质'];
+  return Array.from({ length: 10 }, function(_, i) {
+    const bg = ['#e74c3c','#3498db','#2ecc71','#9b59b6','#f39c12','#1abc9c','#e67e22','#2980b9','#8e44ad','#16a085'][i % 10];
+    const nm = names[i % names.length];
+    return {
+      id: 'acc_' + type + '_' + id + '_' + listType + '_' + i,
+      name: nm,
+      handle: '@' + nm.replace(/[^\w]/g, '').toLowerCase() + (100 + i),
+      bio: bios[i % bios.length],
+      signature: bios[i % bios.length],
+      relationship: listType === 'followers' ? '粉丝' : '追踪',
+      avatarBg: bg,
+      avatar: makeAvatar(nm.charAt(0), bg, '#fff')
+    };
+  });
+}
+
+// ── Connected Account Profile View ───────────────────────────
+// momentsViewState extended: { mode:'account', accountId, contextType, contextId }
+// Account data cached: _connectedAccountCache[accountId] = { account, posts }
+
+let _connectedAccountCache = {};
+
+function openConnectedAccountProfile(accountId, contextType, contextId) {
+  // Close network list overlay
+  const overlay = document.getElementById('momentsNetworkOverlay');
+  if (overlay) overlay.classList.remove('open');
+
+  momentsViewState = { mode: 'account', accountId, contextType, contextId };
+  renderMoments();
+  // Trigger async post generation after render
+  setTimeout(function() { _ensureConnectedAccountPosts(accountId, contextType, contextId); }, 100);
+}
+
+function _buildConnectedAccountProfileView() {
+  const { accountId, contextType, contextId } = momentsViewState;
+  // Find account info
+  const store = _getMomentsNetworkStore();
+  const storeKey = contextType + '_' + contextId;
+  const allAccounts = ((store[storeKey] || {}).followersList || []).concat(((store[storeKey] || {}).followingList || []));
+  const acc = allAccounts.find(a => a.id === accountId);
+  if (!acc) return '<div class="moments-profile-empty">找不到该账号</div>';
+
+  // Find context persona for showing interaction info
+  let contextPersona = null;
+  let contextMeta = null;
+  if (contextType === 'persona') {
+    contextPersona = personas.find(p => String(p.id) === String(contextId));
+    if (contextPersona) contextMeta = getMomentsProfileMeta('persona', contextId);
+  }
+
+  // Stats for the account
+  const followerCount = _formatSocialCount(acc.followerCount || Math.floor(50 + Math.random() * 2000));
+  const followingCount = _formatSocialCount(acc.followingCount || Math.floor(30 + Math.random() * 300));
+
+  // Get cached posts
+  const cached = _connectedAccountCache[accountId];
+  const posts = (cached && cached.posts) ? cached.posts : [];
+  const isLoading = !cached || cached.loading;
+
+  const avatarSrc = acc.avatar || makeAvatar((acc.name || '?').charAt(0), acc.avatarBg || '#888', '#fff');
+
+  // Back button: go back to persona profile or feed
+  const backFn = contextType === 'persona' ? `openMomentsProfile('persona','${contextId}')` : `showMomentsFeed()`;
+
+  const postsHtml = isLoading
+    ? '<div class="moments-network-loading"><i class="fas fa-circle-notch fa-spin"></i>正在生成动态…</div>'
+    : posts.length === 0
+      ? '<div class="moments-profile-empty">这个账号还没有发布动态</div>'
+      : posts.map(function(post) { return _buildConnectedAccountPostCard(post, acc, contextPersona, contextMeta); }).join('');
+
+  return `<div class="moments-ca-shell">
+    <div class="moments-profile-banner" style="height:160px;">
+      <div style="background:linear-gradient(135deg,${acc.avatarBg||'#888'},#2c2c2c);width:100%;height:100%;"></div>
+      <div class="moments-profile-banner-overlay"></div>
+      <div class="moments-profile-top-actions">
+        <button onclick="${backFn}"><i class="fas fa-chevron-left"></i> 返回</button>
+      </div>
+      <div class="moments-profile-head">
+        <div class="moments-profile-head-main">
+          <div>
+            <div class="moments-profile-name">${_escapeHtml(acc.name)}</div>
+            <div class="moments-profile-handle">${_escapeHtml(acc.handle)}</div>
+          </div>
+          <img src="${avatarSrc}" onerror="this.src='${makeAvatar((acc.name||'?').charAt(0),'#888','#fff')}'">
+        </div>
+      </div>
+    </div>
+    <div class="moments-stats-bar">
+      <div class="moments-stats-item">
+        <div class="moments-stats-count">${followerCount}</div>
+        <div class="moments-stats-label">粉丝</div>
+      </div>
+      <div class="moments-stats-divider"></div>
+      <div class="moments-stats-item">
+        <div class="moments-stats-count">${followingCount}</div>
+        <div class="moments-stats-label">追踪</div>
+      </div>
+      <div class="moments-stats-divider"></div>
+      <div class="moments-stats-item">
+        <div class="moments-stats-count">${posts.length || '—'}</div>
+        <div class="moments-stats-label">动态</div>
+      </div>
+    </div>
+    <div class="moments-profile-signature">${_escapeHtml(acc.bio || acc.signature || '这个人没有写任何签名')}</div>
+    ${contextPersona ? `<div style="padding:8px 16px 2px;background:#f5f5f5;font-size:calc(10px * var(--fs,1));color:#999;">与 <strong style="color:#555;">${_escapeHtml(contextMeta ? contextMeta.displayName : contextPersona.name)}</strong> 的关系：${_escapeHtml(acc.relationship || '好友')}</div>` : ''}
+    <div class="moments-profile-feed">
+      <div class="moments-section-title"><span>动态</span><span>${isLoading ? '加载中' : posts.length + ' 条'}</span></div>
+      ${postsHtml}
+    </div>
+  </div>`;
+}
+
+function _buildConnectedAccountPostCard(post, acc, contextPersona, contextMeta) {
+  const avatarSrc = acc.avatar || makeAvatar((acc.name || '?').charAt(0), acc.avatarBg || '#888', '#fff');
+  const personaLiked = post.personaLiked && contextPersona;
+  const personaComment = post.personaComment && contextPersona;
+  const likeCount = post.likeCount || 0;
+  const commentCount = (post.comments || []).length;
+
+  const engagementHtml = `
+    <div class="moments-ca-post-stats">
+      <div class="moments-ca-stat-chip ${personaLiked ? 'liked' : ''}">
+        <i class="fas fa-heart"></i> ${likeCount}${personaLiked ? '（含' + _escapeHtml(contextMeta ? contextMeta.displayName : contextPersona.name) + '）' : ''}
+      </div>
+      <div class="moments-ca-stat-chip">
+        <i class="fas fa-comment"></i> ${commentCount}
+      </div>
+      <button class="moments-ca-forward-btn" onclick='_fwdFromConnectedAccount(${JSON.stringify({
+        source:"moments", connectedAccountId: acc.id,
+        contextPersonaId: contextPersona ? String(contextPersona.id) : "",
+        author: acc.name, avatar: avatarSrc,
+        content: post.content || "", time: post.time || Date.now(),
+        comments: post.comments || []
+      }).replace(/'/g,"&#39;")})'>
+        <i class="fas fa-share"></i> 转发
+      </button>
+    </div>`;
+
+  const personaInteractionHtml = (personaLiked || personaComment) ? `
+    <div class="moments-ca-persona-interaction">
+      <div class="moments-ca-persona-interaction-label"><i class="fas fa-star" style="font-size:8px;margin-right:3px;"></i>${_escapeHtml(contextMeta ? contextMeta.displayName : contextPersona.name)} 的互动</div>
+      ${personaLiked ? `<div class="moments-ca-persona-interaction-text"><i class="fas fa-heart" style="color:#e0465a;font-size:10px;"></i> 点赞了这条动态</div>` : ''}
+      ${personaComment ? `<div class="moments-ca-persona-interaction-text"><i class="fas fa-comment" style="color:#4f6ef7;font-size:10px;"></i> 留言：${_escapeHtml(post.personaComment)}</div>` : ''}
+    </div>` : '';
+
+  const commentsHtml = (post.comments && post.comments.length > 0)
+    ? `<div class="moments-ca-comments-block">${post.comments.slice(0,3).map(function(c) {
+        return `<div class="moments-ca-comment-row">
+          <div class="moments-ca-comment-body">
+            <span class="moments-ca-comment-author">${_escapeHtml(c.author)}：</span>
+            <span class="moments-ca-comment-text">${_escapeHtml(c.text || c.content || '')}</span>
+          </div>
+        </div>`;
+      }).join('')}${post.comments.length > 3 ? `<div style="font-size:calc(10px * var(--fs,1));color:#bbb;padding:4px 0;">还有 ${post.comments.length - 3} 条评论…</div>` : ''}</div>`
+    : '';
+
+  return `<div class="moments-ca-post-card">
+    <div class="moments-ca-post-author">
+      <img src="${avatarSrc}" onerror="this.src='${makeAvatar((acc.name||'?').charAt(0),'#888','#fff')}'">
+      <div>
+        <div class="moments-ca-post-author-name">${_escapeHtml(acc.name)}</div>
+        <div class="moments-ca-post-author-handle">${_escapeHtml(acc.handle)}</div>
+      </div>
+    </div>
+    <div class="moments-ca-post-content">${_escapeHtml(post.content || '')}</div>
+    <div class="moments-ca-post-meta">${formatTime(post.time || Date.now())}</div>
+    ${engagementHtml}
+    ${personaInteractionHtml}
+    ${commentsHtml}
+  </div>`;
+}
+
+function _fwdFromConnectedAccount(postData) {
+  _fwdPayload = postData;
+  openFwdPersonaModal(postData);
+}
+
+// ── Async post generation for connected accounts ──────────────
+async function _ensureConnectedAccountPosts(accountId, contextType, contextId) {
+  if (_connectedAccountCache[accountId] && !_connectedAccountCache[accountId].loading) return;
+  _connectedAccountCache[accountId] = { loading: true, posts: [] };
+
+  // Find account
+  const store = _getMomentsNetworkStore();
+  const storeKey = contextType + '_' + contextId;
+  const allAccounts = ((store[storeKey] || {}).followersList || []).concat(((store[storeKey] || {}).followingList || []));
+  const acc = allAccounts.find(a => a.id === accountId);
+  if (!acc) { _connectedAccountCache[accountId] = { loading: false, posts: [] }; return; }
+
+  let contextPersona = null;
+  if (contextType === 'persona') {
+    contextPersona = personas.find(p => String(p.id) === String(contextId));
+  }
+
+  try {
+    const posts = await _aiGenerateConnectedAccountPosts(acc, contextPersona);
+    _connectedAccountCache[accountId] = { loading: false, posts };
+    // Re-render only if we're still on this account
+    if (momentsViewState.mode === 'account' && momentsViewState.accountId === accountId) {
+      renderMoments();
+    }
+  } catch(e) {
+    _connectedAccountCache[accountId] = { loading: false, posts: _fallbackConnectedAccountPosts(acc, contextPersona) };
+    if (momentsViewState.mode === 'account' && momentsViewState.accountId === accountId) {
+      renderMoments();
+    }
+  }
+}
+
+async function _aiGenerateConnectedAccountPosts(acc, contextPersona) {
+  const apiCfg = _getCurrentActiveApiConfig();
+  if (!apiCfg.url || !apiCfg.key || !apiCfg.model) {
+    return _fallbackConnectedAccountPosts(acc, contextPersona);
+  }
+
+  const personaCtxStr = contextPersona
+    ? `（注意：这个账号和角色「${contextPersona.momentsNickname || contextPersona.name}」有关系：${acc.relationship || '好友'}。极少数动态（约1条）可以隐约提到或@TA，但大多数动态都是关于自己日常生活的）`
+    : '';
+
+  const prompt = `你是一个真实社交账号的动态生成器。\n账号昵称：${acc.name}，简介：${acc.bio || acc.signature || '无'}\n${personaCtxStr}\n\n请生成这个账号最近发布的8条朋友圈动态。\n动态内容要真实多样，反映日常生活（美食/天气/心情/工作/旅行/兴趣等），口语化，不要都和某个人有关。\n同时决定角色「${contextPersona ? (contextPersona.momentsNickname || contextPersona.name) : '无关联角色'}」是否对某些动态有互动（可以点赞或留言，也可以没有）。\n\n严格只返回JSON数组：\n[{\n  "content": "动态正文（30-120字，可有emoji）",\n  "time": 相对毫秒数如1735000000000,\n  "likeCount": 数字,\n  "personaLiked": true或false,\n  "personaComment": "角色的留言内容（没有则为null）",\n  "comments": [{"author":"网友名","text":"评论（10-30字）"}]\n}]\n只返回JSON，共8条，不加任何说明。`;
+
+  const resp = await fetch(apiCfg.url.replace(/\/$/, '') + '/chat/completions', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + apiCfg.key, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: apiCfg.model, messages: [{ role: 'user', content: prompt }], max_tokens: 1800, temperature: 0.93 })
+  });
+  if (!resp.ok) throw new Error('API error ' + resp.status);
+  const data = await resp.json();
+  const raw = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '[]';
+  const parsed = safeParseJSON(raw.replace(/```json|```/g, '').trim());
+  if (!Array.isArray(parsed) || parsed.length === 0) return _fallbackConnectedAccountPosts(acc, contextPersona);
+
+  const now = Date.now();
+  return parsed.map(function(p, i) {
+    return {
+      id: 'capost_' + acc.id + '_' + i,
+      content: p.content || '今天天气真好。',
+      time: p.time || (now - (parsed.length - i) * 86400000 * Math.random() * 3),
+      likeCount: typeof p.likeCount === 'number' ? p.likeCount : Math.floor(Math.random() * 50),
+      personaLiked: !!p.personaLiked,
+      personaComment: p.personaComment || null,
+      comments: Array.isArray(p.comments) ? p.comments : []
+    };
+  });
+}
+
+function _fallbackConnectedAccountPosts(acc, contextPersona) {
+  const contentPool = [
+    '今天吃了一碗超好吃的面，心满意足了。',
+    '下班路上突然下雨，没带伞，整个人都湿透了。',
+    '最近在追一部剧，停不下来。',
+    '周末在家躺了一整天，什么都没做，很舒服。',
+    '朋友介绍了一家新开的咖啡店，去了一趟，氛围很好。',
+    '今天工作状态不对，什么都没做成。',
+    '最近状态很好，感觉一切都在往好的方向走。',
+    '又一年快过去了，有点感慨。'
+  ];
+  const now = Date.now();
+  return contentPool.map(function(content, i) {
+    return {
+      id: 'capost_' + acc.id + '_' + i,
+      content: content,
+      time: now - i * 86400000 * (0.5 + Math.random()),
+      likeCount: Math.floor(Math.random() * 30),
+      personaLiked: contextPersona && Math.random() < 0.25,
+      personaComment: null,
+      comments: []
+    };
+  });
+}
+
 function deleteMoment(itemId) {
   if (!confirm('确定要删除这条朋友圈吗？')) return;
   momentsData = momentsData.filter(m => m.id !== itemId);
@@ -24293,11 +24908,30 @@ function doForwardToPersona(personaId) {
   const p = personas.find(x => x.id == personaId);
   if (!p) return;
   if (!p.history) p.history = [];
+  // Build extra context if this post came from a connected account
+  let connectedAccountCtx = null;
+  if (_fwdPayload.connectedAccountId && _fwdPayload.contextPersonaId) {
+    const networkStore = _getMomentsNetworkStore();
+    const ctxKey = String(_fwdPayload.contextPersonaId);
+    const store = networkStore[ctxKey] || {};
+    const allAccounts = (store.followersList || []).concat(store.followingList || []);
+    const acc = allAccounts.find(a => a.id === _fwdPayload.connectedAccountId);
+    if (acc) {
+      const isFollower = (store.followersList || []).some(a => a.id === acc.id);
+      const isFollowing = (store.followingList || []).some(a => a.id === acc.id);
+      connectedAccountCtx = {
+        accountName: acc.name,
+        accountHandle: acc.handle,
+        relationship: isFollower && isFollowing ? '互相追踪' : isFollower ? '对方的粉丝' : '正在追踪的人',
+        relationshipNote: acc.relationship || ''
+      };
+    }
+  }
   const fwdMsg = {
     role: 'user',
     msgType: 'forwarded_post',
-    fwdData: { ..._fwdPayload },
-    content: `[转发了一篇${_fwdPayload.source === 'forum' ? '論坛帖子' : '朋友圈动态'}]`,
+    fwdData: { ..._fwdPayload, connectedAccountCtx },
+    content: `[转发了一篇${_fwdPayload.source === 'forum' ? '论坛帖子' : '朋友圈动态'}]${connectedAccountCtx ? `（来自账号 ${connectedAccountCtx.accountHandle}，${connectedAccountCtx.relationship}）` : ''}`,
     time: Date.now()
   };
   p.history.push(fwdMsg);

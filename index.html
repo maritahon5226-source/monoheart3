@@ -4,6 +4,8 @@
 
 
 
+
+
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head>
@@ -82,7 +84,7 @@ async function bgGenerateAndNotify() {
     const db = await swOpenDB();
     const apiCfg = await swIdbGet(db, BG_STORE, 'apiConfig');
     const personaList = await swIdbGet(db, BG_STORE, 'bgPersonas');
-    if (!apiCfg || !apiCfg.url || !apiCfg.key || !apiCfg.model || !personaList) return;
+    if (!apiCfg || !apiCfg.url || !apiCfg.key || !personaList) return;
     const allClients = await clients.matchAll({ type: 'window', includeUncontrolled: true });
     const hasVisibleClient = allClients.some(c => c.visibilityState === 'visible');
     if (hasVisibleClient) return;
@@ -96,10 +98,12 @@ async function bgGenerateAndNotify() {
       const timeStr = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
       const prompt = '你是' + p.name + '，人设：' + (p.persona || '').substring(0, 500) + '。现在时间是' + timeStr + '。你现在主动给用户发一条消息。根据你的人设性格，自然地发起这条消息。只返回信息内容本身。\\n最近对话：\\n' + (recentChat || '(暂无)');
       try {
+        const requestBody = { messages: [{role:'user',content:prompt}], temperature: 1.0, max_tokens: 200 };
+        if (apiCfg.model && apiCfg.model !== '__auto__') requestBody.model = apiCfg.model;
         const r = await fetch(apiCfg.url.replace(/\\/$/, '') + '/chat/completions', {
           method: 'POST',
           headers: { 'Authorization': 'Bearer ' + apiCfg.key, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ model: apiCfg.model, messages: [{role:'user',content:prompt}], temperature: 1.0, max_tokens: 200 })
+          body: JSON.stringify(requestBody)
         });
         if (!r.ok) continue;
         const data = await r.json();
@@ -484,9 +488,12 @@ self.addEventListener('notificationclick', e => {
       _dbReady = true;
       window._monoDBReady = true;
     }
-    // Fire queued boot functions
-    window._monoBootFns.forEach(fn => { try { fn(); } catch(e) {} });
+    // Fire queued boot functions — 每个独立 try/catch，一个失败不影响其他
+    const _bootFnsCopy = window._monoBootFns.slice();
     window._monoBootFns = [];
+    _bootFnsCopy.forEach(fn => {
+      try { fn(); } catch(e) { console.warn('[mono] afterDB boot fn error:', e); }
+    });
     // ── 迁移：将旧版 mono_imported_books 中内嵌的 chapterContents / coverDataUrl 移到 novel_blobs ──
     try {
       const _rawBooksStr = _cache['mono_imported_books'];
@@ -520,8 +527,13 @@ self.addEventListener('notificationclick', e => {
   bootDB();
   // Helper: run fn after DB ready (or immediately if already ready)
   window.afterDB = function(fn) {
-    if (window._monoDBReady) { try { fn(); } catch(e) {} }
-    else window._monoBootFns.push(fn);
+    if (typeof fn !== 'function') return;
+    if (window._monoDBReady) {
+      // DB 已就绪：直接执行，但捕获异常避免影响调用方
+      try { fn(); } catch(e) { console.warn('[mono] afterDB immediate fn error:', e); }
+    } else {
+      window._monoBootFns.push(fn);
+    }
   };
   // ── 全域暴露：供多世界导出/导入使用 ──
   // 返回 _cache 中所有 mono_mw_<worldId>_* 的快照（含 _realLS 补充）
@@ -688,13 +700,13 @@ function loadHomePhoto() {
 var _origOnload = window.onload;
 window.onload = function() {
   window.afterDB(function() {
-    if (_origOnload) _origOnload();
-    updateHomeScreen();
-    setInterval(updateHomeScreen, 60000);
-    loadHomePhoto();
-    document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); p.style.display = 'none'; });
-    document.getElementById('menuBtn').style.display = 'none';
-    document.getElementById('homeScreen').style.display = 'flex';
+    try { if (_origOnload) _origOnload(); } catch(e) { console.warn('[mono] origOnload error:', e); }
+    try { updateHomeScreen(); } catch(e) {}
+    try { setInterval(updateHomeScreen, 60000); } catch(e) {}
+    try { loadHomePhoto(); } catch(e) {}
+    try { document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); p.style.display = 'none'; }); } catch(e) {}
+    try { var _mb = document.getElementById('menuBtn'); if (_mb) _mb.style.display = 'none'; } catch(e) {}
+    try { var _hs = document.getElementById('homeScreen'); if (_hs) _hs.style.display = 'flex'; } catch(e) {}
   });
 };
 </script>
@@ -934,9 +946,6 @@ body {
 .cc-bubble-right { background:#9eea6a; color:#1a1a1a; border-radius:12px 2px 2px 12px; }
 .cc-bubble-right::after { content:''; position:absolute; right:-6px; top:10px; border:6px solid transparent; border-left-color:#9eea6a; border-right:0; }
 .cc-time-divider { text-align:center; font-size:10px; color:#aaa; margin:10px 0; }
-.cc-screenshot-bubble { border-radius:10px; overflow:hidden; max-width:220px; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.12); }
-.cc-screenshot-bubble img { width:100%; display:block; }
-.cc-screenshot-label { font-size:10px; color:#888; margin-top:3px; text-align:center; }
 /* 截图气泡 in 用户聊天室 */
 .cc-snap-preview { border-radius:10px; overflow:hidden; max-width:200px; cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,0.15); border:1px solid #e0e0e0; }
 .cc-snap-preview img { width:100%; display:block; }
@@ -16190,7 +16199,8 @@ body:not(.ios-fullscreen) .family-widget {
   <div class="w-full max-w-sm space-y-8">
     <h3 class="text-3xl font-bold tracking-tighter text-center">API 设置</h3>
     <div class="space-y-4">
-      <input type="text" id="apiUrl" placeholder="BASE URL" class="w-full border-b border-black py-2 outline-none">
+      <input type="text" id="apiUrl" placeholder="BASE URL（如 https://api.openai.com/v1）" class="w-full border-b border-black py-2 outline-none" oninput="_onApiUrlInput(this)">
+      <div id="apiUrlHint" style="font-size:10px;color:#aaa;margin-top:2px;line-height:1.6;display:none;"></div>
       <input type="password" id="apiKey" placeholder="API KEY" class="w-full border-b border-black py-2 outline-none">
       <div>
         <div class="flex gap-2 mb-2">
@@ -16927,6 +16937,82 @@ function _langOverridePrompt(lang) {
   if (lang === 'ru') return '\n【语言设定：强制】角色人设要求你必须全程使用俄语（Русский）回复，不可使用中文。';
   return '';
 }
+function _normalizeGenderValue(raw) {
+  const t = String(raw || '').trim().toLowerCase();
+  if (!t) return '';
+  if (/^(male|man|boy|男|男性|他|先生|哥哥|弟弟|王子|雄性)$/.test(t)) return 'male';
+  if (/^(female|woman|girl|女|女性|她|小姐|姐姐|妹妹|公主|雌性)$/.test(t)) return 'female';
+  if (/^(other|nonbinary|non-binary|nb|中性|无性别|無性別|非二元|双性|雙性|跨性别|未知)$/.test(t)) return 'other';
+  return '';
+}
+function _extractPersonaGenderInfo(persona) {
+  if (!persona) return { key: '', label: '', instruction: '' };
+  let key = _normalizeGenderValue(persona.gender || persona.sex || persona.roleGender || persona.selfGender || '');
+  const text = String(persona.persona || '');
+  if (!key && text) {
+    const maleHit = /(性别|性別|身份|自称|自稱)[：:\s]*?(男|男性)|\bmale\b|他是|他自己|身为男人|作為男人|男生|男性角色/i.test(text);
+    const femaleHit = /(性别|性別|身份|自称|自稱)[：:\s]*?(女|女性)|\bfemale\b|她是|她自己|身为女人|作為女人|女生|女性角色/i.test(text);
+    const otherHit = /(非二元|无性别|無性別|中性|other|nonbinary|non-binary)/i.test(text);
+    if (maleHit && !femaleHit) key = 'male';
+    else if (femaleHit && !maleHit) key = 'female';
+    else if (otherHit) key = 'other';
+  }
+  const labelMap = { male: '男', female: '女', other: '其他/非二元' };
+  const instructionMap = {
+    male: '【角色身份锚点】你的性别设定是男性。你在所有聊天、通话、回忆与自我描述中，都必须稳定保持男性身份，不能把自己说成女性或混淆自己的性别。',
+    female: '【角色身份锚点】你的性别设定是女性。你在所有聊天、通话、回忆与自我描述中，都必须稳定保持女性身份，不能把自己说成男性或混淆自己的性别。',
+    other: '【角色身份锚点】你的性别设定是其他/非二元。你在所有聊天、通话、回忆与自我描述中，都必须稳定保持这一身份，不能擅自改成男性或女性。'
+  };
+  return { key: key, label: labelMap[key] || '', instruction: instructionMap[key] || '' };
+}
+function _buildPersonaIdentityPrompt(persona) {
+  const info = _extractPersonaGenderInfo(persona);
+  return info.instruction ? ('\n' + info.instruction) : '';
+}
+function _stripSpokenTranslation(text) {
+  return String(text || '')
+    .replace(/\n?「译文：[\s\S]+?」/g, '')
+    .replace(/\n?译文[:：][^\n]+/g, '')
+    .replace(/\n+$/, '')
+    .trim();
+}
+function _buildCallHistorySummary(msg, personaName, userName) {
+  if (!msg || msg.msgType !== 'call') return '';
+  const direction = msg.initiator === 'persona'
+    ? `${personaName}主动打电话给${userName}`
+    : `${userName}主动打电话给${personaName}`;
+  if (!msg.connected) return `[通话记录] ${direction}，但最终未接通。`;
+  const durationText = msg.duration ? `通话时长约${Math.max(1, Math.round(msg.duration))}秒。` : '通话已接通。';
+  const transcript = (msg.callMsgs || []).slice(0, 12).map(function(item) {
+    const speaker = item.role === 'user' ? userName : personaName;
+    const content = _stripSpokenTranslation(item.content || '').slice(0, 80);
+    return speaker + '：' + content;
+  }).filter(Boolean).join('\n');
+  return `[通话记录] ${direction}。发起者：${msg.initiator === 'persona' ? personaName : userName}。${durationText}${transcript ? '\n通话内容摘要：\n' + transcript : ''}`;
+}
+function _persistCallMemorySummary(persona, msgObj, userName) {
+  try {
+    if (!persona || !msgObj || !msgObj.connected) return;
+    persona.memoryCore = Array.isArray(persona.memoryCore) ? persona.memoryCore : [];
+    const today = new Date();
+    const dateStr = today.getFullYear() + '/' + String(today.getMonth() + 1).padStart(2, '0') + '/' + String(today.getDate()).padStart(2, '0');
+    const direction = msgObj.initiator === 'persona'
+      ? `我主动打电话给了${userName || '用户'}`
+      : `${userName || '用户'}主动打电话给了我`;
+    const transcript = (msgObj.callMsgs || []).slice(-8).map(function(item) {
+      const speaker = item.role === 'user' ? (userName || '用户') : (persona.name || '我');
+      return speaker + '：' + _stripSpokenTranslation(item.content || '').slice(0, 60);
+    }).filter(Boolean).join('；');
+    persona.memoryCore.push({
+      content: `${dateStr} 通话记忆：${direction}${msgObj.duration ? '，通话约' + Math.max(1, Math.round(msgObj.duration)) + '秒' : ''}。${transcript ? '我们在电话里聊到：' + transcript : '这通电话已经接通。'}`,
+      date: dateStr,
+      auto: true,
+      source: '通话记录'
+    });
+    const limit = Math.max(20, parseInt(persona.memoryCount, 10) || 100);
+    if (persona.memoryCore.length > limit) persona.memoryCore = persona.memoryCore.slice(-limit);
+  } catch(e) {}
+}
 // Returns a CSS translation block (Korean black/white/grey style)
 function _buildKoreanTranslation(text) {
   if (!text) return '';
@@ -17288,21 +17374,48 @@ const SHOP_EMOJIS = {
   '书籍文具': ['📚','🖊️','📓','🎨','📐','🖋️','📖','🗒️','✏️','📌']
 };
 // ===================== 核心数据 =====================
-let personas = JSON.parse(localStorage.getItem('mono_personas')) || [];
+// 安全解析：localStorage 中损坏的 JSON 不会导致整页崩溃
+function _safeParse(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw === null || raw === undefined) return fallback;
+    const parsed = JSON.parse(raw);
+    return (parsed !== null && parsed !== undefined) ? parsed : fallback;
+  } catch(e) {
+    console.warn('[mono] localStorage 解析失败，已使用默认值：', key, e.message);
+    return fallback;
+  }
+}
+let personas = _safeParse('mono_personas', []);
 let currentId = null;
 let isWechatMode = true; // 强制微信模式，永久开啟
-let apiConfig = JSON.parse(localStorage.getItem('mono_api')) || { url: '', key: '', model: '' };
+let apiConfig = _safeParse('mono_api', { url: '', key: '', model: '' });
 const AUTO_MODEL_SENTINEL = '__auto__';
+const EFFECTIVE_API_STORAGE_KEY = 'mono_effective_api';
 function _uniqStrings(arr) {
   return Array.from(new Set((arr || []).filter(Boolean)));
 }
+// ── 检测是否为 HuggingFace 推理 URL（不应裁剪路径中的 /models/ 段）──
+function _isHuggingFaceUrl(url) {
+  return /huggingface\.co/i.test(url) || /hf\.space/i.test(url);
+}
+// ── 检测是否为标准 OpenAI / 反代格式（直接使用 /v1 base）──
+function _isStandardOpenAIProxy(url) {
+  // 标准反代通常以 /v1 结尾，或域名后直接跟 /v1/
+  return /\/v\d+\/?$/i.test(url);
+}
 function _stripApiKnownSuffix(rawUrl) {
-  return String(rawUrl || '')
-    .trim()
-    .replace(/\/+$/, '')
+  const s = String(rawUrl || '').trim().replace(/\/+$/, '');
+  // HuggingFace URL：路径中含 /models/<model-id>[/v1]，不做裁剪 /models 处理
+  if (_isHuggingFaceUrl(s)) {
+    return s
+      .replace(/\/chat\/completions$/i, '')
+      .replace(/\/completions$/i, '');
+  }
+  return s
     .replace(/\/chat\/completions$/i, '')
     .replace(/\/completions$/i, '')
-    .replace(/\/models$/i, '');
+    .replace(/\/models$/i, ''); // 只裁剪末尾的 /models（即 /models 列表接口后缀）
 }
 function _normalizeApiBaseUrl(rawUrl) {
   return _stripApiKnownSuffix(rawUrl);
@@ -17311,8 +17424,19 @@ function _buildApiBaseCandidates(rawUrl) {
   const base = _normalizeApiBaseUrl(rawUrl);
   if (!base) return [];
   const out = [base];
-  if (/\/v\d+$/i.test(base)) out.push(base.replace(/\/v\d+$/i, ''));
-  else out.push(base + '/v1');
+  if (_isHuggingFaceUrl(base)) {
+    // HuggingFace 推理 API：
+    // 格式1: https://api-inference.huggingface.co/models/<model>/v1  → 直接使用
+    // 格式2: https://api-inference.huggingface.co/models/<model>     → 追加 /v1
+    // 格式3: https://<endpoint>.endpoints.huggingface.cloud/v1       → 直接使用
+    if (!/\/v\d+$/i.test(base)) out.push(base + '/v1');
+  } else if (/\/v\d+$/i.test(base)) {
+    // 已含版本号（如 /v1, /v2）：同时保留不带版本的候选（兼容部分反代）
+    out.push(base.replace(/\/v\d+$/i, ''));
+  } else {
+    // 普通 Base URL：追加 /v1（标准 OpenAI / 大多数反代）
+    out.push(base + '/v1');
+  }
   return _uniqStrings(out.map(function(item) { return item.replace(/\/+$/, ''); }));
 }
 function _buildApiChatCandidates(rawUrl) {
@@ -17322,7 +17446,7 @@ function _buildApiChatCandidates(rawUrl) {
 }
 function _buildApiModelsCandidates(rawUrl) {
   const raw = String(rawUrl || '').trim().replace(/\/+$/, '');
-  const direct = /\/models$/i.test(raw) ? [raw] : [];
+  const direct = /\/models$/i.test(raw) && !_isHuggingFaceUrl(raw) ? [raw] : [];
   return _uniqStrings(direct.concat(_buildApiBaseCandidates(raw).map(function(base) { return base + '/models'; })));
 }
 function _getApiModelCacheKey(rawUrl) {
@@ -17342,28 +17466,17 @@ function _cacheApiModels(rawUrl, models) {
     localStorage.setItem(_getApiModelCacheKey(rawUrl), JSON.stringify(ids));
   } catch (e) {}
 }
-function _getCommonModelFallbacks() {
-  return [
-    'gpt-4o-mini',
-    'gpt-4.1-mini',
-    'gpt-4o',
-    'gpt-4.1',
-    'deepseek-chat',
-    'deepseek-v3',
-    'deepseek-r1',
-    'gemini-2.0-flash',
-    'gemini-2.5-flash',
-    'claude-3-5-sonnet',
-    'claude-3-7-sonnet',
-    'qwen-plus',
-    'qwen-max',
-    'glm-4-flash'
-  ];
-}
 function _getEffectiveApiModel(candidate) {
   const val = String(candidate || '').trim();
   if (!val || val === AUTO_MODEL_SENTINEL) return '';
   return val;
+}
+function _applyApiModel(target, candidate) {
+  const next = target && typeof target === 'object' ? Object.assign({}, target) : {};
+  const model = _getEffectiveApiModel(candidate);
+  if (model) next.model = model;
+  else delete next.model;
+  return next;
 }
 function _normalizeApiConfigObject(cfg) {
   const obj = cfg && typeof cfg === 'object' ? Object.assign({}, cfg) : {};
@@ -17373,19 +17486,123 @@ function _normalizeApiConfigObject(cfg) {
     model: String(obj.model || '').trim() || AUTO_MODEL_SENTINEL
   };
 }
+function _getPresetApiConfig() {
+  try {
+    return _normalizeApiConfigObject(JSON.parse(localStorage.getItem('mono_api') || '{}'));
+  } catch (e) {
+    return _normalizeApiConfigObject({});
+  }
+}
+function _persistEffectiveApiConfig(cfg) {
+  const normalized = _normalizeApiConfigObject(cfg);
+  try { localStorage.setItem(EFFECTIVE_API_STORAGE_KEY, JSON.stringify(normalized)); } catch (e) {}
+  return normalized;
+}
+function _getCurrentActiveApiConfig() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(EFFECTIVE_API_STORAGE_KEY) || 'null');
+    if (cached && (cached.url || cached.key || cached.model)) {
+      return _normalizeApiConfigObject(cached);
+    }
+  } catch (e) {}
+  try {
+    if (typeof apiConfig !== 'undefined' && apiConfig && (apiConfig.url || apiConfig.key || apiConfig.model)) {
+      return _normalizeApiConfigObject(apiConfig);
+    }
+  } catch (e) {}
+  try {
+    const currentActiveId = localStorage.getItem('mono_active_api') || 'preset';
+    if (currentActiveId !== 'preset') {
+      const apis = JSON.parse(localStorage.getItem('mono_secondary_apis') || '[]');
+      const matched = Array.isArray(apis) ? apis.find(function(item) { return item && item.id === currentActiveId; }) : null;
+      if (matched) return _normalizeApiConfigObject(matched);
+    }
+  } catch (e) {}
+  return _getPresetApiConfig();
+}
+// ════════════════════════════════════════════════════════════
+// API 兼容层 — 支持 OpenAI / Anthropic / Gemini / Azure /
+//              HuggingFace / 各类第三方反代
+// ════════════════════════════════════════════════════════════
+
+// ── 供应商检测 ──
+function _detectApiProvider(url, model) {
+  const u = String(url || '').toLowerCase();
+  const m = String(model || '').toLowerCase();
+  if (u.includes('anthropic.com') || m.startsWith('claude-')) return 'anthropic';
+  if (u.includes('googleapis.com') || u.includes('generativelanguage') || m.startsWith('gemini')) return 'gemini';
+  if (u.includes('openai.azure.com') || /\.azure\.\w+/.test(u)) return 'azure';
+  if (u.includes('api.openai.com')) return 'openai';
+  if (u.includes('huggingface.co') || u.includes('hf.space')) return 'huggingface';
+  if (u.includes('groq.com')) return 'groq';
+  if (u.includes('together.ai')) return 'together';
+  if (u.includes('mistral.ai')) return 'mistral';
+  if (u.includes('cohere.com')) return 'cohere';
+  return 'openai_compat';
+}
+
+// ── 构建多种认证头（按供应商优先顺序） ──
+// 每种 authStyle 返回 { headers, urlSuffix }
+// urlSuffix 用于 Gemini key=... 查询参数
+function _buildAuthVariants(key, provider) {
+  const k = String(key || '').trim();
+  if (!k) return [{ style: 'none', headers: {}, urlSuffix: '' }];
+  const variants = [];
+
+  if (provider === 'anthropic') {
+    // Anthropic 原生：x-api-key + anthropic-version
+    variants.push({ style: 'anthropic_native', headers: {
+      'x-api-key': k,
+      'anthropic-version': '2023-06-01',
+      'anthropic-beta': 'messages-2023-12-15'
+    }, urlSuffix: '' });
+    // 兼容：有些反代也接受 Bearer
+    variants.push({ style: 'bearer', headers: { 'Authorization': 'Bearer ' + k }, urlSuffix: '' });
+  } else if (provider === 'gemini') {
+    // Gemini OpenAI compat：Bearer
+    variants.push({ style: 'bearer', headers: { 'Authorization': 'Bearer ' + k }, urlSuffix: '' });
+    // Gemini 原生：?key= 参数
+    variants.push({ style: 'query_key', headers: {}, urlSuffix: '?key=' + encodeURIComponent(k) });
+    variants.push({ style: 'x_goog', headers: { 'x-goog-api-key': k }, urlSuffix: '' });
+  } else if (provider === 'azure') {
+    // Azure OpenAI：api-key header
+    variants.push({ style: 'azure_key', headers: { 'api-key': k }, urlSuffix: '' });
+    variants.push({ style: 'bearer', headers: { 'Authorization': 'Bearer ' + k }, urlSuffix: '' });
+  } else if (provider === 'cohere') {
+    variants.push({ style: 'bearer', headers: { 'Authorization': 'Bearer ' + k }, urlSuffix: '' });
+    variants.push({ style: 'x_api_key', headers: { 'x-api-key': k }, urlSuffix: '' });
+  } else {
+    // 通用 OpenAI 兼容：先 Bearer，再 x-api-key，再 api-key
+    variants.push({ style: 'bearer',    headers: { 'Authorization': 'Bearer ' + k }, urlSuffix: '' });
+    variants.push({ style: 'x_api_key', headers: { 'x-api-key': k },                urlSuffix: '' });
+    variants.push({ style: 'api_key',   headers: { 'api-key': k },                  urlSuffix: '' });
+  }
+  return variants;
+}
+
+// ── 旧接口保持兼容（单一 headers 对象，供内部非核心调用使用） ──
 function _buildApiHeaders(key, sourceHeaders, includeJsonContentType) {
   const headers = new Headers(sourceHeaders || {});
   const realKey = String(key || '').trim();
+  const provider = _detectApiProvider(apiConfig.url, apiConfig.model);
   if (realKey) {
-    if (!headers.has('Authorization')) headers.set('Authorization', 'Bearer ' + realKey);
-    if (!headers.has('api-key')) headers.set('api-key', realKey);
-    if (!headers.has('x-api-key')) headers.set('x-api-key', realKey);
+    if (provider === 'anthropic') {
+      if (!headers.has('x-api-key')) headers.set('x-api-key', realKey);
+      if (!headers.has('anthropic-version')) headers.set('anthropic-version', '2023-06-01');
+    } else if (provider === 'azure') {
+      if (!headers.has('api-key')) headers.set('api-key', realKey);
+    } else if (provider === 'gemini') {
+      if (!headers.has('Authorization')) headers.set('Authorization', 'Bearer ' + realKey);
+    } else {
+      if (!headers.has('Authorization')) headers.set('Authorization', 'Bearer ' + realKey);
+    }
   }
   if (includeJsonContentType !== false && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
   return headers;
 }
+
 function _safeJsonParse(text) {
   try { return JSON.parse(text); } catch (e) { return null; }
 }
@@ -17396,10 +17613,7 @@ function _extractApiModelIds(payload) {
   const found = [];
   const walk = function(node, depth) {
     if (!node || depth > 4) return;
-    if (Array.isArray(node)) {
-      node.forEach(function(item) { walk(item, depth + 1); });
-      return;
-    }
+    if (Array.isArray(node)) { node.forEach(function(item) { walk(item, depth + 1); }); return; }
     if (typeof node === 'object') {
       const modelId = node.id || node.name || node.model || node.model_id || node.modelId;
       if (typeof modelId === 'string' && modelId.trim()) found.push(modelId.replace(/^models\//, '').trim());
@@ -17412,103 +17626,196 @@ function _extractApiModelIds(payload) {
   walk(payload, 0);
   return _uniqStrings(found);
 }
+
+// ── 判断模型是否为 reasoning 模型（不支持 temperature/top_p 等参数） ──
+function _isReasoningModel(model) {
+  const m = String(model || '').toLowerCase();
+  return /^o\d|deepseek-r\d|qwq|skywork-o\d|hunyuan-t\d/.test(m);
+}
+
+// ── 构建请求载荷变体（从最兼容→最精简，覆盖各种 API 的参数要求差异） ──
 function _buildChatPayloadVariants(payload, forcedModel, rawUrl) {
   const original = _cloneJsonSafe(payload || {});
   if (!Array.isArray(original.messages) || !original.messages.length) {
     original.messages = [{ role: 'user', content: 'Hi' }];
   }
   const preferredModel = _getEffectiveApiModel(forcedModel || original.model || apiConfig.model);
-  const modelCandidates = _uniqStrings(
-    []
-      .concat(preferredModel ? [preferredModel] : [])
-      .concat(_getCachedApiModels(rawUrl))
-      .concat(_getCommonModelFallbacks())
-  );
-  const base = _cloneJsonSafe(original);
-  delete base.stream;
-  if (base.temperature != null) {
-    const temp = Number(base.temperature);
-    if (!isFinite(temp)) delete base.temperature;
-    else base.temperature = Math.max(0, Math.min(temp, 1.2));
+  // 严格锁定当前模型：只尝试用户当前明确选中的模型。
+  // 若保存的是“自动模式”，则只发送不带 model 的请求，绝不擅自切到缓存模型或常见模型。
+  const modelCandidates = preferredModel ? [preferredModel] : [];
+
+  // 整理温度参数
+  let temp = Number(original.temperature);
+  if (!isFinite(temp)) temp = null;
+  else temp = Math.max(0, Math.min(temp, 2.0)); // 放宽到 2.0（Gemini 等支持）
+
+  // ── Variant A：标准 OpenAI 格式，含常用参数，stream:false 显式关闭 ──
+  function makeBase(shape, withMaxTokens) {
+    const b = _cloneJsonSafe(shape);
+    b.stream = false; // 显式关闭流式，防止返回 SSE 格式
+    if (temp !== null && !_isReasoningModel(b.model)) b.temperature = temp;
+    else delete b.temperature;
+    if (withMaxTokens) {
+      b.max_tokens = b.max_tokens || original.max_tokens || 2048;
+    } else {
+      delete b.max_tokens;
+      delete b.max_completion_tokens;
+    }
+    // 清理非法字段
+    if (b.top_p != null && (b.top_p <= 0 || b.top_p > 1)) delete b.top_p;
+    return b;
   }
-  // Do not cap output tokens in the compatibility layer.
-  // We strip token limit fields so the upstream API/model can decide.
-  delete base.max_tokens;
-  delete base.max_completion_tokens;
-  const relaxed = _cloneJsonSafe(base);
-  delete relaxed.temperature;
-  delete relaxed.top_p;
-  delete relaxed.frequency_penalty;
-  delete relaxed.presence_penalty;
-  delete relaxed.stop;
-  delete relaxed.response_format;
+
+  // ── Variant B：精简版，只保留必须字段 ──
+  function makeMinimal(shape) {
+    return _applyApiModel({ messages: shape.messages, stream: false }, shape.model);
+  }
+
   const variants = [];
-  [base, relaxed].forEach(function(shape) {
-    if (!shape) return;
-    const noModel = _cloneJsonSafe(shape);
-    delete noModel.model;
-    variants.push(noModel);
-    modelCandidates.forEach(function(modelId) {
-      const withModel = _cloneJsonSafe(shape);
-      withModel.model = modelId;
-      variants.push(withModel);
-    });
-  });
   const seen = new Set();
-  return variants.filter(function(item) {
-    const key = JSON.stringify(item);
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  function addVariant(v) {
+    const k = JSON.stringify(v);
+    if (!seen.has(k)) { seen.add(k); variants.push(v); }
+  }
+
+  // 针对每个模型候选，生成变体序列
+  function addForModel(modelId) {
+    const withModel = modelId ? { model: modelId, messages: original.messages } : { messages: original.messages };
+
+    // 1. 标准格式 + max_tokens（大多数 API 的首选）
+    addVariant(makeBase(Object.assign({}, original, withModel), true));
+    // 2. 标准格式，不含 max_tokens（部分新 API 不需要）
+    addVariant(makeBase(Object.assign({}, original, withModel), false));
+    // 3. 精简：只有 model + messages + stream（兼容最严格的 API）
+    addVariant(makeMinimal(Object.assign({}, withModel)));
+    // 4. 精简 + max_tokens（某些 API 要求 max_tokens 但其他参数报错）
+    const minWithTok = Object.assign(makeMinimal(Object.assign({}, withModel)), { max_tokens: 2048 });
+    addVariant(minWithTok);
+  }
+
+  if (modelCandidates.length) {
+    modelCandidates.forEach(addForModel);
+  } else {
+    // 仅在用户显式保存为“自动模式”时才允许无 model 请求。
+    addForModel(null);
+  }
+
+  return variants;
 }
+
+// ── 发送单次请求（含认证头 + Content-Type） ──
+async function _doFetch(endpoint, authHeaders, bodyJson, extraInit) {
+  const headers = new Headers(Object.assign({ 'Content-Type': 'application/json' }, authHeaders));
+  return window._monoNativeFetch(endpoint, Object.assign({}, extraInit || {}, {
+    method: 'POST', headers, body: bodyJson
+  }));
+}
+
+// ── 获取模型列表（支持多端点 + 多认证方式） ──
 async function _compatibleFetchModelList(rawUrl, key) {
   const endpoints = _buildApiModelsCandidates(rawUrl);
+  const provider = _detectApiProvider(rawUrl, apiConfig.model);
+  const authVariants = _buildAuthVariants(key, provider);
   let lastResponse = null;
   let lastError = null;
+
   for (const endpoint of endpoints) {
-    try {
-      const headers = _buildApiHeaders(key, null, false);
-      let res = await window._monoNativeFetch(endpoint, { method: 'GET', headers: headers });
-      if (res.ok) return res;
-      lastResponse = res;
-      if (res.status === 405) {
-        res = await window._monoNativeFetch(endpoint, { method: 'POST', headers: headers });
+    for (const auth of authVariants.slice(0, 2)) { // 模型列表只试前2种认证
+      const url = endpoint + auth.urlSuffix;
+      const hdrs = new Headers(Object.assign({}, auth.headers));
+      try {
+        let res = await window._monoNativeFetch(url, { method: 'GET', headers: hdrs });
         if (res.ok) return res;
         lastResponse = res;
-      }
-      if ([401, 403, 429].includes(lastResponse.status)) return lastResponse;
-    } catch (e) {
-      lastError = e;
+        // 405 Method Not Allowed → 改 POST 再试
+        if (res.status === 405) {
+          res = await window._monoNativeFetch(url, { method: 'POST', headers: hdrs, body: '{}' });
+          if (res.ok) return res;
+          lastResponse = res;
+        }
+        if (res.status === 429 || res.status === 403) return res; // 配额/权限问题，不必再试其他端点
+      } catch (e) { lastError = e; }
     }
   }
   if (lastResponse) return lastResponse;
   throw lastError || new Error('无法连接模型列表接口');
 }
+
+// ── 核心：发送聊天请求（多端点 × 多认证 × 多载荷变体） ──
 async function _compatibleChatCompletion(rawUrl, key, payload, extraInit) {
   const endpoints = _buildApiChatCandidates(rawUrl);
-  const variants = _buildChatPayloadVariants(payload, payload && payload.model, rawUrl);
+  const provider = _detectApiProvider(rawUrl, payload && payload.model || apiConfig.model);
+  const authVariants = _buildAuthVariants(key, provider);
+  const payloadVariants = _buildChatPayloadVariants(payload, payload && payload.model, rawUrl);
+
   let lastResponse = null;
   let lastError = null;
+  // 已验证有效的认证方式（一旦某端点成功过某种 auth，后续优先用它）
+  let workingAuthIdx = -1;
+
   for (const endpoint of endpoints) {
-    for (const bodyPayload of variants) {
-      try {
-        const res = await window._monoNativeFetch(endpoint, Object.assign({}, extraInit || {}, {
-          method: 'POST',
-          headers: _buildApiHeaders(key, extraInit && extraInit.headers, true),
-          body: JSON.stringify(bodyPayload)
-        }));
-        if (res.ok) {
-          if (bodyPayload && bodyPayload.model) _cacheApiModels(rawUrl, [bodyPayload.model].concat(_getCachedApiModels(rawUrl)));
-          return res;
+    // 要尝试的认证方式：优先上次成功的，其次全部
+    const authsToTry = workingAuthIdx >= 0
+      ? [authVariants[workingAuthIdx], ...authVariants.filter((_, i) => i !== workingAuthIdx)]
+      : authVariants;
+
+    for (const auth of authsToTry) {
+      const url = endpoint + auth.urlSuffix;
+
+      for (const bodyPayload of payloadVariants) {
+        const bodyJson = JSON.stringify(bodyPayload);
+        try {
+          const res = await _doFetch(url, auth.headers, bodyJson, extraInit);
+
+          if (res.ok) {
+            // 检查是否是流式响应（防止某些 API 忽略 stream:false）
+            const ct = res.headers.get('content-type') || '';
+            if (ct.includes('text/event-stream')) {
+              // 流式 → 收集完整内容后包装成标准响应
+              const text = await res.text();
+              const lines = text.split('\n').filter(l => l.startsWith('data:') && !l.includes('[DONE]'));
+              let content = '';
+              for (const line of lines) {
+                const chunk = _safeJsonParse(line.replace(/^data:\s*/, ''));
+                if (chunk && chunk.choices && chunk.choices[0]) {
+                  content += (chunk.choices[0].delta && chunk.choices[0].delta.content) || '';
+                }
+              }
+              const synthetic = new Response(JSON.stringify({
+                choices: [{ message: { role: 'assistant', content }, finish_reason: 'stop' }]
+              }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+              if (bodyPayload && bodyPayload.model) _cacheApiModels(rawUrl, [bodyPayload.model].concat(_getCachedApiModels(rawUrl)));
+              workingAuthIdx = authVariants.indexOf(auth);
+              return synthetic;
+            }
+
+            if (bodyPayload && bodyPayload.model) _cacheApiModels(rawUrl, [bodyPayload.model].concat(_getCachedApiModels(rawUrl)));
+            workingAuthIdx = authVariants.indexOf(auth);
+            return res;
+          }
+
+          lastResponse = res;
+          const status = res.status;
+
+          // 429 / 503 → 不必再试其他变体，直接返回让上层提示
+          if (status === 429 || status === 503) return res;
+          // 401 → 当前认证方式无效，换下一种认证方式
+          if (status === 401) break; // break 内层 payloadVariants 循环，换认证
+          // 403 → 权限问题，不同 payload 也没用，换认证
+          if (status === 403) break;
+          // 400 / 422 → 参数问题，继续试下一个 payload 变体
+          // 404 → 端点不对，继续试下一个端点
+          if (status === 404) break; // break 到端点循环
+
+        } catch (e) {
+          lastError = e;
+          // 网络错误 → 直接换端点
+          break;
         }
-        lastResponse = res;
-        if ([401, 403, 429].includes(res.status)) return res;
-      } catch (e) {
-        lastError = e;
-      }
-    }
-  }
+      } // end payloadVariants loop
+    } // end authsToTry loop
+  } // end endpoints loop
+
   if (lastResponse) return lastResponse;
   throw lastError || new Error('无法连接聊天接口');
 }
@@ -17519,6 +17826,14 @@ function _looksLikeCurrentMainApiRequest(requestUrl) {
   return candidates.some(function(item) {
     return item && url.indexOf(item) === 0;
   });
+}
+function _sanitizeChatPayloadModel(payload) {
+  if (!payload || typeof payload !== 'object') return payload;
+  const normalized = Array.isArray(payload) ? payload.slice() : Object.assign({}, payload);
+  if (normalized.model === AUTO_MODEL_SENTINEL || normalized.model === '' || normalized.model == null) {
+    delete normalized.model;
+  }
+  return normalized;
 }
 window._monoNativeFetch = window.fetch.bind(window);
 window.fetch = async function(input, init) {
@@ -17536,7 +17851,7 @@ window.fetch = async function(input, init) {
     const bodyText = init && typeof init.body === 'string'
       ? init.body
       : (typeof input !== 'string' && input && typeof input.text === 'function' ? await input.clone().text().catch(function() { return ''; }) : '');
-    const parsed = _safeJsonParse(bodyText);
+    const parsed = _sanitizeChatPayloadModel(_safeJsonParse(bodyText));
     if (parsed && typeof parsed === 'object') {
       return _compatibleChatCompletion(requestUrl, apiConfig.key, parsed, init || {});
     }
@@ -17544,6 +17859,7 @@ window.fetch = async function(input, init) {
   return window._monoNativeFetch(input, init);
 };
 apiConfig = _normalizeApiConfigObject(apiConfig || {});
+_persistEffectiveApiConfig(apiConfig);
 // Normalize API URL — avoid duplicate /chat/completions regardless of what user saved
 function getApiUrl() {
   return _buildApiChatCandidates(apiConfig.url)[0] || '';
@@ -17599,8 +17915,8 @@ if (!userProfile.avatar || userProfile.avatar.length < 50) {
     window._monoBootFns.push(_tryLoad);
   }
 })();
-let momentsData = JSON.parse(localStorage.getItem('mono_moments')) || [];
-let diaryData = JSON.parse(localStorage.getItem('mono_diary')) || [];
+let momentsData = _safeParse('mono_moments', []);
+let diaryData = _safeParse('mono_diary', []);
 const FORUM_STATE_KEY = 'mono_forum_state_v2';
 function getDefaultForumSections() {
   return [
@@ -17712,8 +18028,8 @@ const _forumInitialState = loadForumState();
 let forumSections = _forumInitialState.sections;
 let forumData = _forumInitialState.data;
 let currentSectionId = _forumInitialState.currentSectionId;
-let worldBooks = JSON.parse(localStorage.getItem('mono_world_books')) || [];
-let groups = JSON.parse(localStorage.getItem('mono_groups')) || [];
+let worldBooks = _safeParse('mono_world_books', []);
+let groups = _safeParse('mono_groups', []);
 let currentGroupId = null;
 const mockUsers = [
   { name: '小敏', avatar: makeAvatar('敏', '#FFE4E1', '#8B3A3A') },
@@ -17727,10 +18043,10 @@ const mockUsers = [
 ];
 let currentNovel = null;
 let novelSelectedTags = [];
-let novelBookshelf = JSON.parse(localStorage.getItem('mono_novel_shelf')) || [];
+let novelBookshelf = _safeParse('mono_novel_shelf', []);
 let spyDataCache = {};
 // ===== 购物系统数据 =====
-let shopCart = JSON.parse(localStorage.getItem('mono_shop_cart')) || [];
+let shopCart = _safeParse('mono_shop_cart', []);
 let currentShopItem = null; // 当前查看的商品
 let shopCurrentCat = '时尚衣物';
 let shopCheckoutIsBuyNow = false; // true=立即购买，false=购物车结帐
@@ -19338,17 +19654,7 @@ function renderMessages() {
         </div>`;
       }
     }
-    // ── 角色间聊天截图消息 ──
-    if (m.msgType === 'cc_snapshot' && m.snapshotDataUrl) {
-      const snapBubble = `<div class="cc-snap-preview" onclick="document.getElementById('ccSnapFullModal').style.display='flex';document.getElementById('ccSnapFullImg').src='${(m.snapshotDataUrl||'').replace(/'/g,'%27')}'" style="cursor:pointer;">
-        <img src="${m.snapshotDataUrl}" alt="聊天截图" style="width:100%;display:block;border-radius:10px;">
-        <div style="font-size:10px;color:#888;text-align:center;padding:4px 0;background:#f5f5f5;border-radius:0 0 10px 10px;">[${m.snapshotRoomName || '聊天截图'}]</div>
-      </div>`;
-      return `<div class="msg-row ai ${isSelected?'selected':''}" data-idx="${idx}">
-        <div class="msg-meta"><img src="${avatarSrc}" class="msg-avatar"><span class="msg-name">${authorName.substring(0,4)}</span></div>
-        <div class="msg-content">${snapBubble}${_msgMetaHtml}</div>
-      </div>`;
-    }
+
     if (m.msgType === 'sticker') {
       const captionClass = '';
       const stickerBubble = `<div class="bubble-sticker ${isUser ? '' : ''}" onclick="handleStickerBubbleClick(event, this)" data-msg-idx="${idx}" title="${m.caption ? m.caption : ''}">
@@ -19434,7 +19740,9 @@ function renderMessages() {
     // Call bubble
     if (m.msgType === 'call') {
       var callIconColor = m.connected ? '#34c759' : '#ff3b30';
-      var callLabel = m.connected ? '语音通话' : '未接通的语音通话';
+      var callLabel = m.connected
+        ? (m.initiator === 'persona' ? '角色主动发起的语音通话' : '你发起的语音通话')
+        : (m.initiator === 'persona' ? '角色发起但未接通的语音通话' : '你发起但未接通的语音通话');
       var callDur = '';
       if (m.connected && m.duration > 0) {
         var cm = Math.floor(m.duration/60), cs = m.duration%60;
@@ -21153,11 +21461,6 @@ function ccRenderChatMessages(roomId) {
     const avatarHtml = avatarSrc
       ? `<img src="${avatarSrc}" class="cc-avatar" alt="${msg.sender}">`
       : `<div class="cc-avatar-placeholder">${(msg.sender||'?').charAt(0)}</div>`;
-    // Screenshot message type
-    if (msg.msgType === 'cc_screenshot') {
-      const imgHtml = `<div class="cc-screenshot-bubble" onclick="_ccPreviewScreenshot('${roomId}',${msg.screenshotMsgIdx||0},${msg.screenshotCount||3})"><img src="${msg.screenshotDataUrl || ''}" alt="截图"><div class="cc-screenshot-label">聊天截图</div></div>`;
-      return `${timeDivider}<div class="${rowClass}">${avatarHtml}<div class="cc-msg-body"><div class="cc-sender-name">${msg.sender}</div>${imgHtml}</div></div>`;
-    }
     const safeContent = (msg.content || '').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
     return `${timeDivider}<div class="${rowClass}">
       ${avatarHtml}
@@ -21288,10 +21591,8 @@ function _ccUpdateTurnsLabel(roomId) {
 // ── 获取API配置 ──
 function _getApiConfig() {
   try {
-    const raw = localStorage.getItem('mono_api') || localStorage.getItem('mono_api_config');
-    if (raw) {
-      return _normalizeApiConfigObject(JSON.parse(raw));
-    }
+    const current = _getCurrentActiveApiConfig();
+    if (current && (current.url || current.key || current.model)) return current;
     // Try older format
     const key = localStorage.getItem('mono_api_key') || '';
     const url = localStorage.getItem('mono_api_url') || 'https://api.openai.com/v1';
@@ -21300,7 +21601,7 @@ function _getApiConfig() {
     // Try apiConfig global
     if (window.apiConfig && window.apiConfig.key) return _normalizeApiConfigObject(window.apiConfig);
   } catch(e) {}
-  return window.apiConfig ? _normalizeApiConfigObject(window.apiConfig) : null;
+  return _getCurrentActiveApiConfig();
 }
 function _ccGetPersonas() {
   try { return JSON.parse(localStorage.getItem('mono_personas') || '[]'); } catch(e) { return []; }
@@ -21580,214 +21881,6 @@ function deleteCcRoom() {
   document.getElementById('ccRoomSettingsModal').style.display = 'none';
   closeCcChatRoom();
   ccRenderRoomList();
-}
-// ════════════════════════════════════════════════════════════
-// 截图功能 — 角色将聊天室部分内容截图发给用户
-// ════════════════════════════════════════════════════════════
-// ── 生成聊天室截图 HTML（渲染成图片的方式）──
-function _ccBuildScreenshotHtml(room, msgs) {
-  const personas = _ccGetPersonas();
-  const isGroup = room.members.length > 2;
-  const msgsHtml = msgs.map(msg => {
-    const p = personas.find(x => x.name === msg.sender);
-    const avatarSrc = p ? p.avatar : '';
-    const isRight = !isGroup && msg.sender === room.members[1];
-    const bubbleBg = isRight ? '#9eea6a' : '#fff';
-    const bubbleRadius = isRight ? '12px 2px 2px 12px' : '2px 12px 12px 2px';
-    const flexDir = isRight ? 'row-reverse' : 'row';
-    const avatarHtml = avatarSrc
-      ? `<img src="${avatarSrc}" style="width:36px;height:36px;border-radius:6px;object-fit:cover;flex-shrink:0;">`
-      : `<div style="width:36px;height:36px;border-radius:6px;background:#bbb;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;">${(msg.sender||'?').charAt(0)}</div>`;
-    const safeContent = (msg.content || '').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
-    return `<div style="display:flex;flex-direction:${flexDir};gap:8px;align-items:flex-end;margin:6px 10px;">
-      ${avatarHtml}
-      <div style="display:flex;flex-direction:column;${isRight?'align-items:flex-end;':''}max-width:68%;">
-        <div style="font-size:10px;color:#888;margin-bottom:3px;${isRight?'margin-right:2px;':'margin-left:2px;'}">${msg.sender}</div>
-        <div style="padding:9px 12px;background:${bubbleBg};border-radius:${bubbleRadius};font-size:14px;line-height:1.6;color:#1a1a1a;word-break:break-word;box-shadow:0 1px 2px rgba(0,0,0,0.08);">${safeContent}</div>
-      </div>
-    </div>`;
-  }).join('');
-  const roomTitle = room.name || room.members.join(' & ');
-  return `<div style="background:#ededed;width:320px;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Helvetica Neue',sans-serif;border-radius:12px;overflow:hidden;padding-bottom:10px;">
-    <div style="background:#d4d4d4;padding:10px 14px;display:flex;align-items:center;gap:8px;">
-      <i style="font-size:12px;color:#555;" class="fas fa-${isGroup?'users':'user-friends'}"></i>
-      <span style="font-size:13px;font-weight:700;color:#333;">${roomTitle}</span>
-    </div>
-    ${msgsHtml}
-  </div>`;
-}
-// ── 将 HTML 渲染为 canvas dataURL ──
-async function _ccRenderHtmlToDataUrl(htmlStr) {
-  return new Promise((resolve) => {
-    // Create a temporary off-screen div
-    const wrapper = document.createElement('div');
-    wrapper.style.cssText = 'position:fixed;left:-9999px;top:-9999px;z-index:-1;';
-    wrapper.innerHTML = htmlStr;
-    document.body.appendChild(wrapper);
-    // Use html2canvas if available, otherwise fallback to SVG foreignObject trick
-    if (window.html2canvas) {
-      html2canvas(wrapper.firstChild, { scale: 2, useCORS: true, backgroundColor: '#ededed' }).then(canvas => {
-        document.body.removeChild(wrapper);
-        resolve(canvas.toDataURL('image/png'));
-      }).catch(() => {
-        document.body.removeChild(wrapper);
-        resolve(null);
-      });
-    } else {
-      // SVG foreignObject trick (limited browser support, works for simple content)
-      const el = wrapper.firstChild;
-      const w = el.offsetWidth || 320;
-      const h = el.offsetHeight || 200;
-      const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">
-        <foreignObject width="100%" height="100%">
-          <div xmlns="http://www.w3.org/1999/xhtml">${htmlStr}</div>
-        </foreignObject>
-      </svg>`;
-      const svgBlob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
-      const url = URL.createObjectURL(svgBlob);
-      const img = new Image();
-      img.onload = function() {
-        const canvas = document.createElement('canvas');
-        canvas.width = w * 2; canvas.height = h * 2;
-        const ctx = canvas.getContext('2d');
-        ctx.scale(2, 2);
-        ctx.drawImage(img, 0, 0);
-        URL.revokeObjectURL(url);
-        document.body.removeChild(wrapper);
-        resolve(canvas.toDataURL('image/png'));
-      };
-      img.onerror = function() {
-        URL.revokeObjectURL(url);
-        document.body.removeChild(wrapper);
-        resolve(null);
-      };
-      img.src = url;
-    }
-  });
-}
-// ── 核心：判断角色在和用户聊天时，是否应该发截图；如果应该，截取该聊天室的真实对话 ──
-async function ccMaybeInjectScreenshot(personaId, userMessage) {
-  if (!ccIsWorldEnabled()) return null;
-  const ps = _ccGetPersonas();
-  const p = ps.find(x => x.id == personaId);
-  if (!p) return null;
-  const rooms = ccGetRooms();
-  // Only rooms this character is in
-  const myRooms = rooms.filter(r => r.members.includes(p.name));
-  if (myRooms.length === 0) return null;
-  // Build context of available room chats
-  let roomsContext = '';
-  const roomHistories = {};
-  myRooms.forEach(r => {
-    const hist = ccGetHistory(r.id);
-    if (hist.length === 0) return;
-    roomHistories[r.id] = hist;
-    roomsContext += `聊天室ID「${r.id}」名称「${r.name}」（成员：${r.members.join('、')}，共${hist.length}条消息）：\n`;
-    // Show last 8 messages as preview for AI to assess relevance
-    hist.slice(-8).forEach((m, i) => {
-      const globalIdx = Math.max(0, hist.length - 8) + i;
-      roomsContext += `  [${globalIdx}] ${m.sender}：${(m.content||'').slice(0,80)}\n`;
-    });
-    roomsContext += '\n';
-  });
-  if (!roomsContext) return null;
-  const apiConfig = _getApiConfig();
-  if (!apiConfig || !apiConfig.key) return null;
-  const checkPrompt = `你正在扮演角色「${p.name}」，正在和用户聊天。
-用户的最新消息：「${userMessage}」
-你在其他聊天室里有以下真实对话记录（括号内是消息的全局索引编号）：
-${roomsContext}
-请判断：当前对话语境下，你是否应该把某个聊天室里的部分真实对话截图发给用户看？
-判断标准（必须同时满足）：
-1. 用户说的话或话题，与某个聊天室里的某段对话有直接关联（涉及同一件事/同一个人/同一个话题）
-2. 分享截图是自然的，符合角色性格，不会显得刻意
-3. 这段对话值得分享（有趣、有意义或与当前话题高度相关）
-4. 不要频繁发送（若用户最近消息没什么关联性，就不发）
-如果应该发截图，回答 JSON（只输出JSON）：
-{"send":true,"roomId":"聊天室的ID","startIdx":起始消息全局索引数字,"count":截取条数(2到5之间)}
-如果不应该发，回答（只输出JSON）：
-{"send":false}`;
-  try {
-    const resp = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${apiConfig.key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: apiConfig.model,
-        messages: [{ role: 'user', content: checkPrompt }],
-        temperature: 0.2,
-        max_tokens: 150
-      })
-    });
-    if (!resp.ok) return null;
-    const data = await resp.json();
-    let raw = (data.choices[0].message.content || '').trim()
-      .replace(/^```json\s*/i,'').replace(/^```\s*/i,'').replace(/\s*```$/i,'').trim();
-    const decision = JSON.parse(raw);
-    if (!decision.send) return null;
-    const room = myRooms.find(r => r.id === decision.roomId);
-    if (!room) return null;
-    const hist = roomHistories[decision.roomId];
-    if (!hist || hist.length === 0) return null;
-    // Extract the real stored messages at the specified indices
-    const startIdx = Math.max(0, Math.min(parseInt(decision.startIdx) || 0, hist.length - 1));
-    const count    = Math.min(5, Math.max(2, parseInt(decision.count) || 3));
-    const snippetMsgs = hist.slice(startIdx, startIdx + count);
-    if (snippetMsgs.length === 0) return null;
-    // Render the real chat messages as a WeChat-style screenshot image
-    const htmlStr = _ccBuildScreenshotHtml(room, snippetMsgs);
-    const dataUrl = await _ccRenderHtmlToDataUrl(htmlStr);
-    if (!dataUrl) return null;
-    return {
-      msgType: 'cc_snapshot',
-      role: 'assistant',
-      content: `[发来了一张截图]`,
-      snapshotDataUrl: dataUrl,
-      snapshotRoomName: room.name,
-      timestamp: Date.now()
-    };
-  } catch(e) {
-    console.warn('[CC Screenshot] error:', e);
-    return null;
-  }
-}
-// ── 预览截图 ──
-function _ccPreviewScreenshot(roomId, startIdx, count) {
-  const rooms = ccGetRooms();
-  const room = rooms.find(r => r.id === roomId);
-  if (!room) return;
-  const hist = ccGetHistory(roomId).slice(startIdx, startIdx + count);
-  const htmlStr = _ccBuildScreenshotHtml(room, hist);
-  const previewEl = document.getElementById('ccScreenshotPreviewImg');
-  if (previewEl) {
-    previewEl.innerHTML = htmlStr;
-    document.getElementById('ccScreenshotPreviewModal').style.display = 'flex';
-  }
-}
-// ── 在角色回复用户时，检查是否注入截图 ──
-// 此函数在 AI 生成回复后、保存消息前调用
-async function ccCheckAndInjectSnapshot(personaId, userMsgContent, existingMsgs) {
-  if (!ccIsWorldEnabled()) return existingMsgs;
-  // Rate limit: don't inject if last few messages already had a snapshot
-  const p = _ccGetPersonas().find(x => x.id == personaId);
-  if (!p) return existingMsgs;
-  const hist = p.history || [];
-  const recentMsgs = hist.slice(-6);
-  const hasRecentSnapshot = recentMsgs.some(m => m.msgType === 'cc_snapshot');
-  if (hasRecentSnapshot) return existingMsgs;
-  const snapshot = await ccMaybeInjectScreenshot(personaId, userMsgContent);
-  if (!snapshot) return existingMsgs;
-  // Insert snapshot after the first or second AI message
-  const insertAt = Math.min(1, existingMsgs.length - 1);
-  const result = [...existingMsgs];
-  result.splice(insertAt + 1, 0, snapshot);
-  return result;
-}
-// ── 初始化：页面载入时立即检查（用户上线即触发），离线前后浏览器唤醒时同样生成 ──
-function ccInitDailyCheck() {
-  if (!ccIsWorldEnabled()) return;
-  setTimeout(() => {
-    ccRunDailyAutoGenerate().catch(e => console.warn('[CC Init]', e));
-  }, 3000);
 }
 function _mwRelKey() { return 'mono_rel_map_' + mwGetActiveId(); }
 function mwGetRelEntries() {
@@ -22173,10 +22266,14 @@ function toggleApiSettings() {
   modal.classList.toggle('hidden');
   modal.style.display=modal.classList.contains('hidden')?'none':'flex';
   if(!modal.classList.contains('hidden')){
-    document.getElementById('apiUrl').value=apiConfig.url||'';
-    document.getElementById('apiKey').value=apiConfig.key||'';
-    document.getElementById('modelManual').value=(apiConfig.model && apiConfig.model !== AUTO_MODEL_SENTINEL) ? apiConfig.model : '';
+    const presetApi = _getPresetApiConfig();
+    const urlEl = document.getElementById('apiUrl');
+    urlEl.value=presetApi.url||'';
+    document.getElementById('apiKey').value=presetApi.key||'';
+    document.getElementById('modelManual').value=(presetApi.model && presetApi.model !== AUTO_MODEL_SENTINEL) ? presetApi.model : '';
     document.getElementById('fetchStatus').classList.add('hidden');
+    // Show URL format hint for saved URL
+    if (typeof _onApiUrlInput === 'function') _onApiUrlInput(urlEl);
     // Load vision API settings
     loadVisionApiSettings();
     // Load TTS settings
@@ -22228,78 +22325,145 @@ async function fetchModels() {
     setFetchStatus(`✗ ${e.message}`,true);
   }
 }
+// ── API URL 输入实时提示（支持标准反代 / HuggingFace / 直连格式识别）──
+function _onApiUrlInput(el) {
+  const hintEl = document.getElementById('apiUrlHint');
+  if (!hintEl) return;
+  const raw = (el.value || '').trim();
+  if (!raw) { hintEl.style.display = 'none'; hintEl.textContent = ''; return; }
+  let hint = '';
+  if (/huggingface\.co/i.test(raw) || /hf\.space/i.test(raw)) {
+    if (/\/models\/[^/]+\/v\d+/i.test(raw)) {
+      hint = '✓ HuggingFace 推理端点（含模型路径 + /v1）格式正确';
+    } else if (/\/models\/[^/]+/i.test(raw)) {
+      hint = '✓ HuggingFace 推理端点 — 将自动追加 /v1，如需指定版本请在末尾加 /v1';
+    } else if (/endpoints\.huggingface\.cloud/i.test(raw)) {
+      hint = '✓ HuggingFace Dedicated Endpoint，确保末尾含 /v1';
+    } else {
+      hint = '⚠ HuggingFace URL 格式建议：https://api-inference.huggingface.co/models/<model-id>/v1';
+    }
+  } else if (/anthropic\.com/i.test(raw)) {
+    hint = '✓ Anthropic 官方 API（claude-* 模型）— 支持自动适配格式';
+  } else if (/openai\.com/i.test(raw)) {
+    hint = '✓ OpenAI 官方 API — 标准格式：https://api.openai.com/v1';
+  } else if (/\/v\d+$/i.test(raw)) {
+    hint = '✓ 标准反代格式（Base URL 含 /v1），可直接使用';
+  } else if (/^https?:\/\/.+/i.test(raw)) {
+    hint = '提示：若反代不含 /v1，系统将自动尝试追加 /v1；也可手动加上 /v1';
+  } else if (raw.length > 3) {
+    hint = '⚠ 请以 https:// 或 http:// 开头';
+  }
+  if (hint) { hintEl.textContent = hint; hintEl.style.display = 'block'; }
+  else { hintEl.style.display = 'none'; }
+}
 function saveApi() {
   const url=_normalizeApiBaseUrl(document.getElementById('apiUrl').value.trim());
   const key=document.getElementById('apiKey').value.trim();
   const model=getSelectedModel() || AUTO_MODEL_SENTINEL;
   if(!url||!key){ alert("请先填写 API URL 和 API Key！"); return; }
-  apiConfig={url,key,model};
-  localStorage.setItem('mono_api',JSON.stringify(apiConfig));
+  const presetApi = _normalizeApiConfigObject({url,key,model});
+  localStorage.setItem('mono_api',JSON.stringify(presetApi));
+  if (typeof activeApiId === 'undefined' || activeApiId === 'preset') {
+    apiConfig = _normalizeApiConfigObject(presetApi);
+    _persistEffectiveApiConfig(apiConfig);
+  }
   setFetchStatus(`✓ 已保存：${model===AUTO_MODEL_SENTINEL?'自动适配模型模式':model}`,false);
   setTimeout(()=>toggleApiSettings(),800);
 }
 async function testApi() {
-  // Read directly from input fields so test works even before saving
   const urlInput = document.getElementById('apiUrl');
   const keyInput = document.getElementById('apiKey');
   const url = _normalizeApiBaseUrl((urlInput ? urlInput.value.trim() : '') || apiConfig.url);
   const key = (keyInput ? keyInput.value.trim() : '') || apiConfig.key;
   const model = getSelectedModel() || apiConfig.model || AUTO_MODEL_SENTINEL;
   if (!url || !key) { alert('请填写完整的API配置（URL、Key）'); return; }
-  
+
   const statusEl = document.getElementById('apiStatus');
-  statusEl.textContent = '正在测试连接...';
-  statusEl.style.color = '#f0ad4e';
-  
+  if (statusEl) { statusEl.textContent = '正在测试连接...'; statusEl.style.color = '#f0ad4e'; }
+
+  const provider = _detectApiProvider(url, model);
+  const providerLabel = { anthropic:'Anthropic', gemini:'Gemini', azure:'Azure OpenAI', openai:'OpenAI', huggingface:'HuggingFace', groq:'Groq', together:'Together AI', mistral:'Mistral', openai_compat:'OpenAI 兼容' }[provider] || provider;
+
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    const timeoutId = setTimeout(() => controller.abort(), 35000);
     const response = await _compatibleChatCompletion(url, key, {
       model: model,
-      messages: [{role:'user',content:'Hi'}],
+      messages: [{ role: 'user', content: 'Hi' }],
       max_tokens: 16,
       temperature: 0.2
     }, { signal: controller.signal });
     clearTimeout(timeoutId);
-    
+
+    let errorBody = '';
+    let bodyObj = null;
     if (!response.ok) {
-      let errorBody = '';
-      try { errorBody = await response.text(); } catch(ex) {}
+      try { errorBody = await response.text(); bodyObj = _safeJsonParse(errorBody); } catch(ex) {}
+    }
+
+    if (!response.ok) {
+      const s = response.status;
+      // 解析服务端返回的错误信息
+      const serverMsg = (bodyObj && (
+        (bodyObj.error && (bodyObj.error.message || bodyObj.error.code)) ||
+        bodyObj.message || bodyObj.detail || bodyObj.msg
+      )) || errorBody.slice(0, 300);
+
       let suggestion = '';
-      if (response.status === 401) suggestion = '\n建议: API密钥可能无效或已过期，请重新获取密钥';
-      else if (response.status === 403) suggestion = '\n建议: 您的账户可能没有访问该模型的权限';
-      else if (response.status === 404) suggestion = '\n建议: API地址或模型名称可能不正确，请检查URL和模型名';
-      else if (response.status === 429) suggestion = '\n建议: 请求过于频繁或配额已用完，请稍后重试或检查余额';
-      else if (response.status >= 500) suggestion = '\n建议: API服务器暂时出现问题，请稍后重试';
-      
-      statusEl.textContent = `连接失败 (${response.status})`;
-      statusEl.style.color = '#d9534f';
-      alert(`API测试失败\n\nHTTP状态码: ${response.status} ${response.statusText}\n\n服务器返回: ${errorBody.slice(0,500)}${suggestion}`);
+      if (s === 400) {
+        suggestion = '参数格式错误。常见原因：模型名称不正确、请求参数不被该 API 支持。';
+        if (/model/i.test(serverMsg)) suggestion += '\n→ 请检查模型名是否填写正确（可点「模型」按钮获取可用模型列表）';
+      } else if (s === 401) {
+        suggestion = `认证失败（${providerLabel}）。\n→ 请检查 API Key 是否正确、是否已过期`;
+        if (provider === 'anthropic') suggestion += '\n→ Anthropic Key 格式应以 sk-ant- 开头';
+        else if (provider === 'gemini') suggestion += '\n→ Gemini Key 可在 Google AI Studio 免费申请';
+        else if (provider === 'azure') suggestion += '\n→ Azure 需要填入部署端点 URL（不是 OpenAI 的 URL）';
+      } else if (s === 403) {
+        suggestion = '权限被拒绝。可能原因：账户无访问权限、IP 被封禁、模型需要单独申请。';
+      } else if (s === 404) {
+        suggestion = 'API 地址或模型不存在（404）。\n→ 请确认 Base URL 格式正确（通常以 /v1 结尾）\n→ 检查模型名是否与该平台支持的一致';
+      } else if (s === 422) {
+        suggestion = '参数校验失败（422）。\n→ 该 API 不接受某些参数，已自动尝试精简模式，但仍失败\n→ 请手动检查模型名是否正确';
+      } else if (s === 429) {
+        suggestion = '请求频率超限或余额不足（429）。\n→ 请稍后重试，或检查账户余额';
+      } else if (s >= 500) {
+        suggestion = `服务端错误（${s}）。该 API 服务器暂时出现问题，请稍后重试。`;
+      }
+
+      if (statusEl) { statusEl.textContent = `连接失败 (${s})`; statusEl.style.color = '#d9534f'; }
+      alert(`API 测试失败 [${providerLabel}]\n\nHTTP ${s} ${response.statusText}\n\n${serverMsg ? '服务端返回：\n' + serverMsg + '\n\n' : ''}${suggestion}`);
       return;
     }
-    
-    const data = await response.json();
-    if (data.choices && data.choices.length > 0) {
-      statusEl.textContent = '连接成功';
-      statusEl.style.color = '#5cb85c';
-      alert('API连接测试成功！\n\n模型: ' + (_getEffectiveApiModel(model) || '自动适配') + '\n状态: 正常运行');
+
+    let data = null;
+    try { data = await response.json(); } catch(e) {}
+
+    if (data && data.choices && data.choices.length > 0) {
+      if (statusEl) { statusEl.textContent = '连接成功'; statusEl.style.color = '#5cb85c'; }
+      const usedModel = (data.model || (data.choices[0].message && data.choices[0].index != null ? '' : '')) || _getEffectiveApiModel(model) || '自动适配';
+      alert(`✅ API 连接成功！\n\n供应商识别：${providerLabel}\n实际模型：${usedModel}\n状态：正常运行`);
+    } else if (data && (data.content || data.output || data.text)) {
+      // 非标准 OpenAI 格式但有内容
+      if (statusEl) { statusEl.textContent = '连接成功（非标准格式）'; statusEl.style.color = '#f0ad4e'; }
+      alert(`✅ API 连通，但响应格式不是标准 OpenAI 格式。\n\n供应商：${providerLabel}\n\n返回内容（前200字）：\n${JSON.stringify(data).slice(0,200)}\n\n若正常使用中出现问题，请确认该 API 是否完整兼容 OpenAI /chat/completions 格式。`);
     } else {
-      statusEl.textContent = '返回格式异常';
-      statusEl.style.color = '#f0ad4e';
-      alert('API连接成功，但返回数据格式不符合预期。\n\n返回内容: ' + JSON.stringify(data).slice(0, 300) + '\n\n请确认API是否兼容OpenAI格式。');
+      if (statusEl) { statusEl.textContent = '返回格式异常'; statusEl.style.color = '#f0ad4e'; }
+      alert(`API 连通但返回内容异常。\n\n供应商：${providerLabel}\n返回：${JSON.stringify(data || {}).slice(0,300)}\n\n请确认该 API 是否兼容 OpenAI 格式。`);
     }
   } catch(e) {
-    statusEl.textContent = '连接失败';
-    statusEl.style.color = '#d9534f';
-    let errorMsg = e.message;
-    let suggestion = '';
+    if (statusEl) { statusEl.textContent = '连接失败'; statusEl.style.color = '#d9534f'; }
+    let msg = e.message || String(e);
+    let tip = '';
     if (e.name === 'AbortError') {
-      errorMsg = '连接超时（30秒无响应）';
-      suggestion = '\n\n可能原因:\n1. API服务器无法访问\n2. 网络连接不稳定\n3. API地址不正确';
-    } else if (errorMsg.includes('Failed to fetch') || errorMsg.includes('NetworkError')) {
-      suggestion = '\n\n可能原因:\n1. API地址格式不正确（请确保以http://或https://开头）\n2. 网络连接断开\n3. API服务器拒绝了跨域请求(CORS)\n4. API服务器未运行';
+      msg = '连接超时（35秒无响应）';
+      tip = '\n→ API 服务器可能无法访问，或网络延迟过高';
+    } else if (/failed to fetch|networkerror|network request failed/i.test(msg)) {
+      tip = `\n→ 网络连接失败，可能原因：\n  1. API 地址不正确（需以 https:// 开头）\n  2. 该 API 服务器拒绝了跨域请求（CORS）\n  3. 当前网络无法访问该服务器`;
+      if (provider === 'anthropic' || provider === 'openai') tip += `\n  4. 部分地区需要代理才能访问 ${providerLabel} 官方 API`;
+    } else if (/cors/i.test(msg)) {
+      tip = '\n→ 跨域（CORS）错误：该 API 服务器不允许从浏览器直接请求\n→ 建议使用支持 CORS 的反代服务';
     }
-    alert(`API连接测试失败\n\n错误: ${errorMsg}${suggestion}`);
+    alert(`API 连接失败 [${providerLabel}]\n\n${msg}${tip}`);
   }
 }
 // ===================== 朋友圈 =====================
@@ -26380,7 +26544,7 @@ async function tryPersonaSendVoice(p, textMessages) {
       const voiceSpeed = parseFloat(p.voiceSpeed) || 1.0;
       const voiceLang = p.voiceLang || '';
       // 合成前去除译文标注，与通话 TTS 路径保持一致（避免朗读出中文翻译）
-      const ttsMsg = msg.replace(/\n?「译文：[\s\S]+?」/g, '').replace(/\n+$/, '').trim() || msg;
+      const ttsMsg = _stripSpokenTranslation(msg) || msg;
       const audioUrl = await callMiniMaxTts(ttsMsg, voiceId, voiceSpeed, voiceLang);
       p.history[targetIdx] = { role: 'assistant', msgType: 'voice', content: msg, duration: duration, audioUrl: audioUrl };
       saveData(); if (currentId == p.id) renderMessages();
@@ -26824,7 +26988,7 @@ function renderPersonaStickerLibraryOptions(selectedIds) {
   togglePersonaStickerLibraryPicker();
 }
 // ===================== 语音合成 TTS 配置 =====================
-let ttsConfig = JSON.parse(localStorage.getItem('mono_tts_config') || '{}');
+let ttsConfig = _safeParse('mono_tts_config', {});
 // ttsConfig: { enabled: bool, version: 'official'|'global'|'cn', model: 'speech-01'|'speech-02', key, groupId }
 // ===================== TTS 设置 UI 函数 =====================
 function onTtsEnabledChange() {
@@ -26985,7 +27149,7 @@ async function testTtsConnection(mode) {
   }
 }
 // ===================== 图片识别 Vision API 配置 =====================
-let visionApiConfig = JSON.parse(localStorage.getItem('mono_vision_api') || '{}');
+let visionApiConfig = _safeParse('mono_vision_api', {});
 // visionApiConfig: { mode: 'existing'|'gemini'|'custom', geminiKey: '', customUrl: '', customKey: '', customModel: '' }
 function onVisionModeChange() {
   const mode = document.querySelector('input[name="visionApiMode"]:checked');
@@ -28602,14 +28766,14 @@ function loadHomePhoto() {
 // Initialize home screen on load
 var _origOnload3 = window.onload;
 window.onload = function() {
-  if (_origOnload3) _origOnload3();
-  updateHomeScreen();
-  setInterval(updateHomeScreen, 60000);
-  window.afterDB(function() { loadHomePhoto(); });
-  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); p.style.display = 'none'; });
-  document.getElementById('menuBtn').style.display = 'none';
-// REMOVED (addBtn): document.getElementById('addBtn').style.display = 'none';
-  document.getElementById('homeScreen').style.display = 'flex';
+  // 每个 onload 步骤独立 try/catch，任意一步失败不影响其他初始化
+  try { if (_origOnload3) _origOnload3(); } catch(e) { console.warn('[mono] onload chain error:', e); }
+  try { updateHomeScreen(); } catch(e) {}
+  try { setInterval(updateHomeScreen, 60000); } catch(e) {}
+  try { window.afterDB(function() { try { loadHomePhoto(); } catch(e) {} }); } catch(e) {}
+  try { document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); p.style.display = 'none'; }); } catch(e) {}
+  try { var _mb = document.getElementById('menuBtn'); if (_mb) _mb.style.display = 'none'; } catch(e) {}
+  try { var _hs = document.getElementById('homeScreen'); if (_hs) _hs.style.display = 'flex'; } catch(e) {}
 };
 // ===================== 拉黑功能 Block/Unblock =====================
 function updateBlockBtnState(p) {
@@ -29043,6 +29207,7 @@ ${followUps ? `\n${userProfile.name} 转发后还补充说了：${followUps}` : 
     } catch(e) { return ''; }
   })();
   const sysPrompt = memoryCoreContext + `${LANG_SYSTEM_PREFIX}${STYLE_INSTRUCTIONS}\n你是${p.name}。人设：${p.persona}。你对用户（${userProfile.name}）的昵称是${p.nickname||p.name}。${_langOverride}${lastHeartVoiceInject}${userPersonaInject}${_mwRelInject}${_ccRoomMemoryInject}${timeGapAlert}
+${_buildPersonaIdentityPrompt(p)}
 【回复要求】
 1. 你的每一条消息都必须像这个角色本人在说话——语气、用词、节奏都要忠实于人设，不能千篇一律。
 2. 回复必须紧接最近的对话，自然衔接，不能跳脱或重起炉灶。
@@ -29068,6 +29233,12 @@ ${modePrompt}${quoteTip}${fwdContext}${timeContext}${transferContext}${wbInjecti
       .filter(m => !m._transferContext)
       .slice(-Math.min(memCount, 50))
       .map((m, idx, arr) => {
+        if (m.msgType === 'call') {
+          return {
+            role: m.role === 'user' ? 'user' : 'assistant',
+            content: _buildCallHistorySummary(m, p.name, userProfile.name || '用户')
+          };
+        }
         if (m.msgType === 'image') {
           const imgDesc = m.imageDesc || m.content || '[用户发送了一张图片]';
           // 查找前后相邻的文字消息，作为上下文提示
@@ -29212,22 +29383,7 @@ ${modePrompt}${quoteTip}${fwdContext}${timeContext}${transferContext}${wbInjecti
     if (p.allowVoice) {
       await tryPersonaSendVoice(p, messages.map(m => String(m || '').trim()));
     }
-    // ── 角色间聊天室：检查是否要发截图给用户 ──
-    try {
-      if (typeof ccCheckAndInjectSnapshot === 'function' && ccIsWorldEnabled && ccIsWorldEnabled()) {
-        const lastUserMsg = [...p.history].reverse().find(m => m.role === 'user');
-        if (lastUserMsg) {
-          const snapshot = await ccMaybeInjectScreenshot(p.id, lastUserMsg.content || '');
-          if (snapshot) {
-            p.history.push(snapshot);
-            if (currentId == _replyPersonaId) {
-              try { renderMessages(); } catch(e) {}
-            }
-            saveData();
-          }
-        }
-      }
-    } catch(snapErr) { console.warn('[CC Snapshot] error:', snapErr); }
+
     // Check if persona wants to transfer
     const recentChatForTransfer = p.history.slice(-(p.memoryCount||100)).map(m => `${m.role==='user'?userProfile.name:p.name}：${m.content||''}`).join('\n');
     await tryPersonaInitiateTransfer(p, recentChatForTransfer);
@@ -29623,7 +29779,7 @@ async function _doExportAllData(statusEl) {
       globalCustomCss: localStorage.getItem('mono_global_custom_css') || '',
       worldBooks: JSON.parse(localStorage.getItem('mono_world_books') || '[]'),
       groups: JSON.parse(localStorage.getItem('mono_groups') || '[]'),
-      apiConfig: JSON.parse(localStorage.getItem('mono_api') || '{}'),
+      apiConfig: _getPresetApiConfig(),
       ttsConfig: JSON.parse(localStorage.getItem('mono_tts_config') || '{}'),
       notifications: {
         settings: JSON.parse(localStorage.getItem('mono_notif_settings') || '{}'),
@@ -30017,7 +30173,7 @@ function normalizeImportData(raw) {
   };
   data.customFont = raw.customFont || null;
   // --- apiConfig ---
-  data.apiConfig = raw.apiConfig || {};
+  data.apiConfig = _normalizeApiConfigObject(raw.apiConfig || {});
   // --- notifications ---
   let rawNotif = raw.notifications || {};
   data.notifications = {
@@ -30081,7 +30237,16 @@ function normalizeImportData(raw) {
   // --- translationCache ---
   data.translationCache = (raw.translationCache && typeof raw.translationCache === 'object') ? raw.translationCache : {};
   // --- secondaryApis ---
-  data.secondaryApis = Array.isArray(raw.secondaryApis) ? raw.secondaryApis : [];
+  data.secondaryApis = Array.isArray(raw.secondaryApis) ? raw.secondaryApis.map(function(api) {
+    var normalized = _normalizeApiConfigObject(api || {});
+    return {
+      id: api && api.id ? api.id : ('secapi_import_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)),
+      name: String((api && api.name) || '导入的副 API').trim() || '导入的副 API',
+      url: normalized.url,
+      key: normalized.key,
+      model: normalized.model
+    };
+  }) : [];
   data.activeApi = (typeof raw.activeApi === 'string') ? raw.activeApi : 'preset';
   // --- memoItems ---
   data.memoItems = Array.isArray(raw.memoItems) ? raw.memoItems : [];
@@ -30654,8 +30819,12 @@ async function confirmImport() {
   // 11.5 API配置
   await safe('API配置', () => {
     if (data.apiConfig && Object.keys(data.apiConfig).length > 0) {
-      localStorage.setItem('mono_api', JSON.stringify(data.apiConfig));
-      apiConfig = data.apiConfig;
+      const importedPresetApi = _normalizeApiConfigObject(data.apiConfig);
+      localStorage.setItem('mono_api', JSON.stringify(importedPresetApi));
+      if (typeof activeApiId === 'undefined' || activeApiId === 'preset') {
+        apiConfig = importedPresetApi;
+        _persistEffectiveApiConfig(apiConfig);
+      }
     }
   });
   // 11.6 TTS语音合成配置
@@ -30949,6 +31118,11 @@ async function confirmImport() {
       localStorage.setItem('mono_active_api', data.activeApi);
       if (typeof activeApiId !== 'undefined') activeApiId = data.activeApi;
     }
+    if (typeof applyActiveApi === 'function') {
+      applyActiveApi();
+    } else if (typeof activeApiId === 'undefined' || activeApiId === 'preset') {
+      _persistEffectiveApiConfig(_getPresetApiConfig());
+    }
   });
   // 26. 备忘录
   await safe('备忘录', () => {
@@ -31220,7 +31394,7 @@ function closeBlackboxApp() {
   if (page) page.style.display = 'none';
 }
 // ===================== MEMO WIDGET =====================
-let memoItems = JSON.parse(localStorage.getItem('mono_memo_items') || '[]');
+let memoItems = _safeParse('mono_memo_items', []);
 let memoEditIndex = -1; // -1 = add new, >=0 = editing
 function saveMemoItems() {
   localStorage.setItem('mono_memo_items', JSON.stringify(memoItems));
@@ -31897,26 +32071,27 @@ function escapeHtml(str) {
 // Extend the onload to include customizations
 const _origOnload2 = window.onload;
 window.onload = function() {
-  if (_origOnload2) _origOnload2();
-  // Defer icon/bg loading until IndexedDB cache is fully ready
+  try { if (_origOnload2) _origOnload2(); } catch(e) { console.warn('[mono] onload2 chain error:', e); }
   window.afterDB(function() {
-    loadCustomizations();
-    renderIconCustomizeGrid();
-    syncPage2DockIcons();
-    // Load bg preview in profile page
-    const bgData = localStorage.getItem('mono_home_bg');
-    if (bgData) {
-      const preview = document.getElementById('bgPreview');
-      if (preview) preview.innerHTML = '<img src="' + bgData + '">';
-    }
+    try { loadCustomizations(); } catch(e) {}
+    try { renderIconCustomizeGrid(); } catch(e) {}
+    try { syncPage2DockIcons(); } catch(e) {}
+    try {
+      const bgData = localStorage.getItem('mono_home_bg');
+      if (bgData) {
+        const preview = document.getElementById('bgPreview');
+        if (preview) preview.innerHTML = '<img src="' + bgData + '">';
+      }
+    } catch(e) {}
   });
-  // 恢复iOS全屏模式状态
-  applyIOSFullscreenState();
-  if (isIOSFullscreen) {
-    const el = document.documentElement;
-    if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
-    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-  }
+  try { applyIOSFullscreenState(); } catch(e) {}
+  try {
+    if (isIOSFullscreen) {
+      const el = document.documentElement;
+      if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    }
+  } catch(e) {}
 };
 // ===================== 串門 Visit App =====================
 let visitCurrentCharId = null;
@@ -33925,8 +34100,8 @@ function scriptDeleteArchive(idx) {
   scriptRenderArchives();
 }
 // ===================== 后台通知中心系统 =====================
-let notifHistory = JSON.parse(localStorage.getItem('mono_notif_history')) || [];
-let notifSettings = JSON.parse(localStorage.getItem('mono_notif_settings')) || {};
+let notifHistory = _safeParse('mono_notif_history', []);
+let notifSettings = _safeParse('mono_notif_settings', {});
 let _autoMsgTimers = {};
 let _autoDiaryTimers = {};
 let _notifToastQueue = [];
@@ -38934,15 +39109,17 @@ window.afterDB(function() {
   loadMusicSavedTracks();
 });
 // ===================== TASK APP (任务) =====================
-let taskData = JSON.parse(localStorage.getItem('mono_task_data') || 'null') || {
-  dailyChatCounts: {},  // { 'YYYY-MM-DD': { personaId: count } }
-  tasks: {},            // { 'YYYY-MM-DD': { personaId: { chat10: {completed,claimed}, chat20: {..}, chat50: {..} } } }
-  rewards: [],          // [{ date, personaId, charName, category, subcategory, content }]
-  streaks: {},          // { personaId: { currentStreak, lastChatDate, milestones: { 3: bool, 7, 14, 30 } } }
-  streakRewards: [],    // [{ date, personaId, charName, days, content }]
-  dailyMoments: {},     // { 'YYYY-MM-DD': true }
-  dailyDiary: {}        // { 'YYYY-MM-DD': true }
-};
+let taskData = (function() {
+  const _def = {
+    dailyChatCounts: {},
+    tasks: {},
+  };
+  try {
+    const _raw = localStorage.getItem('mono_task_data');
+    const _parsed = _raw ? JSON.parse(_raw) : null;
+    return (_parsed && typeof _parsed === 'object') ? _parsed : _def;
+  } catch(e) { return _def; }
+})();
 // Ensure all required fields exist on data loaded from old localStorage versions
 if (!taskData.dailyChatCounts) taskData.dailyChatCounts = {};
 if (!taskData.tasks) taskData.tasks = {};
@@ -41821,7 +41998,7 @@ function _extractCharPersonality(persona) {
   return filtered.join('\n').trim();
 }
 async function _callDatingChatAPI(persona, session) {
-  var api = (typeof apiConfig !== 'undefined') ? apiConfig : JSON.parse(localStorage.getItem('mono_api') || '{}');
+  var api = _getCurrentActiveApiConfig();
   if (!api.url || !api.key) throw new Error('API未配置');
   var minR = parseInt(datingPrefs.minReply || '1');
   var maxR = parseInt(datingPrefs.maxReply || '3');
@@ -41934,7 +42111,7 @@ async function _sendDatingInitialGreeting(pid) {
   datingIsTyping = true;
   var typingId = _showDatingTyping(persona);
   try {
-    var api = (typeof apiConfig !== 'undefined') ? apiConfig : JSON.parse(localStorage.getItem('mono_api') || '{}');
+    var api = _getCurrentActiveApiConfig();
     if (!api.url || !api.key) throw new Error('no api');
     var charPersonality = _extractCharPersonality(persona);
     var userProfileDesc = _buildDatingUserProfileDesc();
@@ -41983,7 +42160,7 @@ async function _sendDatingProactiveMsg(pid) {
   var persona = _getPersonaById(pid);
   if (!persona) return;
   var session = _getSession(pid);
-  var api = (typeof apiConfig !== 'undefined') ? apiConfig : JSON.parse(localStorage.getItem('mono_api') || '{}');
+  var api = _getCurrentActiveApiConfig();
   if (!api.url || !api.key) return;
   var charPersonality = _extractCharPersonality(persona);
   var totalMsgs = session.history.length;
@@ -42337,7 +42514,7 @@ function _applyDatingIconToBox(data) {
 }
 // ── API status ──
 function _checkDatingApiStatus() {
-  var api = (typeof apiConfig !== 'undefined') ? apiConfig : JSON.parse(localStorage.getItem('mono_api') || '{}');
+  var api = _getCurrentActiveApiConfig();
   var el = document.getElementById('datingApiStatus');
   if (!el) return;
   el.textContent = (api.url && api.key) ? '✓ API已连接，可正常使用' : '✗ API未配置，请前往主APP设置页面';
@@ -42434,7 +42611,7 @@ async function _datingHandleTransfer(idx) {
   var persona = _getPersonaById(datingCurrentPid);
   if (!persona) return;
   var msg = session.history[idx]; if (!msg) return;
-  var api = typeof apiConfig !== 'undefined' ? apiConfig : JSON.parse(localStorage.getItem('mono_api')||'{}');
+  var api = _getCurrentActiveApiConfig();
   var accepted = true; var reply = '';
   if (api.url && api.key) {
     try {
@@ -42476,7 +42653,7 @@ async function _datingHandleRequest(idx) {
   var persona = _getPersonaById(datingCurrentPid);
   if (!persona) return;
   var msg = session.history[idx]; if (!msg) return;
-  var api = typeof apiConfig !== 'undefined' ? apiConfig : JSON.parse(localStorage.getItem('mono_api')||'{}');
+  var api = _getCurrentActiveApiConfig();
   var paid = Math.random() < 0.8; var reply = '';
   if (api.url && api.key) {
     try {
@@ -42521,7 +42698,7 @@ async function _datingHandleOrder(type, orderData) {
   var session = _getSession(datingCurrentPid);
   var persona = _getPersonaById(datingCurrentPid);
   if (!persona) return;
-  var api = typeof apiConfig !== 'undefined' ? apiConfig : JSON.parse(localStorage.getItem('mono_api')||'{}');
+  var api = _getCurrentActiveApiConfig();
   var reply = '';
   if (api.url && api.key) {
     try {
@@ -42541,7 +42718,7 @@ async function _datingHandleOrder(type, orderData) {
 async function _checkDatingGift(session, persona) {
   var total = session.history.length;
   if (total < 100 || total > 800 || Math.random() > 0.035) return;
-  var api = typeof apiConfig !== 'undefined' ? apiConfig : JSON.parse(localStorage.getItem('mono_api')||'{}');
+  var api = _getCurrentActiveApiConfig();
   if (!api.url || !api.key) return;
   try {
     var recent = session.history.slice(-10).map(function(m){ return (m.role==='user'?(datingPrefs.userName||'对方'):persona.name)+'：'+(m.content||''); }).join(' / ');
@@ -42578,9 +42755,9 @@ function _datingApiHeaders(api) {
 }
 function _datingApiBody(api, prompt, maxTokens) {
   if (_isAnthropicApi(api)) {
-    return { model:api.model, max_tokens:maxTokens, messages:[{role:'user',content:prompt}] };
+    return _applyApiModel({ max_tokens:maxTokens, messages:[{role:'user',content:prompt}] }, api.model);
   } else {
-    return { model:api.model||'gpt-4o-mini', max_tokens:maxTokens, messages:[{role:'user',content:prompt}] };
+    return _applyApiModel({ max_tokens:maxTokens, messages:[{role:'user',content:prompt}] }, api.model);
   }
 }
 function _datingApiText(d) {
@@ -42599,6 +42776,7 @@ var _callState = {
   personaName: '',
   personaAvatar: '',
   personaSnapshot: null,   // ← 通話開始時的角色快照，防止通話中角色錯亂
+  initiator: 'user',
   startTime: null,
   timerInterval: null,
   seconds: 0,
@@ -42635,6 +42813,7 @@ async function startCall(source) {
   _callState.source = source; _callState.personaId = pid;
   _callState.personaName = persona.name; _callState.personaAvatar = persona.avatar || '';
   _callState.personaSnapshot = Object.assign({}, persona); // ← 鎖定角色快照
+  _callState.initiator = 'user';
   _callState.messages = []; _callState.seconds = 0; _callState.isTyping = false;
   var avatarEl = document.getElementById('incomingCallAvatar');
   avatarEl.innerHTML = persona.avatar ? '<img src="' + persona.avatar + '" style="width:100%;height:100%;object-fit:cover;">' : '<i class="fas fa-user"></i>';
@@ -42643,13 +42822,13 @@ async function startCall(source) {
   document.getElementById('incomingAcceptBtn').style.display = 'none';
   document.getElementById('incomingCallScreen').classList.add('active');
   var willAccept = Math.random() < 0.85;
-  var api = typeof apiConfig !== 'undefined' ? apiConfig : JSON.parse(localStorage.getItem('mono_api') || '{}');
+  var api = _getCurrentActiveApiConfig();
   if (api.url && api.key) {
     try {
       var uName = source === 'dating' ? (datingPrefs.userName || '对方') : userProfile.name;
       var _callUProfileDesc = source === 'dating' ? _buildDatingUserProfileDesc() : '';
       var _callIdentityNote = source === 'dating' ? '你是对方的相親对象，' : '';
-      var prompt = '你是' + persona.name + '，人设：' + (persona.persona||'').slice(0,120) + '。' + _callIdentityNote + (_callUProfileDesc ? '对方資料：' + _callUProfileDesc + '。' : '') + uName + '打电话给你。根据你的性格和心情，你接吗？回覆JSON：{"accept":true或false} 只返回JSON。';
+      var prompt = '你是' + persona.name + '，人设：' + (persona.persona||'').slice(0,120) + '。' + _buildPersonaIdentityPrompt(persona) + _callIdentityNote + (_callUProfileDesc ? '对方資料：' + _callUProfileDesc + '。' : '') + uName + '主动打电话给你。根据你的性格和心情，你接吗？回覆JSON：{"accept":true或false} 只返回JSON。';
       var resp = await fetch(_datingApiEndpoint(api), {method:'POST', headers:_datingApiHeaders(api), body:JSON.stringify(_datingApiBody(api, prompt, 30))});
       var result = JSON.parse(_datingApiText(await resp.json()).replace(/```json|```/g,'').trim());
       willAccept = result.accept !== false;
@@ -42721,7 +42900,7 @@ async function _callPlayTts(text, persona) {
   // 与语音信息相同的 enabled 检查；key 缺失由 _callMiniMaxTtsOnce 抛出错误处理
   if (!ttsConfig.enabled) return;
   // 合成前去除译文标注，与语音信息路径保持一致
-  var _ttsText = text.replace(/\n?「译文：[\s\S]+?」/g, '').replace(/\n+$/, '').trim();
+  var _ttsText = _stripSpokenTranslation(text);
   if (!_ttsText) return;
   
   try {
@@ -42769,7 +42948,7 @@ async function _callAIGreeting() {
   if (!_callState.active) return;
   _showCallTyping();
   var persona = _getCallPersona();
-  var api = typeof apiConfig !== 'undefined' ? apiConfig : JSON.parse(localStorage.getItem('mono_api') || '{}');
+  var api = _getCurrentActiveApiConfig();
   var greeting = null;
   if (api.url && api.key) {
     try {
@@ -42779,23 +42958,24 @@ async function _callAIGreeting() {
       var _greetLangCode = typeof _detectPersonaLang === 'function' ? _detectPersonaLang(persona) : '';
       var _greetLangOv = typeof _langOverridePrompt === 'function' ? _langOverridePrompt(_greetLangCode) : '';
       var _greetNeedsTranslation = !!(_greetLangCode && _greetLangCode !== 'zh' && _greetLangCode !== 'zh-cn');
-      var _greetLangInstruction = _greetNeedsTranslation ? '用你的母语（' + _greetLangCode + '）口语化说一句接电话开场白' : '口语化繁体中文说一句接电话开场白';
+      var _greetLangInstruction = _greetNeedsTranslation ? '用你的母语（' + _greetLangCode + '）口语化说一句接电话开场白' : '口语化简体中文说一句接电话开场白';
       var _greetTranslationNote = _greetNeedsTranslation ? '，并在下一行附上简体中文翻译，格式：「译文：[内容]」' : '';
-      var prompt = '你是「' + persona.name + '」，人设：' + (persona.persona||'').slice(0,150) + '。' + _greetIdentityNote + (_greetUProfileDesc ? '对方資料：' + _greetUProfileDesc + '。' : '') + _greetLangOv + '你剛接了' + uName + '的电话，' + _greetLangInstruction + '，符合你的性格，1句话，不加标点。绝对不能提到自己是AI。' + _greetTranslationNote;
+      var _callDirection = _callState.initiator === 'persona' ? '你刚刚主动打电话给了' + uName : uName + '刚刚主动打电话给你';
+      var prompt = '你是「' + persona.name + '」，人设：' + (persona.persona||'').slice(0,150) + '。' + _buildPersonaIdentityPrompt(persona) + _greetIdentityNote + (_greetUProfileDesc ? '对方資料：' + _greetUProfileDesc + '。' : '') + _greetLangOv + _callDirection + '，现在电话已经接通，' + _greetLangInstruction + '，符合你的性格，1句话，不加标点。绝对不能提到自己是AI。' + _greetTranslationNote;
       var _gApiUrl = (api.url || '').replace(/\/$/, '');
       var _gIsAnt = typeof _isAnthropicApi === 'function' ? _isAnthropicApi(api) : _gApiUrl.includes('anthropic');
       var _gResp, _gData;
       if (_gIsAnt) {
         _gResp = await fetch(_gApiUrl + '/v1/messages', { method:'POST',
           headers:{ 'Content-Type':'application/json', 'x-api-key':api.key, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
-          body:JSON.stringify({ model:api.model, max_tokens:100, system:'你是一个角色扮演助手，只输出角色说的话，不加任何额外说明。', messages:[{role:'user',content:prompt}] }) });
+          body:JSON.stringify(_applyApiModel({ max_tokens:100, system:'你是一个角色扮演助手，只输出角色说的话，不加任何额外说明。', messages:[{role:'user',content:prompt}] }, api.model)) });
         _gData = await _gResp.json();
         var _gt = (_gData.content && _gData.content[0]) ? _gData.content[0].text.trim() : '';
         if (_gt) greeting = _gt;
       } else {
         _gResp = await fetch(_gApiUrl + '/chat/completions', { method:'POST',
           headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + api.key },
-          body:JSON.stringify({ model:api.model||'gpt-4o-mini', max_tokens:100, messages:[{role:'system',content:'你是一个角色扮演助手，只输出角色说的话。'},{role:'user',content:prompt}] }) });
+          body:JSON.stringify(_applyApiModel({ max_tokens:100, messages:[{role:'system',content:'你是一个角色扮演助手，只输出角色说的话。'},{role:'user',content:prompt}] }, api.model)) });
         _gData = await _gResp.json();
         var _gt2 = (_gData.choices && _gData.choices[0]) ? _gData.choices[0].message.content.trim() : '';
         if (_gt2) greeting = _gt2;
@@ -42834,7 +43014,7 @@ async function _callAIReply(userText) {
   if (_callContSttActive && _callContSttRecog) { try { _callContSttRecog.abort(); } catch(e){} _callContSttRecog = null; }
   if (_callContSttActive) _setCallSttStatus('⏳ 角色回复中…');
   var persona = _getCallPersona();
-  var api = typeof apiConfig !== 'undefined' ? apiConfig : JSON.parse(localStorage.getItem('mono_api') || '{}');
+  var api = _getCurrentActiveApiConfig();
   var reply = null;
   try {
     if (api.url && api.key) {
@@ -42843,14 +43023,15 @@ async function _callAIReply(userText) {
       var _replyIdentityNote = _callState.source === 'dating'
         ? '你是对方的相親对象，你们透过相親平台认识。' + (_replyUProfileDesc ? '对方資料：' + _replyUProfileDesc + '。' : '') + '绝对不能承认自己是AI或虛構角色。'
         : '';
-      var hist = _callState.messages.slice(-8).map(function(m){ return (m.role==='user'?uName:persona.name)+'：'+m.content; }).join('\n');
+      var hist = _callState.messages.slice(-8).map(function(m){ return (m.role==='user'?uName:persona.name)+'：'+_stripSpokenTranslation(m.content); }).join('\n');
       var _replyLangCode = typeof _detectPersonaLang === 'function' ? _detectPersonaLang(persona) : '';
       var _replyLangOv = typeof _langOverridePrompt === 'function' ? _langOverridePrompt(_replyLangCode) : '';
       var _replyNeedsTranslation = !!(_replyLangCode && _replyLangCode !== 'zh' && _replyLangCode !== 'zh-cn');
       var _replyLangNote = _replyNeedsTranslation
         ? '用你的母语（' + _replyLangCode + '）口语化回应，每条回复末尾另起一行附简体中文翻译，格式：「译文：[内容]」。回复1-2句话。'
         : '用你的性格自然口语地回应，1-2句，不加动作描写。';
-      var sys = '你是「' + persona.name + '」，人设：' + (persona.persona||'').slice(0,200) + '。' + _replyIdentityNote + _replyLangOv + '你正在和' + uName + '电话聊天。' + _replyLangNote;
+      var _initiatorLine = _callState.initiator === 'persona' ? '这通电话是你主动打给对方的。' : '这通电话是对方主动打给你的。';
+      var sys = '你是「' + persona.name + '」，人设：' + (persona.persona||'').slice(0,200) + '。' + _buildPersonaIdentityPrompt(persona) + _replyIdentityNote + _replyLangOv + '你正在和' + uName + '电话聊天。' + _initiatorLine + _replyLangNote;
       // Use standard API endpoint directly (not dating wrapper) for faster response
       var _callApiUrl = (api.url || '').replace(/\/$/, '');
       var isAnt = typeof _isAnthropicApi === 'function' ? _isAnthropicApi(api) : _callApiUrl.includes('anthropic');
@@ -42858,13 +43039,13 @@ async function _callAIReply(userText) {
       if (isAnt) {
         endpoint = _callApiUrl + '/v1/messages';
         headers = { 'Content-Type': 'application/json', 'x-api-key': api.key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' };
-        body = { model: api.model, max_tokens: 200, system: sys,
-          messages: [{role:'user', content:'近期：\n' + hist + '\n\n' + uName + '刚说：' + userText}] };
+        body = _applyApiModel({ max_tokens: 200, system: sys,
+          messages: [{role:'user', content:'近期：\n' + hist + '\n\n' + uName + '刚说：' + userText}] }, api.model);
       } else {
         endpoint = _callApiUrl + '/chat/completions';
         headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + api.key };
-        body = { model: api.model || 'gpt-4o-mini', max_tokens: 200,
-          messages: [{role:'system', content:sys}, {role:'user', content:'近期：\n' + hist + '\n\n' + uName + '刚说：' + userText}] };
+        body = _applyApiModel({ max_tokens: 200,
+          messages: [{role:'system', content:sys}, {role:'user', content:'近期：\n' + hist + '\n\n' + uName + '刚说：' + userText}] }, api.model);
       }
       var resp = await fetch(endpoint, { method: 'POST', headers: headers, body: JSON.stringify(body) });
       var data = await resp.json();
@@ -42897,7 +43078,7 @@ function _addCallMsg(text, isUser) {
     // Parse translation from format 「译文：[...]」
     var translationMatch = text.match(/「译文：([\s\S]+?)」/);
     var translation = translationMatch ? translationMatch[1].trim() : '';
-    var mainText = text.replace(/\n?「译文：[\s\S]+?」/, '').trim();
+    var mainText = _stripSpokenTranslation(text);
     // Detect language from persona
     var _callP = _getCallPersona ? _getCallPersona() : {};
     var _callLang = (_callP && typeof _detectPersonaLang === 'function') ? _detectPersonaLang(_callP) : '';
@@ -43101,7 +43282,8 @@ function openCallLog(msgIdx, source) {
     dStr = '通话时长：' + (cm>0?cm+'分':'') + cs + '秒';
   }
   document.getElementById('callLogModalTitle').textContent = title;
-  document.getElementById('callLogModalMeta').textContent = dStr || (msg.connected ? '通话已结束' : '对方未接听');
+  var originText = msg.initiator === 'persona' ? '发起者：角色' : '发起者：用户';
+  document.getElementById('callLogModalMeta').textContent = (dStr ? dStr + ' · ' : '') + originText + (msg.connected ? '' : ' · 未接通');
   var body = document.getElementById('callLogModalBody');
   var msgs = msg.callMsgs || [];
   if (msgs.length === 0) {
@@ -43167,7 +43349,7 @@ async function _maybeProactiveCall(pid, source) {
     persona = typeof _getPersonaById === 'function' ? _getPersonaById(pid) : null;
   }
   if (!persona || !persona.allowVoice) return;
-  var api = typeof apiConfig !== 'undefined' ? apiConfig : JSON.parse(localStorage.getItem('mono_api') || '{}');
+  var api = _getCurrentActiveApiConfig();
   if (!api.url || !api.key) return;
   // Ask AI if the character wants to call right now based on mood/chat context
   try {
@@ -43217,6 +43399,7 @@ function userAcceptCharCall() {
   _callState.source = source; _callState.personaId = pid;
   _callState.personaName = screen._persona.name; _callState.personaAvatar = screen._persona.avatar || '';
   _callState.personaSnapshot = Object.assign({}, screen._persona); // ← 鎖定角色快照
+  _callState.initiator = 'persona';
   _callState.messages = []; _callState.seconds = 0; _callState.isTyping = false;
   acceptCall();
 }
@@ -43227,9 +43410,10 @@ function _userDeclineCharCall(pid, source, persona) {
   // Record declined call in history from char's side
   _callState.source = source; _callState.personaId = pid;
   _callState.personaName = persona.name; _callState.personaAvatar = persona.avatar || '';
+  _callState.initiator = 'persona';
   _callState.messages = [];
   // The declined bubble: role = 'assistant' (char called, user declined)
-  var msgObj = {role:'assistant', msgType:'call', connected:false, duration:0, callMsgs:[], content:'[未接通的语音通话]'};
+  var msgObj = {role:'assistant', msgType:'call', initiator:'persona', connected:false, duration:0, callMsgs:[], content:'[未接通的语音通话]'};
   if (source === 'chat') {
     var p = personas.find(function(x){ return x.id == pid; });
     if (p) { p.history.push(msgObj); if (typeof saveData==='function') saveData(); if (currentId == pid && typeof renderMessages==='function') renderMessages(); }
@@ -43252,17 +43436,17 @@ function _addCallBubble(connected, seconds) {
   }
   // Save the full in-call conversation so users can replay it
   var savedMsgs = connected ? (_callState.messages || []).slice() : [];
-  var msgObj = {role:'user', msgType:'call', connected:connected, duration:seconds,
+  var msgObj = {role:_callState.initiator === 'persona' ? 'assistant' : 'user', msgType:'call', initiator:_callState.initiator || 'user', connected:connected, duration:seconds,
     callMsgs: savedMsgs,
     content: connected ? '[语音通话 '+dStr+']' : '[未接通的语音通话]'};
   if (_callState.source === 'chat') {
     var p = (typeof personas!=='undefined'?personas:[]).find(function(x){ return x.id==_callState.personaId; });
-    if (p) { p.history.push(msgObj); if (typeof saveData==='function') saveData(); if (typeof renderMessages==='function') renderMessages(); }
+    if (p) { p.history.push(msgObj); _persistCallMemorySummary(p, msgObj, userProfile && userProfile.name); if (typeof saveData==='function') saveData(); if (typeof renderMessages==='function') renderMessages(); }
   } else {
     msgObj.ts = Date.now();
     var sess = typeof _getSession==='function' ? _getSession(_callState.personaId) : null;
     var pd = typeof _getPersonaById==='function' ? _getPersonaById(_callState.personaId) : null;
-    if (sess && pd) { sess.history.push(msgObj); saveDatingSessions(); renderDatingMessages(pd, sess); }
+    if (sess && pd) { sess.history.push(msgObj); _persistCallMemorySummary(pd, msgObj, datingPrefs && datingPrefs.userName); saveDatingSessions(); renderDatingMessages(pd, sess); }
   }
 }
 // ================================================================
@@ -51004,22 +51188,16 @@ function initApiSwitcher() {
 // ── Apply active API to global apiConfig ──
 function applyActiveApi() {
   if (activeApiId === 'preset') {
-    // Restore preset API from localStorage
-    const preset = _normalizeApiConfigObject(JSON.parse(localStorage.getItem('mono_api') || '{}'));
-    if (preset.url) {
-      apiConfig.url = preset.url;
-      apiConfig.key = preset.key;
-      apiConfig.model = preset.model;
-    }
+    apiConfig = _normalizeApiConfigObject(_getPresetApiConfig());
   } else {
     const secApi = secondaryApis.find(a => a.id === activeApiId);
     if (secApi) {
-      const normalized = _normalizeApiConfigObject(secApi);
-      apiConfig.url = normalized.url;
-      apiConfig.key = normalized.key;
-      apiConfig.model = normalized.model;
+      apiConfig = _normalizeApiConfigObject(secApi);
+    } else {
+      apiConfig = _normalizeApiConfigObject(_getPresetApiConfig());
     }
   }
+  _persistEffectiveApiConfig(apiConfig);
 }
 // ── Get active API display name ──
 function getActiveApiName() {
@@ -51416,7 +51594,7 @@ function positionFabPanel() {
 function updateFabPanel() {
   const container = document.getElementById('apiFabPanelOptions');
   if (!container) return;
-  const presetApi = JSON.parse(localStorage.getItem('mono_api') || '{}');
+  const presetApi = _getPresetApiConfig();
   
   let html = '';
   
@@ -52660,7 +52838,7 @@ async function regenerateGrandchildProfile(pid, babyIdx, childIdx) {
   var state = getLoveState(pid, babyIdx);
   var child = (state.children || [])[childIdx];
   if (!child) return;
-  var apiCfg = JSON.parse(localStorage.getItem('mono_api') || '{}');
+  var apiCfg = _getCurrentActiveApiConfig();
   if (!apiCfg.url || !apiCfg.key || !apiCfg.model) {
     alert('请先配置 API，才能重新生成孙子/孙女资料。');
     return;
@@ -52766,7 +52944,7 @@ function saveEditGrandchild() {
   syncLoveStateNow(_editGrandchildPid, _editGrandchildBabyIdx);
 }
 async function growGrandchildProfileAsync(pid, babyIdx, childIdx) {
-  var apiCfg = JSON.parse(localStorage.getItem('mono_api') || '{}');
+  var apiCfg = _getCurrentActiveApiConfig();
   if (!apiCfg.url || !apiCfg.key || !apiCfg.model) return;
   var state = getLoveState(pid, babyIdx);
   var child = (state.children || [])[childIdx];
@@ -53047,7 +53225,7 @@ function _showGrowthLoadingOverlays(babies) {
 }
 // AI-driven profile evolution after growing a year
 async function growBabyProfilesAsync(pid, babies) {
-  var apiCfg = JSON.parse(localStorage.getItem('mono_api') || '{}');
+  var apiCfg = _getCurrentActiveApiConfig();
   if (!apiCfg.url || !apiCfg.key || !apiCfg.model) return; // no API, skip
   var url = (apiCfg.url||'').replace(/\/+$/, '');
   if (!url.endsWith('/chat/completions')) url += '/chat/completions';
@@ -54217,7 +54395,7 @@ async function doGenerateMilestone(pid, babyIdx, milestoneType) {
     + '【输出格式 — 最高优先级】你的整个回复必须是且只能是以下格式的纯JSON对象，绝对不允许包含任何解释、说明、前言、后语或markdown符号（如```）。\n'
     + '{"title":"里程碑标题（6-12字）","content":"故事正文（宝宝第一人称）"}';
   try {
-    var apiCfg = JSON.parse(localStorage.getItem('mono_api') || '{}');
+    var apiCfg = _getCurrentActiveApiConfig();
     if (!apiCfg.url || !apiCfg.key || !apiCfg.model) throw new Error('请先在设置中配置API（URL、Key、Model）');
     var url = (apiCfg.url||'').replace(/\/+$/, '');
     if (!url.endsWith('/chat/completions')) url += '/chat/completions';
@@ -54412,7 +54590,7 @@ async function generateBabyEvent(pid, babyIdx, mood) {
     + '【输出格式 — 最高优先级】你的整个回复必须是且只能是以下格式的纯JSON对象，绝对不允许包含任何解释、说明、前言、后语或markdown符号（如```）。\n'
     + '{"title":"小标题（6-12字）","content":"故事正文"}';
   try {
-    var apiCfg = JSON.parse(localStorage.getItem('mono_api') || '{}');
+    var apiCfg = _getCurrentActiveApiConfig();
     if (!apiCfg.url || !apiCfg.key || !apiCfg.model) throw new Error('请先在设置中配置API（URL、Key、Model）');
     var url = (apiCfg.url||'').replace(/\/+$/, '');
     if (!url.endsWith('/chat/completions')) url += '/chat/completions';
@@ -55875,13 +56053,13 @@ async function startBabyGeneration() {
     + '  "birthStory": "出生故事（3-4句）"\n'
     + '}';
   try {
-    var apiCfg = JSON.parse(localStorage.getItem('mono_api') || '{}');
+    var apiCfg = _getCurrentActiveApiConfig();
     if (!apiCfg.url || !apiCfg.key) throw new Error('请先在设置中配置API');
     var _babyApiUrl = (apiCfg.url||'').replace(/\/+$/, '');
     if (!_babyApiUrl.endsWith('/chat/completions')) _babyApiUrl += '/chat/completions';
     // Generate first baby (or single)
     var requestBody = {
-      model: apiCfg.model || apiConfig.model,
+      model: apiCfg.model,
       messages: [{role:'system', content: '你是一个创意的孩子角色生成器。请生成真实、细腻、有个性的孩子资料，充分融合双方父母特征，细节要丰富具体。'}, {role:'user', content: prompt}],
       max_tokens: 1400,
       temperature: 1.0
@@ -55889,7 +56067,7 @@ async function startBabyGeneration() {
     
     var resp = await fetch(_babyApiUrl, {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + (apiCfg.key || apiConfig.key), 'Content-Type': 'application/json' },
+      headers: { 'Authorization': 'Bearer ' + apiCfg.key, 'Content-Type': 'application/json' },
       body: JSON.stringify(requestBody)
     });
     
@@ -55932,7 +56110,7 @@ async function startBabyGeneration() {
       var twinResp = await fetch(_babyApiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiCfg.key },
-        body: JSON.stringify({ model: apiCfg.model||'gpt-4o', max_tokens: 1400, messages: [{role:'user', content: twinPrompt}] })
+        body: JSON.stringify(_applyApiModel({ max_tokens: 1400, messages: [{role:'user', content: twinPrompt}] }, apiCfg.model))
       });
       var twinResult = await twinResp.json();
       var twinTxt = (twinResult.choices && twinResult.choices[0] && twinResult.choices[0].message) ? twinResult.choices[0].message.content : '{}';
@@ -61393,7 +61571,7 @@ if (document.readyState === 'loading') {
   // ─── Helpers ───
   function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function delay(ms) { return new Promise(function(r){setTimeout(r,ms);}); }
-  function getApi() { try{return _normalizeApiConfigObject(JSON.parse(localStorage.getItem('mono_api')||'{}'));}catch(e){return _normalizeApiConfigObject({});} }
+  function getApi() { return _getCurrentActiveApiConfig(); }
   function getUser() { try{return JSON.parse(localStorage.getItem('mono_user_profile')||'{}');}catch(e){return{};} }
   function getPersona(pid) {
     if (!pid) return null;
@@ -63010,16 +63188,16 @@ function rpcSendSystemMessage(text) {
 // Helper: wrap callAIAPI for RPC (uses existing API infrastructure)
 function callAIAPI(prompt, onSuccess, onError) {
   try {
-    var cfg = {};
-    try { cfg = JSON.parse(localStorage.getItem('mono_api') || '{}'); } catch(e2) {}
+    var cfg = _getCurrentActiveApiConfig();
     var apiKey  = cfg.key   || (typeof getApiKey  === 'function' ? getApiKey()  : '') || localStorage.getItem('openai_api_key') || localStorage.getItem('api_key') || '';
-    var model   = cfg.model || (typeof getModel   === 'function' ? getModel()   : '') || localStorage.getItem('selected_model') || 'gpt-4o-mini';
+    var model   = _getEffectiveApiModel(cfg.model || (typeof getModel === 'function' ? getModel() : ''));
     var baseUrl = ((cfg.url || (typeof getBaseUrl === 'function' ? getBaseUrl() : '') || 'https://api.openai.com/v1').replace(/\/+$/, ''));
     if (!apiKey) { onError(new Error('需要 API Key')); return; }
+    var reqBody = _applyApiModel({messages:[{role:'user',content:prompt}],temperature:0.85,max_tokens:800}, model);
     fetch(baseUrl + '/chat/completions', {
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
-      body:JSON.stringify({model:model,messages:[{role:'user',content:prompt}],temperature:0.85,max_tokens:800})
+      body:JSON.stringify(reqBody)
     }).then(function(r){ return r.json(); }).then(function(d){
       var content = d.choices?.[0]?.message?.content || '';
       onSuccess(content);
@@ -64468,27 +64646,26 @@ function rpc2SendMessage(text) {
 function rpc2CallAI(prompt, onSuccess, onError) {
   try {
     /* 优先使用 app 自身的 apiConfig（存储在 mono_api） */
-    var cfg = {};
-    try { cfg = JSON.parse(localStorage.getItem('mono_api') || '{}'); } catch(e2) {}
+    var cfg = _getCurrentActiveApiConfig();
     var apiKey  = cfg.key   || (typeof getApiKey  === 'function' ? getApiKey()  : '') || localStorage.getItem('openai_api_key') || localStorage.getItem('api_key') || '';
-    var model   = cfg.model || (typeof getModel   === 'function' ? getModel()   : '') || localStorage.getItem('selected_model') || 'gpt-4o-mini';
+    var model   = _getEffectiveApiModel(cfg.model || (typeof getModel === 'function' ? getModel() : ''));
     var baseUrl = ((cfg.url || (typeof getBaseUrl === 'function' ? getBaseUrl() : '') || 'https://api.openai.com/v1').replace(/\/+$/, ''));
     if (!apiKey) {
       onError(new Error('API Key required'));
       return;
     }
+    var reqBody = _applyApiModel({
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.85,
+      max_tokens: 400
+    }, model);
     fetch(baseUrl + '/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer ' + apiKey
       },
-      body: JSON.stringify({
-        model: model,
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.85,
-        max_tokens: 400
-      })
+      body: JSON.stringify(reqBody)
     })
     .then(function(r) { return r.json(); })
     .then(function(d) {
@@ -66118,10 +66295,7 @@ function iccClose() {
   iccDismissBanner();
 }
 </script>
-<!-- 截图全屏预览 Modal -->
-<div id="ccSnapFullModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.88);z-index:999999;align-items:center;justify-content:center;padding:20px;" onclick="this.style.display='none'">
-  <img id="ccSnapFullImg" src="" alt="截图" style="max-width:100%;max-height:90vh;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,0.5);">
-</div>
+
 <script>
 // ── 页面载入后启动离线自动生成检查 ──
 window.addEventListener('load', function() {
@@ -66240,11 +66414,7 @@ window.addEventListener('load', function() {
         </div>
       </div>
     </div>
-    <!-- ═══ 截图预览 Modal ═══ -->
-    <div id="ccScreenshotPreviewModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:99999;align-items:center;justify-content:center;padding:20px;" onclick="document.getElementById('ccScreenshotPreviewModal').style.display='none'">
-      <div id="ccScreenshotPreviewImg" style="max-width:100%;max-height:90vh;border-radius:12px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.5);"></div>
-    </div>
-<script>
+    <script>
 (function() {
   const OL_KEY = 'mono_online_app_v2';
   const OL_LEGACY_KEY = 'mono_online_app_v1';

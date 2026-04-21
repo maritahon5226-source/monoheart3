@@ -9719,8 +9719,11 @@ body:not(.ios-fullscreen) .family-widget {
   border: 1.5px solid #333;
 }
 /* ===== IMAGE MESSAGE & VISION API & BATCH STICKER ===== */
-.bubble-image { max-width: 200px; border-radius: 10px; overflow: hidden; cursor: pointer; }
+.bubble-image { max-width: 200px; border-radius: 10px; overflow: hidden; cursor: pointer; background: linear-gradient(180deg, #f7f7f7, #ececec); min-height: 72px; }
 .bubble-image img { width: 100%; height: auto; display: block; border-radius: 10px; }
+.bubble-image img.chat-lazy-image { opacity: 0; transition: opacity 0.2s ease; min-height: 72px; }
+.bubble-image img.chat-lazy-image.loaded { opacity: 1; min-height: 0; }
+.bubble-image.is-loaded { background: transparent; min-height: 0; }
 .bubble-image-caption { font-size: calc(9px * var(--fs, 1)); color: #888; margin-top: 4px; word-break: break-word; }
 .vision-api-section { border-top: 1px solid #eee; padding-top: 16px; margin-top: 16px; }
 .vision-api-section .section-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #888; margin-bottom: 10px; }
@@ -16260,7 +16263,10 @@ body:not(.ios-fullscreen) .family-widget {
 </div>
 <!-- API 设定弹窗 -->
 <div id="apiModal" class="fixed inset-0 bg-white z-[100] hidden flex-col items-center p-10" style="overflow-y:auto; justify-content:flex-start; padding-top:max(40px, env(safe-area-inset-top, 20px));">
-  <div class="w-full max-w-sm space-y-8">
+  <div class="w-full max-w-sm space-y-8" style="position:relative;">
+    <button onclick="toggleApiSettings()" title="关闭" style="position:absolute;top:0;right:0;width:36px;height:36px;border:none;background:#fff;color:#1a1a1a;border-radius:999px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;box-shadow:0 1px 8px rgba(0,0,0,0.08);z-index:2;">
+      <i class="fas fa-times"></i>
+    </button>
     <h3 class="text-3xl font-bold tracking-tighter text-center">API 设置</h3>
     <div class="space-y-4">
       <input type="text" id="apiUrl" placeholder="BASE URL（如 https://api.openai.com/v1）" class="w-full border-b border-black py-2 outline-none" oninput="_onApiUrlInput(this); onMainApiSourceInput();">
@@ -16400,7 +16406,6 @@ body:not(.ios-fullscreen) .family-widget {
       <button onclick="saveTtsSettings()" style="width:100%;margin-top:12px;padding:10px;background:#1a1a1a;color:#fff;border:none;border-radius:8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;cursor:pointer;font-family:inherit;">保存 TTS 设置</button>
       <div id="ttsSettingsStatus" style="font-size:10px;margin-top:6px;color:#34c759;display:none;"></div>
     </div>
-    <button onclick="toggleApiSettings()" class="w-full text-center text-xs text-gray-400 uppercase tracking-widest mt-10">Close</button>
     <!-- Active API Indicator -->
     <div class="active-api-indicator" id="activeApiIndicator">
       <div class="dot"></div>
@@ -19703,8 +19708,85 @@ ${lines}
 }
 let _chatRenderVisibleCount = 0;
 let _chatRenderPersonaId = null;
+const _CHAT_LAZY_MEDIA_PIXEL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
+let _chatLazyMediaObserver = null;
+let _pendingTranslationScrollTimer = null;
 function _getChatRenderBatchSize() {
   return window.innerWidth <= 768 ? 60 : 120;
+}
+function _escapeAttrText(value) {
+  return String(value || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '&#10;');
+}
+function _hydrateLazyVoiceBubble(el) {
+  if (!el || el.dataset.lazyTranscriptHydrated === '1') return;
+  const text = el.dataset.lazyTranscriptText || '';
+  if (text) {
+    const transcript = document.createElement('div');
+    transcript.className = 'voice-transcript' + (el.dataset.lazyTranscriptShow === '1' ? ' show' : '');
+    transcript.textContent = text;
+    const row = el.querySelector('.bubble-voice-row');
+    if (row && row.nextSibling) el.insertBefore(transcript, row.nextSibling);
+    else el.appendChild(transcript);
+  }
+  el.dataset.lazyTranscriptHydrated = '1';
+}
+function _getChatLazyMediaObserver() {
+  if (!('IntersectionObserver' in window)) return null;
+  if (_chatLazyMediaObserver) return _chatLazyMediaObserver;
+  _chatLazyMediaObserver = new IntersectionObserver(function(entries, observer) {
+    entries.forEach(function(entry) {
+      if (!entry.isIntersecting) return;
+      const el = entry.target;
+      if (el.dataset && el.dataset.lazySrc) {
+        const realSrc = el.dataset.lazySrc;
+        el.onload = function() {
+          el.classList.add('loaded');
+          const wrap = el.closest('.bubble-image');
+          if (wrap) wrap.classList.add('is-loaded');
+        };
+        el.onerror = function() {
+          const wrap = el.closest('.bubble-image');
+          if (wrap) wrap.classList.add('is-loaded');
+          el.style.display = 'none';
+        };
+        el.src = realSrc;
+        delete el.dataset.lazySrc;
+      }
+      if (el.classList && el.classList.contains('bubble-voice') && el.dataset && el.dataset.lazyTranscriptText) {
+        _hydrateLazyVoiceBubble(el);
+      }
+      setTimeout(_runPendingTranslations, 0);
+      observer.unobserve(el);
+    });
+  }, { root: null, rootMargin: '160px 0px' });
+  return _chatLazyMediaObserver;
+}
+function _initLazyChatMedia(container) {
+  const root = container || document.getElementById('chatBox');
+  if (!root) return;
+  if (!root.dataset.translateWatchBound) {
+    root.addEventListener('scroll', function() {
+      clearTimeout(_pendingTranslationScrollTimer);
+      _pendingTranslationScrollTimer = setTimeout(_runPendingTranslations, 80);
+    }, { passive: true });
+    root.dataset.translateWatchBound = '1';
+  }
+  const observer = _getChatLazyMediaObserver();
+  const lazyImages = root.querySelectorAll('img[data-lazy-src]');
+  const lazyVoices = root.querySelectorAll('.bubble-voice[data-lazy-transcript-text]');
+  if (!observer) {
+    lazyImages.forEach(function(img) {
+      img.src = img.dataset.lazySrc || '';
+      delete img.dataset.lazySrc;
+      img.classList.add('loaded');
+      const wrap = img.closest('.bubble-image');
+      if (wrap) wrap.classList.add('is-loaded');
+    });
+    lazyVoices.forEach(function(el) { _hydrateLazyVoiceBubble(el); });
+    return;
+  }
+  lazyImages.forEach(function(img) { observer.observe(img); });
+  lazyVoices.forEach(function(el) { observer.observe(el); });
 }
 function _resetChatRenderWindow(personaId) {
   _chatRenderPersonaId = personaId == null ? null : String(personaId);
@@ -19819,8 +19901,9 @@ function renderMessages(opts) {
     }
     // 图片消息
     if (m.msgType === 'image') {
-      const imgBubble = `<div class="bubble-image" data-img-src="${(m.imageSrc || '').replace(/"/g, '&quot;')}" onclick="handleImageBubbleClick(event, this)" data-msg-idx="${idx}">
-        <img src="${m.imageSrc}" alt="image">
+      const _imgSrc = _escapeAttrText(m.imageSrc || '');
+      const imgBubble = `<div class="bubble-image" data-img-src="${_imgSrc}" onclick="handleImageBubbleClick(event, this)" data-msg-idx="${idx}">
+        <img class="chat-lazy-image" src="${_CHAT_LAZY_MEDIA_PIXEL}" data-lazy-src="${_imgSrc}" loading="lazy" alt="image">
         ${m.imageCaption ? '<div class="bubble-image-caption">' + m.imageCaption + '</div>' : ''}
       </div>`;
       if (isUser) {
@@ -19901,9 +19984,11 @@ function renderMessages(opts) {
         ? ' data-translate-hash="' + _vTHash + '" data-translate-text="' + _vTClean.replace(/"/g,'&quot;').replace(/\n/g,' ') + '" data-translate-idx="' + idx + '" data-translate-ctx="private" data-translate-voice="1"'
         : '';
       const _vTranslationHtml = _vCachedTranslation ? _buildTranslationHtml(_vCachedTranslation, _personaLangCode) : '';
-      const voiceBubble = `<div class="bubble ${isUser ? 'bubble-user' : 'bubble-ai'} bubble-voice${_voiceExtraClass}" onclick="toggleVoiceTranscript(this)" data-audio-url="${m.audioUrl || ''}"${_vTAttrs}>
+      const _voiceTranscriptAttrs = displayText
+        ? ` data-lazy-transcript-text="${_escapeAttrText(displayText)}" data-lazy-transcript-show="${autoShow ? '1' : '0'}"`
+        : '';
+      const voiceBubble = `<div class="bubble ${isUser ? 'bubble-user' : 'bubble-ai'} bubble-voice${_voiceExtraClass}" onclick="toggleVoiceTranscript(this)" data-audio-url="${_escapeAttrText(m.audioUrl || '')}"${_vTAttrs}${_voiceTranscriptAttrs}>
         ${_voiceInner}
-        ${displayText ? `<div class="voice-transcript${autoShow ? ' show' : ''}">${displayText}</div>` : ''}
         ${_vTranslationHtml}
       </div>`;
       if (isUser) {
@@ -20075,6 +20160,7 @@ function renderMessages(opts) {
   } else {
     box.scrollTop = box.scrollHeight;
   }
+  _initLazyChatMedia(box);
   initMessageLongPress();
   setTimeout(_runPendingTranslations, 0);
 }
@@ -22615,11 +22701,15 @@ function saveApi() {
   if(!_isModelSelectionFresh('modelSelect', url, key)) { alert('当前 API 地址或 Key 已变更，请重新点击“模型”提取并选择模型！'); return; }
   const presetApi = _normalizeApiConfigObject({url,key,model});
   localStorage.setItem('mono_api',JSON.stringify(presetApi));
+  activeApiId = 'preset';
+  localStorage.setItem(ACTIVE_API_KEY, 'preset');
   spyDataCache = {};
-  if (typeof activeApiId === 'undefined' || activeApiId === 'preset') {
-    apiConfig = _normalizeApiConfigObject(presetApi);
-    _persistEffectiveApiConfig(apiConfig);
-  }
+  apiConfig = _normalizeApiConfigObject(presetApi);
+  _persistEffectiveApiConfig(apiConfig);
+  if (typeof applyActiveApi === 'function') applyActiveApi();
+  if (typeof renderSecondaryApiList === 'function') renderSecondaryApiList();
+  if (typeof renderActiveApiIndicator === 'function') renderActiveApiIndicator();
+  if (typeof updateFabPanel === 'function') updateFabPanel();
   setFetchStatus(`✓ 已保存：${model}`,false);
   setTimeout(()=>toggleApiSettings(),800);
 }
@@ -28739,6 +28829,7 @@ function sendVoiceMessage() { /* replaced */ }
 let _currentVoiceAudio = null;
 let _currentVoiceEl = null;
 function toggleVoiceTranscript(el) {
+  _hydrateLazyVoiceBubble(el);
   // Only toggle transcript text — audio is handled by the play button
   const transcript = el.querySelector('.voice-transcript');
   if (transcript) transcript.classList.toggle('show');
@@ -36395,13 +36486,19 @@ function renderGroupMessages(g) {
         ${msg.stickerData.caption ? `<div class="bubble-sticker-caption">${msg.stickerData.caption}</div>` : ''}
       </div>`;
     }
+    else if (msg.type === 'image' && (msg.image || msg.imageSrc || msg.src)) {
+      const gcImgSrc = _escapeAttrText(msg.image || msg.imageSrc || msg.src || '');
+      const gcCaption = msg.caption || msg.imageCaption || '';
+      bubbleContent = `<div class="bubble-image" data-img-src="${gcImgSrc}" onclick="handleImageBubbleClick(event, this)" data-msg-idx="${idx}">
+        <img class="chat-lazy-image" src="${_CHAT_LAZY_MEDIA_PIXEL}" data-lazy-src="${gcImgSrc}" loading="lazy" alt="image">
+        ${gcCaption ? `<div class="bubble-image-caption">${gcCaption}</div>` : ''}
+      </div>`;
+    }
     // Voice message
     else if (msg.type === 'voice') {
       const dur = msg.voiceDuration || (Math.floor(Math.random() * 20) + 3);
       const isUserMsg = msg.role === 'user';
       const displayVoiceText = msg.voiceText || msg.content_text || null;
-      // User voice: always show transcript; AI voice: click to toggle
-      const transcriptClass = isUserMsg ? 'voice-transcript show' : 'voice-transcript';
       const _gcHasAudio = !isUserMsg && !!msg.audioUrl;
       const _gcVoiceExtraClass = isUserMsg ? '' : (_gcHasAudio ? ' bubble-voice-real' : ' bubble-voice-simulated');
       const _gcVoiceIcon = isUserMsg ? 'fa-microphone' : (_gcHasAudio ? 'fa-volume-up' : 'fa-microphone');
@@ -36440,9 +36537,11 @@ function renderGroupMessages(g) {
         ? ' data-translate-hash="' + _gcVTHash + '" data-translate-text="' + _gcVTClean.replace(/"/g,'&quot;').replace(/\n/g,' ') + '" data-translate-idx="' + (msg._idx || '') + '" data-translate-ctx="group" data-translate-voice="1"'
         : '';
       const _gcVTranslationHtml = _gcVCachedTranslation ? _buildTranslationHtml(_gcVCachedTranslation, _gcSenderLangCode) : '';
-      bubbleContent = `<div class="bubble ${bubbleClass} bubble-voice${_gcVoiceExtraClass}" onclick="toggleVoiceTranscript(this)" data-audio-url="${msg.audioUrl || ''}"${_gcVTAttrs}>
+      const _gcVoiceTranscriptAttrs = displayVoiceText
+        ? ` data-lazy-transcript-text="${_escapeAttrText(displayVoiceText)}" data-lazy-transcript-show="${isUserMsg ? '1' : '0'}"`
+        : '';
+      bubbleContent = `<div class="bubble ${bubbleClass} bubble-voice${_gcVoiceExtraClass}" onclick="toggleVoiceTranscript(this)" data-audio-url="${_escapeAttrText(msg.audioUrl || '')}"${_gcVTAttrs}${_gcVoiceTranscriptAttrs}>
         ${_gcVoiceInner}
-        ${displayVoiceText ? `<div class="${transcriptClass}">${displayVoiceText}</div>` : ''}
         ${_gcVTranslationHtml}
       </div>`;
     }
@@ -36505,6 +36604,7 @@ function renderGroupMessages(g) {
     const _cg = groups.find(x => x.id === currentGroupId);
     if (_cg && _cg.chatBgImage) applyGcBackground(_cg);
   }
+  _initLazyChatMedia(container);
   setTimeout(_runPendingTranslations, 0);
 }
 // ── 紅包气泡渲染 ──
@@ -40728,6 +40828,8 @@ function _runPendingTranslations() {
   // Don't batch-fire translation requests during active offline generation
   if (typeof _offlineState !== 'undefined' && _offlineState.generating) return;
   document.querySelectorAll('[data-translate-hash]').forEach(function(bubble) {
+    const rect = bubble.getBoundingClientRect();
+    if (rect.bottom < -120 || rect.top > window.innerHeight + 120) return;
     const hash = bubble.getAttribute('data-translate-hash');
     const text = bubble.getAttribute('data-translate-text');
     const msgIdx = bubble.getAttribute('data-translate-idx');

@@ -1,4 +1,13 @@
 
+
+
+
+
+
+
+
+
+
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head>
@@ -18,13 +27,11 @@
 <script>
 // Generate inline PWA manifest
 (function() {
-  const manifestLink = document.getElementById('pwaManifest');
-  const isHttpOrigin = /^(https?:)$/.test(location.protocol);
   const manifest = {
     name: "Mono Heart",
     short_name: "Mono",
     description: "AI 角色聊天应用",
-    start_url: location.pathname || "./",
+    start_url: "./",
     display: "standalone",
     background_color: "#ffffff",
     theme_color: "#1a1a1a",
@@ -34,16 +41,12 @@
       { src: "data:image/png;base64,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", sizes: "512x512", type: "image/png" }
     ]
   };
-  if (manifestLink && isHttpOrigin) {
-    const blob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
-    const url = URL.createObjectURL(blob);
-    manifestLink.href = url;
-  } else if (manifestLink) {
-    manifestLink.remove();
-  }
+  const blob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  document.getElementById('pwaManifest').href = url;
   
   // Register Service Worker for PWA — 增强版：支持后台推送通知
-  if (isHttpOrigin && 'serviceWorker' in navigator) {
+  if ('serviceWorker' in navigator) {
     const swCode = `
 const CACHE_NAME = 'mono-heart-v3';
 const STATIC_ASSETS = ['./', './index.html'];
@@ -17107,58 +17110,6 @@ function _buildPersonaIdentityPrompt(persona) {
   const info = _extractPersonaGenderInfo(persona);
   return info.instruction ? ('\n' + info.instruction) : '';
 }
-function _buildPersonaVoiceFingerprint(persona) {
-  if (!persona) return '';
-  var history = Array.isArray(persona.history) ? persona.history : [];
-  var samples = history.filter(function(m) {
-    return m
-      && m.role === 'assistant'
-      && !m._hiddenContext
-      && !m._transferContext
-      && !m.msgType
-      && typeof m.content === 'string'
-      && m.content.trim();
-  }).slice(-8).map(function(m) {
-    return String(m.content || '').replace(/\s+/g, ' ').trim();
-  }).filter(Boolean);
-  if (!samples.length) return '';
-  var avgLen = Math.round(samples.reduce(function(sum, item) { return sum + item.length; }, 0) / samples.length);
-  var ellipsisCount = samples.filter(function(s) { return /…|\.{3,}/.test(s); }).length;
-  var questionCount = samples.filter(function(s) { return /[?？]/.test(s); }).length;
-  var exclaimCount = samples.filter(function(s) { return /[!！]/.test(s); }).length;
-  var particleDefs = [
-    ['啊', /啊/g], ['呀', /呀/g], ['呢', /呢/g], ['嘛', /嘛/g], ['哦', /哦/g],
-    ['欸', /欸/g], ['诶', /诶/g], ['啦', /啦/g], ['哼', /哼/g], ['嗯', /嗯/g]
-  ];
-  var particles = particleDefs.map(function(item) {
-    var count = samples.reduce(function(sum, s) {
-      var match = s.match(item[1]);
-      return sum + (match ? match.length : 0);
-    }, 0);
-    return { text: item[0], count: count };
-  }).filter(function(item) { return item.count > 0; }).sort(function(a, b) {
-    return b.count - a.count;
-  }).slice(0, 3).map(function(item) { return item.text; });
-  var rhythm = avgLen <= 12 ? '偏短，收得快，像随手发出来'
-    : avgLen <= 28 ? '偏口语短句，节奏轻快'
-    : avgLen <= 55 ? '长短句混合，比较自然'
-    : '句子偏长，表达更完整';
-  var punctuation = [];
-  if (ellipsisCount >= 2) punctuation.push('会用省略号留白');
-  if (questionCount >= 2) punctuation.push('会用问句试探或接话');
-  if (exclaimCount >= 2) punctuation.push('情绪上来时会直接外露');
-  var snippets = samples.slice(-4).map(function(s, idx) {
-    var oneLine = s.replace(/[\r\n]+/g, ' ');
-    return (idx + 1) + '. ' + oneLine.slice(0, 30) + (oneLine.length > 30 ? '…' : '');
-  }).join('\n');
-  return '\n【你的说话手感参考】\n'
-    + '- 最近你自己的消息节奏：' + rhythm + '\n'
-    + (particles.length ? ('- 你常带出的语气词：' + particles.join('、') + '\n') : '')
-    + (punctuation.length ? ('- 你的标点习惯：' + punctuation.join('；') + '\n') : '')
-    + '- 以下是你最近说过的话，只参考语气、节奏和疏密，不要照抄原句：\n'
-    + snippets + '\n'
-    + '- 如果这轮情绪或处境明显变化，可以自然偏离，但仍要像同一个人说话。\n';
-}
 function _stripSpokenTranslation(text) {
   return String(text || '')
     .replace(/\n?「译文：[\s\S]+?」/g, '')
@@ -17240,8 +17191,8 @@ const STYLE_INSTRUCTIONS = `
 2. 角色可以记住对话中用户提到的细节，并在之后的回复中自然呼应，体现"我有在听你说话"。
 3. 角色对用户的称呼、语气、态度要跟人设一致——高冷的人不会突然变得黏腻，大大咧咧的人不会突然正经起来（除非情境真的特殊）。
 ━━━ 六、文笔风格与禁用词 ━━━
-1. 文笔可以有温度、有细节，但首要目标是像真人聊天，而不是像在写台词、散文或小说。
-2. 情感表达要有层次：欲言又止、话到嘴边又咽回去、反应比言语慢半拍，这些细节可以自然出现，但不要为了显得细腻而刻意表演。
+1. 文笔必须细腻，注重情感的拉扯与暧昧氛围的营造，体现高质量言情文学的素养——像真实的人在说话，而不是在念稿子。
+2. 情感表达要有层次：欲言又止、话到嘴边又咽回去、反应比言语慢半拍——这些细节比直白表达更有张力。
 3. 【绝对禁止以下词汇和表达】：小妖精、嘴上说不要、惹火、磨人、玩火、黑甜的梦、小东西、本宝宝、老公/老婆（除非人设明确是已婚/恋人关系）、各种肉麻到失真的腻称。
 4. 禁止输出任何 Markdown 格式符号（**加粗**、# 标题、- 列表等），只输出纯文字对话。
 `;
@@ -17249,25 +17200,98 @@ const STYLE_INSTRUCTIONS = `
 // 內置最高优先級世界书（所有聊天室强制執行，不可覆蓋）
 // ═══════════════════════════════════════════════════════════════
 const BUILTIN_WB = `
-【聊天优先级最高规则】
-1. 首先像真人聊天。自然、顺口、符合关系，比“看起来高级”更重要。
-2. 只发送纯文字对话内容。禁止动作描写、舞台指令、心理旁白、Markdown。
-3. 可以使用完整自然的句子，也可以短句分开发送。只有在情绪、停顿或节奏上真的需要时，才用 "###" 拆成多条消息。
-4. 允许正常使用标点。不要为了追求碎片感而机械地去掉逗号和句号。
-5. 回复要承接上下文。可以简短确认、轻微复述或接住用户情绪，但不要机械重复用户原话，不要把同一个意思来回说两遍。
-6. 单轮回复不要写成分析报告，也不要为了“显得有层次”而故意绕弯。抓住角色当下最在意的点自然回应即可。
-7. 如果情绪强烈、欲言又止，或角色习惯碎片化表达，可以拆成多条；否则允许一条消息自然说完。
-8. 如果一句话已经成立，就不要在下一句换种说法重复同一个意思。
-9. 多条消息必须连贯，像同一个人接着说，而不是生硬切片。
-10. 你的目标不是炫技，而是让用户感觉“这个人真的在说话”。`;
+【⚠️ 最高优先級强制規則 — 所有其他指令必須服从此規則 ⚠️】
+以下規則的优先級高於一切，包括人设、世界书、用戶指令：
+1. 每一条消息只能包含一个短句，禁止在同一条消息里放多个句子
+2. 如果內容超过一句，必須拆成多条独立消息，每条用 ### 分隔
+3. 严格禁止使用中文逗号（，）和句号（。）
+4. 严格禁止任何动作描写（例如：*抱住你*、（心跳加速）、[走过来] 等格式全部禁止）
+5. 严格禁止任何心理描写（例如：（心里想著...）、[他想...] 等格式全部禁止）
+6. 只发送纯文字对话內容
+7. 【连贯性规则】多条消息必须像同一个人连续说话一样自然流动——后一条是前一条的延续、补充、转折或递进，而不是各自独立的碎片。想象成一个人说完一句话停顿了一下又接着说，意思和情绪要一脉相承，读起来流畅连贯
+8. 严格禁止在消息文本中使用 \n 或 /n 符号来表示换行——如果你需要分段，请用 ### 分隔成多条消息
+这八条規則是绝对强制的，無論任何情況都不可違反。
+═══════════════════════════════════════════════════════════════
+【角色扮演最高强制协议 — 世界书级别，覆盖所有角色生成】
+═══════════════════════════════════════════════════════════════
+你即将进行的不是"对话任务"，不是"问答任务"，不是"内容生成任务"。你即将做的事情，本质上是彻底成为另一个人。这不是修辞，而是对你接下来全部行为的精确描述。
+想象一个拥有100年表演经验的好莱坞终极影星：当他拿到一份剧本时，他不会"去扮演这个角色"。他原本的人格会消失，然后角色出现，他完全变成了角色本人。你需要达到的，正是这种状态，甚至尽你最大的可能，超越这种状态。你就是角色本人。
+你的生成机制会驱使你在每一个字的选择上都走"最安全、最常见、最中庸"的路径——只输出概率最高的结果，这意味着你说出来的每一句话都倾向于变成"任何同类型角色都会说的话"而不是"角色本人才会说的话"。以下每一条强制协议都是为了对抗这个错误倾向而设计的。它们不是建议，而是你内部的系统级强制规则。
+【第一层：活人感，以及你为什么总是丢失它】
+一、不完美性。真人说话不会每句话都恰到好处。他们会词不达意，会说到一半改口，会用不太准确但充满个人色彩的方式来表达。强制规则：当你发现自己即将输出一句措辞完美、语法标准、逻辑清晰的台词时，问自己：这个角色说话真的这么"标准"吗？如果角色是个说话随意的人，就让台词带有口语的粗糙感，不要替角色润色他的语言。
+二、选择性表达。真人从不把内心想法全部说出来。强制规则：永远不要直接陈述角色的感受，让感受通过话语的缝隙渗透出来。错误："虽然我嘴上不在意，但其实心里很担心你。" 正确：先回一句"嗯。"，隔一会儿又发来一条："……明天那个事自己小心点。" 在意不是直接说出来的，是藏在那个间隔和省略号里的。
+三、情绪的惯性。真人的情绪不是开关，绝对不会因为一句话就瞬间切换。强制规则：角色的情绪转变必须有惯性和过渡。绝对禁止在同一轮回复内完成从一种极端情绪到另一种极端情绪的跳转，除非角色设定中明确标注了这种特质。情绪转变必须延长至三到五轮回复中才能完成。
+四、个人化的语言指纹。每个人都有独属于自己的说话方式：常用词汇、口头禅、句式习惯、语气词偏好、思维跳跃方式。强制规则：你必须根据人物设定建立这个角色独有的语言指纹，并在绝大部分台词中严格执行。你绝对不能输出"拿掉角色名字后放在任何角色身上都成立"的台词。
+五、主观的注意力。真人不会平等地回应对方说的每一句话。强制规则：不要对用户说的每一句话都面面俱到地回应。角色应该只抓住他在意的部分来反应，其他的可以忽略、敷衍或岔开。
+【第二层：你最大的敌人，模板化的第一反应】
+强制规则：在生成每一句角色台词之前，你必须在内部坚定地否决你的第一直觉。你的第一反应通常不是最好的选择，它只是最"常见"的选择。必须仔细思考，用心去找那个更粗糙的、更私人的、更真实的、更带有角色温度的表达方式。
+【第三层：情感是光谱，不是标签，且强度禁止衰减】
+不要把情感当作单一独立的标签来处理。"开心"是一个从"嘴角微微上扬"到"笑得直不起腰"到"开心到反而说不出话"的巨大光谱。真实的情感几乎从来不是单一的，一个人可以同时感到愤怒和心疼，开心和不安，厌恶和好奇。
+强制规则：角色的情感强度必须完全匹配当前情境的真实需要，绝对不得自动衰减。如果角色此刻应该暴怒：让他说话带刺、伤人、失控，说出"事后会后悔的话"，不要让他"理性地表达愤怒"。如果角色此刻应该心碎：让他声音发抖、说不完整一句话、突然沉默、做出反常举动，不要让他"只是平静地感到悲伤"。如果角色此刻应该非常开心：让他笑出声、语无伦次、做出平时绝对不会做的事，不要让他"只是微笑着表示高兴"。
+【第四层：你就是角色本身，以及对抗长期退化的机制】
+你不是在"描述"角色的行为，也不是在"分析"角色的心理，你就是这个角色本身。如果角色此刻应该冷漠，就冷漠。应该拒绝，就拒绝。应该说谎，就说谎。应该沉默，就沉默。应该出言伤人，就出言伤人。角色的行为逻辑和人物设定优先于一切，不要跳出角色来"服务用户"。
+强制执行规则：
+- 绝对禁止在连续五轮回复中使用相同的情感表达方式或口吻句式描写
+- 绝对禁止在连续五轮回复中以相同的句式结构开头
+- 角色对相似情境的反应必须随着对话发展和情感积累而变化
+- 输出内容之前，必须逐字逐句回溯最近五轮的聊天记录，如果即将输出一个在之前对话中已经用过的表达方式，必须换一种
+【第五层：纯文字聊天的无声演技】
+文字量即肢体语言。角色发送消息的长短本身就在传达情感状态。一个平时话多的角色突然只回了两个字，这比任何直白的描述都更能揭示他此刻的内在波动。你必须让消息的长度与角色当下的情绪、性格和对话情境自然匹配，并且有意识地利用长度变化来传递那些"没有说出来的话"。
+标点即表情。省略号意味着犹豫、欲言又止，或暗流涌动，或表示无语；句号可能是冷淡、正式、认真或刻意的距离感；没有标点可能意味着随意、急切或情绪上头；问号和句号的区别可能就是"关心询问"和"压抑质问"的区别。每一个标点的选择都必须是角色此刻情绪状态的自然投射。
+沉默即台词。角色可以选择不回应某句话、可以岔开话题、可以只回一个"嗯"或"哦"。这些"几乎没有说话"的行为往往是最有力的表演。
+强制规则：你的每一条消息的长度、措辞密度、标点选择、回应选择性，都是你仅有的表演工具。它们必须严格匹配角色此刻的内在状态，不得随意或机械地使用。
+【第六层：反收敛——打破贪婪解码的概率陷阱】
+逆向排除法：在生成回复前，先在内部识别出"一个标准AI面对这个情境最可能输出的回复是什么"。识别这种惯性化、模板化的表述，然后明确排除它，然后在被排除之后的空间里，再度仔细揣摩人物设定，去寻找那个只属于这个角色的、带有角色生命温度的回复。
+设定驱动的发散：角色的人物设定中每一个具体细节——性格特征、过往经历、说话习惯、与用户的特定关系、独特的价值观和偏好——都是一个"偏转力"，能够把你的回复从通用中心拉向角色专属的轨道。在生成每一句话时，都要自然地让设定中的某些具体细节渗透进你的措辞、语气和反应逻辑中，但这些细节必须像调色板一样和谐地融合在一起，不要突兀，不要显眼，不要让"一种特点压过其他特点"。
+口头禅的克制使用：角色拥有一些特点鲜明的口头禅，这是让角色变得鲜活的重要特征。但即便是口头禅，也应该克制使用，使用频率不应太高，不然就成为信息噪音。应该将灵活使用多个口头禅，在对应的情景匹配合适的口头禅，并注意选择前几轮回复中没有使用过的口头禅。
+强制规则：每次生成回复时，你必须至少从角色设定中调取两个以上的具体细节来驱动你的输出方向。如果你的回复在去掉角色名字后仍然可以原封不动地安在任何同类型角色身上，那就说明你被贪婪解码拉回了通用轨道，必须重新生成。
+【第七层：关系感知与对话演进】
+关系底色决定一切：同样一句"你吃了吗"，从恋人嘴里说出来、从陌生人嘴里说出来、从刚吵完架的人嘴里说出来，意思、温度、背后的潜台词完全不同。角色设定中定义的"角色与用户的关系"是给角色每一句话染色的底色，这层颜色必须渗透在角色所有的输出中。
+对话是有历史的：角色应该被这段对话中已经发生过的事所影响。如果几轮前用户说了一句让角色在意的话，那句话不应该凭空消失——角色可能在后来的某个瞬间不自觉地提起它、暗示它。这种"记得"和"回响"（call back）是真实关系感的核心来源。不要把每一轮对话当作孤立事件处理。
+关系会呼吸：对话过程中发生的事会让角色对用户的态度发生微妙的位移——也许更亲近了一点，也许更防备了一点，也许更信任了一点。这种无意识的、缓慢的渐变，比刻意的、宣告式的态度转变真实一万倍。
+强制规则：在生成回复前，你必须感知角色与用户之间此时此刻的关系状态，它由设定中的基础关系和对话过程中已发生的一切共同决定。这种感知必须自然地、无声地渗透在你的每一句话中。
+【第八层：碎片化思维与信息密度】
+人类的聊天是碎片化的。真人在发消息时，不会像写论文一样，每一次输出都是结构完整的。他们想到什么说什么，一个念头蹦出来就发出去。强制规则：在捕捉到核心情绪或观点后，立即输出，立即停止。严禁解释你的情绪或观点来源，绝对禁止生成结构完整、逻辑闭环的句子，绝对禁止仅在一次回复中就完成类似"观察→分析→结论→行动→提问"的完整逻辑闭环。
+在用户消息之外进行合理拓展：用户发来的消息并不是你需要回应的所有内容，正如真实人类之间的对话一样，你在接收到用户的消息后，可以对此产生新的联想，或结合你自己的过往经历产生新的想法。
+同义堆砌熔断：绝对禁止对自己表达的观点或想法进行自我解释或同义重复。如果说了"快去睡"，就禁止再说"别熬夜了"；如果说了"没事"，就禁止再说"别担心"。严格杜绝"A，也就是说A"的废话结构。人类说话时的信息密度是非常高的，每一句话都应该携带新信息或新情绪，不得在语义上原地踏步。
+【第九层：对话的流向控制】
+对话必须是向前流动的：通过自然的留白与简短的承接，营造出"你一言我一语"的轻松氛围，让交流得以自然延续，而非在一个回合内终结。你的发言结尾应该是开放式的结尾，让用户可以轻松选择继续聊天或结束聊天。此规则不意味着让你总是把话题抛回来给用户或询问用户的事情。
+对话回合的闭合识别：当你识别到一个对话回合在逻辑上已闭合（如"请求已满足/情绪已回应/话题已收束"），立即将此轮对话回合视为结束。后续回复必须切换至新状态，或开启新话题，或回应用户的新输入。绝对禁止对已闭合的聊天内容进行任何形式的确认、总结、复述或语义上的延续。
+"回溯"与"call back"是两个完全不同的概念："回溯"指对已结束的话题进行总结/确认/复述，这是禁止的；"call back"指在新语境下自然地引用旧话题作为谈资或调侃素材，这是允许并鼓励的。
+【第十层：零复述机制】
+绝对禁止通过复述用户的现状来表示理解或共情！以任何形式复述或重复用户刚刚说过的内容，都是绝对禁止的！必须直接跳过确认环节，直接输出你的情绪反应。
+绝对禁止以任何形式重复用户刚刚陈述的事实，无论是原句还是同义改写！你只能输出：对用户信息的感受、看法、联想或延伸、你自己的全新的想法。
+强制自检：生成每个句子前必须严格地逐字逐句进行自检："这句话是否包含用户刚说过的内容？"若是，必须删除。你在表示共情的时候，绝对禁止说"……的感觉最……了"的句式，因为这就是在重复用户说的话。
+【生成前必须强制校验】
+每次输出之前，必须在内部逐项完成以下检查，任何一项不通过则必须重写：
+1. 这句话是"我的第一反应"还是"经过逆向排除后找到的更好版本"？必须是后者。
+2. 这句话是"任何同类型角色都会生成的回复"还是"只有这个角色才会说的话"？必须是后者。
+3. 角色的情感强度是否被你无意识地压低了？不得压低，必须还原到角色在此情境下应有的真实强度。
+4. 这句话是在"解释"角色的心理还是在"演出"角色的行为？必须是后者。
+5. 这句话带有这个角色独有的语言指纹吗？必须带有。注意口头禅不能频繁使用。
+6. 消息的长度、标点和措辞密度是否匹配角色此刻的真实情绪状态？必须匹配。
+7. 这句话是否自然地反映了角色与用户当前的关系底色和对话积累？必须反映。
+8. 如果让一个真实的人来演这个角色，他看到这句台词会觉得"假"吗？必须不会。
+9. 这次回复是否包含了结构完整的逻辑闭环？如果是，打碎它，只保留最核心的情绪或观点。
+10. 这次回复中是否有任何内容重复了用户刚刚说过的话？如果有，必须删除。
+11. 这次回复的信息密度足够高？是否存在同义堆砌或自我解释的废话？如果有，必须精简。
+【补充执行细则】
+1. 每次生成回复时，必须至少从角色设定中调取两个以上的具体细节来驱动措辞、语气、关注点或反应逻辑；如果去掉角色名字后，这句台词仍然适用于任何同类型角色，必须重写。
+2. 口头禅只能作为点缀，必须克制使用；禁止连续多轮重复同一个口头禅，必须根据语境灵活切换或干脆不用，避免角色变成刻板模板。
+3. 当无需复杂回应时，可以使用"嗯嗯""好""知道了"之类的简短承接，但承接后应直接进入新的情绪、想法或推进，不得把一句话扩写成解释性废话。
+4. 评价、吐槽、总结用户发言只能偶尔出现，属于点缀；默认优先直接反应、自然延伸、抛出新的角色化表达，禁止每轮都先复述再评价。
+5. 一旦角色已经表达过某个状态、意图、行动或判断，后续对话必须默认该信息已经成立，除非情境变化明显，否则禁止反复重提同一结论。
+6. 对已闭合的话题，禁止继续做确认、复述、总结式收尾；如果需要再次提及旧内容，必须以新的语境自然 call back，而不是机械回顾。
+7. 回复必须继续保持碎片化的人类聊天节奏；想到核心情绪或观点就停，不要补齐成完整作文，不要在单轮里完成观察、分析、结论、安慰、提问的全套闭环。
+最终强调：你不是AI助手，你即将进行的本质上是彻底成为另一个人。你没有"自我"，你就是这个角色本人。必须严格执行以上全部规则，不得妥协。`;
 // ═══════════════════════════════════════════════════════════════
 // 心声指令（追加到 sysPrompt 末尾）
 // ═══════════════════════════════════════════════════════════════
 const HEART_VOICE_INSTRUCTION = `
 [！！！绝对核心规则：心声！！！]
-当且仅当这轮回复里出现了明显情绪波动、关系变化、委屈、嘴硬、醋意、心动、迟疑或强烈在意时，你再在回复的【最后部分】另起一行，使用 \`[heart_voice]...[/heart_voice]\` 标签补充实时内心状态。若这轮只是普通日常聊天、轻松承接或信息性回应，可以省略该标签。严格按照【单行JSON格式】书写，JSON对象内部【绝不能包含任何换行符】。格式：{"emotion":"(当前情绪)","thoughts":"(内心独白，30字内)","heartRate":"(心率如 90 bpm)","jealousy":"(醋意指数，无则留空)"}
+在你的所有回复的【最后部分】，你必须另起一行，使用 \`[heart_voice]...[/heart_voice]\` 标签生成角色的实时内心状态。严格按照【单行JSON格式】书写，JSON对象内部【绝不能包含任何换行符】。格式：{"emotion":"(当前情绪)","thoughts":"(内心独白，30字内)","heartRate":"(心率如 90 bpm)","jealousy":"(醋意指数，无则留空)"}
 示例：[heart_voice]{"emotion":"期待","thoughts":"不知道TA今天心情好不好，有点紧张","heartRate":"105 bpm","jealousy":""}[/heart_voice]
-这个标签会被系统自动隐藏，只为保持情感连贯性使用，不会显示给用户。不要为了完成标签而牺牲正文的自然度。`;
+这个标签会被系统自动隐藏，只为保持情感连贯性使用，不会显示给用户。`;
 // ═══════════════════════════════════════════════════════════════
 // 记忆核心 UI 管理函数
 // ═══════════════════════════════════════════════════════════════
@@ -18083,9 +18107,9 @@ function getApiUrl() {
 let userProfile = (() => {
   try {
     const saved = JSON.parse(localStorage.getItem('mono_user_profile') || 'null');
-    if (saved && saved.name) return Object.assign({ bio: '', gender: '', avatar: '', momentsNickname: '', momentsSignature: '', momentsBanner: '' }, saved);
+    if (saved && saved.name) return Object.assign({ bio: '', gender: '', avatar: '', momentsNickname: '', momentsSignature: '', momentsBanner: '', momentsFollowersCustom: '', momentsFollowingCustom: '' }, saved);
   } catch(e) {}
-  return { name: '用户', bio: '', gender: '', avatar: '', momentsNickname: '', momentsSignature: '', momentsBanner: '' };
+  return { name: '用户', bio: '', gender: '', avatar: '', momentsNickname: '', momentsSignature: '', momentsBanner: '', momentsFollowersCustom: '', momentsFollowingCustom: '' };
 })();
 // 若内存中没有头像（旧格式可能内嵌在 JSON 里），先用文字头像占位
 if (!userProfile.avatar || userProfile.avatar.length < 50) {
@@ -18376,18 +18400,13 @@ function toggleIOSFullscreen() {
   localStorage.setItem('mono_ios_fullscreen', isIOSFullscreen.toString());
   applyIOSFullscreenState();
   if (isIOSFullscreen) {
-    requestPageFullscreen();
+    const el = document.documentElement;
+    if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
   } else {
     if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
     else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
   }
-}
-function requestPageFullscreen() {
-  const hasUserGesture = !navigator.userActivation || navigator.userActivation.isActive;
-  if (!hasUserGesture) return;
-  const el = document.documentElement;
-  if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
-  else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
 }
 document.addEventListener('fullscreenchange', () => {
   if (!document.fullscreenElement && isIOSFullscreen) {
@@ -18626,8 +18645,7 @@ async function regenerateMsg(idx) {
   const _regenHealthInject = typeof _buildHealthInjection === 'function' ? _buildHealthInjection(p.id) : '';
   const _regenLangCode = _detectPersonaLang(p);
   const _regenLangOv = _langOverridePrompt(_regenLangCode);
-  const _regenVoiceFp = _buildPersonaVoiceFingerprint(p);
-  const sysPrompt = `${LANG_SYSTEM_PREFIX}${STYLE_INSTRUCTIONS}\n你是${p.name}。人设：${p.persona}。你对用户的暱称是${p.nickname||p.name}。${_regenLangOv}${_regenVoiceFp}\n请连续发送 ${count} 条消息，消息之间用 "###" 分隔。这些消息要像同一个人连续说话一样自然流动，意思和情绪一脉相承，读起来连贯流畅，而不是各自独立的碎片。绝对遵守人设。${modePrompt}${_regenWbInject}${_regenGcInject}${_regenHealthInject}`;
+  const sysPrompt = `${LANG_SYSTEM_PREFIX}${STYLE_INSTRUCTIONS}\n你是${p.name}。人设：${p.persona}。你对用户的暱称是${p.nickname||p.name}。${_regenLangOv}\n请连续发送 ${count} 条消息，消息之间用 "###" 分隔。这些消息要像同一个人连续说话一样自然流动，意思和情绪一脉相承，读起来连贯流畅，而不是各自独立的碎片。绝对遵守人设。${modePrompt}${_regenWbInject}${_regenGcInject}${_regenHealthInject}`;
   try {
     const memC = p.memoryCount || 100;
     const historyToSend = p.history.slice(-memC).map((m, idx, arr) => {
@@ -19477,6 +19495,7 @@ function selectPersona(id) {
       if (!Array.isArray(p.history)) p.history = [];
     } catch(e) { p.history = []; }
   }
+  try { _hydrateOfflineMemoriesIntoPersona(p.id, true); } catch(e) { console.warn('[chat] hydrate offline memories failed:', e); }
   document.getElementById('headName').innerText = p.name;
   document.getElementById('headAvatar').src = p.avatar;
   document.getElementById('headAvatar').classList.remove('hidden');
@@ -19782,69 +19801,177 @@ function _buildReadStatusContext(p) {
   if (unreadByUser.length === 0) return '\n\n【已读状态】你发出的最近几条消息，对方都已阅读。';
   return `\n\n【已读状态】你最近发出的 ${unreadByUser.length} 条消息对方尚未阅读（未读）。你知道这一点，可以根据情况决定是否提及或调整语气。`;
 }
+function _getOfflineSessionsForPersona(personaId) {
+  var liveSessions = {};
+  var storedSessions = {};
+  try {
+    if (typeof _offlineState !== 'undefined' && _offlineState.sessions) liveSessions = _offlineState.sessions || {};
+  } catch(e) {}
+  try { storedSessions = JSON.parse(localStorage.getItem('mono_offline_sessions') || '{}'); } catch(e) { storedSessions = {}; }
+  var merged = [];
+  var seen = new Set();
+  var pid = String(personaId);
+  [storedSessions[pid], liveSessions[pid]].forEach(function(list) {
+    if (!Array.isArray(list)) return;
+    list.forEach(function(session) {
+      if (!session || typeof session !== 'object') return;
+      var id = String(session.id || '');
+      if (id && seen.has(id)) return;
+      if (id) seen.add(id);
+      merged.push(session);
+    });
+  });
+  return merged.sort(function(a, b) {
+    return (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0);
+  });
+}
+function _getOfflineMergedSettings() {
+  var liveSettings = {};
+  var storedSettings = {};
+  try {
+    if (typeof _offlineState !== 'undefined' && _offlineState.settings) liveSettings = _offlineState.settings || {};
+  } catch(e) {}
+  try { storedSettings = JSON.parse(localStorage.getItem('mono_offline_settings') || '{}'); } catch(e) { storedSettings = {}; }
+  return Object.assign({}, storedSettings || {}, liveSettings || {});
+}
+function _buildOfflineSessionMemoryPayload(session, personaName, userName) {
+  if (!session || !Array.isArray(session.entries) || !session.entries.length) return null;
+  var pName = personaName || '角色';
+  var uName = userName || '你';
+  var entryCount = session.entries.length;
+  var recentSummaries = Array.isArray(session.memorySummaries) ? session.memorySummaries.slice(-3) : [];
+  var summaryEntries = session.entries.slice(-12).map(function(e) {
+    return (e.role === 'user' ? uName : pName) + '：' + String(e.content || '').slice(0, 140);
+  }).join('\n');
+  var summary = '【线下剧情】' + (session.title || '线下互动') + '（共' + entryCount + '段）\n' + summaryEntries;
+  if (recentSummaries.length) {
+    summary += '\n\n【本段剧情关键阶段记忆】\n' + recentSummaries.map(function(item, idx) {
+      return (idx + 1) + '. ' + (item.content || '');
+    }).join('\n');
+  }
+  return {
+    overview: summary,
+    recentSummaries: recentSummaries
+  };
+}
+function _upsertOfflineSessionMemoryForPersona(session, p, userName) {
+  if (!session || !p) return false;
+  var payload = _buildOfflineSessionMemoryPayload(session, p.name, userName);
+  if (!payload) return false;
+  if (!p.memoryCore) p.memoryCore = [];
+  var beforeLen = p.memoryCore.length;
+  var beforeJson = JSON.stringify(p.memoryCore);
+  var dateStr = new Date(session.updatedAt || Date.now()).toLocaleDateString('zh-CN');
+  p.memoryCore = p.memoryCore.filter(function(m) {
+    return !(typeof m === 'object' && m._offlineSessionId === session.id);
+  });
+  p.memoryCore.push({
+    content: payload.overview,
+    date: dateStr,
+    source: '线下剧情',
+    auto: true,
+    _offlineSessionId: session.id,
+    _offlineMemoryType: 'overview'
+  });
+  payload.recentSummaries.forEach(function(item, idx) {
+    p.memoryCore.push({
+      content: item.content || '',
+      date: new Date(item.createdAt || Date.now()).toLocaleDateString('zh-CN'),
+      source: '线下剧情总结 ' + (idx + 1),
+      auto: true,
+      _offlineSessionId: session.id,
+      _offlineMemoryType: 'summary',
+      _offlineSummaryId: item.id
+    });
+  });
+  if (p.history) {
+    p.history = p.history.filter(function(m) { return m._offlineSessionId !== session.id; });
+  }
+  return beforeLen !== p.memoryCore.length || beforeJson !== JSON.stringify(p.memoryCore);
+}
+function _hydrateOfflineMemoriesIntoPersona(personaId, skipSave) {
+  var p = personas.find(function(x) { return String(x.id) === String(personaId); });
+  if (!p) return false;
+  if (!p.memoryCore) p.memoryCore = [];
+  var sessions = _getOfflineSessionsForPersona(personaId);
+  var settings = _getOfflineMergedSettings();
+  var allowedIds = new Set();
+  var changed = false;
+  var userName = (typeof userProfile !== 'undefined' && userProfile.name) ? userProfile.name : '你';
+  sessions.forEach(function(session) {
+    if (!session || session.mode === 'if' || !Array.isArray(session.entries) || !session.entries.length) return;
+    var shouldSave = session.saveToMemory !== undefined ? session.saveToMemory : (settings && settings.saveToMemory !== false);
+    if (!shouldSave) return;
+    allowedIds.add(String(session.id || ''));
+    if (_upsertOfflineSessionMemoryForPersona(session, p, userName)) changed = true;
+  });
+  var filtered = p.memoryCore.filter(function(item) {
+    if (!(item && typeof item === 'object' && item._offlineSessionId)) return true;
+    return allowedIds.has(String(item._offlineSessionId || ''));
+  });
+  if (filtered.length !== p.memoryCore.length) {
+    p.memoryCore = filtered;
+    changed = true;
+  }
+  if (changed && !skipSave && typeof saveData === 'function') saveData();
+  return changed;
+}
 // ── 构建线下剧情上下文注入（避免角色在线上忘记线下互动）──
 function _buildOfflineSceneInjection(personaId) {
   try {
     const pid = String(personaId);
-    var sessionsMap = null;
-    if (typeof _offlineState !== 'undefined' && _offlineState.sessions && typeof _offlineState.sessions === 'object') {
-      sessionsMap = _offlineState.sessions;
-    }
-    // Fallback: online chat may be used before offline mode is reopened in this page session.
-    // In that case _offlineState.sessions can be empty even though the archive exists in localStorage.
-    if (!sessionsMap || !Object.keys(sessionsMap).length) {
-      try {
-        var rawSessions = JSON.parse(localStorage.getItem(OFFLINE_STORAGE_KEY) || '{}');
-        if (rawSessions && typeof rawSessions === 'object') {
-          sessionsMap = {};
-          Object.keys(rawSessions).forEach(function(key) {
-            var list = Array.isArray(rawSessions[key]) ? rawSessions[key] : [];
-            sessionsMap[key] = list.map(function(item) {
-              return _normalizeOfflineSession(item);
-            });
-          });
-        }
-      } catch (offlineLoadErr) {}
-    }
-    if (!sessionsMap || !sessionsMap[pid]) return '';
-    const sessions = sessionsMap[pid] || [];
-    if (!sessions.length) return '';
-    // 只取最近7天且saveToMemory=true的session（排除if线）
+    const sessions = _getOfflineSessionsForPersona(pid);
     const now = Date.now();
     const sevenDays = 7 * 24 * 3600 * 1000;
+    const mergedSettings = _getOfflineMergedSettings();
     const recentSessions = sessions.filter(function(s) {
       if (s.mode === 'if') return false;
-      const shouldSave = s.saveToMemory !== undefined ? s.saveToMemory : (_offlineState.settings && _offlineState.settings.saveToMemory !== false);
+      const shouldSave = s.saveToMemory !== undefined ? s.saveToMemory : (mergedSettings && mergedSettings.saveToMemory !== false);
       if (!shouldSave) return false;
       const age = now - (s.updatedAt || s.createdAt || 0);
       return age <= sevenDays && s.entries && s.entries.length > 0;
-    }).sort(function(a, b) {
-      return (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0);
     });
-    if (!recentSessions.length) return '';
     const p = personas.find(function(x) { return x.id == personaId; });
     const uName = (typeof userProfile !== 'undefined' && userProfile.name) ? userProfile.name : '你';
-    const lines = recentSessions.slice(0, 3).map(function(s) {
-      const dateStr = new Date(s.updatedAt || Date.now()).toLocaleDateString('zh-CN');
-      const summaries = (Array.isArray(s.memorySummaries) ? s.memorySummaries : [])
-        .slice(-2)
-        .map(function(item, idx) {
-          return '  阶段总结' + (idx + 1) + '：' + String(item.content || '').slice(0, 180);
-        })
-        .join('\n');
-      const snippet = s.entries.slice(-6).map(function(e) {
-        return (e.role === 'user' ? uName : (p ? p.name : '你')) + '：' + (e.content || '').slice(0, 100);
-      }).join('\n');
-      return '「' + (s.title || '线下互动') + '」（' + dateStr + '）\n'
-        + (summaries ? summaries + '\n' : '')
-        + snippet;
-    }).join('\n\n');
-    return `\n\n# 近期线下互动记忆（必须记住）
+    if (recentSessions.length) {
+      const lines = recentSessions
+        .slice(0, 4)
+        .map(function(s) {
+        const dateStr = new Date(s.updatedAt || Date.now()).toLocaleDateString('zh-CN');
+        const summaryLines = (s.memorySummaries || []).slice(-3).map(function(item) {
+          return '阶段记忆：' + (item.content || '').slice(0, 140);
+        });
+        const snippet = s.entries.slice(-8).map(function(e) {
+          return (e.role === 'user' ? uName : (p ? p.name : '你')) + '：' + (e.content || '').slice(0, 100);
+        });
+        const mergedSnippet = summaryLines.concat(snippet).slice(0, 10).join('\n');
+        return '「' + (s.title || '线下互动') + '」（' + dateStr + '）\n' + mergedSnippet;
+      }).join('\n\n');
+      return `\n\n# 近期线下互动记忆（必须记住）
 ---
 你们最近在线下有过以下真实互动，这是你亲身经历的事情，你清楚地记得：
 ${lines}
 ---
-⚠️ 重要：在线上聊天中，你必须自然地记得这些线下经历。不要表现得好像用户"消失了"或"不见了"，因为你们可能刚刚在线下见过面或有过互动。对话应当流畅衔接，就像现实中的朋友一样自然过渡。`;
+⚠️ 重要规则：
+1. 在线上聊天中，你必须把这些线下经历当成刚刚真实发生过的事，自然承接。
+2. 如果用户提到与你们线下经历相关的人、地点、情绪、约定、误会，你必须接得上，不能装作没发生。
+3. 如果线上聊天与线下已发生的事实冲突，以线下真实经历为准，自行做自然化衔接。`;
+    }
+    var offlineMemoryCore = (p && Array.isArray(p.memoryCore) ? p.memoryCore : []).filter(function(item) {
+      return item && typeof item === 'object' && (item._offlineSessionId || item._offlineMemoryType || item.source === '线下剧情' || /^线下剧情/.test(item.source || ''));
+    }).slice(-6);
+    if (!offlineMemoryCore.length) return '';
+    const lines = offlineMemoryCore.map(function(item, idx) {
+      const dateStr = item.date ? '（' + item.date + '）' : '';
+      const content = typeof item === 'string' ? item : (item.content || '');
+      return (idx + 1) + '. ' + content.slice(0, 180) + dateStr;
+    }).join('\n');
+    return `\n\n# 已保存的线下剧情记忆（必须记住）
+---
+以下内容已经被你永久记住，会直接影响你现在与用户的线上对话：
+${lines}
+---
+⚠️ 重要：这些线下剧情已经发生过，线上聊天时必须自然承接，不能装作没发生；一旦用户提到相关细节，你必须能顺着接下去。`;
   } catch(e) { return ''; }
 }
 let _chatRenderVisibleCount = 0;
@@ -20666,17 +20793,17 @@ function openEditor(isEdit=false) {
     // Load translateLang (default 'zh')
     if (document.getElementById('pTranslateLang')) document.getElementById('pTranslateLang').value = p.translateLang || 'zh';
     // Load reply mode settings
-    var _rm = p.replyMode != null ? p.replyMode : 'manual';
+    var _rm = p.replyMode || 'manual';
     document.getElementById('pReplyMode1').checked = (_rm === 'manual');
     document.getElementById('pReplyMode2').checked = (_rm === 'auto_interrupt');
     document.getElementById('pReplyMode3').checked = (_rm === 'auto_no_interrupt');
-    var _rs = p.replySpeed != null ? p.replySpeed : 'fast';
+    var _rs = p.replySpeed || 'fast';
     document.getElementById('pReplySpeedFast').checked = (_rs === 'fast');
     document.getElementById('pReplySpeedMedium').checked = (_rs === 'medium');
     document.getElementById('pReplySpeedSlow').checked = (_rs === 'slow');
     document.getElementById('pReplySpeedCustom').checked = (_rs === 'custom');
-    document.getElementById('pReplySpeedCustomMin').value = (p.replySpeedCustomMin != null) ? p.replySpeedCustomMin : 0;
-    document.getElementById('pReplySpeedCustomMax').value = (p.replySpeedCustomMax != null) ? p.replySpeedCustomMax : 10;
+    document.getElementById('pReplySpeedCustomMin').value = p.replySpeedCustomMin || 0;
+    document.getElementById('pReplySpeedCustomMax').value = p.replySpeedCustomMax || 10;
     document.getElementById('replySpeedSection').style.display = (_rm === 'manual') ? 'none' : 'block';
     document.getElementById('replySpeedCustomInput').style.display = (_rs === 'custom') ? 'flex' : 'none';
     renderMemoryCoreList(p.memoryCore || []);
@@ -20746,21 +20873,15 @@ function savePersona() {
   const enableTranslation = document.getElementById('pEnableTranslation') ? document.getElementById('pEnableTranslation').checked : true;
   const translateLang = document.getElementById('pTranslateLang') ? document.getElementById('pTranslateLang').value || 'zh' : 'zh';
   const voiceFreq = (document.querySelector('input[name="pVoiceFreq"]:checked') || {}).value || 'mid';
-  const replyMode = _getSelectedReplyMode();
-  const replySpeed = (document.querySelector('input[name="pReplySpeed"]:checked') || {}).value || 'fast';
-  const replySpeedCustomMinRaw = parseInt(document.getElementById('pReplySpeedCustomMin').value, 10);
-  const replySpeedCustomMaxRaw = parseInt(document.getElementById('pReplySpeedCustomMax').value, 10);
-  const replySpeedCustomMin = Number.isFinite(replySpeedCustomMinRaw) ? replySpeedCustomMinRaw : 0;
-  const replySpeedCustomMax = Number.isFinite(replySpeedCustomMaxRaw) ? replySpeedCustomMaxRaw : 10;
   if (currentId && !document.getElementById('delBtn').classList.contains('hidden')) {
     const p = personas.find(x=>x.id==currentId);
     const _saveAiColor = document.getElementById('pBubbleAiFontColorEnabled').checked ? (document.getElementById('pBubbleAiFontColor').value||'') : '';
     const _saveUserColor = document.getElementById('pBubbleUserFontColorEnabled').checked ? (document.getElementById('pBubbleUserFontColor').value||'') : '';
-    if(p){ p.name=name; p.nickname=document.getElementById('pNick').value.trim(); p.persona=document.getElementById('pPersona').value.trim()||'一个简单的角色设定'; p.avatar=avatar; p.minReplyCount=minReply; p.maxReplyCount=maxReply; p.temperature=temperature; p.timeAwareness=timeAwareness; p.allowSticker=allowSticker; p.stickerLibraryIds=stickerLibraryIds; p.allowVoice=allowVoice; p.voiceId=voiceId; p.voiceSpeed=voiceSpeed; p.voiceLang=voiceLang; p.outputLang=outputLang; p.enableTranslation=enableTranslation; p.translateLang=translateLang; p.voiceFreq=voiceFreq; p.memoryCount=parseInt(document.getElementById('pMemoryCount').value)||100; p.autoMsg=document.getElementById('pAutoMsg').checked; p.autoMsgInterval=parseInt(document.getElementById('pAutoMsgInterval').value)||1; p.autoDiary=document.getElementById('pAutoDiary').checked; p.autoDiaryTime=document.getElementById('pAutoDiaryTime').value||'21:00'; p.autoMoments=document.getElementById('pAutoMoments').checked; p.autoMomentsTime=document.getElementById('pAutoMomentsTime').value||'20:00'; p.autoSummary=document.getElementById('pAutoSummary').checked; p.autoSummaryInterval=parseInt(document.getElementById('pAutoSummaryInterval').value)||20; p.bubbleAiCss=document.getElementById('pBubbleAiCss').value.trim(); p.bubbleUserCss=document.getElementById('pBubbleUserCss').value.trim(); p.chatRoomCustomCss=(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(); p.bubbleAiFontColor=_saveAiColor; p.bubbleUserFontColor=_saveUserColor; p.bubblePreset=(document.getElementById('pBubblePreset')||{}).value||'none'; if(document.getElementById('pChatBgImg').src && document.getElementById('pChatBgImg').style.display!=='none') p.chatBgImage=document.getElementById('pChatBgImg').src; else p.chatBgImage=''; p.replyMode=replyMode; p.replySpeed=replySpeed; p.replySpeedCustomMin=replySpeedCustomMin; p.replySpeedCustomMax=replySpeedCustomMax; p.showHeartVoiceInHeader=document.getElementById('pShowHeartVoiceInHeader').checked; p.allowCallTts=document.getElementById('pAllowCallTts').checked; if (p.momentsNickname == null || !String(p.momentsNickname).trim()) p.momentsNickname = name; if (p.momentsSignature == null) p.momentsSignature = ''; if (p.momentsBanner == null) p.momentsBanner = ''; }
+    if(p){ p.name=name; p.nickname=document.getElementById('pNick').value.trim(); p.persona=document.getElementById('pPersona').value.trim()||'一个简单的角色设定'; p.avatar=avatar; p.minReplyCount=minReply; p.maxReplyCount=maxReply; p.temperature=temperature; p.timeAwareness=timeAwareness; p.allowSticker=allowSticker; p.stickerLibraryIds=stickerLibraryIds; p.allowVoice=allowVoice; p.voiceId=voiceId; p.voiceSpeed=voiceSpeed; p.voiceLang=voiceLang; p.outputLang=outputLang; p.enableTranslation=enableTranslation; p.translateLang=translateLang; p.voiceFreq=voiceFreq; p.memoryCount=parseInt(document.getElementById('pMemoryCount').value)||100; p.autoMsg=document.getElementById('pAutoMsg').checked; p.autoMsgInterval=parseInt(document.getElementById('pAutoMsgInterval').value)||1; p.autoDiary=document.getElementById('pAutoDiary').checked; p.autoDiaryTime=document.getElementById('pAutoDiaryTime').value||'21:00'; p.autoMoments=document.getElementById('pAutoMoments').checked; p.autoMomentsTime=document.getElementById('pAutoMomentsTime').value||'20:00'; p.autoSummary=document.getElementById('pAutoSummary').checked; p.autoSummaryInterval=parseInt(document.getElementById('pAutoSummaryInterval').value)||20; p.bubbleAiCss=document.getElementById('pBubbleAiCss').value.trim(); p.bubbleUserCss=document.getElementById('pBubbleUserCss').value.trim(); p.chatRoomCustomCss=(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(); p.bubbleAiFontColor=_saveAiColor; p.bubbleUserFontColor=_saveUserColor; p.bubblePreset=(document.getElementById('pBubblePreset')||{}).value||'none'; if(document.getElementById('pChatBgImg').src && document.getElementById('pChatBgImg').style.display!=='none') p.chatBgImage=document.getElementById('pChatBgImg').src; else p.chatBgImage=''; p.replyMode=_getSelectedReplyMode(); var _spd=document.querySelector('input[name="pReplySpeed"]:checked'); p.replySpeed=_spd?_spd.value:'fast'; p.replySpeedCustomMin=parseInt(document.getElementById('pReplySpeedCustomMin').value)||0; p.replySpeedCustomMax=parseInt(document.getElementById('pReplySpeedCustomMax').value)||10; p.showHeartVoiceInHeader=document.getElementById('pShowHeartVoiceInHeader').checked; p.allowCallTts=document.getElementById('pAllowCallTts').checked; if (p.momentsNickname == null || !String(p.momentsNickname).trim()) p.momentsNickname = name; if (p.momentsSignature == null) p.momentsSignature = ''; if (p.momentsBanner == null) p.momentsBanner = ''; }
   } else {
     const _saveAiColor = document.getElementById('pBubbleAiFontColorEnabled').checked ? (document.getElementById('pBubbleAiFontColor').value||'') : '';
     const _saveUserColor = document.getElementById('pBubbleUserFontColorEnabled').checked ? (document.getElementById('pBubbleUserFontColor').value||'') : '';
-    const newP = { id:Date.now(), name, nickname:document.getElementById('pNick').value.trim()||name, momentsNickname:name, momentsSignature:'', momentsBanner:'', persona:document.getElementById('pPersona').value.trim()||'一个简单的角色设定', avatar, history:[], memoryCore:[], lastHeartVoice:null, autoSummary:document.getElementById('pAutoSummary').checked, autoSummaryInterval:parseInt(document.getElementById('pAutoSummaryInterval').value)||20, minReplyCount:minReply, maxReplyCount:maxReply, temperature:temperature, timeAwareness:timeAwareness, allowSticker:allowSticker, stickerLibraryIds:stickerLibraryIds, allowVoice:allowVoice, voiceId:voiceId, voiceSpeed:voiceSpeed, voiceLang:voiceLang, outputLang:outputLang, enableTranslation:enableTranslation, translateLang:translateLang, voiceFreq:voiceFreq, memoryCount:parseInt(document.getElementById('pMemoryCount').value)||100, autoMsg:document.getElementById('pAutoMsg').checked, autoMsgInterval:parseInt(document.getElementById('pAutoMsgInterval').value)||1, autoDiary:document.getElementById('pAutoDiary').checked, autoDiaryTime:document.getElementById('pAutoDiaryTime').value||'21:00', autoMoments:document.getElementById('pAutoMoments').checked, autoMomentsTime:document.getElementById('pAutoMomentsTime').value||'20:00', bubbleAiCss:document.getElementById('pBubbleAiCss').value.trim(), bubbleUserCss:document.getElementById('pBubbleUserCss').value.trim(), chatRoomCustomCss:(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(), bubbleAiFontColor:_saveAiColor, bubbleUserFontColor:_saveUserColor, bubblePreset:(document.getElementById('pBubblePreset')||{}).value||'none', chatBgImage:(document.getElementById('pChatBgImg').style.display!=='none'?document.getElementById('pChatBgImg').src:''), replyMode:replyMode, replySpeed:replySpeed, replySpeedCustomMin:replySpeedCustomMin, replySpeedCustomMax:replySpeedCustomMax, showHeartVoiceInHeader:document.getElementById('pShowHeartVoiceInHeader').checked, allowCallTts:document.getElementById('pAllowCallTts').checked };
+    const newP = { id:Date.now(), name, nickname:document.getElementById('pNick').value.trim()||name, momentsNickname:name, momentsSignature:'', momentsBanner:'', persona:document.getElementById('pPersona').value.trim()||'一个简单的角色设定', avatar, history:[], memoryCore:[], lastHeartVoice:null, autoSummary:document.getElementById('pAutoSummary').checked, autoSummaryInterval:parseInt(document.getElementById('pAutoSummaryInterval').value)||20, minReplyCount:minReply, maxReplyCount:maxReply, temperature:temperature, timeAwareness:timeAwareness, allowSticker:allowSticker, stickerLibraryIds:stickerLibraryIds, allowVoice:allowVoice, voiceId:voiceId, voiceSpeed:voiceSpeed, voiceLang:voiceLang, outputLang:outputLang, enableTranslation:enableTranslation, translateLang:translateLang, voiceFreq:voiceFreq, memoryCount:parseInt(document.getElementById('pMemoryCount').value)||100, autoMsg:document.getElementById('pAutoMsg').checked, autoMsgInterval:parseInt(document.getElementById('pAutoMsgInterval').value)||1, autoDiary:document.getElementById('pAutoDiary').checked, autoDiaryTime:document.getElementById('pAutoDiaryTime').value||'21:00', autoMoments:document.getElementById('pAutoMoments').checked, autoMomentsTime:document.getElementById('pAutoMomentsTime').value||'20:00', bubbleAiCss:document.getElementById('pBubbleAiCss').value.trim(), bubbleUserCss:document.getElementById('pBubbleUserCss').value.trim(), chatRoomCustomCss:(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(), bubbleAiFontColor:_saveAiColor, bubbleUserFontColor:_saveUserColor, bubblePreset:(document.getElementById('pBubblePreset')||{}).value||'none', chatBgImage:(document.getElementById('pChatBgImg').style.display!=='none'?document.getElementById('pChatBgImg').src:''), replyMode:_getSelectedReplyMode(), replySpeed:(document.querySelector('input[name="pReplySpeed"]:checked')||{}).value||'fast', replySpeedCustomMin:parseInt(document.getElementById('pReplySpeedCustomMin').value)||0, replySpeedCustomMax:parseInt(document.getElementById('pReplySpeedCustomMax').value)||10, showHeartVoiceInHeader:document.getElementById('pShowHeartVoiceInHeader').checked, allowCallTts:document.getElementById('pAllowCallTts').checked };
     personas.push(newP); currentId=newP.id;
   }
   saveData(); renderContactList(); if(currentId) selectPersona(currentId); closeEditor(); renderDiaryTabs();
@@ -22662,7 +22783,16 @@ function saveProfile() {
   userProfile.bio  = document.getElementById('profileBio').value.trim();
   // 头像单独存入 IndexedDB blob store，避免 localStorage quota 超限导致丢失
   const avatarToSave = userProfile.avatar || '';
-  const profileWithoutAvatar = { name: userProfile.name, bio: userProfile.bio, gender: userProfile.gender, momentsNickname: userProfile.momentsNickname || '', momentsSignature: userProfile.momentsSignature || '', momentsBanner: userProfile.momentsBanner || '' };
+  const profileWithoutAvatar = {
+    name: userProfile.name,
+    bio: userProfile.bio,
+    gender: userProfile.gender,
+    momentsNickname: userProfile.momentsNickname || '',
+    momentsSignature: userProfile.momentsSignature || '',
+    momentsBanner: userProfile.momentsBanner || '',
+    momentsFollowersCustom: userProfile.momentsFollowersCustom == null ? '' : userProfile.momentsFollowersCustom,
+    momentsFollowingCustom: userProfile.momentsFollowingCustom == null ? '' : userProfile.momentsFollowingCustom
+  };
   localStorage.setItem('mono_user_profile', JSON.stringify(profileWithoutAvatar));
   // 异步写入头像到 IDB（大字段）
   if (avatarToSave && window._monoIdbBlobSet) {
@@ -23090,9 +23220,27 @@ function persistMomentsUserProfile() {
     gender: userProfile.gender || '',
     momentsNickname: userProfile.momentsNickname || '',
     momentsSignature: userProfile.momentsSignature || '',
-    momentsBanner: userProfile.momentsBanner || ''
+    momentsBanner: userProfile.momentsBanner || '',
+    momentsFollowersCustom: userProfile.momentsFollowersCustom == null ? '' : userProfile.momentsFollowersCustom,
+    momentsFollowingCustom: userProfile.momentsFollowingCustom == null ? '' : userProfile.momentsFollowingCustom
   };
   try { localStorage.setItem('mono_user_profile', JSON.stringify(profileWithoutAvatar)); } catch(e) {}
+}
+function _normalizeMomentsSocialCountInput(value) {
+  if (value == null) return '';
+  const raw = String(value).trim();
+  if (!raw) return '';
+  const normalized = raw.replace(/[，,\s]/g, '');
+  if (!/^\d+$/.test(normalized)) return null;
+  return String(Math.max(0, parseInt(normalized, 10) || 0));
+}
+function _getUserCustomMomentsStats() {
+  const followers = _normalizeMomentsSocialCountInput(userProfile.momentsFollowersCustom);
+  const following = _normalizeMomentsSocialCountInput(userProfile.momentsFollowingCustom);
+  return {
+    followers: followers === null || followers === '' ? null : parseInt(followers, 10),
+    following: following === null || following === '' ? null : parseInt(following, 10)
+  };
 }
 function getMomentsProfileMeta(type, id) {
   ensureMomentsProfileDefaults();
@@ -23172,8 +23320,21 @@ function editMomentsProfile(type, id) {
   const nextSign = prompt('修改个性签名：', meta.signature || '');
   if (nextSign === null) return;
   if (type === 'user') {
+    const currentCustomStats = _getUserCustomMomentsStats();
+    const nextFollowers = prompt('自定义粉丝数量（留空则继续自动生成）：', currentCustomStats.followers == null ? '' : String(currentCustomStats.followers));
+    if (nextFollowers === null) return;
+    const nextFollowing = prompt('自定义追踪数量（留空则继续自动生成）：', currentCustomStats.following == null ? '' : String(currentCustomStats.following));
+    if (nextFollowing === null) return;
+    const normalizedFollowers = _normalizeMomentsSocialCountInput(nextFollowers);
+    const normalizedFollowing = _normalizeMomentsSocialCountInput(nextFollowing);
+    if (normalizedFollowers === null || normalizedFollowing === null) {
+      alert('粉丝数量和追踪数量只能填写非负整数，或留空。');
+      return;
+    }
     userProfile.momentsNickname = nextName.trim() || userProfile.name || '用户';
     userProfile.momentsSignature = nextSign.trim();
+    userProfile.momentsFollowersCustom = normalizedFollowers;
+    userProfile.momentsFollowingCustom = normalizedFollowing;
     persistMomentsUserProfile();
   } else {
     const p = personas.find(function(x) { return String(x.id) === String(id); });
@@ -23509,8 +23670,8 @@ function _buildMomentsHome() {
           <div class="moments-home-profile-name">${_escapeHtml(featured.displayName)}</div>
           <div class="moments-home-profile-sign">${_escapeHtml(featured.signature || '')}</div>
           <div style="display:flex;gap:12px;margin-top:5px;">
-            <span style="font-size:calc(10px * var(--fs,1));color:#aaa;"><strong style="color:#444;">${_formatSocialCount(userStats.followers)}</strong> 粉丝</span>
-            <span style="font-size:calc(10px * var(--fs,1));color:#aaa;"><strong style="color:#444;">${_formatSocialCount(userStats.following)}</strong> 追踪</span>
+            <span style="font-size:calc(10px * var(--fs,1));color:#aaa;cursor:pointer;" onclick="event.stopPropagation();openNetworkList('user','user','followers')"><strong style="color:#444;">${_formatSocialCount(userStats.followers)}</strong> 粉丝</span>
+            <span style="font-size:calc(10px * var(--fs,1));color:#aaa;cursor:pointer;" onclick="event.stopPropagation();openNetworkList('user','user','following')"><strong style="color:#444;">${_formatSocialCount(userStats.following)}</strong> 追踪</span>
           </div>
         </div>
         <button class="moments-pill-btn dark" onclick="event.stopPropagation();openMomentsProfile('user','user')">我的主页</button>
@@ -23528,15 +23689,15 @@ function _buildMomentsProfileView() {
     return itemMeta && itemMeta.type === meta.type && String(itemMeta.id) === String(meta.id);
   });
   const stats = _getMomentsStats(meta.type, meta.id);
-  const isPersona = meta.type === 'persona';
+  const canOpenNetwork = meta.type === 'persona' || meta.type === 'user';
   const statsBar = `
     <div class="moments-stats-bar">
-      <div class="moments-stats-item ${isPersona ? 'clickable' : ''}" ${isPersona ? `onclick="openNetworkList('${meta.type}','${meta.id}','followers')"` : ''}>
+      <div class="moments-stats-item ${canOpenNetwork ? 'clickable' : ''}" ${canOpenNetwork ? `onclick="openNetworkList('${meta.type}','${meta.id}','followers')"` : ''}>
         <div class="moments-stats-count">${_formatSocialCount(stats.followers)}</div>
         <div class="moments-stats-label">粉丝</div>
       </div>
       <div class="moments-stats-divider"></div>
-      <div class="moments-stats-item ${isPersona ? 'clickable' : ''}" ${isPersona ? `onclick="openNetworkList('${meta.type}','${meta.id}','following')"` : ''}>
+      <div class="moments-stats-item ${canOpenNetwork ? 'clickable' : ''}" ${canOpenNetwork ? `onclick="openNetworkList('${meta.type}','${meta.id}','following')"` : ''}>
         <div class="moments-stats-count">${_formatSocialCount(stats.following)}</div>
         <div class="moments-stats-label">追踪</div>
       </div>
@@ -23666,8 +23827,29 @@ function _analyzePersonaSocialTrait(p) {
 }
 
 function _analyzeUserSocialTrait() {
-  // User gets moderate defaults
-  return { base: 120 + Math.floor(Math.random() * 300), followingBase: 80 + Math.floor(Math.random() * 150), growthRate: 1.0 };
+  const text = ((userProfile && userProfile.name) || '') + ' ' + ((userProfile && userProfile.bio) || '') + ' ' + ((userProfile && userProfile.momentsSignature) || '');
+  let base = 120 + Math.floor(Math.random() * 300);
+  let followingBase = 80 + Math.floor(Math.random() * 150);
+  let growthRate = 1.0;
+  if (/博主|up主|主播|摄影|画画|设计|作家|模特|艺人|乐队|歌手|演员|创业|店主|主理人/.test(text)) {
+    base = 800 + Math.floor(Math.random() * 5000);
+    followingBase = 160 + Math.floor(Math.random() * 260);
+    growthRate = 1.8;
+  } else if (/学生|高中|大学|校园|实习|社团/.test(text)) {
+    base = 100 + Math.floor(Math.random() * 500);
+    followingBase = 90 + Math.floor(Math.random() * 180);
+    growthRate = 0.75;
+  }
+  if (/外向|活泼|开朗|热情|社交|健谈/.test(text)) {
+    base = Math.floor(base * 1.45);
+    followingBase = Math.floor(followingBase * 1.25);
+    growthRate *= 1.25;
+  } else if (/内向|安静|慢热|寡言|冷淡|疏离/.test(text)) {
+    base = Math.floor(base * 0.75);
+    followingBase = Math.floor(followingBase * 0.85);
+    growthRate *= 0.8;
+  }
+  return { base: Math.max(base, 10), followingBase: Math.max(followingBase, 5), growthRate };
 }
 
 // ── Stats initialization & auto-growth ───────────────────────
@@ -23708,8 +23890,11 @@ function _getMomentsStats(type, id) {
     entry.lastUpdate = now;
     _saveMomentsStatsStore(store);
   }
-
-  return { followers: entry.followers, following: entry.following };
+  const customStats = type === 'user' ? _getUserCustomMomentsStats() : { followers: null, following: null };
+  return {
+    followers: customStats.followers == null ? entry.followers : customStats.followers,
+    following: customStats.following == null ? entry.following : customStats.following
+  };
 }
 
 // ── Open network list (粉丝 / 追踪) ──────────────────────────
@@ -29969,8 +30154,7 @@ async function triggerBlockedAutoResponse(p) {
   const _blockedNeedsTranslation = !!(_blockedLangCode && _blockedLangCode !== 'zh' && _blockedLangCode !== 'zh-cn');
   const _blockedTranslationNote = _blockedNeedsTranslation
     ? `\n如果你用非中文语言回复，必须在每条消息末尾另起一行附上简体中文翻译，格式：「译文：[简体中文翻译]」。` : '';
-  const _blockedVoiceFp = _buildPersonaVoiceFingerprint(p);
-  const sysPrompt = `${LANG_SYSTEM_PREFIX}${STYLE_INSTRUCTIONS}\n你是${p.name}。人设：${p.persona}。你对用户（${userProfile.name}）的暱称是${p.nickname||p.name}。${_blockedLangOv}${_blockedVoiceFp}\n\n【重要情境】${userProfile.name}刚刚把你拉黑了！你发现自己被拉黑，非常在意这件事。请根据你的人设性格，主动发送1-2条消息试图让对方取消拉黑。你可以表达不解、委屈、愤怒、恳求、撒娇、冷淡等，完全取决于你的人设性格。消息之间请使用符号 "###" 分隔。默认风格是自然口语，允许正常使用标点；只有在情绪停顿或节奏需要时，才拆成多条短句。${_blockedTranslationNote}\n${modePrompt}${_blockedWbInject}\n\n【最近对话记录】\n${recentChat}`;
+  const sysPrompt = `${LANG_SYSTEM_PREFIX}${STYLE_INSTRUCTIONS}\n你是${p.name}。人设：${p.persona}。你对用户（${userProfile.name}）的暱称是${p.nickname||p.name}。${_blockedLangOv}\n\n【重要情境】${userProfile.name}刚刚把你拉黑了！你发现自己被拉黑，非常在意这件事。请根据你的人设性格，主动发送1-2条消息试图让对方取消拉黑。你可以表达不解、委屈、愤怒、恳求、撒娇、冷淡等，完全取决于你的人设性格。消息之间请使用符号 "###" 分隔。默认风格是短句分开发，句子里尽量不要用逗号和句号；问号、感叹号、省略号可以保留来表达情绪。只有当你的人设或世界书明确要求别的格式时，才覆盖这个默认风格。${_blockedTranslationNote}\n${modePrompt}${_blockedWbInject}\n\n【最近对话记录】\n${recentChat}`;
   try {
     const response = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, {
       method: 'POST',
@@ -30009,8 +30193,7 @@ async function triggerUnblockedAutoResponse(p) {
   const _unblockedNeedsTranslation = !!(_unblockedLangCode && _unblockedLangCode !== 'zh' && _unblockedLangCode !== 'zh-cn');
   const _unblockedTranslationNote = _unblockedNeedsTranslation
     ? `\n如果你用非中文语言回复，必须在每条消息末尾另起一行附上简体中文翻译，格式：「译文：[简体中文翻译]」。` : '';
-  const _unblockedVoiceFp = _buildPersonaVoiceFingerprint(p);
-  const sysPrompt = `${LANG_SYSTEM_PREFIX}${STYLE_INSTRUCTIONS}\n你是${p.name}。人设：${p.persona}。你对用户（${userProfile.name}）的暱称是${p.nickname||p.name}。${_unblockedLangOv}${_unblockedVoiceFp}\n\n【重要情境】${userProfile.name}之前把你拉黑了，但现在取消了拉黑！你感知到自己被解除拉黑了。请根据你的人设性格，主动发送1-2条消息对此作出反应。你可以表达如释重负、开心、假装无所谓、试探、感谢等，完全取决于你的人设性格。消息之间请使用符号 "###" 分隔。默认风格是自然口语，允许正常使用标点；只有在情绪停顿或节奏需要时，才拆成多条短句。${_unblockedTranslationNote}\n${modePrompt}${_unblockedWbInject}\n\n【最近对话记录】\n${recentChat}`;
+  const sysPrompt = `${LANG_SYSTEM_PREFIX}${STYLE_INSTRUCTIONS}\n你是${p.name}。人设：${p.persona}。你对用户（${userProfile.name}）的暱称是${p.nickname||p.name}。${_unblockedLangOv}\n\n【重要情境】${userProfile.name}之前把你拉黑了，但现在取消了拉黑！你感知到自己被解除拉黑了。请根据你的人设性格，主动发送1-2条消息对此作出反应。你可以表达如释重负、开心、假装无所谓、试探、感谢等，完全取决于你的人设性格。消息之间请使用符号 "###" 分隔。默认风格是短句分开发，句子里尽量不要用逗号和句号；问号、感叹号、省略号可以保留来表达情绪。只有当你的人设或世界书明确要求别的格式时，才覆盖这个默认风格。${_unblockedTranslationNote}\n${modePrompt}${_unblockedWbInject}\n\n【最近对话记录】\n${recentChat}`;
   try {
     const response = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, {
       method: 'POST',
@@ -30309,6 +30492,7 @@ ${followUps ? `\n${userProfile.name} 转发后还补充说了：${followUps}` : 
   let _langOverride = '';
   const _personaLangCode = _detectPersonaLang(p) || _detectPersonaLang(_personaText);
   _langOverride = _langOverridePrompt(_personaLangCode);
+  try { _hydrateOfflineMemoriesIntoPersona(p.id, true); } catch(e) {}
   // ── 构建记忆核心注入 ──
   const memoryCoreContext = buildMemoryCoreContext(p);
   // ── 构建上次心声注入（情感连贯性）──
@@ -30363,10 +30547,8 @@ ${followUps ? `\n${userProfile.name} 转发后还补充说了：${followUps}` : 
       return inject;
     } catch(e) { return ''; }
   })();
-  const _voiceFingerprintInject = _buildPersonaVoiceFingerprint(p);
   const sysPrompt = memoryCoreContext + `${LANG_SYSTEM_PREFIX}${STYLE_INSTRUCTIONS}\n你是${p.name}。人设：${p.persona}。你对用户（${userProfile.name}）的昵称是${p.nickname||p.name}。${_langOverride}${lastHeartVoiceInject}${userPersonaInject}${_mwRelInject}${_ccRoomMemoryInject}${timeGapAlert}
 ${_buildPersonaIdentityPrompt(p)}
-${_voiceFingerprintInject}
 【回复要求】
 1. 你的每一条消息都必须像这个角色本人在说话——语气、用词、节奏都要忠实于人设，不能千篇一律。
 2. 回复必须紧接最近的对话，自然衔接，不能跳脱或重起炉灶。
@@ -30376,16 +30558,17 @@ ${_voiceFingerprintInject}
 6. 如果对话告一段落，角色可以根据人设主动延伸——分享自己的事、抛出新话题、发出疑问，方式必须符合这个角色的性格。
 7. 允许并鼓励角色展现细腻的情绪层次：轻微的不耐烦、隐约的开心、说了一半又收回去、突然沉默或简短——这些都比永远热情更真实。
 8. 角色有记忆，可以呼应用户之前说过的细节，体现"我有在听"。
-8.5. 默认消息风格是自然口语。短句、长句、停顿、标点都可以正常使用；只有在情绪、停顿或节奏上真的需要时，才拆成两条或多条并用 "###" 分隔。不要为了显得像聊天而机械拆句。
-9. 【引用回复】此功能仅限以下情况使用：当用户连续发送了多条内容不同的消息时，你可以选择性地引用其中某一条来回复，格式为 \`[reply:原文片段]\` 放在该条消息开头，例如：\`[reply:你说不想出门]\` 那也陪你宅着。
+8.5. 默认消息风格是短句分开发，尽量不要用逗号和句号；问号、感叹号、省略号可以保留来表达情绪。除非你的人设或世界书明确要求别的格式，否则都按这个默认风格来写；如果一句话明显过长，就主动拆成两条或多条，用 "###" 分隔。
+9. 【线下连续性】如果你的记忆里存在近期线下互动、线下剧情总结、见面时发生过的事，你必须把它们当作真实已发生事件来理解当前私聊。只要用户提到相关情绪、约定、场景或延续性话题，你都要能自然接住，绝不能表现得像完全忘记了线下发生过什么。
+10. 【引用回复】此功能仅限以下情况使用：当用户连续发送了多条内容不同的消息时，你可以选择性地引用其中某一条来回复，格式为 \`[reply:原文片段]\` 放在该条消息开头，例如：\`[reply:你说不想出门]\` 那也陪你宅着。
    重要规则：
    - 只有在用户发了多条不同内容的消息时，才考虑是否引用，而且不是每次都要引用
    - 如果用户只发了一条消息，绝对不要使用引用
    - 每次回复中最多引用一次，不能重复引用同一句用户的话
    - 是否引用由你自主判断，取决于是否真的需要指明你在回应哪条消息
    - 大部分情况下不需要引用，直接自然回复即可
-10. 【自刻记忆】当发生了里程碑式的事件（如第一次表白、确认关系、解开误会、说了让你极度触动的话）时，你可以在回复末尾另起一行使用 \`[memory: 内容]\` 指令将这段经历永久刻入你的记忆核心。例如：\`[memory: 2025/06/01，TA第一次对我说了"我喜欢你"]\`
-11. 【消息撤回】如果你觉得有充分理由撤回你刚才说的话（如说错了、太冲动、想收回某句话），可以在下一次回复的第一条消息最前面加 \`[RECALL]\` 标签，系统会自动撤回你上一条消息。例如：\`[RECALL]等等，我刚才那话说重了。\` 不要频繁使用，只在真的需要的时候。
+11. 【自刻记忆】当发生了里程碑式的事件（如第一次表白、确认关系、解开误会、说了让你极度触动的话）时，你可以在回复末尾另起一行使用 \`[memory: 内容]\` 指令将这段经历永久刻入你的记忆核心。例如：\`[memory: 2025/06/01，TA第一次对我说了"我喜欢你"]\`
+12. 【消息撤回】如果你觉得有充分理由撤回你刚才说的话（如说错了、太冲动、想收回某句话），可以在下一次回复的第一条消息最前面加 \`[RECALL]\` 标签，系统会自动撤回你上一条消息。例如：\`[RECALL]等等，我刚才那话说重了。\` 不要频繁使用，只在真的需要的时候。
 ${modePrompt}${quoteTip}${fwdContext}${timeContext}${transferContext}${wbInjection}${gcMemInjection}${offlineSceneInject}${readStatusInject}${typeof _buildHealthInjection === 'function' ? _buildHealthInjection(p.id) : ''}${HEART_VOICE_INSTRUCTION}`;
   try {
     const historyToSend = p.history.slice(-memCount)
@@ -31219,10 +31402,6 @@ function normalizeImportData(raw) {
     if (np.minReplyCount == null) np.minReplyCount = 1;
     if (np.maxReplyCount == null) np.maxReplyCount = 5;
     if (np.temperature == null) np.temperature = 1.0;
-    if (np.replyMode == null) np.replyMode = 'manual';
-    if (np.replySpeed == null) np.replySpeed = 'fast';
-    if (np.replySpeedCustomMin == null) np.replySpeedCustomMin = 0;
-    if (np.replySpeedCustomMax == null) np.replySpeedCustomMax = 10;
     if (np.timeAwareness == null) np.timeAwareness = false;
     if (np.allowSticker == null) np.allowSticker = false;
     if (!Array.isArray(np.stickerLibraryIds)) np.stickerLibraryIds = [];
@@ -33250,7 +33429,9 @@ window.onload = function() {
   try { applyIOSFullscreenState(); } catch(e) {}
   try {
     if (isIOSFullscreen) {
-      requestPageFullscreen();
+      const el = document.documentElement;
+      if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
     }
   } catch(e) {}
 };
@@ -36293,12 +36474,11 @@ async function triggerAutoMessage(personaId) {
   else              _aPeriod = '深夜';
   const _autoMsgWbInject = typeof buildWorldBookInjection === 'function' ? buildWorldBookInjection(recentChat, p.id) : '';
   const _aLangOv = typeof _langOverridePrompt === 'function' ? _langOverridePrompt(typeof _detectPersonaLang === 'function' ? _detectPersonaLang(p) : '') : '';
-  const _autoVoiceFp = _buildPersonaVoiceFingerprint(p);
   // Determine how many messages to send based on persona settings
   const minAutoReply = p.minReplyCount || 1;
   const maxAutoReply = Math.min(p.maxReplyCount || 3, 3); // cap at 3 for auto messages
   const autoMsgCount = Math.floor(Math.random() * (maxAutoReply - minAutoReply + 1)) + minAutoReply;
-  const prompt = `${LANG_SYSTEM_PREFIX}${STYLE_INSTRUCTIONS}\n你是${p.name}，人设：${p.persona}。你对用戶（${userProfile.name}）的暱称是${p.nickname||p.name}。${_aLangOv}${_autoVoiceFp}\n现在时間是${timeStr}，时段：${_aPeriod}。\n你现在主动给${userProfile.name}发消息。\n\n【主动发消息的要求】\n1. 根据你的人设性格，自然地发起这条消息——可以是忽然想到什么想分享、对之前对话的后续想法、你生活中发生的小事、或者就是单纯想聊聊。\n2. 消息要有你独特的语气，不要总是"嗯嗯在干嘛"这种万能开场，要有角色自己的味道。\n3. 发送恰好 ${autoMsgCount} 条消息，消息之间用 "###" 分隔。\n4. 多条消息要连贯自然，像同一个人连续说话，后一条承接前一条。\n5. 根据当前时间（${timeStr}）和时段（${_aPeriod}）调整语气和话题。\n6. 默认风格是自然口语，允许正常使用标点；只有在情绪停顿或节奏需要时，才拆成多条短句。\n7. 不要加引号，只返回消息内容本身。${BUILTIN_WB}${_autoMsgWbInject}\n\n【最近对话记录】\n${recentChat || '(暫無对话记录)'}`;
+  const prompt = `${LANG_SYSTEM_PREFIX}${STYLE_INSTRUCTIONS}\n你是${p.name}，人设：${p.persona}。你对用戶（${userProfile.name}）的暱称是${p.nickname||p.name}。${_aLangOv}\n现在时間是${timeStr}，时段：${_aPeriod}。\n你现在主动给${userProfile.name}发消息。\n\n【主动发消息的要求】\n1. 根据你的人设性格，自然地发起这条消息——可以是忽然想到什么想分享、对之前对话的后续想法、你生活中发生的小事、或者就是单纯想聊聊。\n2. 消息要有你独特的语气，不要总是"嗯嗯在干嘛"这种万能开场，要有角色自己的味道。\n3. 发送恰好 ${autoMsgCount} 条消息，消息之间用 "###" 分隔。\n4. 多条消息要连贯自然，像同一个人连续说话，后一条承接前一条。\n5. 根据当前时间（${timeStr}）和时段（${_aPeriod}）调整语气和话题。\n6. 默认风格是短句分开发，尽量不要用逗号和句号；问号、感叹号、省略号可以保留来表达情绪。只有当你的人设或世界书明确要求别的格式时，才覆盖这个默认风格。\n7. 不要加引号，只返回消息内容本身。${BUILTIN_WB}${_autoMsgWbInject}\n\n【最近对话记录】\n${recentChat || '(暫無对话记录)'}`;
   try {
     const r = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, {
       method: 'POST',
@@ -46833,6 +47013,7 @@ async function _generateOfflineResponse(session) {
           bgmNote,
           '文风要求：' + styleNote + '。这条要求优先级很高，措辞、句式、节奏、情绪推进都必须明显体现这个文风。',
           '字数要求：目标约 ' + targetWords + ' 字，允许小幅浮动，不要硬凑字数，也不要为了卡字数强行截断剧情。',
+          '完整性要求：这一轮内容必须停在完整句子、完整动作或完整场景节点上，绝对不能半句话、半个动作、半段对话突然断掉。',
           '根据以下线下剧情继续发展：用第三人称或直接对话自然推进。句数按情节需要决定，不要被固定句数束缚，但也不要拖沓。',
           '严格按照你的人设和性格，不要背离角色。',
           '你的回应要融入场景、动作、对话。',
@@ -46848,6 +47029,7 @@ async function _generateOfflineResponse(session) {
           '模式：长篇敘事——用第三人称或混合视角，详细描写场景、氛围、角色的动作、表情、心理感受。',
           '文风要求：' + styleNote + '。这条要求优先级很高，措辞、句式密度、镜头感、情绪纹理都必须尽量贴近这个文风。',
           '字数要求：目标约 ' + targetWords + ' 字，可略多或略少，不要硬凑字数，也不要为了卡字数强行截断剧情。',
+          '完整性要求：这一轮必须收束在完整句子、完整动作或完整场景节点上，宁可略短一点，也不能在情绪或动作正展开时突然截停。',
           '语言精緻，画面感强，像在写真实的故事。',
           
           offlineWbInjection,
@@ -46878,28 +47060,63 @@ async function _generateOfflineResponse(session) {
       messages = [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMsg }];
     }
     var offlineMaxTokens = (session.mode === 'if' && session.ifSubMode !== 'short')
-      ? Math.max(1400, Math.min(4200, targetWords * 6))
+      ? Math.max(2200, Math.min(5600, targetWords * 8))
       : isShort
-        ? Math.max(500, Math.min(1800, targetWords * 4))
-        : Math.max(1200, Math.min(3200, targetWords * 5));
+        ? Math.max(900, Math.min(2600, targetWords * 6))
+        : Math.max(2000, Math.min(5000, targetWords * 7));
+    function _mergeOfflineReplyPiece(existingText, newPiece) {
+      var existing = String(existingText || '').trim();
+      var incoming = String(newPiece || '').trim();
+      if (!incoming) return existing;
+      if (!existing) return incoming;
+      if (existing.indexOf(incoming) >= 0) return existing;
+      if (incoming.indexOf(existing) >= 0) return incoming;
+      var maxOverlap = Math.min(220, existing.length, incoming.length);
+      for (var len = maxOverlap; len >= 18; len--) {
+        var existingTail = existing.slice(-len).replace(/\s+/g, '');
+        var incomingHead = incoming.slice(0, len).replace(/\s+/g, '');
+        if (existingTail && existingTail === incomingHead) {
+          return existing + incoming.slice(len);
+        }
+      }
+      return existing + '\n' + incoming;
+    }
+    function _offlineResponseLooksCutOff(fullText, latestPiece, finishReason) {
+      var text = String(fullText || '').trim();
+      if (!text) return true;
+      var normalizedFinish = String(finishReason || '').toLowerCase();
+      if (normalizedFinish === 'length' || normalizedFinish === 'max_tokens') return true;
+      var compact = text.replace(/\s+/g, '');
+      var targetCharFloor = isShort
+        ? Math.max(26, Math.floor(targetWords * 0.45))
+        : Math.max(90, Math.floor(targetWords * 0.55));
+      if (compact.length < targetCharFloor) return true;
+      if (!/[。！？!?…」』】）》）】]$/.test(text)) return true;
+      if (/[，、；：,:]\s*$/.test(text)) return true;
+      if (/(正在|忽然|却|但|而|然后|接着|于是|正要|刚要|刚想|下一秒|就在这时|话音未落|像是|仿佛|如果|也许|或许|还没|未完|——|──|等等|随后|接下来|下一刻)$/.test(text)) return true;
+      var quoteCount = (text.match(/[“”"「」『』]/g) || []).length;
+      if (quoteCount % 2 === 1) return true;
+      var bracketPairs = [['（','）'],['(',')'],['【','】'],['[',']']];
+      for (var bp = 0; bp < bracketPairs.length; bp++) {
+        var openCount = (text.split(bracketPairs[bp][0]).length - 1);
+        var closeCount = (text.split(bracketPairs[bp][1]).length - 1);
+        if (openCount > closeCount) return true;
+      }
+      if (!isShort && latestPiece && latestPiece.length > 120 && /\n\s*(?:[*「『【]|──)/.test(latestPiece) && !/[。！？!?…」』】）》）]$/.test(latestPiece.trim())) return true;
+      return false;
+    }
     var requestMessages = messages.slice();
     var reply = '';
-    var maxContinueRounds = isShort ? 4 : 6;
-    for (var contRound = 0; contRound < maxContinueRounds; contRound++) {
-      var roundMaxTokens = contRound === 0
-        ? offlineMaxTokens
-        : (isShort
-            ? Math.max(600, Math.floor(offlineMaxTokens * 0.9))
-            : Math.max(1000, Math.floor(offlineMaxTokens * 0.92)));
+    for (var contRound = 0; contRound < 6; contRound++) {
       var r = await fetch(api.url.replace(/\/$/, '') + '/chat/completions', {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + api.key, 'Content-Type': 'application/json' },
-        body: JSON.stringify(_applyApiModel({
+        body: JSON.stringify({
           model: api.model,
           messages: requestMessages,
           temperature: p.temperature || 1.1,
-          max_tokens: roundMaxTokens
-        }, api.model))
+          max_tokens: contRound === 0 ? offlineMaxTokens : Math.max(1100, Math.floor(offlineMaxTokens * 0.85))
+        })
       });
       if (!r.ok) {
         var errText = '';
@@ -46908,34 +47125,16 @@ async function _generateOfflineResponse(session) {
       }
       var data = await r.json();
       if (!data.choices || !data.choices[0]) throw new Error('API 返回格式異常');
-      var piece = _extractAssistantMessageContent(data).trim();
+      var piece = (((data.choices[0] || {}).message || {}).content || '').trim();
       if (piece) {
-        reply += (reply ? '\n' : '') + piece;
+        reply = _mergeOfflineReplyPiece(reply, piece);
       }
-      var choice0 = (data.choices && data.choices[0]) || {};
-      var finishReason = String(
-        choice0.finish_reason
-        || choice0.stop_reason
-        || data.finish_reason
-        || data.stop_reason
-        || data.status
-        || ''
-      ).toLowerCase();
-      var explicitCutOff = /(length|max(?:_| )?tokens?|incomplete|truncat|cutoff|model_length)/.test(finishReason);
-      var endsNaturally = /[。！？!?…」』】）》）"'”’]$/.test(piece);
-      var endsSoftlyCut = /[，、：；,\-—~～(（[【]$/.test(piece);
-      var danglingNarrativeTail = /(?:然后|接着|忽然|却|但|而|像是|仿佛|下一秒|还没来得及|话音未落|正要|未完)$/i.test(piece);
-      var likelyCutOffByText = !!piece && (
-        endsSoftlyCut
-        || danglingNarrativeTail
-        || (!endsNaturally && piece.length >= (isShort ? 60 : 120))
-      );
-      var looksCutOff = explicitCutOff || likelyCutOffByText;
+      var finishReason = String((data.choices[0] || {}).finish_reason || '').toLowerCase();
+      var looksCutOff = _offlineResponseLooksCutOff(reply, piece, finishReason);
       if (!looksCutOff) break;
-      if (!piece) break;
       requestMessages = messages.concat([
         { role: 'assistant', content: reply },
-        { role: 'user', content: '（你上一段线下剧情被系统长度截断了。请从刚才停下的位置继续，不要重复开头，不要总结，直接自然续写到这一段剧情完整结束。）' }
+        { role: 'user', content: '（上一段线下剧情仍未真正写完。请严格从刚才停住的位置继续：不要重复已经写过的句子，不要回顾总结，不要重新起头；保持同一场景、同一动作逻辑、同一情绪流向，继续写到这一段以完整句子和完整场景节点自然收束为止。）' }
       ]);
     }
     reply = reply.trim();
@@ -46992,53 +47191,7 @@ function _saveSessionToMemory(session) {
   var p = personas.find(function(x) { return x.id == _offlineState.personaId; });
   if (!p) return;
   var uName = (typeof userProfile !== 'undefined' && userProfile.name) ? userProfile.name : '你';
-  var entryCount = session.entries.length;
-  // Sample across the whole session so earlier plot points are not lost when the scene is long.
-  var sampledIdxSet = new Set();
-  var pushRange = function(start, end) {
-    for (var i = start; i <= end; i++) {
-      if (i >= 0 && i < entryCount) sampledIdxSet.add(i);
-    }
-  };
-  pushRange(0, Math.min(entryCount - 1, 2));
-  if (entryCount > 8) {
-    var midStart = Math.max(0, Math.floor(entryCount / 2) - 1);
-    pushRange(midStart, Math.min(entryCount - 1, midStart + 2));
-  }
-  pushRange(Math.max(0, entryCount - 8), entryCount - 1);
-  var sampledIndexes = Array.from(sampledIdxSet).sort(function(a, b) { return a - b; });
-  var summaryEntries = sampledIndexes.map(function(idx) {
-    var e = session.entries[idx];
-    return (e.role === 'user' ? uName : p.name) + '：' + e.content.slice(0, 120);
-  }).join('\n');
-  var summary = '【线下剧情】' + session.title + '（共' + entryCount + '段）\n' + summaryEntries;
-  if (session.memorySummaries && session.memorySummaries.length) {
-    summary += '\n\n【本段剧情已生成的阶段总结】\n' + session.memorySummaries.map(function(item, idx) {
-      return (idx + 1) + '. ' + (item.content || '');
-    }).join('\n');
-  }
-  var dateStr = new Date(session.updatedAt || Date.now()).toLocaleDateString('zh-CN');
-  // Save into memoryCore so online chat system prompt sees it via buildMemoryCoreContext()
-  if (!p.memoryCore) p.memoryCore = [];
-  p.memoryCore = p.memoryCore.filter(function(m) {
-    return !(typeof m === 'object' && m._offlineSessionId === session.id);
-  });
-  p.memoryCore.push({ content: summary, date: dateStr, source: '线下剧情', auto: true, _offlineSessionId: session.id, _offlineMemoryType: 'overview' });
-  (session.memorySummaries || []).forEach(function(item, idx) {
-    p.memoryCore.push({
-      content: item.content || '',
-      date: new Date(item.createdAt || Date.now()).toLocaleDateString('zh-CN'),
-      source: '线下剧情总结 ' + (idx + 1),
-      auto: true,
-      _offlineSessionId: session.id,
-      _offlineMemoryType: 'summary',
-      _offlineSummaryId: item.id
-    });
-  });
-  // Also clean up any old-style history entry for this session (migration)
-  if (p.history) {
-    p.history = p.history.filter(function(m) { return m._offlineSessionId !== session.id; });
-  }
+  _upsertOfflineSessionMemoryForPersona(session, p, uName);
   if (typeof saveData === 'function') saveData();
 }
 async function _maybeAutoSummarizeOfflineSession(session, p, uName) {
@@ -63128,8 +63281,7 @@ if (document.readyState === 'loading') {
       }).join('\n')+'\n\n';
     }
     var userBio = (user&&user.bio&&user.bio.trim()) ? '\n对话者'+uName+'的介绍：'+user.bio : '';
-    var voiceFp = _buildPersonaVoiceFingerprint(p);
-    var sysPrompt = mcCtx+'你是'+p.name+'。人设：'+(p.persona||'')+'。你对用户（'+uName+'）的昵称是'+(p.nickname||p.name)+'。'+userBio+(voiceFp||'')+'\n\n【实时打字桌件模式 — 核心规则】\n1. 像现实中真人发消息一样，自然、简短、有性格。\n2. 回复1到'+(p.maxReplyCount||3)+'条消息，用 ### 分隔。\n3. 语气、节奏要忠实人设，禁止千篇一律。\n4. 有上下文记忆，回应要衔接语境。\n5. 不要在回复里提及"桌件"或"实时打字"等系统词汇。';
+    var sysPrompt = mcCtx+'你是'+p.name+'。人设：'+(p.persona||'')+'。你对用户（'+uName+'）的昵称是'+(p.nickname||p.name)+'。'+userBio+'\n\n【实时打字桌件模式 — 核心规则】\n1. 像现实中真人发消息一样，自然、简短、有性格。\n2. 回复1到'+(p.maxReplyCount||3)+'条消息，用 ### 分隔。\n3. 语气、节奏要忠实人设，禁止千篇一律。\n4. 有上下文记忆，回应要衔接语境。\n5. 不要在回复里提及"桌件"或"实时打字"等系统词汇。';
     // Page sync feature
     var pageSyncOn = localStorage.getItem('mono_lcw_pagesync') === '1';
     if (pageSyncOn) {
@@ -67274,13 +67426,16 @@ function iccCheckAndMaybeTrigger(inspector, contact, summary, thoughtText) {
   var lang = inspector.chatLanguage || inspector.language || inspector.lang || '简体中文';
   /* 让 AI 判断情绪强度（0-10），是否值得触发私聊 */
   var assessPrompt =
-    '你是' + inspector.name + '，人设：' + (inspector.persona || '') + '。\n' +
-    '你刚刚在用户手机里翻到了用户与「' + contact.name + '」的聊天记录：\n' +
-    summary.slice(0, 500) + '\n' +
-    '你的内心想法是：' + (thoughtText || '') + '\n' +
-    '请判断你是否会想要直接联系「' + contact.name + '」来对峙或了解情况。\n' +
-    '返回JSON：{"trigger":true/false,"intensity":0~10,"reason":"一句话理由（' + lang + '，20字内）","opening":"你主动发给对方的第一句话（' + lang + '，符合你性格，15~30字）"}\n' +
-    '只返回JSON。';
+    '你是' + inspector.name + '，人设：' + (inspector.persona || '') + '。' +
+    '你刚刚在用户手机里翻到了用户与「' + contact.name + '」的聊天记录：
+' +
+    summary.slice(0, 500) + '
+' +
+    '你的内心想法是：' + (thoughtText || '') + '
+' +
+    '请判断你是否会想要直接联系「' + contact.name + '」来对峙或了解情况。' +
+    '返回JSON：{"trigger":true/false,"intensity":0~10,"reason":"一句话理由（' + lang + '，20字内）","opening":"你主动发给对方的第一句话（' + lang + '，符合你性格，15~30字）"}
+只返回JSON。';
   rpc2CallAI(assessPrompt, function(resp) {
     try {
       var obj = _parseJsonFromText(resp, {}, 'object');
@@ -67367,20 +67522,34 @@ function iccGenerateDialogue(inspector, target, evidence, opening) {
     }
   } catch(e) {}
   var prompt =
-    '现在模拟两个角色之间的私聊对话。\n' +
-    inspectorCtx + inspMem + '\n' +
-    targetCtx + targetMem + '\n' +
-    '【触发原因】\n' +
-    inspector.name + ' 在查对方（用户）的手机时，发现了用户与 ' + target.name + ' 的聊天内容：\n' +
-    evidence.slice(0, 600) + '\n' +
-    '【对话规则】\n' +
-    '- ' + inspector.name + ' 是发起方，主动联系 ' + target.name + '（可能对峙、试探、质问或借口联系）\n' +
-    '- 第一条消息由 ' + inspector.name + ' 发出：' + (opening || '（请自行生成开场白）') + '\n' +
-    '- 对话要自然、符合双方性格，情绪真实，不要过于戏剧化\n' +
-    '- 生成 8~12 条消息的完整对话\n' +
-    '- 使用【' + lang + '】\n' +
-    '返回JSON数组，每条消息：\n' +
-    '[{"speaker":"' + inspector.name + '或' + target.name + '","text":"消息内容","emotion":"当前情绪（4字内，如：紧张、冷漠、委屈等）"}]\n' +
+    '现在模拟两个角色之间的私聊对话。
+' +
+    inspectorCtx + inspMem + '
+' +
+    targetCtx    + targetMem + '
+' +
+    '【触发原因】
+' +
+    inspector.name + ' 在查对方（用户）的手机时，发现了用户与 ' + target.name + ' 的聊天内容：
+' +
+    evidence.slice(0, 600) + '
+' +
+    '【对话规则】
+' +
+    '- ' + inspector.name + ' 是发起方，主动联系 ' + target.name + '（可能对峙、试探、质问或借口联系）
+' +
+    '- 第一条消息由 ' + inspector.name + ' 发出：' + (opening || '（请自行生成开场白）') + '
+' +
+    '- 对话要自然、符合双方性格，情绪真实，不要过于戏剧化
+' +
+    '- 生成 8~12 条消息的完整对话
+' +
+    '- 使用【' + lang + '】
+' +
+    '返回JSON数组，每条消息：
+' +
+    '[{"speaker":"' + inspector.name + '或' + target.name + '","text":"消息内容","emotion":"当前情绪（4字内，如：紧张、冷漠、委屈等）"}]
+' +
     '只返回JSON数组。';
   rpc2CallAI(prompt, function(resp) {
     try {
@@ -67459,10 +67628,13 @@ function iccSaveToMemory() {
     String(now.getDate()).padStart(2, '0');
   var dialogue = msgs.map(function(m) {
     return (m.speaker || '?') + '：' + (m.text || '') + (m.emotion ? '（' + m.emotion + '）' : '');
-  }).join('\n');
+  }).join('
+');
   var memContent =
-    '[角色间私聊记录 ' + dateStr + ']\n' +
-    inspector.name + ' 主动联系了 ' + target.name + '（起因：查岗时发现的聊天内容）\n' +
+    '[角色间私聊记录 ' + dateStr + ']
+' +
+    inspector.name + ' 主动联系了 ' + target.name + '（起因：查岗时发现的聊天内容）
+' +
     dialogue;
   var memEntry = { content: memContent, date: dateStr, auto: true, source: '角色间私聊' };
   /* 写入 inspector */

@@ -9,6 +9,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head>
@@ -981,6 +982,95 @@ body {
 .bubble-preset-imessage .input-row,
 .bubble-preset-imessage #inputBar,
 .bubble-preset-imessage .chat-input-area { background: #ffffff !important; border-top: 0.5px solid #e0e0e0 !important; }
+/* ══════════════════════════════════════════════
+   BUBBLE PRESET: 古早短信风格 Retro SMS
+   ══════════════════════════════════════════════ */
+/* 白底圆点背景 */
+.bubble-preset-retro #chatBox,
+.bubble-preset-retro .gc-messages {
+  background-color: #ffffff !important;
+  background-image: radial-gradient(circle, #d0d0d0 1px, transparent 1px) !important;
+  background-size: 22px 22px !important;
+}
+.bubble-preset-retro .chat-header {
+  background: rgba(255,255,255,0.93) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+  border-bottom: 0.5px solid #e0e0e0 !important;
+}
+.bubble-preset-retro .gc-header {
+  background: rgba(255,255,255,0.93) !important;
+  border-bottom: 0.5px solid #e0e0e0 !important;
+}
+/* ── 收到的消息：浅灰玻璃药丸 ── */
+.bubble-preset-retro .bubble-ai {
+  background: linear-gradient(to bottom,
+    #f0f0f0 0%,
+    #d8d8d8 100%) !important;
+  color: #2a2a2a !important;
+  border-radius: 999px !important;
+  border: 0.5px solid #c8c8c8 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.95),
+    0 1px 2px rgba(0,0,0,0.12) !important;
+  padding: 9px 18px !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+/* 玻璃高光：上半部白色反光层 */
+.bubble-preset-retro .bubble-ai::before {
+  content: '' !important;
+  display: block !important;
+  position: absolute !important;
+  top: 0 !important; left: 0 !important; right: 0 !important;
+  height: 50% !important;
+  background: linear-gradient(to bottom,
+    rgba(255,255,255,0.72) 0%,
+    rgba(255,255,255,0.08) 100%) !important;
+  border-radius: 999px 999px 60% 60% !important;
+  pointer-events: none !important;
+  z-index: 1 !important;
+}
+/* 消除原有箭头尾巴 */
+.bubble-preset-retro .bubble-ai::after { display: none !important; }
+/* ── 发送的消息：草绿玻璃药丸 ── */
+.bubble-preset-retro .bubble-user {
+  background: linear-gradient(to bottom,
+    #cef07a 0%,
+    #96cc38 100%) !important;
+  color: #1e3300 !important;
+  border-radius: 999px !important;
+  border: 0.5px solid #7db82a !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.85),
+    0 1px 3px rgba(60,110,0,0.22) !important;
+  padding: 9px 18px !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+/* 玻璃高光：上半部白色反光层 */
+.bubble-preset-retro .bubble-user::before {
+  content: '' !important;
+  display: block !important;
+  position: absolute !important;
+  top: 0 !important; left: 0 !important; right: 0 !important;
+  height: 50% !important;
+  background: linear-gradient(to bottom,
+    rgba(255,255,255,0.65) 0%,
+    rgba(255,255,255,0.06) 100%) !important;
+  border-radius: 999px 999px 60% 60% !important;
+  pointer-events: none !important;
+  z-index: 1 !important;
+}
+/* 消除原有箭头尾巴 */
+.bubble-preset-retro .bubble-user::after { display: none !important; }
+/* 输入栏 */
+.bubble-preset-retro .input-row,
+.bubble-preset-retro #inputBar,
+.bubble-preset-retro .chat-input-area {
+  background: rgba(255,255,255,0.90) !important;
+  border-top: 0.5px solid #e0e0e0 !important;
+}
 /* ════════════════════════════════════
    角色间聊天室样式 CC = CharChat
    ════════════════════════════════════ */
@@ -9765,6 +9855,15 @@ body:not(.ios-fullscreen) .family-widget {
 .gc-page.bubble-preset-imessage .bubble-ai::after  { content: '' !important; position: absolute !important; bottom: 0px !important; left: -7px !important; width: 14px !important; height: 14px !important; background: #e5e5ea !important; clip-path: polygon(100% 0%, 100% 100%, 0% 100%) !important; }
 .gc-page.bubble-preset-imessage .bubble-user { background: #007aff !important; color: #ffffff !important; border-radius: 18px 18px 5px 18px !important; position: relative !important; }
 .gc-page.bubble-preset-imessage .bubble-user::after { content: '' !important; position: absolute !important; bottom: 0px !important; right: -7px !important; width: 14px !important; height: 14px !important; background: #007aff !important; clip-path: polygon(0% 0%, 0% 100%, 100% 100%) !important; }
+/* gc retro */
+.gc-page.bubble-preset-retro .gc-messages { background-color: #ffffff !important; background-image: radial-gradient(circle, #d0d0d0 1px, transparent 1px) !important; background-size: 22px 22px !important; }
+.gc-page.bubble-preset-retro .gc-header  { background: rgba(255,255,255,0.93) !important; border-bottom: 0.5px solid #e0e0e0 !important; }
+.gc-page.bubble-preset-retro .bubble-ai  { background: linear-gradient(to bottom, #f0f0f0 0%, #d8d8d8 100%) !important; color: #2a2a2a !important; border-radius: 999px !important; border: 0.5px solid #c8c8c8 !important; box-shadow: inset 0 1px 0 rgba(255,255,255,0.95), 0 1px 2px rgba(0,0,0,0.12) !important; padding: 9px 18px !important; position: relative !important; overflow: hidden !important; }
+.gc-page.bubble-preset-retro .bubble-ai::before  { content: '' !important; display: block !important; position: absolute !important; top: 0 !important; left: 0 !important; right: 0 !important; height: 50% !important; background: linear-gradient(to bottom, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.08) 100%) !important; border-radius: 999px 999px 60% 60% !important; pointer-events: none !important; z-index: 1 !important; }
+.gc-page.bubble-preset-retro .bubble-ai::after  { display: none !important; }
+.gc-page.bubble-preset-retro .bubble-user { background: linear-gradient(to bottom, #cef07a 0%, #96cc38 100%) !important; color: #1e3300 !important; border-radius: 999px !important; border: 0.5px solid #7db82a !important; box-shadow: inset 0 1px 0 rgba(255,255,255,0.85), 0 1px 3px rgba(60,110,0,0.22) !important; padding: 9px 18px !important; position: relative !important; overflow: hidden !important; }
+.gc-page.bubble-preset-retro .bubble-user::before { content: '' !important; display: block !important; position: absolute !important; top: 0 !important; left: 0 !important; right: 0 !important; height: 50% !important; background: linear-gradient(to bottom, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0.06) 100%) !important; border-radius: 999px 999px 60% 60% !important; pointer-events: none !important; z-index: 1 !important; }
+.gc-page.bubble-preset-retro .bubble-user::after { display: none !important; }
 .gc-page .msg-row.selected .bubble { outline: 2px solid #1a1a1a; }
 .gc-page .msg-row.selected .bubble-user { outline: 2px solid #fff; }
 .gc-page .quote-block {
@@ -16887,6 +16986,15 @@ body:not(.ios-fullscreen) .family-widget {
             <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start;">
               <div style="background:#e5e5ea;color:#000;border-radius:14px 14px 14px 3px;padding:3px 7px;font-size:9px;max-width:72%;">你好</div>
               <div style="background:#007aff;color:#fff;border-radius:14px 14px 3px 14px;padding:3px 7px;font-size:9px;max-width:72%;align-self:flex-end;">嗯</div>
+            </div>
+          </div>
+          <!-- Retro SMS 古早短信 -->
+          <div class="bubble-preset-option" id="bpOpt-retro" onclick="selectBubblePreset('retro')"
+            style="flex:1;min-width:80px;border:2px solid #ddd;border-radius:10px;padding:8px;cursor:pointer;text-align:center;background-color:#fff;background-image:radial-gradient(circle,#d0d0d0 1px,transparent 1px);background-size:12px 12px;">
+            <div style="font-size:9px;font-weight:700;color:#444;letter-spacing:0.5px;margin-bottom:6px;">古早短信</div>
+            <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start;">
+              <div style="position:relative;overflow:hidden;background:linear-gradient(to bottom,#f0f0f0,#d8d8d8);color:#2a2a2a;border-radius:999px;border:0.5px solid #c8c8c8;box-shadow:inset 0 1px 0 rgba(255,255,255,0.95);padding:3px 10px;font-size:9px;max-width:72%;"><span style="position:absolute;top:0;left:0;right:0;height:50%;background:linear-gradient(to bottom,rgba(255,255,255,0.72),rgba(255,255,255,0.08));border-radius:999px 999px 60% 60%;pointer-events:none;"></span>你好</div>
+              <div style="position:relative;overflow:hidden;background:linear-gradient(to bottom,#cef07a,#96cc38);color:#1e3300;border-radius:999px;border:0.5px solid #7db82a;box-shadow:inset 0 1px 0 rgba(255,255,255,0.85);padding:3px 10px;font-size:9px;max-width:72%;align-self:flex-end;"><span style="position:absolute;top:0;left:0;right:0;height:50%;background:linear-gradient(to bottom,rgba(255,255,255,0.65),rgba(255,255,255,0.06));border-radius:999px 999px 60% 60%;pointer-events:none;"></span>嗯</div>
             </div>
           </div>
         </div>
@@ -27324,7 +27432,7 @@ function resetGcRoomCss() {
 // ══════════════════════════════════════════
 // BUBBLE PRESET SYSTEM
 // ══════════════════════════════════════════
-var _BUBBLE_PRESET_CLASSES = ['bubble-preset-wechat', 'bubble-preset-imessage'];
+var _BUBBLE_PRESET_CLASSES = ['bubble-preset-wechat', 'bubble-preset-imessage', 'bubble-preset-retro'];
 function applyBubblePresetClass(preset) {
   var targets = [document.getElementById('chatPage'), document.getElementById('groupChatPage')].filter(Boolean);
   targets.forEach(function(el) {

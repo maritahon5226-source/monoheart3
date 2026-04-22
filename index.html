@@ -8,6 +8,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head>
@@ -45822,6 +45823,34 @@ function _offlineClampNumber(value, fallback, min, max) {
   if (typeof max === 'number' && num > max) num = max;
   return num;
 }
+function _getOfflineWordTargetSpec(targetWords, isShort) {
+  var target = _offlineClampNumber(targetWords, isShort ? 70 : 140, 20, 5000);
+  var tolerance = Math.max(isShort ? 12 : 20, Math.round(target * (isShort ? 0.18 : 0.22)));
+  var minWords = Math.max(20, target - tolerance);
+  var maxWords = target + tolerance;
+  return {
+    targetWords: target,
+    minWords: minWords,
+    maxWords: maxWords,
+    stopWords: maxWords + Math.max(isShort ? 12 : 24, Math.round(target * 0.2))
+  };
+}
+function _buildOfflineWordTargetRule(targetWords, isShort) {
+  var spec = _getOfflineWordTargetSpec(targetWords, isShort);
+  return '字数要求：本轮正文以 ' + spec.targetWords + ' 字为目标，尽量控制在 ' + spec.minWords + '-' + spec.maxWords + ' 字之间。达到这个篇幅后就自然收束，禁止为了铺陈而明显超出。';
+}
+function _calcOfflineResponseMaxTokens(targetWords, isShort, isIfLong) {
+  var target = _offlineClampNumber(targetWords, isShort ? 70 : 140, 20, 5000);
+  var estimated = isIfLong
+    ? Math.round(target * 3.4) + 160
+    : isShort
+      ? Math.round(target * 2.6) + 80
+      : Math.round(target * 3.0) + 120;
+  return Math.max(
+    isShort ? 180 : 260,
+    Math.min(isIfLong ? 2200 : (isShort ? 900 : 1600), estimated)
+  );
+}
 function _getOfflineModeKey(mode) {
   return mode === 'short' ? 'short' : 'long';
 }
@@ -46756,6 +46785,7 @@ function _getIfLineSystemPrompt(p, session) {
   var modeConfig = _getOfflineModeConfig(isShort ? 'short' : 'long', session);
   var styleNote = modeConfig.styleText || fallbackStyleNote;
   var targetWords = _offlineClampNumber(modeConfig.targetWords, isShort ? 70 : 140, 20, 5000);
+  var wordRule = _buildOfflineWordTargetRule(targetWords, isShort);
   var worldBlock = [
     s.worldSetting   ? '【世界】' + s.worldSetting : '',
     s.charPersona    ? '【' + charName + '】' + s.charPersona : '',
@@ -46859,8 +46889,8 @@ function _getIfLineSystemPrompt(p, session) {
     ].join('\n');
   }
   var narrativeRule = isShort
-    ? '用简短自然的对话、动作和临场反应推进剧情。句数按内容需要自然决定，但整体篇幅尽量贴近 ' + targetWords + ' 字，允许小幅浮动，不要为了凑字数变空，也不要突然写很短。'
-    : '用第三人称或混合视角细腻叙事，描写场景、动作、情绪与心理。整体篇幅尽量贴近 ' + targetWords + ' 字，允许小幅浮动，不要硬凑，也不要在情绪或情节正要展开时突然收断。';
+    ? '用简短自然的对话、动作和临场反应推进剧情。句数按内容需要自然决定，不要为了凑字数变空，也不要突然写很短。' + wordRule
+    : '用第三人称或混合视角细腻叙事，描写场景、动作、情绪与心理。不要硬凑，也不要在情绪或情节正要展开时突然收断。' + wordRule;
   return [
     '你是「' + charName + '」，正在与「' + uName + '」共同创作一段完全沉浸式的互动故事。',
     '你的存在、思维、语言、行动，全部根植于以下设定的世界之中。',
@@ -46966,6 +46996,7 @@ async function _generateOfflineResponse(session) {
     var modeConfig = _getOfflineModeConfig(isShort ? 'short' : 'long', session);
     var styleNote = modeConfig.styleText || fallbackStyleNote;
     var targetWords = _offlineClampNumber(modeConfig.targetWords, isShort ? 70 : 140, 20, 5000);
+    var wordRule = _buildOfflineWordTargetRule(targetWords, isShort);
     var autoSummaryEvery = _offlineClampNumber(modeConfig.autoSummaryEvery, isShort ? 16 : 12, 0, 500);
     session.modeConfig = _cloneOfflineModeConfig(isShort ? 'short' : 'long', modeConfig);
     var locationNote = (isShort && _offlineState.settings.locationShare) ? '如果角色要移动到用戶位置，要真实描述路上的时間花费（如「二十分钟后到」）和途中的狀況。' : '';
@@ -47012,8 +47043,9 @@ async function _generateOfflineResponse(session) {
           offlineWbInjection,
           bgmNote,
           '文风要求：' + styleNote + '。这条要求优先级很高，措辞、句式、节奏、情绪推进都必须明显体现这个文风。',
-          '字数要求：目标约 ' + targetWords + ' 字，允许小幅浮动，不要硬凑字数，也不要为了卡字数强行截断剧情。',
+          wordRule,
           '完整性要求：这一轮内容必须停在完整句子、完整动作或完整场景节点上，绝对不能半句话、半个动作、半段对话突然断掉。',
+          '如果当前事件已经表达完整，就在目标字数附近自然结束，不要自行续写到下一大段剧情。',
           '根据以下线下剧情继续发展：用第三人称或直接对话自然推进。句数按情节需要决定，不要被固定句数束缚，但也不要拖沓。',
           '严格按照你的人设和性格，不要背离角色。',
           '你的回应要融入场景、动作、对话。',
@@ -47028,8 +47060,9 @@ async function _generateOfflineResponse(session) {
           '你和「' + uName + '」正在进行一段线下沉浸式敘事剧情，像小说一样细膩描写。',
           '模式：长篇敘事——用第三人称或混合视角，详细描写场景、氛围、角色的动作、表情、心理感受。',
           '文风要求：' + styleNote + '。这条要求优先级很高，措辞、句式密度、镜头感、情绪纹理都必须尽量贴近这个文风。',
-          '字数要求：目标约 ' + targetWords + ' 字，可略多或略少，不要硬凑字数，也不要为了卡字数强行截断剧情。',
+          wordRule,
           '完整性要求：这一轮必须收束在完整句子、完整动作或完整场景节点上，宁可略短一点，也不能在情绪或动作正展开时突然截停。',
+          '如果这一轮已经写到目标字数附近，就在当前场景内自然收束，不要继续扩写新的大段落。',
           '语言精緻，画面感强，像在写真实的故事。',
           
           offlineWbInjection,
@@ -47059,11 +47092,11 @@ async function _generateOfflineResponse(session) {
     } else {
       messages = [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMsg }];
     }
-    var offlineMaxTokens = (session.mode === 'if' && session.ifSubMode !== 'short')
-      ? Math.max(2200, Math.min(5600, targetWords * 8))
-      : isShort
-        ? Math.max(900, Math.min(2600, targetWords * 6))
-        : Math.max(2000, Math.min(5000, targetWords * 7));
+    var offlineMaxTokens = _calcOfflineResponseMaxTokens(
+      targetWords,
+      isShort,
+      (session.mode === 'if' && session.ifSubMode !== 'short')
+    );
     function _mergeOfflineReplyPiece(existingText, newPiece) {
       var existing = String(existingText || '').trim();
       var incoming = String(newPiece || '').trim();
@@ -47084,12 +47117,13 @@ async function _generateOfflineResponse(session) {
     function _offlineResponseLooksCutOff(fullText, latestPiece, finishReason) {
       var text = String(fullText || '').trim();
       if (!text) return true;
-      var normalizedFinish = String(finishReason || '').toLowerCase();
-      if (normalizedFinish === 'length' || normalizedFinish === 'max_tokens') return true;
       var compact = text.replace(/\s+/g, '');
-      var targetCharFloor = isShort
-        ? Math.max(26, Math.floor(targetWords * 0.45))
-        : Math.max(90, Math.floor(targetWords * 0.55));
+      var targetSpec = _getOfflineWordTargetSpec(targetWords, isShort);
+      var normalizedFinish = String(finishReason || '').toLowerCase();
+      if (compact.length >= targetSpec.stopWords) return false;
+      if ((normalizedFinish === 'length' || normalizedFinish === 'max_tokens') && compact.length >= targetSpec.maxWords) return false;
+      if (normalizedFinish === 'length' || normalizedFinish === 'max_tokens') return true;
+      var targetCharFloor = targetSpec.minWords;
       if (compact.length < targetCharFloor) return true;
       if (!/[。！？!?…」』】）》）】]$/.test(text)) return true;
       if (/[，、；：,:]\s*$/.test(text)) return true;
@@ -47107,7 +47141,8 @@ async function _generateOfflineResponse(session) {
     }
     var requestMessages = messages.slice();
     var reply = '';
-    for (var contRound = 0; contRound < 6; contRound++) {
+    var maxContinuationRounds = isShort ? 1 : 2;
+    for (var contRound = 0; contRound <= maxContinuationRounds; contRound++) {
       var r = await fetch(api.url.replace(/\/$/, '') + '/chat/completions', {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + api.key, 'Content-Type': 'application/json' },
@@ -47115,7 +47150,12 @@ async function _generateOfflineResponse(session) {
           model: api.model,
           messages: requestMessages,
           temperature: p.temperature || 1.1,
-          max_tokens: contRound === 0 ? offlineMaxTokens : Math.max(1100, Math.floor(offlineMaxTokens * 0.85))
+          max_tokens: contRound === 0
+            ? offlineMaxTokens
+            : Math.max(
+                isShort ? 120 : 180,
+                Math.min(offlineMaxTokens, Math.floor(offlineMaxTokens * 0.65))
+              )
         })
       });
       if (!r.ok) {

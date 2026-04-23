@@ -31985,7 +31985,9 @@ async function _doExportAllData(statusEl) {
         }
         return fw;
       })(),
-      coupleSpace: JSON.parse(localStorage.getItem('mono_couple_space_v1') || '{}'),
+      coupleSpace: (typeof window._monoExportCoupleSpaceState === 'function')
+        ? await window._monoExportCoupleSpaceState()
+        : JSON.parse(localStorage.getItem('mono_couple_space_v1') || '{}'),
       // 多世界数据
       multiWorld: (() => {
         if (typeof mwIsEnabled !== 'function' || !mwIsEnabled()) return null;
@@ -63250,7 +63252,7 @@ function buildWidgetEl(id, type) {
       '<div class="pw-couple-cal-shell">' +
         '<div class="pw-couple-cal-inner">' +
           '<div class="pw-cc-top">' +
-            '<div class="pw-cc-pet"><img src="./couple_space_emotions/cute.png" alt=""></div>' +
+            '<div class="pw-cc-pet"><img src="file:///Users/maritahon/Documents/New%20project/couple_space_emotions/cute.png" alt=""></div>' +
             '<div class="pw-cc-title"><div class="pw-cc-month" id="' + id + '_month">1月</div><div class="pw-cc-year" id="' + id + '_year">2026年</div></div>' +
           '</div>' +
           '<div class="pw-cc-week"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>' +
@@ -72902,7 +72904,7 @@ var csActiveTab = 'overview';
 var csGalleryDetailId = '';
 var csBusy = { album: false, footprints: false, galleryNarrationId: '' };
 var csGalleryCloseTimer = 0;
-var CS_ICON_BASE = './couple_space_emotions/';
+var CS_ICON_BASE = 'file:///Users/maritahon/Documents/New%20project/couple_space_emotions/';
 var CS_MOODS = [
   { id:'dizzy', label:'晕乎乎', icon: CS_ICON_BASE + 'dizzy.png', color:'#f6f1eb' },
   { id:'shocked', label:'震惊', icon: CS_ICON_BASE + 'shocked.png', color:'#fff0f0' },
@@ -72935,16 +72937,158 @@ function csLoad() {
   if (!raw || typeof raw !== 'object') raw = {};
   if (!raw.profiles || typeof raw.profiles !== 'object') raw.profiles = {};
   if (!raw.activePersonaId) raw.activePersonaId = '';
+  csRestoreInlineMediaFromLocalSnapshot(raw);
   return raw;
 }
 var csState = csLoad();
 var csGalleryOverlayDismissAt = 0;
+var CS_MEDIA_REF_PREFIX = '__csref__:';
+var csMediaHydrateToken = 0;
+function csMediaSafeId(text) {
+  return String(text == null ? '' : text).replace(/[^a-zA-Z0-9_-]/g, '_') || 'x';
+}
+function csMediaRefId(parts) {
+  return (parts || []).map(csMediaSafeId).join('__');
+}
+function csMediaBlobKey(id) {
+  return 'couple_space_media_' + csMediaSafeId(id);
+}
+function csMediaLocalKey(id) {
+  return 'couple_space_media_cache_' + csMediaSafeId(id);
+}
+function csIsMediaRef(value) {
+  return typeof value === 'string' && value.indexOf(CS_MEDIA_REF_PREFIX) === 0;
+}
+function csMakeMediaRef(id) {
+  return CS_MEDIA_REF_PREFIX + csMediaSafeId(id);
+}
+function csExtractMediaRefId(value) {
+  return csIsMediaRef(value) ? value.slice(CS_MEDIA_REF_PREFIX.length) : '';
+}
+function csQueuePersistMedia(id, dataUrl) {
+  if (!id || typeof dataUrl !== 'string' || dataUrl.indexOf('data:image') !== 0) return;
+  try {
+    if (dataUrl.length <= 280000) localStorage.setItem(csMediaLocalKey(id), dataUrl);
+    else localStorage.removeItem(csMediaLocalKey(id));
+  } catch(e) {}
+  try {
+    if (window._monoIdbBlobSet) window._monoIdbBlobSet(csMediaBlobKey(id), dataUrl).catch(function(){});
+  } catch(e2) {}
+}
+function csInlineMediaFromLocalCache(refValue) {
+  var id = csExtractMediaRefId(refValue);
+  if (!id) return '';
+  try {
+    var cached = localStorage.getItem(csMediaLocalKey(id));
+    if (cached && cached.indexOf('data:image') === 0) return cached;
+  } catch(e) {}
+  return '';
+}
+function csWalkMediaFields(state, iteratee) {
+  if (!state || !state.profiles || typeof iteratee !== 'function') return;
+  Object.keys(state.profiles).forEach(function(pid) {
+    var profile = state.profiles[pid];
+    if (!profile || typeof profile !== 'object') return;
+    iteratee(profile, 'coverImage', csMediaRefId(['profile', pid, 'cover']));
+    iteratee(profile, 'backgroundImage', csMediaRefId(['profile', pid, 'background']));
+    iteratee(profile, 'widgetBackground', csMediaRefId(['profile', pid, 'widget']));
+    (profile.gallery || []).forEach(function(item, idx) {
+      if (!item || typeof item !== 'object') return;
+      iteratee(item, 'image', csMediaRefId(['gallery', pid, item.id || idx]));
+    });
+    (profile.footprints || []).forEach(function(item, idx) {
+      if (!item || typeof item !== 'object') return;
+      iteratee(item, 'image', csMediaRefId(['footprint', pid, item.id || idx]));
+    });
+  });
+}
+function csRestoreInlineMediaFromLocalSnapshot(state) {
+  csWalkMediaFields(state, function(target, key) {
+    if (!target || !csIsMediaRef(target[key])) return;
+    var inline = csInlineMediaFromLocalCache(target[key]);
+    if (inline) target[key] = inline;
+  });
+}
+function csPrepareStateForStorage(sourceState) {
+  var snapshot = JSON.parse(JSON.stringify(sourceState || {}));
+  csWalkMediaFields(snapshot, function(target, key, mediaId) {
+    if (!target || typeof target[key] !== 'string') return;
+    var value = target[key];
+    if (value.indexOf('data:image') === 0) {
+      csQueuePersistMedia(mediaId, value);
+      target[key] = csMakeMediaRef(mediaId);
+      return;
+    }
+    if (csIsMediaRef(value)) return;
+  });
+  return snapshot;
+}
+async function csReadPersistedMedia(id) {
+  if (!id) return '';
+  try {
+    var cached = localStorage.getItem(csMediaLocalKey(id));
+    if (cached && cached.indexOf('data:image') === 0) return cached;
+  } catch(e) {}
+  try {
+    if (window._monoIdbBlobGet) {
+      var blob = await window._monoIdbBlobGet(csMediaBlobKey(id));
+      if (typeof blob === 'string' && blob.indexOf('data:image') === 0) {
+        try {
+          if (blob.length <= 280000) localStorage.setItem(csMediaLocalKey(id), blob);
+        } catch(e2) {}
+        return blob;
+      }
+    }
+  } catch(e3) {}
+  return '';
+}
+async function csHydrateMediaRefs() {
+  var state = csState;
+  var token = ++csMediaHydrateToken;
+  var tasks = [];
+  csWalkMediaFields(state, function(target, key) {
+    if (!target || !csIsMediaRef(target[key])) return;
+    var refValue = target[key];
+    var mediaId = csExtractMediaRefId(refValue);
+    if (!mediaId) return;
+    tasks.push(
+      csReadPersistedMedia(mediaId).then(function(dataUrl) {
+        if (token !== csMediaHydrateToken) return false;
+        if (!dataUrl) return false;
+        target[key] = dataUrl;
+        return true;
+      })
+    );
+  });
+  if (!tasks.length) return false;
+  var results = await Promise.all(tasks);
+  return results.some(Boolean);
+}
+async function csResolveMediaRefsForExport(state) {
+  var snapshot = JSON.parse(JSON.stringify(state || {}));
+  var tasks = [];
+  csWalkMediaFields(snapshot, function(target, key) {
+    if (!target || !csIsMediaRef(target[key])) return;
+    var mediaId = csExtractMediaRefId(target[key]);
+    tasks.push(
+      csReadPersistedMedia(mediaId).then(function(dataUrl) {
+        if (dataUrl) target[key] = dataUrl;
+        else target[key] = '';
+      })
+    );
+  });
+  if (tasks.length) await Promise.all(tasks);
+  return snapshot;
+}
 function csReloadStateFromStorage() {
   csState = csLoad();
   return csState;
 }
 function csSave() {
-  try { localStorage.setItem(CS_STORE, JSON.stringify(csState)); } catch(e) {}
+  try {
+    var snapshot = csPrepareStateForStorage(csState);
+    localStorage.setItem(CS_STORE, JSON.stringify(snapshot));
+  } catch(e) {}
 }
 function csApplyImportedState(nextState) {
   if (!nextState || typeof nextState !== 'object') nextState = {};
@@ -72952,13 +73096,28 @@ function csApplyImportedState(nextState) {
   if (!nextState.activePersonaId) nextState.activePersonaId = '';
   csState = nextState;
   csSave();
+  csHydrateMediaRefs().then(function(changed) {
+    if (changed) {
+      renderCoupleSpace();
+      renderCoupleCalendarWidgets();
+    }
+  }).catch(function(){});
   renderCoupleBindList();
   renderCoupleSpace();
   renderCoupleCalendarWidgets();
 }
 function csGetPersonas() {
-  if (typeof personas !== 'undefined' && Array.isArray(personas)) return personas;
-  try { return JSON.parse(localStorage.getItem('mono_personas') || '[]'); } catch(e) { return []; }
+  try {
+    var stored = JSON.parse(localStorage.getItem('mono_personas') || '[]');
+    if (Array.isArray(stored) && stored.length) return stored;
+  } catch(e) {}
+  if (typeof personas !== 'undefined' && Array.isArray(personas) && personas.length) return personas;
+  try {
+    var fallback = JSON.parse(localStorage.getItem('mono_personas') || '[]');
+    return Array.isArray(fallback) ? fallback : [];
+  } catch(e2) {
+    return [];
+  }
 }
 function csFindPersona(id) {
   if (!id) return null;
@@ -72970,11 +73129,9 @@ function csFindPersona(id) {
 }
 function csPersonaDisplayName(persona) {
   if (!persona) return 'TA';
-  var userName = (userProfile && userProfile.name ? String(userProfile.name).trim() : '');
-  var nickname = persona.nickname ? String(persona.nickname).trim() : '';
   var personaName = persona.name ? String(persona.name).trim() : '';
-  if (nickname && nickname !== userName) return nickname;
   if (personaName) return personaName;
+  var nickname = persona.nickname ? String(persona.nickname).trim() : '';
   if (nickname) return nickname;
   return 'TA';
 }
@@ -74520,6 +74677,9 @@ function handleFootprintUpload(input) {
 window.openCoupleSpacePage = function() {
   if (typeof window._iphIsEditMode === 'function' && window._iphIsEditMode()) return;
   csReloadStateFromStorage();
+  csHydrateMediaRefs().then(function(changed) {
+    if (changed) renderCoupleSpace();
+  }).catch(function(){});
   renderCoupleSpace();
   openApp('coupleSpacePage');
 };
@@ -74557,9 +74717,20 @@ window.csEnsurePlacedHomeWidget = csEnsurePlacedHomeWidget;
 window.renderCoupleCalendarWidgets = renderCoupleCalendarWidgets;
 window._monoApplyCoupleSpaceState = csApplyImportedState;
 window.renderCoupleSpace = renderCoupleSpace;
+window._monoExportCoupleSpaceState = function() {
+  return csResolveMediaRefsForExport(csLoad());
+};
 function bootCoupleSpace() {
   csReloadStateFromStorage();
-  if (csState.activePersonaId && !csFindPersona(csState.activePersonaId)) {
+  csSave();
+  csHydrateMediaRefs().then(function(changed) {
+    if (changed) {
+      renderCoupleSpace();
+      renderCoupleCalendarWidgets();
+    }
+  }).catch(function(){});
+  var currentPersonas = csGetPersonas();
+  if (csState.activePersonaId && currentPersonas.length && !csFindPersona(csState.activePersonaId)) {
     csState.activePersonaId = '';
     csSave();
   }
@@ -74572,6 +74743,10 @@ if (window.afterDB) window.afterDB(bootCoupleSpace);
 else if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootCoupleSpace);
 else bootCoupleSpace();
 window.addEventListener('beforeunload', csSave);
+window.addEventListener('pagehide', csSave);
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'hidden') csSave();
+});
 })();
 </script>
 </body>

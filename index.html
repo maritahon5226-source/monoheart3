@@ -10,6 +10,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head>
@@ -1002,13 +1003,20 @@ body {
   background: rgba(255,255,255,0.93) !important;
   border-bottom: 0.5px solid #e0e0e0 !important;
 }
-/* ── 收到的消息：浅灰玻璃药丸 ── */
+/* ── 收到的消息：浅灰玻璃气泡 ── */
 .bubble-preset-retro .bubble-ai {
-  background: linear-gradient(to bottom,
-    #f0f0f0 0%,
-    #d8d8d8 100%) !important;
+  background:
+    linear-gradient(to bottom,
+      rgba(255,255,255,0.72) 0%,
+      rgba(255,255,255,0.08) 50%,
+      rgba(255,255,255,0)    50%
+    ),
+    linear-gradient(to bottom,
+      #f0f0f0 0%,
+      #d8d8d8 100%
+    ) !important;
   color: #2a2a2a !important;
-  border-radius: 999px !important;
+  border-radius: 20px !important;
   border: 0.5px solid #c8c8c8 !important;
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.95),
@@ -1017,29 +1025,23 @@ body {
   position: relative !important;
   overflow: hidden !important;
 }
-/* 玻璃高光：上半部白色反光层 */
-.bubble-preset-retro .bubble-ai::before {
-  content: '' !important;
-  display: block !important;
-  position: absolute !important;
-  top: 0 !important; left: 0 !important; right: 0 !important;
-  height: 50% !important;
-  background: linear-gradient(to bottom,
-    rgba(255,255,255,0.72) 0%,
-    rgba(255,255,255,0.08) 100%) !important;
-  border-radius: 999px 999px 60% 60% !important;
-  pointer-events: none !important;
-  z-index: 1 !important;
-}
+.bubble-preset-retro .bubble-ai::before { display: none !important; }
 /* 消除原有箭头尾巴 */
 .bubble-preset-retro .bubble-ai::after { display: none !important; }
-/* ── 发送的消息：草绿玻璃药丸 ── */
+/* ── 发送的消息：草绿玻璃气泡 ── */
 .bubble-preset-retro .bubble-user {
-  background: linear-gradient(to bottom,
-    #cef07a 0%,
-    #96cc38 100%) !important;
+  background:
+    linear-gradient(to bottom,
+      rgba(255,255,255,0.65) 0%,
+      rgba(255,255,255,0.06) 50%,
+      rgba(255,255,255,0)    50%
+    ),
+    linear-gradient(to bottom,
+      #cef07a 0%,
+      #96cc38 100%
+    ) !important;
   color: #1e3300 !important;
-  border-radius: 999px !important;
+  border-radius: 20px !important;
   border: 0.5px solid #7db82a !important;
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.85),
@@ -1048,20 +1050,7 @@ body {
   position: relative !important;
   overflow: hidden !important;
 }
-/* 玻璃高光：上半部白色反光层 */
-.bubble-preset-retro .bubble-user::before {
-  content: '' !important;
-  display: block !important;
-  position: absolute !important;
-  top: 0 !important; left: 0 !important; right: 0 !important;
-  height: 50% !important;
-  background: linear-gradient(to bottom,
-    rgba(255,255,255,0.65) 0%,
-    rgba(255,255,255,0.06) 100%) !important;
-  border-radius: 999px 999px 60% 60% !important;
-  pointer-events: none !important;
-  z-index: 1 !important;
-}
+.bubble-preset-retro .bubble-user::before { display: none !important; }
 /* 消除原有箭头尾巴 */
 .bubble-preset-retro .bubble-user::after { display: none !important; }
 /* 输入栏 */

@@ -12,6 +12,8 @@
 
 
 
+
+
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head>
@@ -799,6 +801,7 @@ window.onload = function() {
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=DotGothic16&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Montserrat:wght@300;500;700&family=DM+Serif+Display&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@700&display=swap" rel="stylesheet">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Montserrat:wght@300;500;700&display=swap');
 body {
@@ -1062,6 +1065,117 @@ body {
   background: rgba(255,255,255,0.90) !important;
   border-top: 0.5px solid #e0e0e0 !important;
 }
+/* ══════════════════════════════════════════════
+   BUBBLE PRESET: 推し发光文字 Oshi Glow
+   ══════════════════════════════════════════════ */
+/* 全局变量，定义原图中的发光颜色 */
+.bubble-preset-oshiglow {
+    --glow-blue: #cfd3d8;  /* 主体的浅灰喷枪发光 */
+    --glow-pink: #e5e5e5;  /* 部分爱心符号的浅灰发光 */
+}
+
+/* 文本块基础样式 */
+.bubble-preset-oshiglow .bubble-ai,
+.bubble-preset-oshiglow .bubble-user {
+    width: fit-content !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    line-height: 1.72 !important;
+    /* 默认是手写风；如果用户设置了全局美化字体，最后加载的全局字体会覆盖这里 */
+    font-family: 'Zen Maru Gothic', 'Rounded Mplus 1c', 'Comic Sans MS', sans-serif;
+    font-weight: 700 !important;
+    font-size: 13.5px !important;
+    color: #ffffff !important; /* 文字本体是纯白色 */
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 2px 4px !important;
+    position: relative !important;
+    isolation: isolate !important;
+    overflow: visible !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+    /* 核心魔法：利用多层紧密且模糊的阴影，制造出喷枪边缘发光效果 */
+    text-shadow: 
+        -1px -1px 2px var(--glow-blue),
+         1px -1px 2px var(--glow-blue),
+        -1px  1px 2px var(--glow-blue),
+         1px  1px 2px var(--glow-blue), /* 内层紧密轮廓 */
+         0 0 6px var(--glow-blue),      /* 中层柔和发光 */
+         0 0 13px var(--glow-blue),
+         0 0 20px var(--glow-blue);     /* 外层弥散喷枪感 */
+}
+
+.bubble-preset-oshiglow .bubble-ai::before,
+.bubble-preset-oshiglow .bubble-user::before {
+    content: '' !important;
+    position: absolute !important;
+    inset: 0 !important;
+    border-radius: 18px !important;
+    background: rgba(255,255,255,0.03) !important;
+    backdrop-filter: blur(10px) saturate(1.12) !important;
+    -webkit-backdrop-filter: blur(10px) saturate(1.12) !important;
+    z-index: -1 !important;
+    pointer-events: none !important;
+}
+.bubble-preset-oshiglow .bubble-ai::after,
+.bubble-preset-oshiglow .bubble-user::after { display: none !important; }
+.bubble-preset-oshiglow .msg-content { overflow: visible !important; }
+.bubble-preset-oshiglow .oshi-kaomoji {
+    display: block !important;
+    margin: 0 0 1px 1px !important;
+    font-family: inherit !important;
+    font-size: 0.75em !important;
+    line-height: 1 !important;
+    color: #000000 !important;
+    text-shadow: none !important;
+    filter: none !important;
+    letter-spacing: 0 !important;
+}
+.bubble-preset-oshiglow .bubble-user .oshi-kaomoji {
+    text-align: right !important;
+    margin: 0 1px 1px 0 !important;
+}
+.bubble-preset-oshiglow .oshi-heart-deco {
+    display: inline-block !important;
+    margin-left: 0.35em !important;
+    color: #ffffff !important;
+    text-shadow: 
+        -1px -1px 2px var(--glow-pink),
+         1px -1px 2px var(--glow-pink),
+        -1px  1px 2px var(--glow-pink),
+         1px  1px 2px var(--glow-pink),
+         0 0 6px var(--glow-pink),
+         0 0 13px var(--glow-pink),
+         0 0 20px var(--glow-pink) !important;
+    filter: none !important;
+}
+/* 针对特殊粉色爱心的发光覆盖 */
+.bubble-preset-oshiglow .pink-heart {
+    text-shadow: 
+        -1px -1px 2px var(--glow-pink),
+         1px -1px 2px var(--glow-pink),
+        -1px  1px 2px var(--glow-pink),
+         1px  1px 2px var(--glow-pink),
+         0 0 6px var(--glow-pink),
+         0 0 13px var(--glow-pink),
+         0 0 20px var(--glow-pink);
+}
+
+/* 字体大小微调，还原原图的错落感 */
+.bubble-preset-oshiglow .large { font-size: 15.75px; }
+.bubble-preset-oshiglow .small { font-size: 10.125px; }
+
+/* 布局排版控制 */
+.bubble-preset-oshiglow .align-left { align-self: flex-start; margin-left: 20px; }
+.bubble-preset-oshiglow .align-right { align-self: flex-end; margin-right: 20px; }
+.bubble-preset-oshiglow .align-center { align-self: center; }
+
+/* 微调倾斜和边距模拟随意摆放的感觉 */
+.bubble-preset-oshiglow .tilt-1 { transform: rotate(-2deg); }
+.bubble-preset-oshiglow .tilt-2 { transform: rotate(1deg); margin-left: 60px; }
 /* ════════════════════════════════════
    BUBBLE PRESET: 复古手账风 Vintage Journal
    ════════════════════════════════════ */
@@ -17134,6 +17248,15 @@ body:not(.ios-fullscreen) .family-widget {
               <div style="position:relative;overflow:hidden;background:linear-gradient(to bottom,#cef07a,#96cc38);color:#1e3300;border-radius:999px;border:0.5px solid #7db82a;box-shadow:inset 0 1px 0 rgba(255,255,255,0.85);padding:3px 10px;font-size:9px;max-width:72%;align-self:flex-end;"><span style="position:absolute;top:0;left:0;right:0;height:50%;background:linear-gradient(to bottom,rgba(255,255,255,0.65),rgba(255,255,255,0.06));border-radius:999px 999px 60% 60%;pointer-events:none;"></span>嗯</div>
             </div>
           </div>
+          <!-- Oshi Glow 推し发光文字 -->
+          <div class="bubble-preset-option" id="bpOpt-oshiglow" onclick="selectBubblePreset('oshiglow')"
+            style="flex:1;min-width:80px;border:2px solid #ddd;border-radius:10px;padding:8px;cursor:pointer;text-align:center;background:#fff;">
+            <div style="font-size:9px;font-weight:700;color:#cfd3d8;letter-spacing:0.5px;margin-bottom:6px;text-shadow:0 0 8px #cfd3d8;">推し发光</div>
+            <div style="display:flex;flex-direction:column;gap:7px;align-items:flex-start;font-family:'Zen Maru Gothic','Rounded Mplus 1c','Comic Sans MS',sans-serif;font-weight:700;">
+              <div style="position:relative;color:#fff;font-size:13px;line-height:1.35;text-shadow:-1px -1px 3px #cfd3d8,1px -1px 3px #cfd3d8,-1px 1px 3px #cfd3d8,1px 1px 3px #cfd3d8,0 0 8px #cfd3d8,0 0 14px #cfd3d8;backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);padding:1px 2px;">♯推ししか勝たん<span style="text-shadow:-1px -1px 3px #e5e5e5,1px -1px 3px #e5e5e5,-1px 1px 3px #e5e5e5,1px 1px 3px #e5e5e5,0 0 8px #e5e5e5,0 0 14px #e5e5e5;">♡</span></div>
+              <div style="position:relative;align-self:flex-end;color:#fff;font-size:11px;line-height:1.35;text-shadow:-1px -1px 3px #cfd3d8,1px -1px 3px #cfd3d8,-1px 1px 3px #cfd3d8,1px 1px 3px #cfd3d8,0 0 8px #cfd3d8,0 0 14px #cfd3d8;backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);padding:1px 2px;">好きのキモチ</div>
+            </div>
+          </div>
           <!-- Vintage Journal 复古手账风 -->
           <div class="bubble-preset-option" id="bpOpt-journal" onclick="selectBubblePreset('journal')"
             style="flex:1;min-width:80px;border:2px solid #ddd;border-radius:10px;padding:8px;cursor:pointer;text-align:center;background:#e6ece8;">
@@ -17146,6 +17269,21 @@ body:not(.ios-fullscreen) .family-widget {
         </div>
         <p style="font-size:9px;color:#aaa;margin-top:6px;">选择预设后，自定义 CSS 仍可叠加生效。</p>
         <input type="hidden" id="pBubblePreset" value="none">
+        <div style="margin-top:8px;padding:8px;border:1px solid #eee;border-radius:10px;background:#fafafa;">
+          <div style="font-size:9px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">推し发光颜色</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <label style="display:flex;align-items:center;gap:5px;font-size:10px;color:#666;">主发光
+              <input type="color" id="pOshiGlowBlue" value="#cfd3d8" oninput="livePreviewBubble()" style="width:34px;height:24px;border:1px solid #ddd;border-radius:6px;padding:1px;background:#fff;">
+            </label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:10px;color:#666;">爱心发光
+              <input type="color" id="pOshiGlowPink" value="#e5e5e5" oninput="livePreviewBubble()" style="width:34px;height:24px;border:1px solid #ddd;border-radius:6px;padding:1px;background:#fff;">
+            </label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:10px;color:#666;">
+              <input type="checkbox" id="pOshiGlowShowHeart" checked onchange="livePreviewBubble();">
+              显示自动发光心形
+            </label>
+          </div>
+        </div>
       </div>
       <label style="font-size:9px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:1px;">角色气泡框 CSS:</label>
       <textarea class="custom-css-editor" id="pBubbleAiCss" placeholder="例: background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 16px;"></textarea>
@@ -20645,6 +20783,12 @@ function renderMessages(opts) {
       ? ' data-translate-hash="' + _tHash + '" data-translate-text="' + _tClean.replace(/"/g,'&quot;').replace(/\n/g,' ') + '" data-translate-idx="' + idx + '" data-translate-ctx="private"'
       : '';
     const _translationHtml = _cachedTranslation ? _buildTranslationHtml(_cachedTranslation, _personaLangCode) : '';
+    const _activeBubblePreset = (typeof normalizeBubblePreset === 'function') ? normalizeBubblePreset(p.bubblePreset) : (p.bubblePreset || 'none');
+    if (_activeBubblePreset === 'oshiglow') {
+      displayContent = displayContent.replace(/([♡♥❤])/g, '<span class="pink-heart">$1</span>');
+      const _oshiHeartHtml = (p.oshiGlowShowHeart !== false) ? '<span class="oshi-heart-deco">♡</span>' : '';
+      displayContent = `<span class="oshi-kaomoji">${isUser ? 'ㅇㅅㅇ' : 'ㅍㅅㅍ'}${_oshiHeartHtml}</span>` + displayContent;
+    }
     // Build style attribute: merge font-color and custom CSS (both can coexist)
     const _userExtraStyle = _bubbleExtraStyle && isUser ? ';' + _bubbleExtraStyle : '';
     const _aiExtraStyle   = _bubbleExtraStyle && !isUser ? ';' + _bubbleExtraStyle : '';
@@ -20655,7 +20799,7 @@ function renderMessages(opts) {
       ? ` style="${p.bubbleAiFontColor ? 'color:' + p.bubbleAiFontColor + ';' : ''}${!isUser ? (p.bubbleAiCss||'') : ''}"`
       : '';
     // ── 复古手账风 preset：替换为双层嵌套气泡结构 + 贴纸轮流系统 ──
-    const _isJournalPreset = (p.bubblePreset === 'journal');
+    const _isJournalPreset = (_activeBubblePreset === 'journal');
     if (_isJournalPreset) {
 
       /*
@@ -21210,6 +21354,9 @@ function openEditor(isEdit=false) {
     document.getElementById('pBubbleUserFontColor').style.pointerEvents = 'none';
     const _aiPrev0 = document.getElementById('pBubbleAiFontColorPreview'); if (_aiPrev0) _aiPrev0.style.color = '#1a1a1a';
     const _uPrev0 = document.getElementById('pBubbleUserFontColorPreview'); if (_uPrev0) _uPrev0.style.color = '#ffffff';
+    if (document.getElementById('pOshiGlowBlue')) document.getElementById('pOshiGlowBlue').value = '#cfd3d8';
+    if (document.getElementById('pOshiGlowPink')) document.getElementById('pOshiGlowPink').value = '#e5e5e5';
+    if (document.getElementById('pOshiGlowShowHeart')) document.getElementById('pOshiGlowShowHeart').checked = true;
     document.getElementById('pChatBgImg').style.display = 'none';
     document.getElementById('pChatBgPlaceholder').style.display = '';
     document.getElementById('pChatBgImg').src = '';
@@ -21299,6 +21446,9 @@ function openEditor(isEdit=false) {
     document.getElementById('pBubbleUserFontColor').style.pointerEvents = _userHasColor ? 'auto' : 'none';
     const _aiPrev = document.getElementById('pBubbleAiFontColorPreview'); if (_aiPrev) _aiPrev.style.color = p.bubbleAiFontColor || '#1a1a1a';
     const _uPrev = document.getElementById('pBubbleUserFontColorPreview'); if (_uPrev) _uPrev.style.color = p.bubbleUserFontColor || '#ffffff';
+    if (document.getElementById('pOshiGlowBlue')) document.getElementById('pOshiGlowBlue').value = (p.oshiGlowBlue && p.oshiGlowBlue !== '#6699ff') ? p.oshiGlowBlue : '#cfd3d8';
+    if (document.getElementById('pOshiGlowPink')) document.getElementById('pOshiGlowPink').value = (p.oshiGlowPink && p.oshiGlowPink !== '#ff99cc') ? p.oshiGlowPink : '#e5e5e5';
+    if (document.getElementById('pOshiGlowShowHeart')) document.getElementById('pOshiGlowShowHeart').checked = p.oshiGlowShowHeart !== false;
     const _bgForEditor = p.chatBgImage === '__ref__'
       ? (localStorage.getItem('mono_bg_' + p.id) || '')
       : (p.chatBgImage || '');
@@ -21337,15 +21487,18 @@ function savePersona() {
   const enableTranslation = document.getElementById('pEnableTranslation') ? document.getElementById('pEnableTranslation').checked : true;
   const translateLang = document.getElementById('pTranslateLang') ? document.getElementById('pTranslateLang').value || 'zh' : 'zh';
   const voiceFreq = (document.querySelector('input[name="pVoiceFreq"]:checked') || {}).value || 'mid';
+  const _saveOshiBlue = (document.getElementById('pOshiGlowBlue') || {}).value || '#cfd3d8';
+  const _saveOshiPink = (document.getElementById('pOshiGlowPink') || {}).value || '#e5e5e5';
+  const _saveOshiShowHeart = !document.getElementById('pOshiGlowShowHeart') || document.getElementById('pOshiGlowShowHeart').checked;
   if (currentId && !document.getElementById('delBtn').classList.contains('hidden')) {
     const p = personas.find(x=>x.id==currentId);
     const _saveAiColor = document.getElementById('pBubbleAiFontColorEnabled').checked ? (document.getElementById('pBubbleAiFontColor').value||'') : '';
     const _saveUserColor = document.getElementById('pBubbleUserFontColorEnabled').checked ? (document.getElementById('pBubbleUserFontColor').value||'') : '';
-    if(p){ p.name=name; p.nickname=document.getElementById('pNick').value.trim(); p.persona=document.getElementById('pPersona').value.trim()||'一个简单的角色设定'; p.avatar=avatar; p.minReplyCount=minReply; p.maxReplyCount=maxReply; p.temperature=temperature; p.timeAwareness=timeAwareness; p.allowSticker=allowSticker; p.stickerLibraryIds=stickerLibraryIds; p.allowVoice=allowVoice; p.voiceId=voiceId; p.voiceSpeed=voiceSpeed; p.voiceLang=voiceLang; p.outputLang=outputLang; p.enableTranslation=enableTranslation; p.translateLang=translateLang; p.voiceFreq=voiceFreq; p.memoryCount=parseInt(document.getElementById('pMemoryCount').value)||100; p.autoMsg=document.getElementById('pAutoMsg').checked; p.autoMsgInterval=parseInt(document.getElementById('pAutoMsgInterval').value)||1; p.autoDiary=document.getElementById('pAutoDiary').checked; p.autoDiaryTime=document.getElementById('pAutoDiaryTime').value||'21:00'; p.autoMoments=document.getElementById('pAutoMoments').checked; p.autoMomentsTime=document.getElementById('pAutoMomentsTime').value||'20:00'; p.autoSummary=document.getElementById('pAutoSummary').checked; p.autoSummaryInterval=parseInt(document.getElementById('pAutoSummaryInterval').value)||20; p.bubbleAiCss=document.getElementById('pBubbleAiCss').value.trim(); p.bubbleUserCss=document.getElementById('pBubbleUserCss').value.trim(); p.chatRoomCustomCss=(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(); p.bubbleAiFontColor=_saveAiColor; p.bubbleUserFontColor=_saveUserColor; p.bubblePreset=(document.getElementById('pBubblePreset')||{}).value||'none'; if(document.getElementById('pChatBgImg').src && document.getElementById('pChatBgImg').style.display!=='none') p.chatBgImage=document.getElementById('pChatBgImg').src; else p.chatBgImage=''; p.replyMode=_getSelectedReplyMode(); var _spd=document.querySelector('input[name="pReplySpeed"]:checked'); p.replySpeed=_spd?_spd.value:'fast'; p.replySpeedCustomMin=parseInt(document.getElementById('pReplySpeedCustomMin').value)||0; p.replySpeedCustomMax=parseInt(document.getElementById('pReplySpeedCustomMax').value)||10; p.showHeartVoiceInHeader=document.getElementById('pShowHeartVoiceInHeader').checked; p.allowCallTts=document.getElementById('pAllowCallTts').checked; if (p.momentsNickname == null || !String(p.momentsNickname).trim()) p.momentsNickname = name; if (p.momentsSignature == null) p.momentsSignature = ''; if (p.momentsBanner == null) p.momentsBanner = ''; }
+    if(p){ p.name=name; p.nickname=document.getElementById('pNick').value.trim(); p.persona=document.getElementById('pPersona').value.trim()||'一个简单的角色设定'; p.avatar=avatar; p.minReplyCount=minReply; p.maxReplyCount=maxReply; p.temperature=temperature; p.timeAwareness=timeAwareness; p.allowSticker=allowSticker; p.stickerLibraryIds=stickerLibraryIds; p.allowVoice=allowVoice; p.voiceId=voiceId; p.voiceSpeed=voiceSpeed; p.voiceLang=voiceLang; p.outputLang=outputLang; p.enableTranslation=enableTranslation; p.translateLang=translateLang; p.voiceFreq=voiceFreq; p.memoryCount=parseInt(document.getElementById('pMemoryCount').value)||100; p.autoMsg=document.getElementById('pAutoMsg').checked; p.autoMsgInterval=parseInt(document.getElementById('pAutoMsgInterval').value)||1; p.autoDiary=document.getElementById('pAutoDiary').checked; p.autoDiaryTime=document.getElementById('pAutoDiaryTime').value||'21:00'; p.autoMoments=document.getElementById('pAutoMoments').checked; p.autoMomentsTime=document.getElementById('pAutoMomentsTime').value||'20:00'; p.autoSummary=document.getElementById('pAutoSummary').checked; p.autoSummaryInterval=parseInt(document.getElementById('pAutoSummaryInterval').value)||20; p.bubbleAiCss=document.getElementById('pBubbleAiCss').value.trim(); p.bubbleUserCss=document.getElementById('pBubbleUserCss').value.trim(); p.chatRoomCustomCss=(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(); p.bubbleAiFontColor=_saveAiColor; p.bubbleUserFontColor=_saveUserColor; p.bubblePreset=(document.getElementById('pBubblePreset')||{}).value||'none'; p.oshiGlowBlue=_saveOshiBlue; p.oshiGlowPink=_saveOshiPink; p.oshiGlowShowHeart=_saveOshiShowHeart; if(document.getElementById('pChatBgImg').src && document.getElementById('pChatBgImg').style.display!=='none') p.chatBgImage=document.getElementById('pChatBgImg').src; else p.chatBgImage=''; p.replyMode=_getSelectedReplyMode(); var _spd=document.querySelector('input[name="pReplySpeed"]:checked'); p.replySpeed=_spd?_spd.value:'fast'; p.replySpeedCustomMin=parseInt(document.getElementById('pReplySpeedCustomMin').value)||0; p.replySpeedCustomMax=parseInt(document.getElementById('pReplySpeedCustomMax').value)||10; p.showHeartVoiceInHeader=document.getElementById('pShowHeartVoiceInHeader').checked; p.allowCallTts=document.getElementById('pAllowCallTts').checked; if (p.momentsNickname == null || !String(p.momentsNickname).trim()) p.momentsNickname = name; if (p.momentsSignature == null) p.momentsSignature = ''; if (p.momentsBanner == null) p.momentsBanner = ''; }
   } else {
     const _saveAiColor = document.getElementById('pBubbleAiFontColorEnabled').checked ? (document.getElementById('pBubbleAiFontColor').value||'') : '';
     const _saveUserColor = document.getElementById('pBubbleUserFontColorEnabled').checked ? (document.getElementById('pBubbleUserFontColor').value||'') : '';
-    const newP = { id:Date.now(), name, nickname:document.getElementById('pNick').value.trim()||name, momentsNickname:name, momentsSignature:'', momentsBanner:'', persona:document.getElementById('pPersona').value.trim()||'一个简单的角色设定', avatar, history:[], memoryCore:[], lastHeartVoice:null, autoSummary:document.getElementById('pAutoSummary').checked, autoSummaryInterval:parseInt(document.getElementById('pAutoSummaryInterval').value)||20, minReplyCount:minReply, maxReplyCount:maxReply, temperature:temperature, timeAwareness:timeAwareness, allowSticker:allowSticker, stickerLibraryIds:stickerLibraryIds, allowVoice:allowVoice, voiceId:voiceId, voiceSpeed:voiceSpeed, voiceLang:voiceLang, outputLang:outputLang, enableTranslation:enableTranslation, translateLang:translateLang, voiceFreq:voiceFreq, memoryCount:parseInt(document.getElementById('pMemoryCount').value)||100, autoMsg:document.getElementById('pAutoMsg').checked, autoMsgInterval:parseInt(document.getElementById('pAutoMsgInterval').value)||1, autoDiary:document.getElementById('pAutoDiary').checked, autoDiaryTime:document.getElementById('pAutoDiaryTime').value||'21:00', autoMoments:document.getElementById('pAutoMoments').checked, autoMomentsTime:document.getElementById('pAutoMomentsTime').value||'20:00', bubbleAiCss:document.getElementById('pBubbleAiCss').value.trim(), bubbleUserCss:document.getElementById('pBubbleUserCss').value.trim(), chatRoomCustomCss:(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(), bubbleAiFontColor:_saveAiColor, bubbleUserFontColor:_saveUserColor, bubblePreset:(document.getElementById('pBubblePreset')||{}).value||'none', chatBgImage:(document.getElementById('pChatBgImg').style.display!=='none'?document.getElementById('pChatBgImg').src:''), replyMode:_getSelectedReplyMode(), replySpeed:(document.querySelector('input[name="pReplySpeed"]:checked')||{}).value||'fast', replySpeedCustomMin:parseInt(document.getElementById('pReplySpeedCustomMin').value)||0, replySpeedCustomMax:parseInt(document.getElementById('pReplySpeedCustomMax').value)||10, showHeartVoiceInHeader:document.getElementById('pShowHeartVoiceInHeader').checked, allowCallTts:document.getElementById('pAllowCallTts').checked };
+    const newP = { id:Date.now(), name, nickname:document.getElementById('pNick').value.trim()||name, momentsNickname:name, momentsSignature:'', momentsBanner:'', persona:document.getElementById('pPersona').value.trim()||'一个简单的角色设定', avatar, history:[], memoryCore:[], lastHeartVoice:null, autoSummary:document.getElementById('pAutoSummary').checked, autoSummaryInterval:parseInt(document.getElementById('pAutoSummaryInterval').value)||20, minReplyCount:minReply, maxReplyCount:maxReply, temperature:temperature, timeAwareness:timeAwareness, allowSticker:allowSticker, stickerLibraryIds:stickerLibraryIds, allowVoice:allowVoice, voiceId:voiceId, voiceSpeed:voiceSpeed, voiceLang:voiceLang, outputLang:outputLang, enableTranslation:enableTranslation, translateLang:translateLang, voiceFreq:voiceFreq, memoryCount:parseInt(document.getElementById('pMemoryCount').value)||100, autoMsg:document.getElementById('pAutoMsg').checked, autoMsgInterval:parseInt(document.getElementById('pAutoMsgInterval').value)||1, autoDiary:document.getElementById('pAutoDiary').checked, autoDiaryTime:document.getElementById('pAutoDiaryTime').value||'21:00', autoMoments:document.getElementById('pAutoMoments').checked, autoMomentsTime:document.getElementById('pAutoMomentsTime').value||'20:00', bubbleAiCss:document.getElementById('pBubbleAiCss').value.trim(), bubbleUserCss:document.getElementById('pBubbleUserCss').value.trim(), chatRoomCustomCss:(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(), bubbleAiFontColor:_saveAiColor, bubbleUserFontColor:_saveUserColor, bubblePreset:(document.getElementById('pBubblePreset')||{}).value||'none', oshiGlowBlue:_saveOshiBlue, oshiGlowPink:_saveOshiPink, oshiGlowShowHeart:_saveOshiShowHeart, chatBgImage:(document.getElementById('pChatBgImg').style.display!=='none'?document.getElementById('pChatBgImg').src:''), replyMode:_getSelectedReplyMode(), replySpeed:(document.querySelector('input[name="pReplySpeed"]:checked')||{}).value||'fast', replySpeedCustomMin:parseInt(document.getElementById('pReplySpeedCustomMin').value)||0, replySpeedCustomMax:parseInt(document.getElementById('pReplySpeedCustomMax').value)||10, showHeartVoiceInHeader:document.getElementById('pShowHeartVoiceInHeader').checked, allowCallTts:document.getElementById('pAllowCallTts').checked };
     personas.push(newP); currentId=newP.id;
   }
   saveData(); renderContactList(); if(currentId) selectPersona(currentId); closeEditor(); renderDiaryTabs();
@@ -27637,8 +27790,12 @@ function previewBubbleCss() {
   const userEnabled = document.getElementById('pBubbleUserFontColorEnabled').checked;
   p.bubbleAiFontColor = aiEnabled ? (document.getElementById('pBubbleAiFontColor').value || '') : '';
   p.bubbleUserFontColor = userEnabled ? (document.getElementById('pBubbleUserFontColor').value || '') : '';
+  p.oshiGlowBlue = (document.getElementById('pOshiGlowBlue') || {}).value || '#cfd3d8';
+  p.oshiGlowPink = (document.getElementById('pOshiGlowPink') || {}).value || '#e5e5e5';
+  p.oshiGlowShowHeart = !document.getElementById('pOshiGlowShowHeart') || document.getElementById('pOshiGlowShowHeart').checked;
   applyBubbleStyles(p);
   saveData();
+  renderMessages();
   alert('\u6c23\u6ce1\u6846\u6a23\u5f0f\u5df2\u9810\u89bd\u4e26\u4fdd\u5b58\uff01');
 }
 function resetBubbleCss() {
@@ -27656,8 +27813,11 @@ function resetBubbleCss() {
   if (aiPreview) aiPreview.style.color = '#1a1a1a';
   const userPreview = document.getElementById('pBubbleUserFontColorPreview');
   if (userPreview) userPreview.style.color = '#ffffff';
+  if (document.getElementById('pOshiGlowBlue')) document.getElementById('pOshiGlowBlue').value = '#cfd3d8';
+  if (document.getElementById('pOshiGlowPink')) document.getElementById('pOshiGlowPink').value = '#e5e5e5';
+  if (document.getElementById('pOshiGlowShowHeart')) document.getElementById('pOshiGlowShowHeart').checked = true;
   const p = personas.find(x => x.id == currentId);
-  if (p) { p.bubbleAiCss = ''; p.bubbleUserCss = ''; p.bubbleAiFontColor = ''; p.bubbleUserFontColor = ''; removeBubbleStyles(); saveData(); renderMessages(); }
+  if (p) { p.bubbleAiCss = ''; p.bubbleUserCss = ''; p.bubbleAiFontColor = ''; p.bubbleUserFontColor = ''; p.oshiGlowBlue = '#cfd3d8'; p.oshiGlowPink = '#e5e5e5'; p.oshiGlowShowHeart = true; removeBubbleStyles(); saveData(); renderMessages(); }
   alert('\u6c23\u6ce1\u6846\u5df2\u91cd\u7f6e\u70ba\u9810\u8a2d\u6a23\u5f0f\uff01');
 }
 function resetBubbleFontColor(who) {
@@ -27685,6 +27845,9 @@ function applyBubbleStyles(p) {
   // Apply preset class
   applyBubblePresetClass(p.bubblePreset || 'none');
   let css = '';
+  const oshiBlue = (p.oshiGlowBlue && p.oshiGlowBlue !== '#6699ff') ? p.oshiGlowBlue : '#cfd3d8';
+  const oshiPink = (p.oshiGlowPink && p.oshiGlowPink !== '#ff99cc') ? p.oshiGlowPink : '#e5e5e5';
+  css += '#chatPage.bubble-preset-oshiglow, #groupChatPage.bubble-preset-oshiglow { --glow-blue: ' + oshiBlue + '; --glow-pink: ' + oshiPink + '; }\n';
   // AI bubble: merge font color + custom CSS
   let aiParts = '';
   if (p.bubbleAiFontColor) aiParts += 'color: ' + p.bubbleAiFontColor + ';';
@@ -27716,7 +27879,15 @@ function livePreviewBubble() {
   const tmpAiColor   = aiEnabled   ? ((document.getElementById('pBubbleAiFontColor')   || {}).value || '') : '';
   const tmpUserColor = userEnabled ? ((document.getElementById('pBubbleUserFontColor') || {}).value || '') : '';
   const tmpPreset = (document.getElementById('pBubblePreset') || {}).value || 'none';
-  applyBubbleStyles({ bubbleAiCss: tmpAi.trim(), bubbleUserCss: tmpUser.trim(), bubbleAiFontColor: tmpAiColor, bubbleUserFontColor: tmpUserColor, bubblePreset: tmpPreset });
+  const tmpOshiBlue = (document.getElementById('pOshiGlowBlue') || {}).value || '#cfd3d8';
+  const tmpOshiPink = (document.getElementById('pOshiGlowPink') || {}).value || '#e5e5e5';
+  const tmpOshiShowHeart = !document.getElementById('pOshiGlowShowHeart') || document.getElementById('pOshiGlowShowHeart').checked;
+  applyBubbleStyles({ bubbleAiCss: tmpAi.trim(), bubbleUserCss: tmpUser.trim(), bubbleAiFontColor: tmpAiColor, bubbleUserFontColor: tmpUserColor, bubblePreset: tmpPreset, oshiGlowBlue: tmpOshiBlue, oshiGlowPink: tmpOshiPink, oshiGlowShowHeart: tmpOshiShowHeart });
+  const previewPersona = personas.find(x => x.id == currentId);
+  if (previewPersona && (typeof normalizeBubblePreset === 'function' ? normalizeBubblePreset(previewPersona.bubblePreset) : previewPersona.bubblePreset) === 'oshiglow' && previewPersona.oshiGlowShowHeart !== tmpOshiShowHeart) {
+    previewPersona.oshiGlowShowHeart = tmpOshiShowHeart;
+    renderMessages();
+  }
   // Update inline previews
   const aiPreview = document.getElementById('pBubbleAiFontColorPreview');
   if (aiPreview) aiPreview.style.color = tmpAiColor || '#1a1a1a';
@@ -27787,8 +27958,13 @@ function resetGcRoomCss() {
 // ══════════════════════════════════════════
 // BUBBLE PRESET SYSTEM
 // ══════════════════════════════════════════
-var _BUBBLE_PRESET_CLASSES = ['bubble-preset-wechat', 'bubble-preset-imessage', 'bubble-preset-retro', 'bubble-preset-journal'];
+var _BUBBLE_PRESET_CLASSES = ['bubble-preset-wechat', 'bubble-preset-imessage', 'bubble-preset-retro', 'bubble-preset-oshiglow', 'bubble-preset-journal'];
+function normalizeBubblePreset(preset) {
+  preset = preset || 'none';
+  return _BUBBLE_PRESET_CLASSES.indexOf('bubble-preset-' + preset) === -1 ? 'none' : preset;
+}
 function applyBubblePresetClass(preset) {
+  preset = normalizeBubblePreset(preset);
   var targets = [document.getElementById('chatPage'), document.getElementById('groupChatPage')].filter(Boolean);
   targets.forEach(function(el) {
     _BUBBLE_PRESET_CLASSES.forEach(function(cls) { el.classList.remove(cls); });
@@ -27796,6 +27972,7 @@ function applyBubblePresetClass(preset) {
   });
 }
 function selectBubblePreset(preset) {
+  preset = normalizeBubblePreset(preset);
   // Update UI selection
   document.querySelectorAll('.bubble-preset-option').forEach(function(el) {
     el.style.borderColor = '#ddd';
@@ -27815,7 +27992,7 @@ function selectBubblePreset(preset) {
   livePreviewBubble();
 }
 function loadBubblePresetUI(preset) {
-  preset = preset || 'none';
+  preset = normalizeBubblePreset(preset);
   document.querySelectorAll('.bubble-preset-option').forEach(function(el) {
     el.style.borderColor = '#ddd';
     el.style.boxShadow = 'none';
@@ -31884,6 +32061,9 @@ function normalizeImportData(raw) {
     if (np.bubbleUserCss == null) np.bubbleUserCss = '';
     if (np.bubbleAiFontColor == null) np.bubbleAiFontColor = '';
     if (np.bubbleUserFontColor == null) np.bubbleUserFontColor = '';
+    if (np.oshiGlowBlue == null || np.oshiGlowBlue === '#6699ff') np.oshiGlowBlue = '#cfd3d8';
+    if (np.oshiGlowPink == null || np.oshiGlowPink === '#ff99cc') np.oshiGlowPink = '#e5e5e5';
+    if (np.oshiGlowShowHeart == null) np.oshiGlowShowHeart = true;
     if (np.chatBgImage == null) np.chatBgImage = '';
     // Ensure each history message has a role and content
     np.history = np.history.map(m => {

@@ -3495,14 +3495,14 @@ body.ios-fullscreen .menu-btn { top: calc(env(safe-area-inset-top, 44px) + 10px)
 .home-pages-wrapper {
   display: flex;
   flex-direction: row;
-  width: 200%;
+  width: 300%;
   flex: 1;
   min-height: 0;
   transition: transform 0.38s cubic-bezier(.4,0,.2,1);
   will-change: transform;
 }
 .home-page {
-  width: 50%;
+  width: 33.333333%;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -3606,7 +3606,7 @@ body:not(.ios-fullscreen) .home-screen:not(.flip-mode) .home-page {
   position: relative;
   top: unset;
   bottom: unset;
-  width: 50%;
+  width: 33.333333%;
   height: 100%;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -39551,14 +39551,21 @@ if (typeof renderContactList === 'function') {
   function initHomeSwipe() {
     const hs = document.getElementById('homeScreen');
     if (!hs) return;
+    function shouldIgnorePageSwipe() {
+      return (typeof window._iphIsEditMode === 'function' && window._iphIsEditMode())
+        || !!window._iphDragging
+        || !!document.querySelector('.is-dragging-source');
+    }
     // Apply persisted page mode on load
     if (typeof applyHomePageMode === 'function') applyHomePageMode();
     hs.addEventListener('touchstart', function(e) {
+      if (shouldIgnorePageSwipe()) { isDragging = false; movedX = 0; return; }
       const t = e.changedTouches[0];
       startX = t.clientX; startY = t.clientY;
       isDragging = true; movedX = 0;
     }, { passive: true });
     hs.addEventListener('touchmove', function(e) {
+      if (shouldIgnorePageSwipe()) { isDragging = false; movedX = 0; return; }
       if (!isDragging) return;
       const t = e.changedTouches[0];
       movedX = t.clientX - startX;
@@ -39573,6 +39580,7 @@ if (typeof renderContactList === 'function') {
       }
     }, { passive: true });
     hs.addEventListener('touchend', function(e) {
+      if (shouldIgnorePageSwipe()) { isDragging = false; movedX = 0; return; }
       if (!isDragging) return;
       isDragging = false;
       // Flip mode uses edge tap zones instead of swipe — ignore horizontal drag gestures
@@ -39593,11 +39601,17 @@ if (typeof renderContactList === 'function') {
     // Mouse drag for desktop testing
     hs.addEventListener('mousedown', function(e) {
       // Don't start drag in flip mode (tap zones handle navigation)
+      if (shouldIgnorePageSwipe()) { isDragging = false; movedX = 0; return; }
       if (homePageMode === 'flip') return;
       startX = e.clientX; isDragging = true; movedX = 0;
     });
-    window.addEventListener('mousemove', function(e) { if (!isDragging) return; movedX = e.clientX - startX; });
+    window.addEventListener('mousemove', function(e) {
+      if (shouldIgnorePageSwipe()) { isDragging = false; movedX = 0; return; }
+      if (!isDragging) return;
+      movedX = e.clientX - startX;
+    });
     window.addEventListener('mouseup', function(e) {
+      if (shouldIgnorePageSwipe()) { isDragging = false; movedX = 0; return; }
       if (!isDragging) return;
       isDragging = false;
       if (homePageMode === 'flip') { movedX = 0; return; }
@@ -59388,7 +59402,7 @@ function _callCompanionApi(persona, chContent, hist, callback) {
   pointer-events: none !important;
 }
 /* pages need position:relative as origin for absolute children */
-#homePage1, #homePage2, #homeSharedDock,
+#homePage1, #homePage2, #homePage3, #homeSharedDock,
 .home-page-extra, .home-extra-dock {
   position: relative;
 }
@@ -61104,6 +61118,29 @@ let lpMoved    = false;
 let lpStartX   = 0;
 let lpStartY   = 0;
 let positions  = {};            // { id: {x,y,parentId} }
+function syncHomeContainerMeta(id, parentId, x, y, w, h) {
+  if (!id) return;
+  try {
+    var cw = JSON.parse(localStorage.getItem('mono_custom_widgets_v1') || '{}');
+    if (cw[id]) {
+      cw[id].parentId = parentId || cw[id].parentId || 'homePage1';
+      if (w != null) cw[id].w = w;
+      if (h != null) cw[id].h = h;
+      localStorage.setItem('mono_custom_widgets_v1', JSON.stringify(cw));
+    }
+  } catch(e) {}
+  try {
+    var fd = JSON.parse(localStorage.getItem('mono_iph_folders_v1') || '{}');
+    if (fd[id]) {
+      fd[id].parentId = parentId || fd[id].parentId || 'homePage1';
+      if (x != null) fd[id].x = x;
+      if (y != null) fd[id].y = y;
+      if (w != null) fd[id].w = w;
+      if (h != null) fd[id].h = h;
+      localStorage.setItem('mono_iph_folders_v1', JSON.stringify(fd));
+    }
+  } catch(e2) {}
+}
 /* ════════════════════════════════
    BOOT
    ════════════════════════════════ */
@@ -61148,6 +61185,20 @@ function boot() {
 function loadPositions() {
   try { positions = JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); }
   catch(e) { positions = {}; }
+  try {
+    var migrated = localStorage.getItem('mono_couple_widget_page3_migrated_v1') === '1';
+    if (!migrated) {
+      positions.coupleSpaceWidget = {
+        x: 16,
+        y: 16,
+        w: 152,
+        h: 152,
+        parentId: 'homePage3'
+      };
+      localStorage.setItem(STORE_KEY, JSON.stringify(positions));
+      localStorage.setItem('mono_couple_widget_page3_migrated_v1', '1');
+    }
+  } catch(e2) {}
 }
 function savePositions() {
   // Scan ALL currently placed elements and capture their live positions
@@ -61167,6 +61218,7 @@ function savePositions() {
       var liveParentId = (el.parentElement && el.parentElement.id) || '';
       var parentId = liveParentId || (positions[id] && positions[id].parentId) || 'homePage1';
       positions[id] = { x: x, y: y, w: w, h: h, parentId: parentId };
+      syncHomeContainerMeta(id, parentId, x, y, w, h);
     });
   } catch(e) {}
   try { localStorage.setItem(STORE_KEY, JSON.stringify(positions)); } catch(e){}
@@ -61641,7 +61693,8 @@ function moveDrag(cx, cy) {
   // ── 2. Edge detection → auto page-switch ──
   const fingerX = cx; // use raw finger X for edge detection
   const onPage  = (typeof window._iphCurrentPage !== 'undefined') ? window._iphCurrentPage : 0;
-  const nPages  = (window._getExtraContainers ? 2 + (window._extraPageIds || []).length : 2);
+  const extraPageIds = (window._extraPageIds || []).filter(function(id) { return id !== 'homePage3'; });
+  const nPages  = 3 + extraPageIds.length;
   // Near RIGHT edge → switch to next page; Near LEFT edge → switch to prev page
   const nearRight = fingerX >= hsR.right  - EDGE_PX && onPage < nPages - 1;
   const nearLeft  = fingerX <= hsR.left   + EDGE_PX && onPage > 0;
@@ -61687,7 +61740,10 @@ function endDrag() {
   const pageContainers = [
     document.getElementById('homePage1'),
     document.getElementById('homePage2'),
-    ...(window._extraPageIds || []).map(id => document.getElementById(id))
+    document.getElementById('homePage3'),
+    ...(window._extraPageIds || []).filter(function(id) { return id !== 'homePage3'; }).map(function(id) {
+      return document.getElementById(id);
+    })
   ];
   const prevContainer = dragEl.parentElement;
   let container;
@@ -61781,8 +61837,10 @@ function endDrag() {
       const mw = parseFloat(dragEl.style.width)  || elW;
       const mh = parseFloat(dragEl.style.height) || MEMO_WIDGET_H;
       positions[id] = { x: nx, y: ny, w: mw, h: mh, parentId: container.id };
+      syncHomeContainerMeta(id, container.id, nx, ny, mw, mh);
     } else {
       positions[id] = { x: nx, y: ny, w: elW, h: elH, parentId: container.id };
+      syncHomeContainerMeta(id, container.id, nx, ny, elW, elH);
     }
     // Immediately persist to localStorage so widget position is saved
     // even if user closes the page before tapping "完成"
@@ -62018,6 +62076,7 @@ function persistAllWidgetSizes() {
         positions[id].y = parseFloat(el.style.top)    || 0;
         if (!positions[id].parentId)
           positions[id].parentId = (el.parentElement && el.parentElement.id) || 'homePage1';
+        syncHomeContainerMeta(id, positions[id].parentId, positions[id].x, positions[id].y, positions[id].w, positions[id].h);
       });
     });
     localStorage.setItem(STORE_KEY, JSON.stringify(positions));
@@ -62274,7 +62333,7 @@ function loadExtraPages() {
 function saveExtraPages() {
   try { localStorage.setItem(PAGES_KEY, JSON.stringify(extraPages)); } catch(e) {}
 }
-/* ── Total page count (2 original + extra) ── */
+/* ── Total page count (3 built-in pages + extra) ── */
 function totalPages() { return 3 + extraPages.length; }
 /* ── Update wrapper width and page widths ── */
 function updateLayout() {
@@ -62427,8 +62486,9 @@ function createExtraPageDOM(uid) {
 /* ── Restore extra pages from storage on boot ── */
 function restoreExtraPages() {
   loadExtraPages();
-  if (extraPages.length === 0) return;
-  extraPages.forEach(ep => createExtraPageDOM(ep.id));
+  extraPages.forEach(function(ep) {
+    if (!document.getElementById(ep.id)) createExtraPageDOM(ep.id);
+  });
   updateLayout();
   rebuildDots();
   syncDragSystem();
@@ -62472,7 +62532,6 @@ function patchEndDrag() {
 /* ── Boot ── */
 function boot() {
   restoreExtraPages();
-  rebuildDots(); // always rebuild to add the "+" dot
   patchEditMode();
   patchSwipe();
   patchEndDrag();
@@ -63378,7 +63437,9 @@ window.addNewPhotoWidget = function(type) {
   var el = buildWidgetEl(id, type);
   // Determine target container (current visible home page)
   var curPageIdx = window._iphCurrentPage || 0;
-  var pageIds = ['homePage1', 'homePage2'].concat(window._extraPageIds || []);
+  var pageIds = ['homePage1', 'homePage2', 'homePage3'].concat((window._extraPageIds || []).filter(function(id) {
+    return id !== 'homePage3';
+  }));
   var containerId = pageIds[curPageIdx] || 'homePage1';
   var container = document.getElementById(containerId) || document.getElementById('homePage1');
   container.appendChild(el);

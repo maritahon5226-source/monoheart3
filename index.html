@@ -14,6 +14,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head>
@@ -453,7 +454,7 @@ self.addEventListener('notificationclick', e => {
     'mono_custom_image_widget_v1','mono_hidden_regular_widgets_v1',
     'mono_spotify_widget_text_v1','mono_multiworld_enabled','mono_multiworld_worlds',
     'mono_multiworld_active','mono_voice_lang',
-    'mono_user_profile'  // 用户资料跨世界共享，永不加世界前缀
+    'mono_user_profile','mono_couple_space_v1'  // 用户资料与情侣空间跨世界共享，永不加世界前缀
   ]);
   const _MW_SHARED_PREFIXES = ['mono_icon_', 'mono_rel_map_', 'mono_mw_'];
   function _mwTransformKey(key) {
@@ -9629,6 +9630,104 @@ body:not(.ios-fullscreen) .family-widget {
   font-weight: 800;
   color: #1d1d1d;
 }
+.online-room-crew {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.online-room-crew-summary {
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(27,27,27,0.95), rgba(72,72,72,0.92));
+  color: #fff;
+  box-shadow: 0 14px 30px rgba(0,0,0,0.09);
+}
+.online-room-crew-title {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+.online-room-crew-desc {
+  margin-top: 4px;
+  font-size: 10px;
+  line-height: 1.6;
+  color: rgba(255,255,255,0.72);
+}
+.online-room-crew-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.online-room-crew-chip {
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.82);
+  border: 1px solid rgba(210,210,210,0.96);
+  box-shadow: 0 10px 22px rgba(0,0,0,0.04);
+}
+.online-room-crew-chip strong {
+  display: block;
+  font-size: 11px;
+  color: #1f1f1f;
+}
+.online-room-crew-chip span {
+  display: block;
+  margin-top: 3px;
+  font-size: 9px;
+  color: #777;
+  line-height: 1.5;
+}
+.online-room-crew-empty {
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px dashed rgba(188,188,188,0.96);
+  background: rgba(255,255,255,0.68);
+  color: #7a7a7a;
+  font-size: 10px;
+  line-height: 1.7;
+  text-align: center;
+}
+.online-resident-grid {
+  display: grid;
+  gap: 10px;
+}
+.online-resident-card {
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.84);
+  border: 1px solid rgba(219,219,219,0.94);
+  box-shadow: 0 10px 24px rgba(0,0,0,0.05);
+}
+.online-resident-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.online-resident-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: #1d1d1d;
+}
+.online-resident-mode {
+  margin-top: 4px;
+  font-size: 10px;
+  color: #666;
+  line-height: 1.6;
+}
+.online-resident-note {
+  margin-top: 8px;
+  font-size: 10px;
+  line-height: 1.7;
+  color: #777;
+}
+.online-resident-actions {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 .online-bottomnav {
   padding: 10px 18px 16px;
   display: grid;
@@ -13766,6 +13865,7 @@ body:not(.ios-fullscreen) .family-widget {
     <div class="home-page-dots" id="homePageDots">
       <div class="home-page-dot active" id="hdot0"></div>
       <div class="home-page-dot" id="hdot1"></div>
+      <div class="home-page-dot" id="hdot2"></div>
     </div>
     <!-- Pages wrapper (swipeable) -->
     <div class="home-pages-wrapper" id="homePagesWrapper">
@@ -13981,6 +14081,31 @@ body:not(.ios-fullscreen) .family-widget {
         </div>
         </div><!-- end page2-center-wrapper -->
       </div><!-- end homePage2 -->
+      <!-- ===== PAGE 3 (Couple Space) ===== -->
+      <div class="home-page" id="homePage3">
+        <div class="couple-home-layout">
+          <div class="couple-space-widget" id="coupleSpaceWidget" data-drag-id="coupleSpaceWidget" onclick="openCoupleSpacePage()">
+            <div class="hw-delete-btn" onclick="event.stopPropagation();deleteRegularWidget('coupleSpaceWidget', '情侣空间桌件')">&#215;</div>
+            <div class="csw-bg" id="coupleSpaceWidgetBg"></div>
+            <div class="csw-overlay"></div>
+            <div class="csw-noise"></div>
+            <div class="csw-scale-shell">
+              <div class="csw-scale-inner" id="coupleSpaceWidgetInner">
+                <div class="csw-topline">Couple Space</div>
+                <div class="csw-center">
+                  <div class="csw-day" id="csWidgetDays">D-0</div>
+                  <div class="csw-name" id="csWidgetAnnivName">选择纪念日</div>
+                  <div class="csw-date" id="csWidgetAnnivDate">在情侣空间里设定</div>
+                </div>
+                <div class="csw-bottom">
+                  <div class="csw-couple-names" id="csWidgetNames">你 · TA</div>
+                  <div class="csw-caption" id="csWidgetCaption">点击进入情侣空间</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div><!-- end homePage3 -->
     </div><!-- end home-pages-wrapper -->
     <!-- ===== SHARED FIXED DOCK — stays visible on both pages ===== -->
     <div class="home-dock-bar" id="homeSharedDockBar">
@@ -15977,13 +16102,23 @@ body:not(.ios-fullscreen) .family-widget {
         <div class="online-title" style="font-size:15px;letter-spacing:0.6px;" id="olRoomTitle">聊天室</div>
         <div class="online-subtitle" id="olRoomSubtitle">未连接</div>
       </div>
-      <button class="online-top-action" onclick="olRefreshCurrentRoom()"><i class="fas fa-rotate"></i></button>
+      <div style="display:flex;gap:8px;margin-left:auto;">
+        <button class="online-top-action" onclick="olOpenResidentSheet()"><i class="fas fa-user-astronaut"></i></button>
+        <button class="online-top-action" onclick="olRefreshCurrentRoom()"><i class="fas fa-rotate"></i></button>
+      </div>
     </div>
     <div class="online-room-body" id="olRoomBody"></div>
     <div class="online-room-inputbar">
       <select class="online-select" id="olRoomSpeaker" style="max-width:150px;"></select>
       <textarea class="online-textarea" id="olRoomInput" placeholder="输入消息…可切换真人或角色身份发送" style="min-height:56px;"></textarea>
       <button class="online-room-send" onclick="olSendMessage()">发送</button>
+    </div>
+  </div>
+  <div class="online-sheet-mask" id="olResidentSheet" onclick="olCloseSheet(event, 'olResidentSheet')">
+    <div class="online-sheet" onclick="event.stopPropagation()">
+      <div class="online-sheet-title">角色入驻聊天室</div>
+      <div class="online-sheet-desc">把角色变成聊天软件里的常驻成员。不是一次性发言，而是会按风格留在房间里，随时插话、接梗、抛观点。</div>
+      <div id="olResidentSheetContent"></div>
     </div>
   </div>
   <div class="online-sheet-mask" id="olQuickSheet" onclick="olCloseSheet(event, 'olQuickSheet')">
@@ -21861,7 +21996,7 @@ function _mwMigrateToWorld1() {
     'mono_custom_widgets_v1','mono_widget_photos_v1','mono_widget_multi_photos_v1',
     'mono_custom_image_widget_v1','mono_hidden_regular_widgets_v1',
     'mono_spotify_widget_text_v1','mono_multiworld_enabled','mono_multiworld_worlds',
-    'mono_multiworld_active','mono_voice_lang'
+    'mono_multiworld_active','mono_voice_lang','mono_couple_space_v1'
   ]);
   const SHARED_PFXS = ['mono_icon_', 'mono_rel_map_', 'mono_mw_'];
   // Collect world-specific keys from IDB cache
@@ -31850,6 +31985,7 @@ async function _doExportAllData(statusEl) {
         }
         return fw;
       })(),
+      coupleSpace: JSON.parse(localStorage.getItem('mono_couple_space_v1') || '{}'),
       // 多世界数据
       multiWorld: (() => {
         if (typeof mwIsEnabled !== 'function' || !mwIsEnabled()) return null;
@@ -32158,6 +32294,10 @@ function normalizeImportData(raw) {
     homePageMode: (raw.settings && raw.settings.homePageMode) ? raw.settings.homePageMode : 'swipe'
   };
   data.customFont = raw.customFont || null;
+  // --- couple space ---
+  data.coupleSpace = (raw.coupleSpace && typeof raw.coupleSpace === 'object')
+    ? raw.coupleSpace
+    : ((raw.homeScreen && raw.homeScreen.coupleSpace && typeof raw.homeScreen.coupleSpace === 'object') ? raw.homeScreen.coupleSpace : {});
   // --- apiConfig ---
   data.apiConfig = _normalizeApiConfigObject(raw.apiConfig || {});
   // --- notifications ---
@@ -32528,6 +32668,19 @@ function importAllData(input) {
         if (data.familyWidget.displayFamily) fwParts.push('展示家庭已设定');
         if (typeof data.familyWidget.blur === 'number' && data.familyWidget.blur > 0) fwParts.push('模糊:' + data.familyWidget.blur);
         preview += '<div>🏠 宝宝桌件: ' + fwParts.join(' · ') + '</div>';
+      }
+      if (data.coupleSpace && data.coupleSpace.profiles) {
+        var csProfiles = Object.keys(data.coupleSpace.profiles || {});
+        var csAnn = 0, csGallery = 0, csFoot = 0;
+        csProfiles.forEach(function(pid) {
+          var p = data.coupleSpace.profiles[pid] || {};
+          csAnn += Array.isArray(p.anniversaries) ? p.anniversaries.length : 0;
+          csGallery += Array.isArray(p.gallery) ? p.gallery.length : 0;
+          csFoot += Array.isArray(p.footprints) ? p.footprints.length : 0;
+        });
+        if (csProfiles.length > 0) {
+          preview += '<div>💞 情侣空间: ' + csProfiles.length + ' 个绑定档案 · 纪念日 ' + csAnn + ' 条 · 相册 ' + csGallery + ' 条 · 足迹 ' + csFoot + ' 条</div>';
+        }
       }
       if (data.musicChat && data.musicChat.length > 0) {
         preview += '<div>🎵 音樂聊天: ' + data.musicChat.length + ' 条</div>';
@@ -33182,6 +33335,44 @@ async function confirmImport() {
       try { if (typeof renderFamilyWidget === 'function') setTimeout(renderFamilyWidget, 400); } catch(e) {}
     }
   });
+  // 28c. 情侣空间
+  await safe('情侣空间', async () => {
+    if (data.coupleSpace && typeof data.coupleSpace === 'object') {
+      var csCopy = JSON.parse(JSON.stringify(data.coupleSpace));
+      if (csCopy.profiles && typeof csCopy.profiles === 'object') {
+        for (const pid of Object.keys(csCopy.profiles)) {
+          const p = csCopy.profiles[pid] || {};
+          if (p.coverImage && typeof p.coverImage === 'string' && p.coverImage.indexOf('data:image') === 0) {
+            try { p.coverImage = await compressImage(p.coverImage, 1400, 0.84); } catch(e) {}
+          }
+          if (p.backgroundImage && typeof p.backgroundImage === 'string' && p.backgroundImage.indexOf('data:image') === 0) {
+            try { p.backgroundImage = await compressImage(p.backgroundImage, 1400, 0.84); } catch(e) {}
+          }
+          if (p.widgetBackground && typeof p.widgetBackground === 'string' && p.widgetBackground.indexOf('data:image') === 0) {
+            try { p.widgetBackground = await compressImage(p.widgetBackground, 900, 0.84); } catch(e) {}
+          }
+          if (Array.isArray(p.gallery)) {
+            for (const item of p.gallery) {
+              if (item && item.image && typeof item.image === 'string' && item.image.indexOf('data:image') === 0) {
+                try { item.image = await compressImage(item.image, 1400, 0.82); } catch(e) {}
+              }
+            }
+          }
+          if (Array.isArray(p.footprints)) {
+            for (const item of p.footprints) {
+              if (item && item.image && typeof item.image === 'string' && item.image.indexOf('data:image') === 0) {
+                try { item.image = await compressImage(item.image, 1280, 0.82); } catch(e) {}
+              }
+            }
+          }
+        }
+      }
+      localStorage.setItem('mono_couple_space_v1', JSON.stringify(csCopy));
+      if (typeof window._monoApplyCoupleSpaceState === 'function') {
+        window._monoApplyCoupleSpaceState(csCopy);
+      }
+    }
+  });
   // 29. 多世界数据恢复
   await safe('多世界', async () => {
     if (data.multiWorld && data.multiWorld.enabled) {
@@ -33291,6 +33482,7 @@ async function confirmImport() {
       'mono_music_saved', 'mono_memo_items', 'mono_task_data', 'mono_wallet',
       'mono_health_v2', 'mono_secondary_apis', 'mono_active_api', 'mono_ig_stories',
       'mono_music_chat', 'mono_translation_cache', 'mono_baby_data', 'mono_baby_settings',
+      'mono_couple_space_v1',
       // ── 主屏幕桌件 / 页面 / 图标位置 ──
       'mono_extra_pages_v1', 'mono_custom_widgets_v1',
       'mono_widget_photos_v1', 'mono_widget_multi_photos_v1', 'mono_custom_image_widget_v1',
@@ -59220,7 +59412,10 @@ function _callCompanionApi(persona, chContent, hist, callback) {
 [data-drag-id].iph-placed.ig-widget,
 [data-drag-id].iph-placed.family-widget,
 [data-drag-id].iph-placed.home-calendar-widget,
-[data-drag-id].iph-placed.home-photo-widget {
+[data-drag-id].iph-placed.home-photo-widget,
+[data-drag-id].iph-placed.couple-space-widget,
+[data-drag-id].iph-placed.photo-widget-livechat,
+[data-drag-id].iph-placed.photo-widget-couple-calendar {
   /* width & height locked inline by JS — just ensure box-sizing is right */
   box-sizing: border-box !important;
   max-width: none !important;
@@ -60219,6 +60414,242 @@ function _callCompanionApi(persona, chContent, hist, callback) {
 .mini-lc-typing { background: #eeeef3; border-radius: 4px; padding: 3px 4px; margin: 2px 5px 0; }
 .mini-lc-tline { height: 3px; background: #c4c4cc; border-radius: 2px; width: 68%; }
 .mini-lc-inp { margin: 3px 5px 5px; background: #f0f0f5; border-radius: 5px; height: 7px; }
+/* ═══ Couple Calendar Widget ═══ */
+.photo-widget-couple-calendar {
+  width: 224px;
+  height: 224px;
+  position: relative;
+  border-radius: 28px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 18% 16%, rgba(255,255,255,0.95), transparent 28%),
+    radial-gradient(circle at 83% 18%, rgba(232,232,236,0.95), transparent 26%),
+    linear-gradient(155deg, rgba(250,250,251,0.98), rgba(229,229,233,0.96));
+  border: 1px solid rgba(193,193,199,0.76);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.96), 0 16px 34px rgba(82,82,90,0.15);
+  color: #2d2d31;
+  box-sizing: border-box;
+}
+.pw-couple-cal-shell {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.pw-couple-cal-shell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.1;
+  background-image:
+    linear-gradient(90deg, rgba(110,110,118,0.12) 0, rgba(110,110,118,0.12) 1px, transparent 1px),
+    linear-gradient(rgba(110,110,118,0.12) 0, rgba(110,110,118,0.12) 1px, transparent 1px);
+  background-size: 10px 10px;
+  pointer-events: none;
+}
+.pw-couple-cal-inner {
+  width: 224px;
+  height: 224px;
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: top left;
+  pointer-events: none;
+}
+.pw-cc-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px 10px;
+}
+.pw-cc-pet {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.9);
+  box-shadow: inset 0 0 0 1px rgba(210,210,216,0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pw-cc-pet img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+.pw-cc-title {
+  text-align: center;
+  flex: 1;
+  padding-right: 10px;
+}
+.pw-cc-month {
+  font-size: 18px;
+  font-weight: 700;
+  color: #55555d;
+}
+.pw-cc-year {
+  font-size: 10px;
+  color: rgba(96,96,104,0.64);
+  margin-top: 2px;
+}
+.pw-cc-week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  padding: 0 14px;
+  gap: 0;
+  font-size: 9px;
+  color: rgba(94,94,102,0.66);
+  text-align: center;
+}
+.pw-cc-week span { line-height: 18px; }
+.pw-cc-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: 82px;
+  padding: 8px 10px 36px;
+}
+.pw-cc-day {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+.pw-cc-day.other { opacity: 0.22; }
+.pw-cc-day.today .pw-cc-daynum {
+  color: #ef8f6d;
+  font-weight: 700;
+}
+.pw-cc-daynum {
+  font-size: 12px;
+  color: rgba(70,70,78,0.72);
+  line-height: 1;
+  margin-top: 2px;
+}
+.pw-cc-icons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 5px;
+  min-height: 60px;
+}
+.pw-cc-icon-box,
+.pw-cc-empty {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+.pw-cc-icon-box {
+  border: 1px solid rgba(213,213,220,0.92);
+  background: transparent;
+}
+.pw-cc-icon {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  display: block;
+  mix-blend-mode: multiply;
+}
+.pw-cc-empty {
+  border: 1px dashed rgba(190,190,196,0.68);
+  background: transparent;
+}
+.pw-cc-foot {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 9px;
+  color: rgba(82,82,90,0.64);
+  pointer-events: none;
+}
+.pw-cc-foot strong {
+  color: #44444b;
+  font-size: 10px;
+}
+[data-drag-id].iph-placed.photo-widget-couple-calendar {
+  box-sizing: border-box !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+.home-edit-active .photo-widget-couple-calendar .pw-delete-btn { display: flex; }
+.photo-widget-couple-calendar.is-dragging-source .pw-delete-btn { display: none !important; }
+.home-edit-active [data-drag-id].iph-placed.photo-widget-couple-calendar .widget-resize-handle { display: block; }
+.mini-couple-calendar {
+  height: 100%;
+  border-radius: 11px;
+  background: linear-gradient(155deg,#fafafb,#ededf2);
+  box-shadow: 0 1px 6px rgba(0,0,0,.07);
+  overflow: hidden;
+  padding: 5px;
+  box-sizing: border-box;
+}
+.mini-cc-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3px;
+  margin-bottom: 4px;
+}
+.mini-cc-pet,
+.mini-cc-tree {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #e9e5e2;
+}
+.mini-cc-tree { border-radius: 4px 4px 2px 2px; width: 10px; height: 14px; }
+.mini-cc-title { flex: 1; display: flex; flex-direction: column; gap: 2px; align-items: center; }
+.mini-cc-m1,
+.mini-cc-m2 {
+  background: #d6d6dd;
+  border-radius: 999px;
+}
+.mini-cc-m1 { width: 22px; height: 4px; }
+.mini-cc-m2 { width: 15px; height: 3px; opacity: 0.8; }
+.mini-cc-week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  font-size: 4px;
+  color: #9a9aa1;
+  text-align: center;
+  margin-bottom: 2px;
+}
+.mini-cc-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+}
+.mini-cc-cell {
+  height: 14px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.45);
+  position: relative;
+}
+.mini-cc-cell i {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #f7c7d4;
+  left: 4px;
+  top: 3px;
+}
+.mini-cc-cell i.b {
+  background: #b9d8f7;
+  top: 8px;
+}
+.mini-cc-cell i.a {
+  background: #ffd76a;
+}
 /* ═══ PERSONA PICKER SHEET ═══ */
 #lcwPersonaSheet {
   position: fixed; inset: 0; z-index: 399999;
@@ -60535,6 +60966,32 @@ function _callCompanionApi(persona, chContent, hist, callback) {
         </div>
         <div class="add-widget-label">自定义图片</div>
       </div>
+      <div class="add-widget-item" onclick="addNewPhotoWidget('couple-calendar')">
+        <div class="add-widget-preview">
+          <div class="mini-couple-calendar">
+            <div class="mini-cc-top">
+              <div class="mini-cc-pet"></div>
+              <div class="mini-cc-title">
+                <div class="mini-cc-m1"></div>
+                <div class="mini-cc-m2"></div>
+              </div>
+              <div class="mini-cc-tree"></div>
+            </div>
+            <div class="mini-cc-week">
+              <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+            </div>
+            <div class="mini-cc-grid">
+              <div class="mini-cc-cell"><i></i></div>
+              <div class="mini-cc-cell"><i class="a"></i><i class="b"></i></div>
+              <div class="mini-cc-cell"><i class="b"></i></div>
+              <div class="mini-cc-cell"><i class="a"></i><i class="b"></i></div>
+              <div class="mini-cc-cell"></div>
+              <div class="mini-cc-cell"><i class="a"></i></div>
+            </div>
+          </div>
+        </div>
+        <div class="add-widget-label">情侣日历</div>
+      </div>
       <div class="add-widget-item" onclick="addNewPhotoWidget('livechat')">
         <div class="add-widget-preview">
           <div class="mini-livechat">
@@ -60621,6 +61078,7 @@ const DRAG_SELS = [
   '.ig-widget',
   '.memo-widget',
   '.family-widget',
+  '.couple-space-widget',
   '.iph-folder-icon',
   '.photo-widget-airdrop',
   '.photo-widget-tv',
@@ -60628,6 +61086,7 @@ const DRAG_SELS = [
   '.photo-widget-spotify',
   '.photo-widget-receipt',
   '.photo-widget-custom-image',
+  '.photo-widget-couple-calendar',
   '.photo-widget-livechat',
 ];
 /* ════════════════════════════════
@@ -61391,7 +61850,10 @@ if (document.readyState === 'loading') {
 .home-edit-active [data-drag-id].iph-placed.memo-widget .widget-resize-handle,
 .home-edit-active [data-drag-id].iph-placed.ig-widget .widget-resize-handle,
 .home-edit-active [data-drag-id].iph-placed.family-widget .widget-resize-handle,
-.home-edit-active [data-drag-id].iph-placed.home-photo-widget .widget-resize-handle {
+.home-edit-active [data-drag-id].iph-placed.home-photo-widget .widget-resize-handle,
+.home-edit-active [data-drag-id].iph-placed.couple-space-widget .widget-resize-handle,
+.home-edit-active [data-drag-id].iph-placed.photo-widget-livechat .widget-resize-handle,
+.home-edit-active [data-drag-id].iph-placed.photo-widget-couple-calendar .widget-resize-handle {
   display: block !important;
 }
 /* While a widget is being resized, hide handles on all OTHER widgets */
@@ -61407,7 +61869,10 @@ body.widget-resizing-active [data-resize-active] .widget-resize-handle {
 .home-edit-active [data-drag-id].iph-placed.memo-widget,
 .home-edit-active [data-drag-id].iph-placed.ig-widget,
 .home-edit-active [data-drag-id].iph-placed.family-widget,
-.home-edit-active [data-drag-id].iph-placed.home-photo-widget {
+.home-edit-active [data-drag-id].iph-placed.home-photo-widget,
+.home-edit-active [data-drag-id].iph-placed.couple-space-widget,
+.home-edit-active [data-drag-id].iph-placed.photo-widget-livechat,
+.home-edit-active [data-drag-id].iph-placed.photo-widget-couple-calendar {
   overflow: visible !important;
 }
 /* Resize outline on the active widget */
@@ -61447,12 +61912,14 @@ var RESIZABLE = [
   '.ig-widget',
   '.family-widget',
   '.home-photo-widget',
+  '.couple-space-widget',
   '.photo-widget-airdrop',
   '.photo-widget-tv',
   '.photo-widget-kodak',
   '.photo-widget-spotify',
   '.photo-widget-receipt',
   '.photo-widget-custom-image',
+  '.photo-widget-couple-calendar',
   '.photo-widget-livechat',
 ];
 var MIN_W = 100;
@@ -61631,6 +62098,12 @@ function onResizeMove(e) {
   resizeEl.style.height = newH + 'px';
   resizeEl.style.left   = newLeft + 'px';
   resizeEl.style.top    = newTop  + 'px';
+  if (resizeEl.classList.contains('couple-space-widget') && typeof window.renderCoupleSpace === 'function') {
+    window.renderCoupleSpace();
+  }
+  if (resizeEl.classList.contains('photo-widget-couple-calendar') && typeof window.renderCoupleCalendarWidgets === 'function') {
+    window.renderCoupleCalendarWidgets();
+  }
 }
 /* Touch end while resizing: stop tracking but stay in resize mode */
 function onResizeTouchEnd() {
@@ -61802,7 +62275,7 @@ function saveExtraPages() {
   try { localStorage.setItem(PAGES_KEY, JSON.stringify(extraPages)); } catch(e) {}
 }
 /* ── Total page count (2 original + extra) ── */
-function totalPages() { return 2 + extraPages.length; }
+function totalPages() { return 3 + extraPages.length; }
 /* ── Update wrapper width and page widths ── */
 function updateLayout() {
   const n = totalPages();
@@ -61812,8 +62285,10 @@ function updateLayout() {
   // Original pages
   const p1 = document.getElementById('homePage1');
   const p2 = document.getElementById('homePage2');
+  const p3 = document.getElementById('homePage3');
   if (p1) p1.style.width = (100/n) + '%';
   if (p2) p2.style.width = (100/n) + '%';
+  if (p3) p3.style.width = (100/n) + '%';
   // Extra pages
   extraPages.forEach(ep => {
     const el = document.getElementById(ep.id);
@@ -61827,8 +62302,10 @@ function updateAbsolutePositions() {
   // Pages are flex children (position:relative) — just update widths
   const p1 = document.getElementById('homePage1');
   const p2 = document.getElementById('homePage2');
+  const p3 = document.getElementById('homePage3');
   if (p1) { p1.style.left = ''; p1.style.width = (100/n) + '%'; }
   if (p2) { p2.style.left = ''; p2.style.width = (100/n) + '%'; }
+  if (p3) { p3.style.left = ''; p3.style.width = (100/n) + '%'; }
   // Extra pages
   extraPages.forEach((ep, i) => {
     const el = document.getElementById(ep.id);
@@ -61958,7 +62435,7 @@ function restoreExtraPages() {
 }
 /* ── Tell the drag system about extra containers ── */
 function syncDragSystem() {
-  window._extraPageIds = extraPages.map(ep => ep.id);
+  window._extraPageIds = ['homePage3'].concat(extraPages.map(ep => ep.id));
   window._extraDockIds = []; // no extra docks on new pages
 }
 window._syncDragSystem = syncDragSystem;
@@ -62082,7 +62559,7 @@ function detectFolderDrop(cx,cy){
   // Folders cannot be dropped into other folders
   if(srcEl.classList.contains('iph-folder-icon')) return;
   // Widgets cannot be dropped into folders
-  var _WCLASS=['family-widget','home-calendar-widget','home-photo-widget','ig-widget','memo-widget','photo-widget-airdrop','photo-widget-tv','photo-widget-kodak','photo-widget-spotify','photo-widget-receipt','photo-widget-custom-image'];
+  var _WCLASS=['family-widget','home-calendar-widget','home-photo-widget','ig-widget','memo-widget','couple-space-widget','photo-widget-airdrop','photo-widget-tv','photo-widget-kodak','photo-widget-spotify','photo-widget-receipt','photo-widget-custom-image','photo-widget-couple-calendar','photo-widget-livechat'];
   if(_WCLASS.some(function(c){ return srcEl.classList.contains(c); })) return;
   var folderEls=document.querySelectorAll('.iph-folder-icon[data-folder-id]');
   for(var fi=0;fi<folderEls.length;fi++){
@@ -62112,7 +62589,7 @@ function maybeCreateFolder(srcId,tgtId){
   var srcEl=getElById(srcId),tgtEl=getElById(tgtId); if(!srcEl||!tgtEl) return;
   if(srcEl.classList.contains('iph-folder-icon')||tgtEl.classList.contains('iph-folder-icon')) return;
   // Widgets cannot be added to folders
-  var WIDGET_CLASSES=['family-widget','home-calendar-widget','home-photo-widget','ig-widget','memo-widget','photo-widget-airdrop','photo-widget-tv','photo-widget-kodak','photo-widget-spotify','photo-widget-receipt','photo-widget-custom-image'];
+  var WIDGET_CLASSES=['family-widget','home-calendar-widget','home-photo-widget','ig-widget','memo-widget','couple-space-widget','photo-widget-airdrop','photo-widget-tv','photo-widget-kodak','photo-widget-spotify','photo-widget-receipt','photo-widget-custom-image','photo-widget-couple-calendar','photo-widget-livechat'];
   function isWidget(el){ return WIDGET_CLASSES.some(function(c){ return el.classList.contains(c); }); }
   if(isWidget(srcEl)||isWidget(tgtEl)){ return; }
   // Check if target is already in a folder — if so, add source to that folder instead
@@ -62147,7 +62624,7 @@ function addAppToFolder(appId,folderId){
   if(fd[folderId].apps.indexOf(appId)>=0) return;
   // Widgets cannot be added to folders
   var appEl=getElById(appId);
-  var WIDGET_CLASSES=['family-widget','home-calendar-widget','home-photo-widget','ig-widget','memo-widget','photo-widget-airdrop','photo-widget-tv','photo-widget-kodak','photo-widget-spotify','photo-widget-receipt','photo-widget-custom-image'];
+  var WIDGET_CLASSES=['family-widget','home-calendar-widget','home-photo-widget','ig-widget','memo-widget','couple-space-widget','photo-widget-airdrop','photo-widget-tv','photo-widget-kodak','photo-widget-spotify','photo-widget-receipt','photo-widget-custom-image','photo-widget-couple-calendar','photo-widget-livechat'];
   if(appEl && WIDGET_CLASSES.some(function(c){ return appEl.classList.contains(c); })){ return; }
   if(fd[folderId].apps.length>=4){ alert('文件夹最多只能存放 4 个软件。'); return; }
   fd[folderId].apps.push(appId); saveFD(fd);
@@ -62706,6 +63183,22 @@ function buildWidgetEl(id, type) {
         '<img class="pw-custom-img" style="display:none;" draggable="false">' +
       '</div>' +
       '<input type="file" accept="image/*" class="pw-file-input" style="display:none;" onchange="handleCustomWidgetPhotoChange(this,\'' + id + '\')">';
+  } else if (type === 'couple-calendar') {
+    el.className = 'photo-widget-couple-calendar';
+    el.setAttribute('onclick', 'openCoupleSpacePage()');
+    el.innerHTML =
+      '<div class="pw-delete-btn" onclick="deleteCustomWidget(\'' + id + '\')">&#215;</div>' +
+      '<div class="pw-couple-cal-shell">' +
+        '<div class="pw-couple-cal-inner">' +
+          '<div class="pw-cc-top">' +
+            '<div class="pw-cc-pet"><img src="./couple_space_emotions/cute.png" alt=""></div>' +
+            '<div class="pw-cc-title"><div class="pw-cc-month" id="' + id + '_month">1月</div><div class="pw-cc-year" id="' + id + '_year">2026年</div></div>' +
+          '</div>' +
+          '<div class="pw-cc-week"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>' +
+          '<div class="pw-cc-grid" id="' + id + '_grid"></div>' +
+          '<div class="pw-cc-foot"><span>角色在上 · 用户在下</span><strong id="' + id + '_foot">情侣日历</strong></div>' +
+        '</div>' +
+      '</div>';
   } else if (type === 'livechat') {
     el.className = 'photo-widget-livechat';
     el.innerHTML =
@@ -62890,8 +63383,8 @@ window.addNewPhotoWidget = function(type) {
   var container = document.getElementById(containerId) || document.getElementById('homePage1');
   container.appendChild(el);
   // Default size
-  var defaultW = type === 'airdrop' ? 240 : type === 'tv' ? 258 : type === 'kodak' ? 160 : type === 'spotify' ? 320 : type === 'custom-image' ? 200 : type === 'livechat' ? 250 : 200;
-  var defaultH = type === 'airdrop' ? 290 : type === 'tv' ? 220 : type === 'kodak' ? 360 : type === 'spotify' ? 140 : type === 'custom-image' ? 200 : type === 'livechat' ? 460 : 290;
+  var defaultW = type === 'airdrop' ? 240 : type === 'tv' ? 258 : type === 'kodak' ? 160 : type === 'spotify' ? 320 : type === 'custom-image' ? 200 : type === 'couple-calendar' ? 224 : type === 'livechat' ? 250 : 200;
+  var defaultH = type === 'airdrop' ? 290 : type === 'tv' ? 220 : type === 'kodak' ? 360 : type === 'spotify' ? 140 : type === 'custom-image' ? 200 : type === 'couple-calendar' ? 224 : type === 'livechat' ? 460 : 290;
   // Center on page
   var cRect = container.getBoundingClientRect();
   var nx = Math.max(0, Math.round((cRect.width - defaultW) / 2));
@@ -62922,6 +63415,9 @@ window.addNewPhotoWidget = function(type) {
     if (typeof window._iphInjectResizeHandles === 'function') {
       window._iphInjectResizeHandles(el);
     }
+    if (type === 'couple-calendar' && typeof window.renderCoupleCalendarWidgets === 'function') {
+      window.renderCoupleCalendarWidgets();
+    }
   }, 50);
 };
 /* ── Restore custom widgets on page load ── */
@@ -62933,7 +63429,7 @@ function restoreCustomWidgets() {
       if (document.getElementById(id)) return; // already in DOM
       var data = cw[id];
       var type = data.type;
-      if (type !== 'airdrop' && type !== 'tv' && type !== 'kodak' && type !== 'spotify' && type !== 'receipt' && type !== 'custom-image' && type !== 'livechat') return;
+      if (type !== 'airdrop' && type !== 'tv' && type !== 'kodak' && type !== 'spotify' && type !== 'receipt' && type !== 'custom-image' && type !== 'couple-calendar' && type !== 'livechat') return;
       var el = buildWidgetEl(id, type);
       // Determine container
       var containerId = (pos[id] && pos[id].parentId) || data.parentId || 'homePage1';
@@ -62946,7 +63442,7 @@ function restoreCustomWidgets() {
         restoreWidgetPhoto(id);
       } else if (type === 'custom-image') {
         restoreCustomImageWidget(id, data);
-      } else {
+      } else if (type !== 'couple-calendar') {
         restoreWidgetMultiPhotos(id);
       }
       // Restore spotify text
@@ -62956,6 +63452,11 @@ function restoreCustomWidgets() {
       // Restore livechat persona
       if (type === 'livechat') {
         setTimeout(function() { if (typeof lcwRestoreWidget === 'function') lcwRestoreWidget(id); }, 120);
+      }
+      if (type === 'couple-calendar') {
+        setTimeout(function() {
+          if (typeof window.renderCoupleCalendarWidgets === 'function') window.renderCoupleCalendarWidgets();
+        }, 80);
       }
     });
   } catch(e) { console.warn('restoreCustomWidgets error:', e); }
@@ -63408,7 +63909,8 @@ var REGULAR_WIDGET_LABELS = {
   'homePhotoWidget':    '照片桌件',
   'igWidget':           'Instagram 桌件',
   'memoWidget':         '备忘录桌件',
-  'familyWidget':       'Family 桌件'
+  'familyWidget':       'Family 桌件',
+  'coupleSpaceWidget':  '情侣空间桌件'
 };
 window.deleteRegularWidget = function(id, label) {
   var el = document.getElementById(id);
@@ -63443,6 +63945,12 @@ window.restoreRegularWidget = function(id) {
       el.style.height = '';
       el.style.position = '';
     }
+  }
+  if (id === 'coupleSpaceWidget') {
+    setTimeout(function() {
+      if (typeof window.csEnsurePlacedHomeWidget === 'function') window.csEnsurePlacedHomeWidget('coupleSpaceWidget');
+      if (typeof window.renderCoupleSpace === 'function') window.renderCoupleSpace();
+    }, 40);
   }
   // Remove from hidden list
   try {
@@ -68973,6 +69481,7 @@ window.addEventListener('load', function() {
       friendRequestsOutbox: [],
       sharedCards: [],
       rooms: [],
+      roomResidents: {},
       messages: {},
       redlinePosts: [],
       redlineActions: [],
@@ -68993,6 +69502,7 @@ window.addEventListener('load', function() {
     merged.friendRequestsOutbox = Array.isArray(saved.friendRequestsOutbox) ? saved.friendRequestsOutbox : [];
     merged.sharedCards = Array.isArray(saved.sharedCards) ? saved.sharedCards : [];
     merged.rooms = Array.isArray(saved.rooms) ? saved.rooms : [];
+    merged.roomResidents = saved.roomResidents && typeof saved.roomResidents === 'object' ? saved.roomResidents : {};
     merged.messages = saved.messages && typeof saved.messages === 'object' ? saved.messages : {};
     merged.redlinePosts = Array.isArray(saved.redlinePosts) ? saved.redlinePosts : [];
     merged.redlineActions = Array.isArray(saved.redlineActions) ? saved.redlineActions : [];
@@ -69132,6 +69642,298 @@ window.addEventListener('load', function() {
       out.push(k);
     });
     return out;
+  }
+
+  const OL_ROOM_PERSONA_MODES = {
+    vibe: { label: '气氛组', desc: '负责接梗、点火、让房间别冷场。' },
+    oracle: { label: '军师', desc: '负责拆解问题，给出有方向感的建议。' },
+    roast: { label: '吐槽机', desc: '负责制造记忆点，轻微毒舌但不冒犯。' },
+    radio: { label: '深夜电台', desc: '负责把话题说柔一点，像有陪伴感。' }
+  };
+
+  function olResidentModes() {
+    return Object.keys(OL_ROOM_PERSONA_MODES);
+  }
+
+  function olResidentModeLabel(mode) {
+    return (OL_ROOM_PERSONA_MODES[mode] && OL_ROOM_PERSONA_MODES[mode].label) || '气氛组';
+  }
+
+  function olResidentModeDesc(mode) {
+    return (OL_ROOM_PERSONA_MODES[mode] && OL_ROOM_PERSONA_MODES[mode].desc) || '';
+  }
+
+  function olGetRoomResidents(state, roomId) {
+    state = state || olState();
+    const all = state.roomResidents && typeof state.roomResidents === 'object' ? state.roomResidents : {};
+    return Array.isArray(all[roomId]) ? all[roomId] : [];
+  }
+
+  function olSetRoomResidents(state, roomId, residents) {
+    state.roomResidents = state.roomResidents && typeof state.roomResidents === 'object' ? state.roomResidents : {};
+    state.roomResidents[roomId] = Array.isArray(residents) ? residents : [];
+    return state;
+  }
+
+  function olTrimResidentText(text, max) {
+    return String(text || '').replace(/\s+/g, ' ').trim().slice(0, max || 18);
+  }
+
+  function olResidentPersonaHook(persona) {
+    const raw = olTrimResidentText(persona && (persona.persona || persona.appearance || persona.relation || ''), 20);
+    return raw || '有点特别的脑回路';
+  }
+
+  function olPickResidentMode(defaultMode) {
+    const modes = olResidentModes();
+    const current = modes.indexOf(defaultMode) >= 0 ? defaultMode : modes[0];
+    const promptText = modes.map(function(mode, idx) {
+      return (idx + 1) + '. ' + olResidentModeLabel(mode) + ' - ' + olResidentModeDesc(mode);
+    }).join('\n');
+    const raw = (prompt('选择角色入驻风格：\n\n' + promptText, String(modes.indexOf(current) + 1)) || '').trim();
+    if (!raw) return current;
+    const idx = parseInt(raw, 10) - 1;
+    return modes[idx] || current;
+  }
+
+  function olBuildResidentReply(persona, resident, triggerMsg, room, messages) {
+    const latestText = olTrimResidentText(triggerMsg && triggerMsg.content, 18);
+    const hook = olResidentPersonaHook(persona);
+    const mode = resident.mode || 'vibe';
+    const topic = latestText ? ('“' + latestText + '”') : '这个话题';
+    const tail = hook ? (' 这句也很像 ta 那种「' + hook + '」的气质。') : '';
+    const pool = {
+      vibe: [
+        '我来把房间温度拉一下，' + topic + ' 这事别聊成公告，聊成故事会更好玩。',
+        topic + ' 我站先有氛围再有结论这边，不然这么好的房间会一下子降温。',
+        '插个话，' + topic + ' 其实很适合继续展开，我已经闻到八卦和灵感一起冒头了。'
+      ],
+      oracle: [
+        '军师视角补一句，' + topic + ' 先看谁最在意，再看谁最着急，答案通常就出来了。',
+        '如果让我给路线，' + topic + ' 最稳的做法是先确认边界，再决定下一步。',
+        topic + ' 不一定要立刻选答案，先拆成情绪、动机、后果，聊天会清楚很多。'
+      ],
+      roast: [
+        '允许我毒舌半句，' + topic + ' 听起来像每个人都很会说，但还没人准备负责收尾。',
+        '我先吐槽一下，' + topic + ' 这个走向已经很像深夜群聊名场面了，但我喜欢。',
+        topic + ' 目前的气质属于“都觉得自己很冷静，实际已经上头”。'
+      ],
+      radio: [
+        '我想把这句话说慢一点，' + topic + ' 背后更像是在说“希望有人真的懂我”。',
+        '深夜电台插播，' + topic + ' 不急着赢，先让彼此被听见，房间会柔下来。',
+        topic + ' 如果换个方式说，也许不是争论，是有人在认真求回应。'
+      ]
+    };
+    const choices = pool[mode] || pool.vibe;
+    const seed = (messages || []).length + String(resident.id || '').length + String(topic).length;
+    return choices[seed % choices.length] + tail;
+  }
+
+  async function olPostResidentMessage(roomId, residentId, triggerMsg, forceMode) {
+    const state = olState();
+    const room = (state.rooms || []).find(function(r){ return String(r.id) === String(roomId); });
+    if (!room) return;
+    const residents = olGetRoomResidents(state, roomId);
+    const idx = residents.findIndex(function(r){ return String(r.id) === String(residentId); });
+    if (idx < 0) return;
+    const resident = residents[idx];
+    const persona = olGetPersonasSafe().find(function(p){ return String(p.id) === String(resident.personaId); });
+    if (!persona) return alert('这个入驻角色的原始角色卡已经不存在了。');
+    const allMsgs = state.messages[roomId] || [];
+    const sourceMsg = triggerMsg || allMsgs[allMsgs.length - 1] || null;
+    const content = olBuildResidentReply(persona, resident, sourceMsg, room, allMsgs);
+    const msg = {
+      id: olUid('msg'),
+      roomId: roomId,
+      senderId: 'resident:' + resident.personaId,
+      senderName: state.profile.displayName + ' 的驻场角色',
+      speakerType: 'resident_persona',
+      speakerName: resident.name + ' · ' + olResidentModeLabel(forceMode || resident.mode),
+      speakerAvatar: resident.avatar || persona.avatar || '',
+      content: content,
+      createdAt: olNow()
+    };
+    state.messages[roomId] = state.messages[roomId] || [];
+    state.messages[roomId].push(msg);
+    residents[idx] = Object.assign({}, resident, { lastSpokeAt: msg.createdAt });
+    olSetRoomResidents(state, roomId, residents);
+    olSave(state);
+    if (String(state.currentRoomId || '') === String(roomId) && document.getElementById('olRoomShell').style.display === 'flex') {
+      olRenderRoom();
+    } else {
+      renderOnlineApp();
+    }
+
+    const sb = olClient(state);
+    if (sb) {
+      const res = await sb.from('mh_online_messages').insert({
+        id: msg.id,
+        room_id: msg.roomId,
+        sender_id: msg.senderId,
+        sender_name: msg.senderName,
+        speaker_type: msg.speakerType,
+        speaker_name: msg.speakerName,
+        speaker_avatar: msg.speakerAvatar,
+        content: msg.content,
+        created_at: msg.createdAt
+      });
+      if (res.error) console.warn('[resident message]', res.error);
+    }
+  }
+
+  function olMaybeTriggerResidentReply(roomId, triggerMsg) {
+    const state = olState();
+    const residents = olGetRoomResidents(state, roomId).filter(function(r) { return !!r.autoReply; });
+    if (!residents.length) return;
+    if (triggerMsg && String(triggerMsg.senderId || '').indexOf('resident:') === 0) return;
+    const rawSpeaker = String(triggerMsg && triggerMsg.speakerType || '');
+    const rawName = String(triggerMsg && triggerMsg.speakerName || '');
+    const candidates = residents.filter(function(r) {
+      if (rawSpeaker === 'persona' && rawName.indexOf(r.name || '') === 0) return false;
+      return true;
+    });
+    if (!candidates.length) return;
+    const sorted = candidates.slice().sort(function(a, b) {
+      return (a.lastSpokeAt || 0) - (b.lastSpokeAt || 0);
+    });
+    const picked = sorted[0];
+    setTimeout(function() {
+      olPostResidentMessage(roomId, picked.id, triggerMsg).catch(function(err) {
+        console.warn('[resident auto reply]', err);
+      });
+    }, 650);
+  }
+
+  function olRenderResidentSheet() {
+    const wrap = document.getElementById('olResidentSheetContent');
+    if (!wrap) return;
+    const state = olState();
+    const room = (state.rooms || []).find(function(r){ return String(r.id) === String(state.currentRoomId); });
+    if (!room) {
+      wrap.innerHTML = '<div class="online-empty">先打开一个聊天室，再邀请角色入驻。</div>';
+      return;
+    }
+    const residents = olGetRoomResidents(state, room.id);
+    const intro = '<div class="online-card"><div class="online-card-title">当前房间</div><div class="online-card-desc">' + olEsc(room.title) + ' 里现在有 ' + room.members.length + ' 位真人成员，' + residents.length + ' 位驻场角色。你可以让角色自动插话，也可以手动让 ta 冒泡。</div><div class="online-item-actions" style="margin-top:10px;"><button class="online-mini-btn" onclick="olAddResidentToCurrentRoom()">邀请角色入驻</button></div></div>';
+    const modeCards = '<div class="online-card"><div class="online-card-title">入驻风格</div><div class="online-card-desc">' + olResidentModes().map(function(mode) {
+      return olResidentModeLabel(mode) + '：' + olResidentModeDesc(mode);
+    }).join('<br>') + '</div></div>';
+    const list = residents.length ? '<div class="online-resident-grid">' + residents.map(function(r) {
+      return '<div class="online-resident-card"><div class="online-resident-head"><div class="online-flex-row"><div class="online-avatar">' + (r.avatar ? '<img src="' + olEsc(r.avatar) + '">' : '<i class="fas fa-user-astronaut"></i>') + '</div><div><div class="online-resident-name">' + olEsc(r.name || '未命名角色') + '</div><div class="online-resident-mode">' + olEsc(olResidentModeLabel(r.mode)) + ' · ' + (r.autoReply ? '自动插话已开启' : '手动发声模式') + '</div></div></div><span class="online-status-pill ' + (r.autoReply ? 'ok' : 'warn') + '">' + (r.autoReply ? 'auto' : 'manual') + '</span></div><div class="online-resident-note">' + olEsc((r.summary || '暂无设定').slice(0, 90)) + '</div><div class="online-resident-actions"><button class="online-mini-btn" onclick="olResidentSpeakNow(\'' + olEsc(r.id) + '\')">立即发声</button><button class="online-mini-btn" onclick="olChangeResidentMode(\'' + olEsc(r.id) + '\')">切换风格</button><button class="online-mini-btn" onclick="olToggleResidentAuto(\'' + olEsc(r.id) + '\')">' + (r.autoReply ? '关闭自动插话' : '开启自动插话') + '</button><button class="online-mini-btn" onclick="olRemoveResidentFromCurrentRoom(\'' + olEsc(r.id) + '\')">移出房间</button></div></div>';
+    }).join('') + '</div>' : '<div class="online-empty">这个房间还没有驻场角色。先邀请一个，让聊天软件里真的“住”进一个角色。</div>';
+    wrap.innerHTML = intro + modeCards + list;
+  }
+
+  function olOpenResidentSheet() {
+    const state = olState();
+    if (!state.currentRoomId) return alert('先进入一个聊天室，再给角色安排入驻。');
+    olRenderResidentSheet();
+    olOpenSheet('olResidentSheet');
+  }
+
+  function olOpenResidentLabForRoom(roomId) {
+    olOpenRoom(roomId);
+    setTimeout(function() {
+      olOpenResidentSheet();
+    }, 50);
+  }
+
+  function olAddResidentToCurrentRoom() {
+    const state = olState();
+    const roomId = state.currentRoomId;
+    if (!roomId) return;
+    const room = (state.rooms || []).find(function(r){ return String(r.id) === String(roomId); });
+    if (!room) return;
+    const residents = olGetRoomResidents(state, roomId);
+    if (residents.length >= 3) return alert('一个聊天室最多放 3 位驻场角色，这样氛围会更像真实社交软件。');
+    const personas = olGetPersonasSafe();
+    if (!personas.length) return alert('你本地还没有角色，先去角色系统创建角色吧。');
+    const text = personas.map(function(p, i) {
+      return (i + 1) + '. ' + (p.name || '未命名角色') + ' - ' + olTrimResidentText(p.persona || p.appearance || '暂无设定', 26);
+    }).join('\n');
+    const idx = parseInt((prompt('选择要入驻聊天室的角色序号：\n\n' + text) || '').trim(), 10) - 1;
+    const persona = personas[idx];
+    if (!persona) return;
+    if (residents.some(function(r){ return String(r.personaId) === String(persona.id); })) return alert('这个角色已经在当前房间里了。');
+    const mode = olPickResidentMode('vibe');
+    residents.push({
+      id: olUid('resident'),
+      personaId: persona.id,
+      name: persona.name || '未命名角色',
+      avatar: persona.avatar || '',
+      summary: (persona.persona || persona.appearance || '').slice(0, 120),
+      mode: mode,
+      autoReply: true,
+      joinedAt: olNow(),
+      lastSpokeAt: 0
+    });
+    olSetRoomResidents(state, roomId, residents);
+    olSave(state);
+    olRenderResidentSheet();
+    olRenderRoom();
+    renderOnlineApp();
+  }
+
+  function olRemoveResidentFromCurrentRoom(residentId) {
+    const state = olState();
+    const roomId = state.currentRoomId;
+    if (!roomId) return;
+    const residents = olGetRoomResidents(state, roomId).filter(function(r){ return String(r.id) !== String(residentId); });
+    olSetRoomResidents(state, roomId, residents);
+    olSave(state);
+    olRenderResidentSheet();
+    olRenderRoom();
+    renderOnlineApp();
+  }
+
+  function olToggleResidentAuto(residentId) {
+    const state = olState();
+    const roomId = state.currentRoomId;
+    if (!roomId) return;
+    const residents = olGetRoomResidents(state, roomId).map(function(r) {
+      if (String(r.id) !== String(residentId)) return r;
+      return Object.assign({}, r, { autoReply: !r.autoReply });
+    });
+    olSetRoomResidents(state, roomId, residents);
+    olSave(state);
+    olRenderResidentSheet();
+    olRenderRoom();
+    renderOnlineApp();
+  }
+
+  function olChangeResidentMode(residentId) {
+    const state = olState();
+    const roomId = state.currentRoomId;
+    if (!roomId) return;
+    const residents = olGetRoomResidents(state, roomId);
+    const idx = residents.findIndex(function(r){ return String(r.id) === String(residentId); });
+    if (idx < 0) return;
+    const nextMode = olPickResidentMode(residents[idx].mode || 'vibe');
+    residents[idx] = Object.assign({}, residents[idx], { mode: nextMode });
+    olSetRoomResidents(state, roomId, residents);
+    olSave(state);
+    olRenderResidentSheet();
+    olRenderRoom();
+    renderOnlineApp();
+  }
+
+  function olResidentSpeakNow(residentId) {
+    const state = olState();
+    const roomId = state.currentRoomId;
+    if (!roomId) return;
+    const msgs = state.messages[roomId] || [];
+    const last = msgs[msgs.length - 1] || null;
+    olPostResidentMessage(roomId, residentId, last).catch(function(err) {
+      console.warn('[resident speak now]', err);
+    });
+    olRenderResidentSheet();
+  }
+
+  function olQuickOpenResidentLab() {
+    const state = olState();
+    if (!state.rooms.length) return alert('先创建一个聊天室，再让角色入驻。');
+    olOpenResidentLabForRoom(state.currentRoomId || state.rooms[0].id);
+    olCloseSheet(null, 'olQuickSheet');
   }
 
   function olApplyAcceptedRedlineActionLocal(state, action, silent) {
@@ -69712,6 +70514,7 @@ window.addEventListener('load', function() {
     if (!confirm('确定要永久删除这个聊天室吗？聊天室本身和全部消息都会被删除。')) return;
     state.rooms = state.rooms.filter(function(r){ return String(r.id) !== String(roomId); });
     delete state.messages[roomId];
+    if (state.roomResidents && typeof state.roomResidents === 'object') delete state.roomResidents[roomId];
     if (String(state.currentRoomId || '') === String(roomId)) {
       state.currentRoomId = null;
       try { olCloseRoom(); } catch(e) {}
@@ -69792,6 +70595,7 @@ window.addEventListener('load', function() {
 
   function olCloseRoom() {
     document.getElementById('olRoomShell').style.display = 'none';
+    olCloseSheet(null, 'olResidentSheet');
     olStopRoomTicker();
   }
 
@@ -69860,6 +70664,7 @@ window.addEventListener('load', function() {
       });
       if (res.error) alert('消息已发到本地，但云端发送失败：' + res.error.message);
     }
+    olMaybeTriggerResidentReply(roomId, msg);
   }
 
   async function olPublishRedline(childId) {
@@ -70220,11 +71025,12 @@ window.addEventListener('load', function() {
     const items = state.rooms.map(function(r) {
       const msgs = state.messages[r.id] || [];
       const last = msgs[msgs.length - 1];
-      return '<div class="online-list-item"><div class="online-item-top"><div><div class="online-item-name">' + olEsc(r.title) + '</div><div class="online-item-sub">' + r.members.length + ' 人 · ' + (last ? olEsc((last.speakerName || last.senderName) + '：' + last.content.slice(0, 22)) : '还没有消息') + '</div></div><span class="online-status-pill">room</span></div><div class="online-item-actions"><button class="online-mini-btn" onclick="olOpenRoom(\'' + olEsc(r.id) + '\')">进入聊天室</button><button class="online-mini-btn" onclick="olClearRoomMessages(\'' + olEsc(r.id) + '\')">清空聊天</button><button class="online-mini-btn" onclick="olDeleteRoom(\'' + olEsc(r.id) + '\')">删除聊天室</button></div></div>';
+      const residentCount = olGetRoomResidents(state, r.id).length;
+      return '<div class="online-list-item"><div class="online-item-top"><div><div class="online-item-name">' + olEsc(r.title) + '</div><div class="online-item-sub">' + r.members.length + ' 人 · ' + residentCount + ' 位驻场角色 · ' + (last ? olEsc((last.speakerName || last.senderName) + '：' + last.content.slice(0, 22)) : '还没有消息') + '</div></div><span class="online-status-pill">room</span></div><div class="online-item-actions"><button class="online-mini-btn" onclick="olOpenRoom(\'' + olEsc(r.id) + '\')">进入聊天室</button><button class="online-mini-btn" onclick="olOpenResidentLabForRoom(\'' + olEsc(r.id) + '\')">角色入驻</button><button class="online-mini-btn" onclick="olClearRoomMessages(\'' + olEsc(r.id) + '\')">清空聊天</button><button class="online-mini-btn" onclick="olDeleteRoom(\'' + olEsc(r.id) + '\')">删除聊天室</button></div></div>';
     }).join('') || '<div class="online-empty">还没有聊天室。添加好友后可自动有私聊房间。</div>';
 
     document.getElementById('olPanelRooms').innerHTML =
-      '<div class="online-card"><div class="online-card-title">实时聊天室</div><div class="online-card-desc">自动轮询刷新已开启，进入房间后会定时更新消息。</div><div class="online-item-actions"><button class="online-mini-btn" onclick="olCreateRoom()">创建聊天室</button><button class="online-mini-btn" onclick="olSyncRemote(true)">同步房间</button></div></div>'
+      '<div class="online-card"><div class="online-card-title">实时聊天室</div><div class="online-card-desc">自动轮询刷新已开启，进入房间后会定时更新消息。现在还支持角色常驻入驻，让聊天软件里真的“住”进人格。</div><div class="online-item-actions"><button class="online-mini-btn" onclick="olCreateRoom()">创建聊天室</button><button class="online-mini-btn" onclick="olQuickOpenResidentLab()">角色入驻</button><button class="online-mini-btn" onclick="olSyncRemote(true)">同步房间</button></div></div>'
       + '<div class="online-card"><div class="online-card-title">我的聊天室</div><div class="online-list">' + items + '</div></div>';
   }
 
@@ -70475,16 +71281,27 @@ window.addEventListener('load', function() {
     const room = state.rooms.find(function(r){ return String(r.id) === String(state.currentRoomId); });
     if (!room) return;
     const msgs = state.messages[room.id] || [];
+    const residents = olGetRoomResidents(state, room.id);
     document.getElementById('olRoomTitle').textContent = room.title;
-    document.getElementById('olRoomSubtitle').textContent = room.members.length + ' 人聊天室 · 自动刷新中';
+    document.getElementById('olRoomSubtitle').textContent = room.members.length + ' 人聊天室 · ' + residents.length + ' 位驻场角色 · 自动刷新中';
 
-    document.getElementById('olRoomBody').innerHTML = msgs.length ? msgs.map(function(m) {
+    const crewHtml = residents.length ? (
+      '<div class="online-room-crew">'
+      + '<div class="online-room-crew-summary"><div class="online-room-crew-title">角色已入驻这个聊天室</div><div class="online-room-crew-desc">ta 们会像聊天软件里的常驻成员一样留在房间，自动插话或手动冒泡，而不是只发一次消息就消失。</div></div>'
+      + '<div class="online-room-crew-list">'
+      + residents.map(function(r) {
+        return '<div class="online-room-crew-chip"><strong>' + olEsc(r.name || '未命名角色') + '</strong><span>' + olEsc(olResidentModeLabel(r.mode)) + ' · ' + (r.autoReply ? '自动插话中' : '手动模式') + '</span></div>';
+      }).join('')
+      + '</div></div>'
+    ) : '<div class="online-room-crew-empty">还没有驻场角色。点右上角的小宇航员，把角色真正安排进这个聊天软件里。</div>';
+
+    document.getElementById('olRoomBody').innerHTML = crewHtml + (msgs.length ? msgs.map(function(m) {
       const mine = String(m.senderId) === String(state.profile.id);
       return '<div class="online-chat-row ' + (mine ? 'mine' : '') + '">'
         + (mine ? '' : '<div class="online-avatar" style="width:34px;height:34px;border-radius:12px;">' + (m.speakerAvatar ? '<img src="' + olEsc(m.speakerAvatar) + '">' : '<i class="fas fa-user"></i>') + '</div>')
         + '<div class="online-chat-bubble"><div class="online-chat-meta">' + olEsc(m.speakerName || m.senderName || '用户') + ' · ' + olShortTime(m.createdAt) + '</div><div>' + olEsc(m.content) + '</div></div>'
         + '</div>';
-    }).join('') : '<div class="online-empty">还没有消息，先发第一句吧。</div>';
+    }).join('') : '<div class="online-empty">还没有消息，先发第一句吧。</div>');
 
     const personas = olGetPersonasSafe();
     const opts = ['<option value="user">我自己</option>'].concat(personas.map(function(p){
@@ -70500,6 +71317,7 @@ window.addEventListener('load', function() {
       { title: '加好友', desc: '输入 6 位邀请码发申请', fn: 'olAddFriendByCode()' },
       { title: '好友申请', desc: '处理同意/拒绝', fn: 'olSwitchTab(\'friends\');olCloseSheet(null,\'olQuickSheet\')' },
       { title: '建聊天室', desc: '创建 10 人以内群聊', fn: 'olCloseSheet(null,\'olQuickSheet\');olCreateRoom()' },
+      { title: '角色入驻', desc: '让角色常驻在聊天室里', fn: 'olQuickOpenResidentLab()' },
       { title: '红线邀请', desc: '处理约会和求婚', fn: 'olSwitchTab(\'redline\');olCloseSheet(null,\'olQuickSheet\')' }
     ].map(function(a) {
       return '<button class="online-action-btn" onclick="' + a.fn + '"><strong>' + a.title + '</strong>' + a.desc + '</button>';
@@ -70576,6 +71394,14 @@ window.addEventListener('load', function() {
   window.olImportCard = olImportCard;
   window.olCreateRoom = olCreateRoom;
   window.olOpenRoom = olOpenRoom;
+  window.olOpenResidentSheet = olOpenResidentSheet;
+  window.olOpenResidentLabForRoom = olOpenResidentLabForRoom;
+  window.olAddResidentToCurrentRoom = olAddResidentToCurrentRoom;
+  window.olRemoveResidentFromCurrentRoom = olRemoveResidentFromCurrentRoom;
+  window.olToggleResidentAuto = olToggleResidentAuto;
+  window.olChangeResidentMode = olChangeResidentMode;
+  window.olResidentSpeakNow = olResidentSpeakNow;
+  window.olQuickOpenResidentLab = olQuickOpenResidentLab;
   window.olCloseRoom = olCloseRoom;
   window.olRefreshCurrentRoom = olRefreshCurrentRoom;
   window.olDeleteRoom = olDeleteRoom;
@@ -70652,6 +71478,3039 @@ window.addEventListener('load', function() {
       setTimeout(function(){ olSyncRemote(false); }, 900);
     }
   });
+})();
+</script>
+<style>
+.couple-home-layout {
+  min-height: 100%;
+  position: relative;
+  padding: 16px;
+  box-sizing: border-box;
+}
+.couple-space-widget {
+  width: 152px;
+  height: 152px;
+  border-radius: 26px;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(255,255,255,0.92), transparent 34%),
+    radial-gradient(circle at 82% 22%, rgba(235,235,238,0.96), transparent 30%),
+    linear-gradient(150deg, rgba(250,250,251,0.98), rgba(227,227,230,0.96));
+  border: 1px solid rgba(188,188,194,0.7);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.95),
+    0 16px 30px rgba(84,84,92,0.16),
+    0 2px 8px rgba(255,255,255,0.55);
+  color: #2d2d31;
+  box-sizing: border-box;
+}
+.csw-scale-shell {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.csw-scale-inner {
+  width: 152px;
+  height: 152px;
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: top left;
+}
+.csw-bg,
+.csw-overlay,
+.csw-noise {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.csw-bg {
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.couple-space-widget.has-custom-bg .csw-bg { opacity: 0.9; }
+.csw-overlay {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.76), rgba(240,240,243,0.38)),
+    linear-gradient(135deg, rgba(255,255,255,0.2), transparent 48%, rgba(120,120,128,0.08));
+}
+.csw-noise {
+  opacity: 0.14;
+  background-image:
+    linear-gradient(90deg, rgba(255,255,255,0.28) 0, rgba(255,255,255,0.28) 1px, transparent 1px),
+    linear-gradient(rgba(120,120,126,0.12) 0, rgba(120,120,126,0.12) 1px, transparent 1px);
+  background-size: 10px 10px;
+  mix-blend-mode: multiply;
+}
+.csw-topline,
+.csw-center,
+.csw-bottom {
+  position: relative;
+  z-index: 1;
+}
+.csw-topline {
+  padding: 13px 14px 0;
+  font-size: 10px;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: rgba(82,82,88,0.62);
+  font-weight: 700;
+}
+.csw-center {
+  padding: 8px 14px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.csw-day {
+  font-size: 31px;
+  line-height: 1;
+  letter-spacing: -1px;
+  font-weight: 700;
+  font-family: 'Times New Roman', 'Noto Serif SC', serif;
+}
+.csw-name {
+  font-size: 12px;
+  color: #303036;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.csw-date {
+  font-size: 9px;
+  color: rgba(70,70,76,0.64);
+  letter-spacing: 0.2px;
+}
+.csw-bottom {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.csw-couple-names {
+  font-size: 10px;
+  font-weight: 700;
+  color: #2f2f33;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.csw-caption {
+  font-size: 9px;
+  color: rgba(82,82,88,0.65);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+[data-drag-id].iph-placed.couple-space-widget {
+  box-sizing: border-box !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+.home-edit-active [data-drag-id].iph-placed.couple-space-widget { overflow: visible !important; }
+.home-edit-active [data-drag-id].iph-placed.couple-space-widget .widget-resize-handle { display: block; }
+.couple-space-page-shell {
+  background:
+    radial-gradient(circle at top, rgba(255,255,255,0.96), rgba(244,244,246,0.98) 38%, rgba(235,235,238,1));
+}
+.couple-space-stage {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 16px 26px;
+  box-sizing: border-box;
+  font-family: 'Apple SD Gothic Neo','PingFang SC',-apple-system,sans-serif;
+}
+.couple-space-stage::-webkit-scrollbar { display: none; }
+.cs-hero {
+  position: relative;
+  border-radius: 32px;
+  overflow: hidden;
+  min-height: 268px;
+  padding: 18px 18px 20px;
+  background:
+    linear-gradient(160deg, rgba(252,252,252,0.96), rgba(226,226,230,0.92)),
+    linear-gradient(120deg, rgba(255,255,255,0.3), rgba(180,180,188,0.08));
+  border: 1px solid rgba(196,196,202,0.76);
+  box-shadow: 0 18px 36px rgba(102,102,110,0.14);
+  margin-bottom: 14px;
+}
+.cs-hero-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+}
+.cs-hero.has-cover .cs-hero-bg { opacity: 0.94; }
+.cs-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.86), rgba(246,246,248,0.44)),
+    radial-gradient(circle at right top, rgba(255,255,255,0.65), transparent 35%);
+  pointer-events: none;
+}
+.cs-hero-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.cs-hero-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cs-kicker {
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: rgba(70,70,78,0.62);
+}
+.cs-title {
+  margin-top: 4px;
+  font-size: 26px;
+  font-weight: 700;
+  color: #222228;
+  letter-spacing: -0.6px;
+  font-family: 'Times New Roman', 'Noto Serif SC', serif;
+}
+.cs-subtitle {
+  margin-top: 6px;
+  font-size: 12px;
+  color: rgba(58,58,66,0.72);
+  line-height: 1.6;
+}
+.cs-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.62);
+  border: 1px solid rgba(200,200,205,0.7);
+  font-size: 11px;
+  font-weight: 700;
+  color: #33333a;
+  backdrop-filter: blur(10px);
+}
+.cs-avatars {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cs-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.95);
+  overflow: hidden;
+  box-shadow: 0 8px 16px rgba(76,76,84,0.14);
+  background: rgba(255,255,255,0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 18px;
+  font-weight: 700;
+}
+.cs-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.cs-avatar-link {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.85);
+  color: #52525a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(200,200,206,0.75);
+  font-size: 10px;
+}
+.cs-name-line {
+  font-size: 20px;
+  font-weight: 700;
+  color: #202027;
+  letter-spacing: -0.3px;
+}
+.cs-pair-nickname {
+  font-size: 12px;
+  color: rgba(56,56,64,0.76);
+  line-height: 1.6;
+}
+.cs-hero-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.cs-stat {
+  padding: 12px 14px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.62);
+  border: 1px solid rgba(202,202,208,0.72);
+  backdrop-filter: blur(12px);
+}
+.cs-stat-label {
+  font-size: 10px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: rgba(88,88,96,0.62);
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+.cs-stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #222228;
+  line-height: 1.1;
+  font-family: 'Times New Roman', 'Noto Serif SC', serif;
+}
+.cs-stat-sub {
+  font-size: 11px;
+  color: rgba(70,70,78,0.72);
+  margin-top: 4px;
+  line-height: 1.5;
+}
+.cs-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.cs-btn,
+.cs-mini-btn,
+.cs-icon-btn {
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+.cs-btn {
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: #2d2d32;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 10px 18px rgba(45,45,50,0.16);
+}
+.cs-btn.light {
+  background: rgba(255,255,255,0.78);
+  color: #2d2d34;
+  border: 1px solid rgba(205,205,210,0.8);
+  box-shadow: none;
+}
+.cs-btn.ghost {
+  background: rgba(236,236,239,0.9);
+  color: #333338;
+  box-shadow: none;
+}
+.cs-section {
+  margin-top: 14px;
+  padding: 16px;
+  border-radius: 28px;
+  background: rgba(255,255,255,0.72);
+  border: 1px solid rgba(211,211,216,0.84);
+  box-shadow: 0 14px 26px rgba(112,112,118,0.08);
+  backdrop-filter: blur(14px);
+}
+.cs-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.cs-section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #232329;
+  letter-spacing: -0.2px;
+}
+.cs-section-desc {
+  margin-top: 5px;
+  font-size: 11px;
+  color: rgba(82,82,90,0.74);
+  line-height: 1.65;
+}
+.cs-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.cs-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cs-field.full { grid-column: 1 / -1; }
+.cs-field label {
+  font-size: 10px;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: rgba(88,88,96,0.62);
+}
+.cs-input,
+.cs-textarea,
+.cs-select {
+  width: 100%;
+  border: 1px solid rgba(210,210,214,0.92);
+  background: rgba(250,250,251,0.92);
+  border-radius: 16px;
+  padding: 11px 12px;
+  font-size: 13px;
+  color: #232329;
+  outline: none;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+.cs-textarea {
+  min-height: 92px;
+  resize: vertical;
+  line-height: 1.65;
+}
+.cs-inline-note {
+  font-size: 11px;
+  color: rgba(88,88,96,0.72);
+  line-height: 1.6;
+}
+.cs-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.cs-pill {
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(238,238,241,0.96);
+  border: 1px solid rgba(212,212,216,0.92);
+  font-size: 11px;
+  color: #34343a;
+  font-weight: 700;
+}
+.cs-anniv-list,
+.cs-gallery-grid,
+.cs-footprint-list {
+  display: grid;
+  gap: 10px;
+}
+.cs-anniv-list { grid-template-columns: 1fr; }
+.cs-anniv-card {
+  padding: 12px;
+  border-radius: 20px;
+  background: linear-gradient(145deg, rgba(250,250,251,0.95), rgba(239,239,242,0.96));
+  border: 1px solid rgba(214,214,220,0.92);
+}
+.cs-anniv-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.cs-anniv-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(231,231,236,0.9);
+  font-size: 10px;
+  font-weight: 700;
+  color: #55555d;
+}
+.cs-mini-btn {
+  padding: 8px 11px;
+  border-radius: 12px;
+  background: rgba(236,236,240,0.95);
+  color: #2f2f35;
+  font-size: 11px;
+  font-weight: 700;
+}
+.cs-mini-btn.dark {
+  background: #2f2f34;
+  color: #fff;
+}
+.cs-mini-btn.danger {
+  background: rgba(255,238,239,0.98);
+  color: #bb4f58;
+}
+.cs-calendar-grid,
+.cs-gallery-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.cs-calendar-item,
+.cs-footprint-item {
+  border-radius: 22px;
+  overflow: hidden;
+  background: rgba(248,248,249,0.98);
+  border: 1px solid rgba(215,215,220,0.9);
+}
+.cs-calendar-item {
+  padding: 14px;
+  min-height: 106px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.cs-calendar-date {
+  font-size: 24px;
+  font-weight: 700;
+  color: #25252b;
+  font-family: 'Times New Roman', 'Noto Serif SC', serif;
+}
+.cs-calendar-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: #34343b;
+}
+.cs-calendar-count {
+  font-size: 11px;
+  color: rgba(88,88,96,0.74);
+  line-height: 1.55;
+}
+.cs-gallery-grid {
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+.cs-gallery-ios-shell {
+  display: grid;
+  gap: 14px;
+}
+.cs-gallery-summary-card {
+  padding: 14px;
+  border-radius: 26px;
+  background: linear-gradient(160deg, rgba(251,251,252,0.98), rgba(240,240,243,0.96));
+  border: 1px solid rgba(216,216,220,0.9);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.92);
+}
+.cs-gallery-summary-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.cs-gallery-summary-kicker {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: rgba(104,104,112,0.62);
+  font-weight: 700;
+}
+.cs-gallery-summary-title {
+  margin-top: 4px;
+  font-size: 20px;
+  color: #24242a;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+.cs-gallery-summary-sub {
+  margin-top: 4px;
+  font-size: 11px;
+  color: rgba(88,88,96,0.74);
+  line-height: 1.6;
+}
+.cs-gallery-summary-count {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.88);
+  border: 1px solid rgba(214,214,220,0.9);
+  font-size: 11px;
+  font-weight: 700;
+  color: #3a3a42;
+  white-space: nowrap;
+}
+.cs-gallery-mosaic {
+  display: grid;
+  grid-template-columns: 1.16fr 0.84fr;
+  gap: 8px;
+}
+.cs-gallery-mosaic-main,
+.cs-gallery-mosaic-sub {
+  display: grid;
+  gap: 8px;
+}
+.cs-gallery-mosaic-sub {
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+.cs-gallery-photo-tile {
+  position: relative;
+  overflow: hidden;
+  border-radius: 22px;
+  background: linear-gradient(155deg, #f5f5f7, #dddddf);
+  border: 1px solid rgba(216,216,220,0.9);
+  cursor: pointer;
+  box-shadow: 0 10px 20px rgba(90,90,96,0.08);
+  padding: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+  text-align: left;
+}
+.cs-gallery-photo-tile.main {
+  min-height: 232px;
+}
+.cs-gallery-photo-tile.side {
+  min-height: 112px;
+}
+.cs-gallery-photo-tile img,
+.cs-gallery-cover.has-image img,
+.cs-footprint-cover.has-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.cs-gallery-photo-tile::after,
+.cs-gallery-cover::after,
+.cs-footprint-cover::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 35%, rgba(0,0,0,0.08) 70%, rgba(0,0,0,0.22));
+}
+.cs-gallery-photo-meta {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  z-index: 1;
+}
+.cs-gallery-photo-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.22);
+}
+.cs-gallery-photo-sub {
+  margin-top: 3px;
+  font-size: 10px;
+  color: rgba(255,255,255,0.86);
+  line-height: 1.45;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.22);
+}
+.cs-gallery-collection {
+  display: grid;
+  gap: 12px;
+}
+.cs-gallery-collection-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cs-gallery-collection-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #24242a;
+}
+.cs-gallery-collection-desc {
+  font-size: 11px;
+  color: rgba(88,88,96,0.7);
+}
+.cs-gallery-ios-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.cs-gallery-card {
+  position: relative;
+  cursor: pointer;
+}
+.cs-gallery-card .cs-gallery-photo-tile {
+  aspect-ratio: 1 / 1;
+  min-height: 0;
+  border-radius: 20px;
+}
+.cs-gallery-card-meta {
+  margin-top: 7px;
+  padding: 0 2px;
+}
+.cs-gallery-card-title {
+  font-size: 12px;
+  color: #28282f;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cs-gallery-card-sub {
+  margin-top: 3px;
+  font-size: 10px;
+  color: rgba(92,92,100,0.72);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.cs-gallery-list {
+  display: grid;
+  gap: 8px;
+}
+.cs-gallery-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 18px;
+  background: rgba(248,248,250,0.98);
+  border: 1px solid rgba(216,216,220,0.88);
+}
+.cs-gallery-row-stack {
+  width: 56px;
+  height: 56px;
+  position: relative;
+  flex-shrink: 0;
+}
+.cs-gallery-row-stack span,
+.cs-gallery-row-stack img {
+  position: absolute;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  object-fit: cover;
+  border: 1px solid rgba(255,255,255,0.96);
+  box-shadow: 0 8px 14px rgba(88,88,96,0.12);
+  background: linear-gradient(155deg, #f5f5f7, #dddddf);
+}
+.cs-gallery-row-stack .stack-1 { left: 0; top: 8px; z-index: 1; }
+.cs-gallery-row-stack .stack-2 { left: 7px; top: 4px; z-index: 2; }
+.cs-gallery-row-stack .stack-3 { left: 14px; top: 0; z-index: 3; }
+.cs-gallery-row-main {
+  flex: 1;
+  min-width: 0;
+}
+.cs-gallery-row-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #24242a;
+}
+.cs-gallery-row-sub {
+  margin-top: 4px;
+  font-size: 10px;
+  color: rgba(88,88,96,0.72);
+}
+.cs-gallery-row-count {
+  font-size: 12px;
+  color: #7b7b83;
+  font-weight: 700;
+}
+.cs-gallery-cover,
+.cs-footprint-cover {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  background: linear-gradient(155deg, #f5f5f7, #dddddf);
+  overflow: hidden;
+}
+.cs-gallery-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: rgba(40,40,46,0.82);
+  text-align: center;
+  padding: 12px;
+}
+.cs-gallery-placeholder .t1 {
+  font-size: 15px;
+  font-weight: 700;
+  font-family: 'Times New Roman', 'Noto Serif SC', serif;
+}
+.cs-gallery-placeholder .t2 {
+  font-size: 11px;
+  line-height: 1.55;
+}
+.cs-gallery-body,
+.cs-footprint-body {
+  padding: 12px;
+}
+.cs-gallery-title,
+.cs-footprint-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #24242a;
+  margin-bottom: 5px;
+}
+.cs-gallery-desc,
+.cs-footprint-desc {
+  font-size: 11px;
+  color: rgba(84,84,92,0.78);
+  line-height: 1.65;
+}
+.cs-gallery-footer,
+.cs-footprint-meta {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.cs-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: rgba(84,84,92,0.78);
+  font-weight: 700;
+}
+.cs-switch input { accent-color: #2d2d32; }
+.cs-gallery-detail-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 4000000;
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(20,20,24,0.42);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  overflow: hidden;
+  pointer-events: auto;
+  touch-action: auto;
+}
+.cs-gallery-detail-overlay.open {
+  display: flex;
+}
+.cs-gallery-detail-sheet {
+  position: relative;
+  width: min(440px, calc(100vw - 16px));
+  max-height: 86vh;
+  overflow-y: auto;
+  border-radius: 28px 28px 0 0;
+  background: rgba(252,252,253,0.98);
+  box-shadow: 0 -16px 34px rgba(0,0,0,0.2);
+  padding: 12px 14px 28px;
+  pointer-events: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+.cs-gallery-detail-sheet::-webkit-scrollbar { display: none; }
+.cs-gallery-detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.cs-gallery-detail-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #202027;
+}
+.cs-gallery-detail-close {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(214,214,220,0.9);
+  background: rgba(246,246,248,0.96);
+  color: #33333a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+  position: relative;
+  z-index: 3;
+}
+.cs-gallery-detail-photo {
+  width: 100%;
+  aspect-ratio: 1 / 1.15;
+  border-radius: 24px;
+  overflow: hidden;
+  background: linear-gradient(155deg, #f5f5f7, #dddddf);
+  border: 1px solid rgba(218,218,222,0.92);
+}
+.cs-gallery-detail-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.cs-gallery-detail-meta,
+.cs-gallery-detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.cs-gallery-detail-meta {
+  margin-top: 12px;
+}
+.cs-gallery-detail-tags {
+  margin-top: 10px;
+}
+.cs-gallery-detail-story {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 20px;
+  background: rgba(246,246,248,0.96);
+  border: 1px solid rgba(218,218,222,0.9);
+}
+.cs-gallery-detail-story-title {
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: rgba(96,96,104,0.62);
+  font-weight: 700;
+}
+.cs-gallery-detail-story-text {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.8;
+  color: #2e2e35;
+}
+.cs-gallery-detail-actions {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.cs-gallery-detail-actions .cs-mini-btn,
+.cs-gallery-detail-actions .cs-switch,
+.cs-gallery-detail-actions .cs-switch input {
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+.cs-gallery-detail-footer-close {
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(214,214,220,0.95);
+  border-radius: 16px;
+  background: rgba(246,246,248,0.96);
+  color: #33333a;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+.cs-empty {
+  padding: 20px 16px;
+  border-radius: 20px;
+  background: rgba(243,243,246,0.92);
+  border: 1px dashed rgba(186,186,194,0.92);
+  text-align: center;
+  color: rgba(88,88,96,0.72);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.cs-mood-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.cs-mood-month {
+  font-size: 18px;
+  font-weight: 700;
+  color: #232329;
+  font-family: 'Times New Roman', 'Noto Serif SC', serif;
+}
+.cs-icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(240,240,243,0.95);
+  color: #2f2f35;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+.cs-mood-calendar {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+.cs-mood-weekday,
+.cs-mood-cell {
+  border-radius: 14px;
+  text-align: center;
+}
+.cs-mood-weekday {
+  font-size: 10px;
+  color: rgba(94,94,102,0.62);
+  padding: 4px 0;
+  font-weight: 700;
+}
+.cs-mood-cell {
+  min-height: 66px;
+  background: rgba(250,250,251,0.94);
+  border: 1px solid rgba(220,220,225,0.92);
+  padding: 6px 4px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: center;
+}
+.cs-mood-cell.other { opacity: 0.45; }
+.cs-mood-cell.today {
+  border-color: rgba(189,189,197,0.98);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.8);
+}
+.cs-mood-num {
+  font-size: 11px;
+  color: #3a3a42;
+  font-weight: 700;
+}
+.cs-mood-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+}
+.cs-mood-badge {
+  width: 22px;
+  height: 22px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  box-shadow: inset 0 -1px 0 rgba(0,0,0,0.06);
+}
+.cs-mood-panel {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 22px;
+  background: rgba(245,245,247,0.96);
+  border: 1px solid rgba(216,216,220,0.9);
+}
+.cs-mood-picker {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.cs-mood-option {
+  border: 1px solid rgba(214,214,220,0.92);
+  border-radius: 16px;
+  padding: 10px 8px;
+  background: rgba(255,255,255,0.88);
+  text-align: center;
+  cursor: pointer;
+}
+.cs-mood-option.active {
+  border-color: rgba(132,132,142,0.88);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.92);
+}
+.cs-mood-option-emoji {
+  font-size: 18px;
+}
+.cs-mood-option-label {
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #3a3a42;
+}
+.cs-bind-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(16,16,20,0.38);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 12000;
+}
+.cs-bind-overlay.open { display: flex; }
+.cs-bind-sheet {
+  width: 100%;
+  max-width: 440px;
+  background: rgba(252,252,253,0.98);
+  border-radius: 30px 30px 0 0;
+  padding: 16px 16px 30px;
+  max-height: 72vh;
+  overflow-y: auto;
+  box-shadow: 0 -12px 30px rgba(0,0,0,0.18);
+}
+.cs-bind-sheet::-webkit-scrollbar { display: none; }
+.cs-sheet-handle {
+  width: 40px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(190,190,195,0.8);
+  margin: 0 auto 14px;
+}
+.cs-bind-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 10px;
+  border-radius: 18px;
+  cursor: pointer;
+}
+.cs-bind-item:active { background: rgba(240,240,244,0.88); }
+.cs-bind-item-meta { flex: 1; min-width: 0; }
+.cs-bind-item-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #26262c;
+}
+.cs-bind-item-sub {
+  font-size: 11px;
+  color: rgba(96,96,104,0.72);
+  margin-top: 4px;
+  line-height: 1.55;
+}
+.cs-bind-check {
+  font-size: 14px;
+  color: #2f2f34;
+  opacity: 0;
+}
+.cs-bind-item.active .cs-bind-check { opacity: 1; }
+.cs-upload-preview {
+  display: none;
+  margin-top: 8px;
+  width: 100%;
+  max-width: 200px;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid rgba(214,214,220,0.92);
+}
+.cs-upload-preview img {
+  width: 100%;
+  display: block;
+}
+.cs-tabbar {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 0 4px;
+  margin-bottom: 12px;
+}
+.cs-tabbar::-webkit-scrollbar { display: none; }
+.cs-tab {
+  border: 1px solid rgba(214,214,220,0.92);
+  background: rgba(247,247,249,0.96);
+  color: #44444c;
+  border-radius: 999px;
+  padding: 9px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.cs-tab.active {
+  background: #2f2f34;
+  color: #fff;
+  border-color: #2f2f34;
+}
+.cs-mood-ref-card {
+  position: relative;
+  border: 3px solid #303036;
+  border-radius: 30px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.98), rgba(251,249,246,0.98)),
+    linear-gradient(90deg, rgba(243,239,231,0.9), rgba(255,255,255,0.9));
+  padding: 16px 14px 18px;
+  overflow: hidden;
+}
+.cs-mood-ref-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(236,232,225,0.55) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(236,232,225,0.55) 1px, transparent 1px);
+  background-size: 22px 22px;
+  opacity: 0.55;
+  pointer-events: none;
+}
+.cs-mood-card-top,
+.cs-mood-nav,
+.cs-mood-grid-ref {
+  position: relative;
+  z-index: 1;
+}
+.cs-mood-card-top {
+  display: grid;
+  grid-template-columns: 60px 1fr;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.cs-mood-pet-left img {
+  width: 54px;
+  height: 54px;
+  object-fit: contain;
+}
+.cs-mood-title-wrap {
+  text-align: center;
+}
+.cs-mood-title-main {
+  font-size: 28px;
+  line-height: 1;
+  color: #56565c;
+  font-weight: 700;
+}
+.cs-mood-title-sub {
+  margin-top: 4px;
+  font-size: 13px;
+  color: rgba(102,102,110,0.74);
+}
+.cs-mood-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 6px 0 10px;
+}
+.cs-mood-grid-ref {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+.cs-mood-weekday-ref {
+  text-align: center;
+  font-size: 11px;
+  color: rgba(118,118,126,0.88);
+  font-weight: 700;
+  padding: 2px 0 4px;
+}
+.cs-mood-day-ref {
+  min-height: 102px;
+  padding: 6px 3px 8px;
+  border-radius: 18px;
+  position: relative;
+}
+.cs-mood-day-ref.other { opacity: 0.34; }
+.cs-mood-day-ref.today .cs-mood-daynum { color: #ef9c56; }
+.cs-mood-daynum {
+  text-align: center;
+  font-size: 12px;
+  color: #66666d;
+  font-weight: 700;
+}
+.cs-mood-today-badge {
+  position: absolute;
+  right: 6px;
+  top: 4px;
+  font-size: 10px;
+  color: #ef9c56;
+  font-weight: 700;
+}
+.cs-mood-icons-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 5px;
+  margin-top: 6px;
+}
+.cs-mood-icon-box,
+.cs-mood-empty-box {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+.cs-mood-icon-box {
+  border: 1px solid rgba(216,212,206,0.92);
+  background: transparent;
+}
+.cs-mood-icon-img {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  display: block;
+  mix-blend-mode: multiply;
+}
+.cs-mood-empty-box {
+  border: 1.5px dashed rgba(224,220,214,0.92);
+  background: transparent;
+}
+.cs-mood-inline-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: rgba(246,246,248,0.95);
+  border: 1px solid rgba(213,213,220,0.92);
+  color: #34343b;
+  font-weight: 700;
+}
+.cs-mood-inline-pill .cs-mood-icon-box {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+}
+.cs-mood-inline-pill .cs-mood-icon-img {
+  width: 32px;
+  height: 32px;
+}
+.cs-mood-picker-ref {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.cs-mood-choice {
+  border-radius: 18px;
+  border: 1px solid rgba(215,215,220,0.92);
+  background: rgba(255,255,255,0.92);
+  padding: 10px 8px 8px;
+  text-align: center;
+  cursor: pointer;
+}
+.cs-mood-choice.active {
+  border-color: #2f2f34;
+  box-shadow: inset 0 0 0 1px rgba(47,47,52,0.16);
+}
+.cs-mood-choice img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+@media (max-width: 420px) {
+  .cs-form-grid,
+  .cs-calendar-grid,
+  .cs-gallery-grid { grid-template-columns: 1fr; }
+  .cs-gallery-ios-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cs-gallery-mosaic { grid-template-columns: 1fr; }
+  .cs-gallery-photo-tile.main { min-height: 210px; }
+  .cs-gallery-photo-tile.side { min-height: 132px; }
+  .cs-mood-picker { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .cs-mood-picker-ref { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+</style>
+<div id="coupleSpacePage" class="page couple-space-page-shell" style="padding:0;display:none;flex-direction:column;">
+  <div class="app-back-bar">
+    <button class="app-back-btn" onclick="csCloseGalleryDetail();goHome()"><i class="fas fa-chevron-left"></i> 主屏幕</button>
+    <span class="app-back-title">情侣空间</span>
+  </div>
+  <div class="couple-space-stage no-scrollbar" id="coupleSpaceStage"></div>
+</div>
+<div class="cs-bind-overlay" id="csBindOverlay">
+  <div class="cs-bind-sheet">
+    <div class="cs-sheet-handle"></div>
+    <div class="cs-section-head" style="margin-bottom:10px;">
+      <div>
+        <div class="cs-section-title">选择专属角色</div>
+        <div class="cs-section-desc">一次只能绑定一个角色，绑定后纪念日会同步写进这个角色的记忆里。</div>
+      </div>
+    </div>
+    <div id="csBindList"></div>
+    <button class="cs-btn ghost" style="width:100%;margin-top:12px;" onclick="closeCoupleBindSheet()">取消</button>
+  </div>
+</div>
+<div class="cs-gallery-detail-overlay" id="csGalleryDetailOverlay"></div>
+<input type="file" id="csCoverInput" hidden accept="image/*">
+<input type="file" id="csBgInput" hidden accept="image/*">
+<input type="file" id="csWidgetBgInput" hidden accept="image/*">
+<input type="file" id="csGalleryUploadInput" hidden accept="image/*" multiple>
+<input type="file" id="csFootprintUploadInput" hidden accept="image/*">
+<script>
+(function() {
+'use strict';
+var CS_STORE = 'mono_couple_space_v1';
+var csMoodMonthOffset = 0;
+var csPendingFootprintImage = '';
+var csActiveTab = 'overview';
+var csGalleryDetailId = '';
+var csBusy = { album: false, footprints: false, galleryNarrationId: '' };
+var csGalleryCloseTimer = 0;
+var CS_ICON_BASE = './couple_space_emotions/';
+var CS_MOODS = [
+  { id:'dizzy', label:'晕乎乎', icon: CS_ICON_BASE + 'dizzy.png', color:'#f6f1eb' },
+  { id:'shocked', label:'震惊', icon: CS_ICON_BASE + 'shocked.png', color:'#fff0f0' },
+  { id:'heart', label:'心动', icon: CS_ICON_BASE + 'heart.png', color:'#ffe5ef' },
+  { id:'soft', label:'软乎乎', icon: CS_ICON_BASE + 'soft.png', color:'#f5f1ea' },
+  { id:'happy', label:'开心', icon: CS_ICON_BASE + 'happy.png', color:'#f6f4ef' },
+  { id:'sparkle', label:'星星眼', icon: CS_ICON_BASE + 'sparkle.png', color:'#ffe9f6' },
+  { id:'stress', label:'崩溃', icon: CS_ICON_BASE + 'stress.png', color:'#e6ebff' },
+  { id:'sideeye', label:'别扭', icon: CS_ICON_BASE + 'sideeye.png', color:'#f1efee' },
+  { id:'angry', label:'炸毛', icon: CS_ICON_BASE + 'angry.png', color:'#ffd9ca' },
+  { id:'dot', label:'无语', icon: CS_ICON_BASE + 'dot.png', color:'#ececec' },
+  { id:'cool', label:'酷酷', icon: CS_ICON_BASE + 'cool.png', color:'#ececec' },
+  { id:'blush', label:'害羞', icon: CS_ICON_BASE + 'blush.png', color:'#ffe7ef' },
+  { id:'sleepy', label:'犯困', icon: CS_ICON_BASE + 'sleepy.png', color:'#e6e8fb' },
+  { id:'cute', label:'乖乖', icon: CS_ICON_BASE + 'cute.png', color:'#f6f4ef' },
+  { id:'cry', label:'委屈', icon: CS_ICON_BASE + 'cry.png', color:'#dfeafb' },
+  { id:'confused', label:'疑惑', icon: CS_ICON_BASE + 'confused.png', color:'#fff0df' }
+];
+function csEsc(text) {
+  return String(text == null ? '' : text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+function csLoad() {
+  var raw = null;
+  try { raw = JSON.parse(localStorage.getItem(CS_STORE) || 'null'); } catch(e) {}
+  if (!raw || typeof raw !== 'object') raw = {};
+  if (!raw.profiles || typeof raw.profiles !== 'object') raw.profiles = {};
+  if (!raw.activePersonaId) raw.activePersonaId = '';
+  return raw;
+}
+var csState = csLoad();
+var csGalleryOverlayDismissAt = 0;
+function csReloadStateFromStorage() {
+  csState = csLoad();
+  return csState;
+}
+function csSave() {
+  try { localStorage.setItem(CS_STORE, JSON.stringify(csState)); } catch(e) {}
+}
+function csApplyImportedState(nextState) {
+  if (!nextState || typeof nextState !== 'object') nextState = {};
+  if (!nextState.profiles || typeof nextState.profiles !== 'object') nextState.profiles = {};
+  if (!nextState.activePersonaId) nextState.activePersonaId = '';
+  csState = nextState;
+  csSave();
+  renderCoupleBindList();
+  renderCoupleSpace();
+  renderCoupleCalendarWidgets();
+}
+function csGetPersonas() {
+  if (typeof personas !== 'undefined' && Array.isArray(personas)) return personas;
+  try { return JSON.parse(localStorage.getItem('mono_personas') || '[]'); } catch(e) { return []; }
+}
+function csFindPersona(id) {
+  if (!id) return null;
+  var list = csGetPersonas();
+  for (var i = 0; i < list.length; i++) {
+    if (String(list[i].id) === String(id)) return list[i];
+  }
+  return null;
+}
+function csPersonaDisplayName(persona) {
+  if (!persona) return 'TA';
+  var userName = (userProfile && userProfile.name ? String(userProfile.name).trim() : '');
+  var nickname = persona.nickname ? String(persona.nickname).trim() : '';
+  var personaName = persona.name ? String(persona.name).trim() : '';
+  if (nickname && nickname !== userName) return nickname;
+  if (personaName) return personaName;
+  if (nickname) return nickname;
+  return 'TA';
+}
+function csEscapeRegExp(text) {
+  return String(text == null ? '' : text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+function csNormalizePairText(text, userName, personaName) {
+  var raw = String(text == null ? '' : text);
+  if (!raw || !userName || !personaName || userName === personaName) return raw;
+  var userPattern = csEscapeRegExp(userName);
+  var out = raw;
+  out = out.replace(new RegExp(userPattern + '\\s*[×xX·•]\\s*' + userPattern, 'g'), userName + ' × ' + personaName);
+  out = out.replace(new RegExp(userPattern + '\\s*([和与跟及、])\\s*' + userPattern, 'g'), function(_, joiner) {
+    return userName + joiner + personaName;
+  });
+  out = out.replace(new RegExp('角色是[「“]?' + userPattern + '[」”]?', 'g'), '角色是' + personaName);
+  out = out.replace(new RegExp('角色：[「“]?' + userPattern + '[」”]?', 'g'), '角色：' + personaName);
+  out = out.replace(new RegExp('角色昵称：[「“]?' + userPattern + '[」”]?', 'g'), '角色昵称：' + personaName);
+  out = out.replace(new RegExp('绑定角色：[「“]?' + userPattern + '[」”]?', 'g'), '绑定角色：' + personaName);
+  return out;
+}
+function csNormalizeProfileContent(profile, persona) {
+  if (!profile || typeof profile !== 'object') return false;
+  var userName = (userProfile && userProfile.name ? String(userProfile.name).trim() : '');
+  var personaName = csPersonaDisplayName(persona);
+  if (!userName || !personaName || userName === personaName) return false;
+  var changed = false;
+  function normalizeField(target, key) {
+    if (!target || typeof target[key] !== 'string') return;
+    var next = csNormalizePairText(target[key], userName, personaName);
+    if (next !== target[key]) {
+      target[key] = next;
+      changed = true;
+    }
+  }
+  normalizeField(profile, 'coupleNickname');
+  normalizeField(profile, 'duoSignature');
+  (profile.gallery || []).forEach(function(item) {
+    ['title', 'desc', 'detail', 'shotAt', 'aiPrompt'].forEach(function(key) {
+      normalizeField(item, key);
+    });
+    if (item && item.viewpoint) {
+      var nextViewpoint = csNormalizeGalleryViewpoint(item.viewpoint, item.type === 'upload' ? '旁观镜头' : '角色视角');
+      if (nextViewpoint !== item.viewpoint) {
+        item.viewpoint = nextViewpoint;
+        changed = true;
+      }
+    }
+  });
+  (profile.footprints || []).forEach(function(item) {
+    ['title', 'location', 'desc', 'aiPrompt'].forEach(function(key) {
+      normalizeField(item, key);
+    });
+  });
+  return changed;
+}
+function csTodayStr() {
+  var d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function csCreateDefaultAnniversaries(persona) {
+  var today = csTodayStr();
+  var base = today;
+  var birthday = (persona && (persona.birthDate || persona.birthday)) ? String(persona.birthDate || persona.birthday).slice(0, 10) : today;
+  var year = new Date().getFullYear();
+  return [
+    { id:'cs_anniv_together_' + Date.now(), type:'together', name:'在一起纪念日', date:base, auto:true, showOnWidget:true },
+    { id:'cs_anniv_confess_' + (Date.now()+1), type:'confession', name:'告白日', date:base, auto:true, showOnWidget:false },
+    { id:'cs_anniv_meet_' + (Date.now()+2), type:'meet', name:'见面日', date:base, auto:true, showOnWidget:false },
+    { id:'cs_anniv_valentine_' + (Date.now()+3), type:'valentine', name:'情人节', date:year + '-02-14', auto:true, showOnWidget:false },
+    { id:'cs_anniv_birthday_' + (Date.now()+4), type:'birthday', name:'生日', date:birthday, auto:true, showOnWidget:false }
+  ];
+}
+function csEnsureProfile(personaId) {
+  if (!personaId) return null;
+  if (!csState.profiles[personaId]) {
+    var persona = csFindPersona(personaId);
+    csState.profiles[personaId] = {
+      coverImage: '',
+      backgroundImage: '',
+      widgetBackground: '',
+      coupleNickname: '',
+      duoSignature: '',
+      togetherSince: csTodayStr(),
+      selectedAnniversaryId: '',
+      anniversaries: csCreateDefaultAnniversaries(persona),
+      gallery: [],
+      footprints: [],
+      moodMap: {}
+    };
+  }
+  var profile = csState.profiles[personaId];
+  if (!Array.isArray(profile.anniversaries) || !profile.anniversaries.length) {
+    profile.anniversaries = csCreateDefaultAnniversaries(csFindPersona(personaId));
+  }
+  if (!Array.isArray(profile.gallery)) profile.gallery = [];
+  if (!Array.isArray(profile.footprints)) profile.footprints = [];
+  if (!profile.moodMap || typeof profile.moodMap !== 'object') profile.moodMap = {};
+  if (!profile.togetherSince) profile.togetherSince = csTodayStr();
+  if (!profile.selectedAnniversaryId || !profile.anniversaries.some(function(a){ return a.id === profile.selectedAnniversaryId; })) {
+    var showAnn = profile.anniversaries.find(function(a){ return a.showOnWidget; }) || profile.anniversaries[0];
+    profile.selectedAnniversaryId = showAnn ? showAnn.id : '';
+  }
+  if (!profile.coupleNickname) {
+    var p = csFindPersona(personaId);
+    profile.coupleNickname = p ? (userProfile && userProfile.name ? userProfile.name : '你') + ' × ' + csPersonaDisplayName(p) : '';
+  }
+  if (!profile.duoSignature) {
+    var p2 = csFindPersona(personaId);
+    profile.duoSignature = p2 ? '把日常、纪念日和心情都留在这里。' : '';
+  }
+  if (csNormalizeProfileContent(profile, csFindPersona(personaId))) csSave();
+  return profile;
+}
+function csGetActivePersona() {
+  if (!csState.activePersonaId) return null;
+  return csFindPersona(csState.activePersonaId);
+}
+function csGetActiveProfile() {
+  if (!csState.activePersonaId) return null;
+  return csEnsureProfile(csState.activePersonaId);
+}
+function csFormatDate(dateStr) {
+  if (!dateStr) return '未设定日期';
+  var d = new Date(dateStr + 'T00:00:00');
+  if (isNaN(d.getTime())) return dateStr;
+  return d.getFullYear() + '.' + String(d.getMonth()+1).padStart(2, '0') + '.' + String(d.getDate()).padStart(2, '0');
+}
+function csLoveDays(profile) {
+  if (!profile || !profile.togetherSince) return 0;
+  var start = new Date(profile.togetherSince + 'T00:00:00');
+  var now = new Date();
+  if (isNaN(start.getTime())) return 0;
+  return Math.max(1, Math.floor((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - start) / 86400000) + 1);
+}
+function csNextOccurrence(dateStr) {
+  if (!dateStr) return null;
+  var src = new Date(dateStr + 'T00:00:00');
+  if (isNaN(src.getTime())) return null;
+  var now = new Date();
+  var next = new Date(now.getFullYear(), src.getMonth(), src.getDate());
+  next.setHours(0,0,0,0);
+  var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (next < today) next = new Date(now.getFullYear() + 1, src.getMonth(), src.getDate());
+  return next;
+}
+function csCountdownInfo(dateStr) {
+  var next = csNextOccurrence(dateStr);
+  if (!next) return { days:null, label:'未设定', nextLabel:'未设定' };
+  var now = new Date();
+  var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  var days = Math.round((next - today) / 86400000);
+  return {
+    days: days,
+    label: days === 0 ? 'DAY' : 'D-' + days,
+    nextLabel: next.getFullYear() + '.' + String(next.getMonth()+1).padStart(2, '0') + '.' + String(next.getDate()).padStart(2, '0')
+  };
+}
+function csGetDisplayAnniversary(profile) {
+  if (!profile || !Array.isArray(profile.anniversaries) || !profile.anniversaries.length) return null;
+  var found = profile.anniversaries.find(function(item){ return item.id === profile.selectedAnniversaryId; });
+  return found || profile.anniversaries[0];
+}
+function csSyncPersonaMemory() {
+  var persona = csGetActivePersona();
+  var profile = csGetActiveProfile();
+  if (!persona || !profile) return;
+  if (!persona.memoryCore) persona.memoryCore = [];
+  var userName = (typeof userProfile !== 'undefined' && userProfile.name) ? userProfile.name : '用户';
+  var lines = profile.anniversaries.map(function(item) {
+    return '• ' + (item.name || '纪念日') + '：' + csFormatDate(item.date);
+  }).join('\n');
+  var summary = '【情侣空间】\n'
+    + '我在情侣空间绑定的专属对象是「' + userName + '」。\n'
+    + '我们的专属昵称：' + (profile.coupleNickname || (userName + ' × ' + csPersonaDisplayName(persona))) + '\n'
+    + '双人签名：' + (profile.duoSignature || '把重要的心情和纪念日都留在这里。') + '\n'
+    + '在一起日期：' + csFormatDate(profile.togetherSince) + '\n'
+    + '恋爱天数：第 ' + csLoveDays(profile) + ' 天\n'
+    + '纪念日：\n' + lines;
+  var existing = persona.memoryCore.find(function(item) {
+    return item && typeof item === 'object' && item.source === '情侣空间';
+  });
+  if (existing) {
+    existing.content = summary;
+    existing.date = csTodayStr().replace(/-/g, '/');
+  } else {
+    persona.memoryCore.push({
+      content: summary,
+      date: csTodayStr().replace(/-/g, '/'),
+      auto: true,
+      source: '情侣空间'
+    });
+  }
+  if (typeof saveData === 'function') saveData();
+}
+function csGetAvatarSrc(target, fallbackText) {
+  if (target && target.avatar) return '<img src="' + csEsc(target.avatar) + '">';
+  return csEsc((fallbackText || '?').slice(0,1));
+}
+function csGetRecentHistory(personaId, limit) {
+  var persona = csFindPersona(personaId);
+  if (!persona) return [];
+  var history = Array.isArray(persona.history) ? persona.history : [];
+  if (!history.length && typeof getPersonaWithBg === 'function') {
+    try {
+      var full = getPersonaWithBg(persona);
+      if (full && Array.isArray(full.history)) history = full.history;
+    } catch(e) {}
+  }
+  return history.filter(function(item){ return item && item.content; }).slice(-(limit || 12));
+}
+function csHistoryText(personaId, limit) {
+  return csGetRecentHistory(personaId, limit).map(function(item) {
+    var speaker = item.role === 'assistant' ? 'TA' : ((userProfile && userProfile.name) || '你');
+    return speaker + '：' + String(item.content || '').slice(0, 80);
+  }).join('\n');
+}
+function csPaletteForText(text) {
+  var pools = [
+    ['#f3f3f4', '#d9d9dd'],
+    ['#efeff2', '#d2d2d8'],
+    ['#f6f2f0', '#ddd6d2'],
+    ['#f1f3f4', '#cfd7dc']
+  ];
+  var sum = 0;
+  String(text || '').split('').forEach(function(ch){ sum += ch.charCodeAt(0); });
+  return pools[sum % pools.length];
+}
+function csSetTab(tab) {
+  csActiveTab = tab || 'overview';
+  renderCoupleSpace();
+}
+function csBuildPromptContext(profile, persona) {
+  var userName = (userProfile && userProfile.name) || '你';
+  var personaDisplayName = csPersonaDisplayName(persona);
+  var personaNickname = persona && persona.nickname ? String(persona.nickname).trim() : '';
+  var annText = (profile.anniversaries || []).map(function(item) {
+    return (item.name || '纪念日') + '：' + csFormatDate(item.date);
+  }).join('；');
+  return [
+    '用户：' + userName,
+    '角色：' + personaDisplayName,
+    '角色昵称：' + ((personaNickname && personaNickname !== userName) ? personaNickname : personaDisplayName),
+    '角色设定：' + (persona.persona || ''),
+    '情侣专属昵称：' + (profile.coupleNickname || ''),
+    '双人签名：' + (profile.duoSignature || ''),
+    '在一起日期：' + csFormatDate(profile.togetherSince),
+    '纪念日：' + annText,
+    '最近聊天：' + (csHistoryText(persona.id, 10) || '暂无')
+  ].join('\n');
+}
+function csUnique(arr) {
+  var out = [];
+  (arr || []).forEach(function(item) {
+    if (item && out.indexOf(item) === -1) out.push(item);
+  });
+  return out;
+}
+function csGetApiBases() {
+  if (!apiConfig || !apiConfig.url) return [];
+  if (typeof _buildApiBaseCandidates === 'function') return csUnique(_buildApiBaseCandidates(apiConfig.url));
+  var raw = String(apiConfig.url || '').replace(/\/+$/, '').replace(/\/chat\/completions$/i, '');
+  if (!raw) return [];
+  var out = [raw];
+  if (/\/v\d+$/i.test(raw)) out.push(raw.replace(/\/v\d+$/i, ''));
+  else out.push(raw + '/v1');
+  return csUnique(out);
+}
+async function csCallChatApi(prompt, maxTokens) {
+  if (!apiConfig || !apiConfig.url || !apiConfig.key || !apiConfig.model) {
+    throw new Error('请先在 API Config 里配置并保存聊天 API。');
+  }
+  var endpoint = String(apiConfig.url || '').replace(/\/+$/, '');
+  if (!/\/chat\/completions$/i.test(endpoint)) endpoint += '/chat/completions';
+  var resp = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + apiConfig.key,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(_applyApiModel({
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.85,
+      max_tokens: maxTokens || 1400
+    }, apiConfig.model))
+  });
+  if (!resp.ok) {
+    var errText = await resp.text().catch(function(){ return ''; });
+    throw new Error('API 请求失败：' + resp.status + ' ' + errText.slice(0, 160));
+  }
+  var data = await resp.json();
+  var text = typeof _extractAssistantMessageContent === 'function'
+    ? _extractAssistantMessageContent(data)
+    : (((data || {}).choices || [])[0] || {}).message?.content || '';
+  return String(text || '').trim();
+}
+function csExtractJsonArray(text) {
+  var raw = String(text || '').trim();
+  if (!raw) return [];
+  var fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenced) raw = fenced[1].trim();
+  try {
+    var parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch(e) {}
+  var start = raw.indexOf('[');
+  var end = raw.lastIndexOf(']');
+  if (start >= 0 && end > start) {
+    try {
+      var partial = JSON.parse(raw.slice(start, end + 1));
+      return Array.isArray(partial) ? partial : [];
+    } catch(e2) {}
+  }
+  return [];
+}
+function csExtractJsonObject(text) {
+  var raw = String(text || '').trim();
+  if (!raw) return {};
+  var fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenced) raw = fenced[1].trim();
+  try {
+    var parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch(e) {}
+  var start = raw.indexOf('{');
+  var end = raw.lastIndexOf('}');
+  if (start >= 0 && end > start) {
+    try {
+      var partial = JSON.parse(raw.slice(start, end + 1));
+      return partial && typeof partial === 'object' && !Array.isArray(partial) ? partial : {};
+    } catch(e2) {}
+  }
+  return {};
+}
+async function csTryGenerateImage(prompt) {
+  if (!apiConfig || !apiConfig.url || !apiConfig.key || !apiConfig.model) return '';
+  var endpoints = csGetApiBases().map(function(base) {
+    return String(base).replace(/\/+$/, '') + '/images/generations';
+  });
+  for (var i = 0; i < endpoints.length; i++) {
+    try {
+      var resp = await fetch(endpoints[i], {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + apiConfig.key,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: apiConfig.model,
+          prompt: prompt,
+          n: 1,
+          size: '1024x1024',
+          response_format: 'b64_json'
+        })
+      });
+      if (!resp.ok) continue;
+      var data = await resp.json();
+      var item = data && data.data && data.data[0] ? data.data[0] : null;
+      if (!item) continue;
+      if (item.b64_json) return 'data:image/png;base64,' + item.b64_json;
+      if (item.url) return item.url;
+    } catch(err) {}
+  }
+  return '';
+}
+function csBuildLocalAlbumIdeas(profile, persona) {
+  var recent = csGetRecentHistory(persona.id, 10);
+  var seeds = recent.map(function(m){ return String(m.content || '').replace(/\s+/g, ' ').trim(); }).filter(Boolean);
+  var phrases = seeds.slice(-3);
+  if (!phrases.length) phrases = [persona.persona || '一起把日常慢慢存起来', profile.duoSignature || '灰白色的专属空间'];
+  var out = [];
+  for (var i = 0; i < 3; i++) {
+    var text = phrases[i % phrases.length] || '安静地把心动收集起来';
+    var palette = csPaletteForText(text + i);
+    out.push({
+      id: 'cs_gallery_ai_' + Date.now() + '_' + i,
+      type: 'ai',
+      title: ['并肩时刻', '光影留白', '心动剪影'][i % 3],
+      desc: '根据人设、聊天和纪念日生成的双人相册灵感：' + text.slice(0, 44),
+      image: '',
+      palette: palette,
+      allowMoments: false,
+      createdAt: Date.now()
+    });
+  }
+  return out;
+}
+function csBuildLocalFootprints(profile, persona) {
+  var ann = csGetDisplayAnniversary(profile);
+  var baseDate = ann && ann.date ? ann.date : profile.togetherSince || csTodayStr();
+  return [
+    {
+      id: 'cs_ft_ai_' + Date.now(),
+      type: 'ai',
+      title: '灰白长街散步',
+      location: '首尔感街区 · 氛围灵感',
+      date: baseDate,
+      time: '18:30',
+      desc: '根据你们最近的聊天语气和角色设定生成的一次轻盈约会足迹，适合被记成第一次一起慢慢走回家的夜晚。',
+      image: '',
+      palette: csPaletteForText(persona.name || 'couple')
+    },
+    {
+      id: 'cs_ft_ai_' + (Date.now()+1),
+      type: 'ai',
+      title: '咖啡店靠窗位',
+      location: '共享的安静坐标',
+      date: baseDate,
+      time: '15:20',
+      desc: '一杯热饮、一些没说完的话，还有被你们共同记住的背景光线。',
+      image: '',
+      palette: ['#f5f1ee', '#ddd4cf']
+    }
+  ];
+}
+function csMoodById(id) {
+  for (var i = 0; i < CS_MOODS.length; i++) if (CS_MOODS[i].id === id) return CS_MOODS[i];
+  for (var j = 0; j < CS_MOODS.length; j++) if (CS_MOODS[j].id === 'soft') return CS_MOODS[j];
+  return CS_MOODS[0];
+}
+var csMoodApiPending = {};
+function csTodayHistory(personaId) {
+  var today = csTodayStr();
+  return csGetRecentHistory(personaId, 40).filter(function(item) {
+    if (!item || !item.timestamp) return false;
+    try {
+      return new Date(item.timestamp).toISOString().slice(0,10) === today;
+    } catch(e) { return false; }
+  });
+}
+function csTextSignature(text) {
+  var raw = String(text || '');
+  var sum = 0;
+  for (var i = 0; i < raw.length; i++) sum = (sum + raw.charCodeAt(i) * (i + 7)) % 10000019;
+  return raw.length + '_' + sum;
+}
+function csExtractMoodId(text) {
+  var raw = String(text || '').trim();
+  if (!raw) return '';
+  try {
+    var parsed = JSON.parse(raw);
+    if (parsed && parsed.mood && csMoodById(parsed.mood).id === parsed.mood) return parsed.mood;
+  } catch(e) {}
+  for (var i = 0; i < CS_MOODS.length; i++) {
+    if (raw.indexOf(CS_MOODS[i].id) >= 0) return CS_MOODS[i].id;
+  }
+  return '';
+}
+async function csInferCharacterMoodFromApi(personaId, history) {
+  if (!apiConfig || !apiConfig.url || !apiConfig.key || !apiConfig.model) {
+    throw new Error('请先在 API Config 里连接聊天 API。');
+  }
+  var lines = (history || []).map(function(item) {
+    var role = item && item.role === 'user' ? '用户' : '角色';
+    return role + '：' + String(item && item.content || '').replace(/\s+/g, ' ').trim();
+  }).filter(Boolean);
+  if (!lines.length) return 'soft';
+  var prompt = '你是情侣空间的情绪判断器，只能根据“今天”和该角色的聊天内容判断角色今天的唯一心情。'
+    + '\n不要参考昨天或更早的内容，不要分析用户心情。'
+    + '\n可选 mood id 只有：dizzy, shocked, heart, soft, happy, sparkle, stress, sideeye, angry, dot, cool, blush, sleepy, cute, cry, confused。'
+    + '\n请只返回 JSON，例如 {"mood":"heart","reason":"不超过12字"}。'
+    + '\n\n今天的聊天内容：\n' + lines.join('\n');
+  var text = await csCallChatApi(prompt, 220);
+  return csExtractMoodId(text) || 'soft';
+}
+async function csDescribeImageWithChatApi(dataUrl, options) {
+  if (!apiConfig || !apiConfig.url || !apiConfig.key || !apiConfig.model) {
+    throw new Error('请先在 API Config 里连接聊天 API。');
+  }
+  options = options || {};
+  var persona = csGetActivePersona();
+  var userName = (userProfile && userProfile.name) || '你';
+  var personaName = csPersonaDisplayName(persona);
+  var preferredViewpoint = options.preferredViewpoint || '角色视角';
+  var promptText = options.promptText
+    || ('请只根据这张图片，并结合“用户是' + userName + '、角色是' + personaName + '”的设定，返回一个 JSON 对象，不要解释。'
+      + '格式：{"title":"18字内照片名","desc":"32字内短注脚","detail":"160-260字，像情侣相册里认真记录一张照片的小事情、小事件或一段经历，要写清楚前因后果、画面细节、动作、情绪与逻辑，可以有自然的心声表达，但不要悬浮，不要编得脱离图片","viewpoint":"角色视角/用户视角/旁观镜头","shotAt":"20字内场景"}。'
+      + '要求：1. 优先使用' + preferredViewpoint + '，但不能为了迎合偏好就乱写。2. 如果画面明显是用户自拍、用户拿着手机拍、或视角天然更接近用户第一人称，就必须返回“用户视角”。3. 只有在画面合理支持角色在记录用户、或角色视角更自然时，才返回“角色视角”。4. 如果无法可靠判断，就返回“旁观镜头”。5. detail 要像真的在写这张照片背后的经过，而不是只写标题说明。6. 如果画面适合写成角色心里记下来的瞬间，就用角色口吻或贴近角色感受的叙述。7. 所有内容都必须建立在图片可见信息上，不能乱编。');
+  var endpoint = String(apiConfig.url || '').replace(/\/+$/, '');
+  if (!/\/chat\/completions$/i.test(endpoint)) endpoint += '/chat/completions';
+  var resp = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + apiConfig.key,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(_applyApiModel({
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image_url', image_url: { url: dataUrl } },
+          { type: 'text', text: promptText }
+        ]
+      }],
+      temperature: 0.7,
+      max_tokens: 420
+    }, apiConfig.model))
+  });
+  if (!resp.ok) {
+    var errText = await resp.text().catch(function(){ return ''; });
+    throw new Error('图片描述失败：' + resp.status + ' ' + errText.slice(0, 120));
+  }
+  var data = await resp.json();
+  var text = typeof _extractAssistantMessageContent === 'function'
+    ? _extractAssistantMessageContent(data)
+    : (((data || {}).choices || [])[0] || {}).message?.content || '';
+  var parsed = csExtractJsonObject(text);
+  parsed.viewpoint = csNormalizeGalleryViewpoint(parsed.viewpoint, preferredViewpoint === '角色视角' ? '旁观镜头' : preferredViewpoint);
+  return parsed;
+}
+function csGetGalleryItems(profile) {
+  return (profile && Array.isArray(profile.gallery) ? profile.gallery.slice() : []).sort(function(a, b) {
+    return (Number(b && b.createdAt) || 0) - (Number(a && a.createdAt) || 0);
+  });
+}
+function csGalleryDateText(item) {
+  var time = Number(item && item.createdAt) || Date.now();
+  var d = new Date(time);
+  return (d.getMonth() + 1) + '月' + d.getDate() + '日';
+}
+function csNormalizeGalleryViewpoint(value, fallback) {
+  var raw = String(value || '').trim();
+  if (!raw) return fallback || '旁观镜头';
+  if (raw.indexOf('角色') >= 0) return '角色视角';
+  if (raw.indexOf('用户') >= 0) return '用户视角';
+  if (raw.indexOf('旁观') >= 0 || raw.indexOf('镜头') >= 0 || raw.indexOf('第三人称') >= 0) return '旁观镜头';
+  return fallback || '旁观镜头';
+}
+function csGalleryPerspective(item) {
+  return item && item.viewpoint ? csNormalizeGalleryViewpoint(item.viewpoint, '旁观镜头') : '旁观镜头';
+}
+function csGalleryStory(item) {
+  return (item && (item.detail || item.desc || item.title)) || '这张照片的故事还没写下。';
+}
+function csGalleryShotAt(item) {
+  return item && item.shotAt ? String(item.shotAt) : '共享相册';
+}
+function csGallerySourceLabel(item) {
+  return item && item.type === 'upload' ? '已上传' : 'AI生成';
+}
+function csGalleryCounts(items) {
+  return {
+    total: items.length,
+    ai: items.filter(function(item) { return item && item.type === 'ai'; }).length,
+    upload: items.filter(function(item) { return item && item.type === 'upload'; }).length,
+    moments: items.filter(function(item) { return item && item.allowMoments; }).length
+  };
+}
+function csGalleryRowStack(items) {
+  return [0, 1, 2].map(function(i) {
+    var item = items[i];
+    var cls = 'stack-' + (i + 1);
+    if (!item) return '<span class="' + cls + '"></span>';
+    return item.image
+      ? '<img class="' + cls + '" src="' + csEsc(item.image) + '" alt="">'
+      : '<span class="' + cls + '"></span>';
+  }).join('');
+}
+function csRenderGalleryTile(item, cls) {
+  var palette = item.palette || ['#f3f3f4', '#d9d9dd'];
+  var body = item.image
+    ? '<img src="' + csEsc(item.image) + '" alt="' + csEsc(item.title || '相片') + '">'
+    : '<div class="cs-gallery-placeholder"><div class="t1">' + csEsc(item.title || 'Moment') + '</div><div class="t2">' + csEsc((item.desc || item.detail || '').slice(0, 24)) + '</div></div>';
+  return '<button type="button" class="cs-gallery-photo-tile ' + csEsc(cls || '') + '" onclick="csOpenGalleryDetail(\'' + csEsc(item.id) + '\')" style="' + (!item.image ? ('background:linear-gradient(155deg,' + palette[0] + ',' + palette[1] + ');') : '') + '">'
+    + body
+    + '<div class="cs-gallery-photo-meta"><div class="cs-gallery-photo-title">' + csEsc(item.title || '未命名相片') + '</div><div class="cs-gallery-photo-sub">' + csEsc(csGalleryPerspective(item) + ' · ' + csGalleryDateText(item)) + '</div></div>'
+    + '</button>';
+}
+function csOpenGalleryDetail(id) {
+  if (Date.now() - csGalleryOverlayDismissAt < 420) return;
+  if (csGalleryCloseTimer) {
+    clearTimeout(csGalleryCloseTimer);
+    csGalleryCloseTimer = 0;
+  }
+  csGalleryDetailId = String(id || '');
+  csRenderGalleryDetailOverlay();
+}
+function csCloseGalleryDetail() {
+  var overlay = document.getElementById('csGalleryDetailOverlay');
+  csGalleryOverlayDismissAt = Date.now();
+  if (overlay) {
+    overlay.style.pointerEvents = 'auto';
+    overlay.classList.remove('open');
+  }
+  document.body.style.overflow = '';
+  if (csGalleryCloseTimer) clearTimeout(csGalleryCloseTimer);
+  csGalleryCloseTimer = setTimeout(function() {
+    csGalleryDetailId = '';
+    csRenderGalleryDetailOverlay();
+    csGalleryCloseTimer = 0;
+  }, 140);
+}
+function csRenderGalleryDetailOverlay() {
+  var overlay = document.getElementById('csGalleryDetailOverlay');
+  if (!overlay) return;
+  var profile = csGetActiveProfile();
+  var persona = csGetActivePersona();
+  var item = profile && Array.isArray(profile.gallery)
+    ? profile.gallery.find(function(entry) { return String(entry.id) === String(csGalleryDetailId); })
+    : null;
+  if (!item) {
+    overlay.classList.remove('open');
+    overlay.innerHTML = '';
+    overlay.style.pointerEvents = '';
+    document.body.style.overflow = '';
+    return;
+  }
+  var userName = (userProfile && userProfile.name) || '你';
+  var personaDisplayName = csPersonaDisplayName(persona);
+  var palette = item.palette || ['#f3f3f4', '#d9d9dd'];
+  var aiStoryLabel = item.type === 'upload'
+    ? (item.roleViewRequestedAt ? '重新生成角色视角记录' : 'AI生成角色视角记录')
+    : '重新生成角色视角记录';
+  overlay.classList.add('open');
+  overlay.style.pointerEvents = 'auto';
+  document.body.style.overflow = 'hidden';
+  overlay.innerHTML = '<div class="cs-gallery-detail-sheet">'
+    + '<div class="cs-sheet-handle"></div>'
+    + '<div class="cs-gallery-detail-head"><div class="cs-gallery-detail-title">' + csEsc(item.title || '相片详情') + '</div><button type="button" class="cs-gallery-detail-close" onclick="event.preventDefault();event.stopPropagation();csCloseGalleryDetail();return false;" ontouchstart="event.preventDefault();event.stopPropagation();csCloseGalleryDetail();return false;" onpointerdown="event.preventDefault();event.stopPropagation();csCloseGalleryDetail();return false;"><i class="fas fa-times"></i></button></div>'
+    + '<div class="cs-gallery-detail-photo" style="' + (!item.image ? ('background:linear-gradient(155deg,' + palette[0] + ',' + palette[1] + ');display:flex;align-items:center;justify-content:center;') : '') + '">'
+    + (item.image ? '<img src="' + csEsc(item.image) + '" alt="' + csEsc(item.title || '相片') + '">' : '<div class="cs-gallery-placeholder"><div class="t1">' + csEsc(item.title || 'Moment') + '</div><div class="t2">' + csEsc((item.desc || '').slice(0, 28)) + '</div></div>')
+    + '</div>'
+    + '<div class="cs-gallery-detail-meta"><span class="cs-pill">' + csEsc(csGallerySourceLabel(item)) + '</span><span class="cs-pill">' + csEsc(csGalleryPerspective(item)) + '</span><span class="cs-pill">' + csEsc(csGalleryDateText(item)) + '</span></div>'
+    + '<div class="cs-gallery-detail-tags"><span class="cs-pill">' + csEsc(csGalleryShotAt(item)) + '</span><span class="cs-pill">' + csEsc(personaDisplayName) + ' × ' + csEsc(userName) + '</span></div>'
+    + '<div class="cs-gallery-detail-story"><div class="cs-gallery-detail-story-title">Photo Story</div><div class="cs-gallery-detail-story-text">' + csEsc(csGalleryStory(item)) + '</div></div>'
+    + '<div class="cs-gallery-detail-actions">' + (item.image ? ('<button type="button" class="cs-mini-btn" data-gallery-ai-story="1">' + (csBusy.galleryNarrationId === String(item.id) ? '生成中...' : aiStoryLabel) + '</button>') : '') + '<label class="cs-switch"><input type="checkbox" data-gallery-moments-toggle="1"' + (item.allowMoments ? ' checked' : '') + '>允许角色发朋友圈</label><button type="button" class="cs-mini-btn danger" data-gallery-delete="1">删除这张相片</button></div>'
+    + '<button type="button" class="cs-gallery-detail-footer-close" onclick="event.preventDefault();event.stopPropagation();csCloseGalleryDetail();return false;" ontouchstart="event.preventDefault();event.stopPropagation();csCloseGalleryDetail();return false;" onpointerdown="event.preventDefault();event.stopPropagation();csCloseGalleryDetail();return false;">关闭</button>'
+    + '</div>';
+  var sheet = overlay.querySelector('.cs-gallery-detail-sheet');
+  var closeBtn = overlay.querySelector('.cs-gallery-detail-close');
+  var deleteBtn = overlay.querySelector('[data-gallery-delete="1"]');
+  var aiStoryBtn = overlay.querySelector('[data-gallery-ai-story="1"]');
+  var momentsToggle = overlay.querySelector('[data-gallery-moments-toggle="1"]');
+  function bindTap(el, handler) {
+    if (!el) return;
+    ['click', 'pointerup', 'mouseup', 'touchend'].forEach(function(type) {
+      el.addEventListener(type, function(e) {
+        if (e && typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+        handler(e);
+      }, { passive: false });
+    });
+  }
+  bindTap(overlay, function(e) {
+    if (e.target === overlay) {
+      e.preventDefault();
+      e.stopPropagation();
+      csCloseGalleryDetail();
+    }
+  });
+  if (sheet) {
+    sheet.onclick = function(e) { e.stopPropagation(); };
+    sheet.onpointerdown = function(e) { e.stopPropagation(); };
+    sheet.ontouchstart = function(e) { e.stopPropagation(); };
+  }
+  bindTap(closeBtn, function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    csCloseGalleryDetail();
+  });
+  bindTap(deleteBtn, function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    csDeleteGallery(item.id);
+  });
+  bindTap(aiStoryBtn, function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    csGenerateGalleryNarration(item.id);
+  });
+  if (momentsToggle) {
+    momentsToggle.onclick = function(e) { e.stopPropagation(); };
+    momentsToggle.onchange = function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      csToggleGalleryMoments(item.id, !!momentsToggle.checked);
+    };
+  }
+}
+async function csGenerateGalleryNarration(id) {
+  var profile = csGetActiveProfile();
+  var persona = csGetActivePersona();
+  if (!profile || !persona) return alert('请先绑定一个角色。');
+  var item = profile.gallery.find(function(entry) { return String(entry.id) === String(id); });
+  if (!item || !item.image) return alert('这张相片没有可识别的图片内容。');
+  if (csBusy.galleryNarrationId) return;
+  csBusy.galleryNarrationId = String(id);
+  csRenderGalleryDetailOverlay();
+  try {
+    var aiDesc = await csDescribeImageWithChatApi(item.image, { preferredViewpoint: '角色视角' });
+    if (!aiDesc || typeof aiDesc !== 'object') throw new Error('当前聊天 API 没有返回可用的相片记录。');
+    if (aiDesc.title) item.title = aiDesc.title;
+    if (aiDesc.desc) item.desc = aiDesc.desc;
+    if (aiDesc.detail) item.detail = aiDesc.detail;
+    item.viewpoint = csNormalizeGalleryViewpoint(aiDesc.viewpoint, '旁观镜头');
+    if (aiDesc.shotAt) item.shotAt = aiDesc.shotAt;
+    item.roleViewRequestedAt = Date.now();
+    csSave();
+    csRenderGalleryDetailOverlay();
+    renderCoupleSpace();
+  } catch (e) {
+    alert('AI 生成相片记录失败：' + e.message);
+  } finally {
+    csBusy.galleryNarrationId = '';
+    csRenderGalleryDetailOverlay();
+  }
+}
+function csSetAutoCharMood() {
+  var profile = csGetActiveProfile();
+  var persona = csGetActivePersona();
+  if (!profile || !persona) return null;
+  var today = csTodayStr();
+  if (!profile.moodMap[today]) profile.moodMap[today] = {};
+  var entry = profile.moodMap[today];
+  var history = csTodayHistory(persona.id);
+  var signature = csTextSignature(history.map(function(item) {
+    return (item && item.role || '') + ':' + String(item && item.content || '');
+  }).join('\n'));
+  var moodId = entry.char || 'soft';
+  var requestKey = persona.id + '_' + today + '_' + signature;
+  if (!history.length) {
+    if (entry.char !== 'soft' || entry._charSig !== signature) {
+      entry.char = 'soft';
+      entry._charSig = signature;
+      csSave();
+    }
+    return csMoodById('soft');
+  }
+  if (entry._charSig !== signature && !csMoodApiPending[requestKey] && apiConfig && apiConfig.url && apiConfig.key && apiConfig.model) {
+    csMoodApiPending[requestKey] = true;
+    csInferCharacterMoodFromApi(persona.id, history).then(function(nextMoodId) {
+      var nextProfile = csGetActiveProfile();
+      var nextToday = csTodayStr();
+      if (!nextProfile) return;
+      if (!nextProfile.moodMap[nextToday]) nextProfile.moodMap[nextToday] = {};
+      nextProfile.moodMap[nextToday].char = nextMoodId || 'soft';
+      nextProfile.moodMap[nextToday]._charSig = signature;
+      csSave();
+      renderCoupleSpaceWidget();
+      renderCoupleCalendarWidgets();
+      var page = document.getElementById('coupleSpacePage');
+      if (page && page.style.display === 'block') renderCoupleSpace();
+    }).catch(function(err) {
+      console.warn('cs mood inference failed:', err);
+    }).finally(function() {
+      delete csMoodApiPending[requestKey];
+    });
+  }
+  if (entry.char) moodId = entry.char;
+  if (!entry._charSig && history.length && entry.char) {
+    entry._charSig = signature;
+    csSave();
+  }
+  return csMoodById(moodId);
+}
+function csOpenFile(id) {
+  var input = document.getElementById(id);
+  if (input) input.click();
+}
+function csReadFile(file, cb, options) {
+  if (!file) return;
+  var fr = new FileReader();
+  fr.onload = async function(e) {
+    var out = e.target.result;
+    var maxSize = options && options.maxSize;
+    var quality = options && options.quality;
+    if (maxSize && typeof compressImage === 'function' && typeof out === 'string' && out.indexOf('data:image') === 0) {
+      try { out = await compressImage(out, maxSize, quality || 0.82); } catch(err) {}
+    }
+    cb(out);
+  };
+  fr.readAsDataURL(file);
+}
+function csBindPersona(id) {
+  csState.activePersonaId = String(id);
+  csEnsureProfile(csState.activePersonaId);
+  csSave();
+  csSyncPersonaMemory();
+  closeCoupleBindSheet();
+  renderCoupleSpace();
+}
+function csUnbindPersona() {
+  csState.activePersonaId = '';
+  csSave();
+  renderCoupleSpace();
+}
+function openCoupleBindSheet() {
+  var overlay = document.getElementById('csBindOverlay');
+  if (overlay) overlay.classList.add('open');
+  renderCoupleBindList();
+}
+function closeCoupleBindSheet() {
+  var overlay = document.getElementById('csBindOverlay');
+  if (overlay) overlay.classList.remove('open');
+}
+function renderCoupleBindList() {
+  var el = document.getElementById('csBindList');
+  if (!el) return;
+  var list = csGetPersonas();
+  if (!list.length) {
+    el.innerHTML = '<div class="cs-empty">当前还没有角色。先在聊天软件里创建角色，再回来绑定。</div>';
+    return;
+  }
+  el.innerHTML = list.map(function(p) {
+    var active = String(csState.activePersonaId) === String(p.id);
+    var displayName = csPersonaDisplayName(p);
+    return '<div class="cs-bind-item' + (active ? ' active' : '') + '" onclick="csBindPersona(\'' + csEsc(String(p.id)) + '\')">'
+      + '<div class="cs-avatar">' + csGetAvatarSrc(p, p.name || 'T') + '</div>'
+      + '<div class="cs-bind-item-meta">'
+      + '<div class="cs-bind-item-name">' + csEsc(p.name || '未命名角色') + '</div>'
+      + '<div class="cs-bind-item-sub">' + csEsc(displayName + ' · ' + (p.persona || '未填写角色设定').slice(0, 48)) + '</div>'
+      + '</div>'
+      + '<div class="cs-bind-check"><i class="fas fa-check"></i></div>'
+      + '</div>';
+  }).join('');
+}
+function csSetWidgetAnniversary(id) {
+  var profile = csGetActiveProfile();
+  if (!profile) return;
+  profile.selectedAnniversaryId = id;
+  profile.anniversaries.forEach(function(item) { item.showOnWidget = item.id === id; });
+  csSave();
+  csSyncPersonaMemory();
+  renderCoupleSpace();
+}
+function csUpdateAnniversaryField(id, field, value) {
+  var profile = csGetActiveProfile();
+  if (!profile) return;
+  var item = profile.anniversaries.find(function(a){ return a.id === id; });
+  if (!item) return;
+  item[field] = value;
+  csSave();
+  csSyncPersonaMemory();
+  renderCoupleSpaceWidget();
+  renderCoupleSpace();
+}
+function csAddAnniversary() {
+  var profile = csGetActiveProfile();
+  if (!profile) return alert('请先绑定一个角色。');
+  var nameEl = document.getElementById('csNewAnnivName');
+  var dateEl = document.getElementById('csNewAnnivDate');
+  var typeEl = document.getElementById('csNewAnnivType');
+  var name = nameEl ? nameEl.value.trim() : '';
+  var date = dateEl ? dateEl.value : '';
+  var type = typeEl ? typeEl.value : 'custom';
+  if (!name || !date) return alert('请先填写纪念日名称和日期。');
+  profile.anniversaries.push({
+    id: 'cs_anniv_custom_' + Date.now(),
+    type: type,
+    name: name,
+    date: date,
+    auto: false,
+    showOnWidget: false
+  });
+  if (nameEl) nameEl.value = '';
+  if (dateEl) dateEl.value = '';
+  if (typeEl) typeEl.value = 'custom';
+  csSave();
+  csSyncPersonaMemory();
+  renderCoupleSpace();
+}
+function csRemoveAnniversary(id) {
+  var profile = csGetActiveProfile();
+  if (!profile) return;
+  profile.anniversaries = profile.anniversaries.filter(function(item){ return item.id !== id; });
+  if (!profile.anniversaries.length) profile.anniversaries = csCreateDefaultAnniversaries(csGetActivePersona());
+  if (profile.selectedAnniversaryId === id) {
+    profile.selectedAnniversaryId = profile.anniversaries[0].id;
+    profile.anniversaries[0].showOnWidget = true;
+  }
+  csSave();
+  csSyncPersonaMemory();
+  renderCoupleSpace();
+}
+function csSaveOverview() {
+  var profile = csGetActiveProfile();
+  if (!profile) return;
+  var nick = document.getElementById('csCoupleNicknameInput');
+  var sign = document.getElementById('csDuoSignatureInput');
+  var together = document.getElementById('csTogetherInput');
+  if (nick) profile.coupleNickname = nick.value.trim();
+  if (sign) profile.duoSignature = sign.value.trim();
+  if (together && together.value) profile.togetherSince = together.value;
+  if (profile.anniversaries && profile.anniversaries.length) {
+    var togetherAnn = profile.anniversaries.find(function(item){ return item.type === 'together'; });
+    if (togetherAnn) togetherAnn.date = profile.togetherSince;
+  }
+  csSave();
+  csSyncPersonaMemory();
+  renderCoupleSpace();
+}
+function csHandleImageInput(field, inputId) {
+  var profile = csGetActiveProfile();
+  if (!profile) return alert('请先绑定一个角色。');
+  var input = document.getElementById(inputId);
+  if (!input || !input.files || !input.files[0]) return;
+  csReadFile(input.files[0], function(dataUrl) {
+    profile[field] = dataUrl;
+    csSave();
+    renderCoupleSpace();
+  }, { maxSize: field === 'widgetBackground' ? 900 : 1400, quality: 0.84 });
+  input.value = '';
+}
+function csUploadCover() { csOpenFile('csCoverInput'); }
+function csUploadBackground() { csOpenFile('csBgInput'); }
+function csUploadWidgetBackground() { csOpenFile('csWidgetBgInput'); }
+function csPickGalleryUpload() {
+  if (!csGetActiveProfile()) return alert('请先绑定一个角色。');
+  csOpenFile('csGalleryUploadInput');
+}
+function csPickFootprintPhoto() {
+  if (!csGetActiveProfile()) return alert('请先绑定一个角色。');
+  csOpenFile('csFootprintUploadInput');
+}
+function csToggleGalleryMoments(id, val) {
+  var profile = csGetActiveProfile();
+  if (!profile) return;
+  var item = profile.gallery.find(function(it){ return it.id === id; });
+  if (!item) return;
+  item.allowMoments = !!val;
+  csSave();
+  csRenderGalleryDetailOverlay();
+}
+function csDeleteGallery(id) {
+  var profile = csGetActiveProfile();
+  if (!profile) return;
+  profile.gallery = profile.gallery.filter(function(item){ return item.id !== id; });
+  if (String(csGalleryDetailId) === String(id)) csGalleryDetailId = '';
+  csSave();
+  csRenderGalleryDetailOverlay();
+  renderCoupleSpace();
+}
+function csDeleteFootprint(id) {
+  var profile = csGetActiveProfile();
+  if (!profile) return;
+  profile.footprints = profile.footprints.filter(function(item){ return item.id !== id; });
+  csSave();
+  renderCoupleSpace();
+}
+function csAddManualFootprint() {
+  var profile = csGetActiveProfile();
+  if (!profile) return alert('请先绑定一个角色。');
+  var title = (document.getElementById('csFootTitle') || {}).value || '';
+  var loc = (document.getElementById('csFootLoc') || {}).value || '';
+  var date = (document.getElementById('csFootDate') || {}).value || '';
+  var time = (document.getElementById('csFootTime') || {}).value || '';
+  var desc = (document.getElementById('csFootDesc') || {}).value || '';
+  if (!title.trim() || !date) return alert('请至少填写地点标题和日期。');
+  profile.footprints.unshift({
+    id: 'cs_ft_manual_' + Date.now(),
+    type: 'manual',
+    title: title.trim(),
+    location: loc.trim() || '未填写地点',
+    date: date,
+    time: time || '00:00',
+    desc: desc.trim() || '新的共同足迹已被收藏。',
+    image: csPendingFootprintImage || '',
+    palette: csPaletteForText(title)
+  });
+  csPendingFootprintImage = '';
+  ['csFootTitle','csFootLoc','csFootDate','csFootTime','csFootDesc'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  var preview = document.getElementById('csFootPreview');
+  if (preview) preview.style.display = 'none';
+  csSave();
+  renderCoupleSpace();
+}
+async function csGenerateAlbumIdeas() {
+  var profile = csGetActiveProfile();
+  var persona = csGetActivePersona();
+  if (!profile || !persona) return alert('请先绑定一个角色。');
+  var personaDisplayName = csPersonaDisplayName(persona);
+  var currentUserName = (userProfile && userProfile.name) || '你';
+  if (csBusy.album) return;
+  csBusy.album = true;
+  renderCoupleSpace();
+  try {
+    var prompt = '你是情侣空间的相册摄影策划师。请根据以下信息，为这对情侣生成 3 张“像真实 iPhone 相簿里会保存的照片”内容。\\n\\n'
+      + csBuildPromptContext(profile, persona) + '\\n\\n'
+      + '要求：\\n'
+      + '1. 每一条都必须像真实相片，不要像海报、封面设计或概念图。\\n'
+      + '2. 以角色视角为主，允许少量旁观镜头，但优先让角色像在偷偷记下和用户有关的小事情。\\n'
+      + '3. detail 必须写成 160-260 字，像在认真记录一段情侣小事情、小事件或一段经历，要有前因后果、动作、氛围、逻辑，也可以自然带一点情绪心声。\\n'
+      + '4. desc 是短注脚，detail 才是完整记录，不能空泛，也不要只是文艺堆砌。\\n'
+      + '5. prompt 必须明确要求“角色视角优先、手机随手拍、真实照片质感、灰白韩系高级、自然光影、不要插画感”。\\n'
+      + '只返回 JSON 数组，不要 markdown，不要解释。格式：\\n'
+      + '[{"title":"18字内照片名","desc":"32字内短注脚","detail":"160-260字详细照片记录","viewpoint":"角色视角/用户视角/旁观镜头","shotAt":"20字内场景","prompt":"用于 AI 生图的详细中文提示词，必须明确是用户和该角色的真实照片画面，角色视角优先，手机随手拍质感，灰白韩系高级复杂好看，真实自然"}]';
+    var text = await csCallChatApi(prompt, 1400);
+    var plans = csExtractJsonArray(text);
+    if (!plans.length) throw new Error('当前聊天 API 没有返回可用的相册 JSON。');
+    var created = [];
+    for (var i = 0; i < Math.min(3, plans.length); i++) {
+      var item = plans[i] || {};
+      var imagePrompt = item.prompt || ('请生成用户与角色「' + personaDisplayName + '」的一张真实生活照片：以角色视角优先，像角色顺手拍下用户或和用户一起入镜的瞬间。要求手机随手拍、灰白韩系高级、自然光影、照片质感、像 iPhone 相簿里的日常瞬间，不要插画感，不要海报感。');
+      imagePrompt = csNormalizePairText(imagePrompt, currentUserName, personaDisplayName);
+      var image = await csTryGenerateImage(imagePrompt);
+      created.push({
+        id: 'cs_gallery_ai_' + Date.now() + '_' + i,
+        type: 'ai',
+        title: item.title || ['并肩时刻','光影留白','心动剪影'][i] || 'AI 相片',
+        desc: item.desc || '这张照片被保存在你们的双人相簿里。',
+        detail: item.detail || item.desc || '基于你们的聊天、人设和纪念日，由当前 API 自动生成的一张双人照片记录。角色会更像是在心里记下这次和你的瞬间，连当时的动作、气氛和没说出口的情绪都会被保留下来。',
+        viewpoint: item.viewpoint || '角色视角',
+        shotAt: item.shotAt || '共享相册',
+        image: image || '',
+        palette: csPaletteForText((item.title || '') + i),
+        allowMoments: false,
+        aiPrompt: imagePrompt,
+        createdAt: Date.now()
+      });
+    }
+    created.reverse().forEach(function(item) { profile.gallery.unshift(item); });
+    csSave();
+  } catch (e) {
+    alert('AI 生成相册失败：' + e.message);
+  } finally {
+    csBusy.album = false;
+    renderCoupleSpace();
+  }
+}
+async function csGenerateFootprints() {
+  var profile = csGetActiveProfile();
+  var persona = csGetActivePersona();
+  if (!profile || !persona) return alert('请先绑定一个角色。');
+  var personaDisplayName = csPersonaDisplayName(persona);
+  var currentUserName = (userProfile && userProfile.name) || '你';
+  if (csBusy.footprints) return;
+  csBusy.footprints = true;
+  renderCoupleSpace();
+  try {
+    var prompt = '你是情侣空间的约会地图策划师。请根据以下信息，生成 3 条双人足迹打卡内容。\\n\\n'
+      + csBuildPromptContext(profile, persona) + '\\n\\n'
+      + '生成要求：\\n'
+      + '1. 地点、城市、活动类型必须严格符合用户与角色的人设、关系进度、聊天语气、记忆设定与现实逻辑，不能跳脱。\\n'
+      + '2. 不要突然生成与设定不符的异国旅行、跨城市瞬移、高消费场景、悬浮幻想地点，除非上下文明确支持。\\n'
+      + '3. 优先生成你们真实可能会去的约会地点、小店、街区、校园、展览、咖啡馆、河边、公园、便利店、书店等。\\n'
+      + '4. 日期、时间、描述要像真实恋爱足迹，可与纪念日、生日、见面日或近期聊天内容自然呼应。\\n'
+      + '5. 如果上下文已经体现常驻城市、活动偏好或角色背景，地点必须围绕这些信息展开。\\n'
+      + '只返回 JSON 数组，不要解释。格式：\\n'
+      + '[{"title":"地点标题","location":"城市 / 地点","date":"YYYY-MM-DD","time":"HH:mm","desc":"60字内描述","prompt":"用于 AI 生图的详细中文提示词，灰白韩系高级、地点感明显、双人场景"}]';
+    var text = await csCallChatApi(prompt, 1400);
+    var plans = csExtractJsonArray(text);
+    if (!plans.length) throw new Error('当前聊天 API 没有返回可用的足迹 JSON。');
+    var created = [];
+    for (var i = 0; i < Math.min(3, plans.length); i++) {
+      var item = plans[i] || {};
+      var imagePrompt = item.prompt || ('请基于当前绑定角色的人设、用户与角色的关系背景、聊天记忆与足迹地点，生成「' + personaDisplayName + '」与用户在' + (item.location || '某个约会地点') + '的真实双人场景。要求灰白韩系高级、电影感、生活化、地点逻辑自然，不要脱离设定。');
+      imagePrompt = csNormalizePairText(imagePrompt, currentUserName, personaDisplayName);
+      var image = await csTryGenerateImage(imagePrompt);
+      created.push({
+        id: 'cs_ft_ai_' + Date.now() + '_' + i,
+        type: 'ai',
+        title: item.title || '新的共同足迹',
+        location: item.location || '共享坐标',
+        date: item.date || profile.togetherSince || csTodayStr(),
+        time: item.time || '18:00',
+        desc: item.desc || '基于你们的聊天和角色设定，由当前 API 自动生成的足迹卡片。',
+        image: image || '',
+        palette: csPaletteForText((item.location || '') + i),
+        aiPrompt: imagePrompt
+      });
+    }
+    created.reverse().forEach(function(item) { profile.footprints.unshift(item); });
+    csSave();
+  } catch (e) {
+    alert('AI 生成足迹失败：' + e.message);
+  } finally {
+    csBusy.footprints = false;
+    renderCoupleSpace();
+  }
+}
+function csSelectUserMood(id) {
+  var profile = csGetActiveProfile();
+  if (!profile) return;
+  var today = csTodayStr();
+  if (profile.moodMap[today] && profile.moodMap[today].user) {
+    return alert('今天的用户心情已经记录过了。');
+  }
+  if (!profile.moodMap[today]) profile.moodMap[today] = {};
+  profile.moodMap[today].user = id;
+  csSetAutoCharMood();
+  csSave();
+  renderCoupleSpace();
+}
+function csShiftMoodMonth(delta) {
+  csMoodMonthOffset += delta;
+  renderCoupleSpace();
+}
+function csApplyScaleToInner(widget, inner, baseW, baseH) {
+  if (!widget || !inner) return;
+  var w = widget.offsetWidth || baseW;
+  var h = widget.offsetHeight || baseH;
+  var scale = Math.min(w / baseW, h / baseH);
+  var tx = Math.max(0, (w - baseW * scale) / 2);
+  var ty = Math.max(0, (h - baseH * scale) / 2);
+  inner.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + scale + ')';
+}
+function csEnsurePlacedHomeWidget(id) {
+  var el = document.getElementById(id);
+  if (!el || el.style.display === 'none' || el.classList.contains('iph-placed')) {
+    if (el && !el.dataset.dragId) el.dataset.dragId = id;
+    return;
+  }
+  var parent = el.parentElement;
+  if (!parent) return;
+  var er = el.getBoundingClientRect();
+  var pr = parent.getBoundingClientRect();
+  var w = er.width || el.offsetWidth || 152;
+  var h = er.height || el.offsetHeight || 152;
+  var x = Math.max(0, er.left - pr.left);
+  var y = Math.max(0, er.top - pr.top + (parent.scrollTop || 0));
+  if (id === 'coupleSpaceWidget' && parent.id === 'homePage3') {
+    x = 16;
+    y = 16;
+    w = 152;
+    h = 152;
+  }
+  el.dataset.dragId = id;
+  el.classList.add('iph-placed');
+  el.style.position = 'absolute';
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+  el.style.width = w + 'px';
+  el.style.height = h + 'px';
+  el.style.margin = '0';
+  el.style.flexShrink = '0';
+  try {
+    var pos = JSON.parse(localStorage.getItem('mono_iph_positions_v3') || '{}');
+    if (!pos[id]) {
+      pos[id] = { x: x, y: y, w: w, h: h, parentId: parent.id || 'homePage1' };
+      localStorage.setItem('mono_iph_positions_v3', JSON.stringify(pos));
+    }
+  } catch(e) {}
+  setTimeout(function() {
+    if (typeof window._iphInjectResizeHandles === 'function') window._iphInjectResizeHandles();
+  }, 40);
+}
+function renderCoupleSpaceWidget() {
+  var widget = document.getElementById('coupleSpaceWidget');
+  if (!widget) return;
+  csEnsurePlacedHomeWidget('coupleSpaceWidget');
+  var bg = document.getElementById('coupleSpaceWidgetBg');
+  var inner = document.getElementById('coupleSpaceWidgetInner');
+  var nameEl = document.getElementById('csWidgetAnnivName');
+  var dayEl = document.getElementById('csWidgetDays');
+  var dateEl = document.getElementById('csWidgetAnnivDate');
+  var namesEl = document.getElementById('csWidgetNames');
+  var captionEl = document.getElementById('csWidgetCaption');
+  var persona = csGetActivePersona();
+  var profile = csGetActiveProfile();
+  if (!persona || !profile) {
+    widget.classList.remove('has-custom-bg');
+    if (bg) bg.style.backgroundImage = '';
+    if (dayEl) dayEl.textContent = 'D-0';
+    if (nameEl) nameEl.textContent = '选择纪念日';
+    if (dateEl) dateEl.textContent = '在情侣空间里设定';
+    if (namesEl) namesEl.textContent = '你 · TA';
+    if (captionEl) captionEl.textContent = '点击进入情侣空间';
+    csApplyScaleToInner(widget, inner, 152, 152);
+    renderCoupleCalendarWidgets();
+    return;
+  }
+  var ann = csGetDisplayAnniversary(profile);
+  var info = ann ? csCountdownInfo(ann.date) : { label:'D-0', nextLabel:'未设定' };
+  if (profile.widgetBackground) {
+    widget.classList.add('has-custom-bg');
+    if (bg) bg.style.backgroundImage = 'url("' + profile.widgetBackground + '")';
+  } else {
+    widget.classList.remove('has-custom-bg');
+    if (bg) bg.style.backgroundImage = '';
+  }
+  if (dayEl) dayEl.textContent = info.label;
+  if (nameEl) nameEl.textContent = ann ? ann.name : '选择纪念日';
+  if (dateEl) dateEl.textContent = info.nextLabel;
+  if (namesEl) namesEl.textContent = ((userProfile && userProfile.name) || '你') + ' · ' + csPersonaDisplayName(persona);
+  if (captionEl) captionEl.textContent = profile.coupleNickname || (profile.duoSignature || '点击进入情侣空间');
+  csApplyScaleToInner(widget, inner, 152, 152);
+  renderCoupleCalendarWidgets();
+}
+function csMoodIconNode(mood, cls, title) {
+  if (!mood) return '<span class="cs-mood-empty-box ' + cls + '" title="' + csEsc(title || '') + '"></span>';
+  return '<span class="cs-mood-icon-box ' + cls + '" title="' + csEsc(title || mood.label) + '"><img class="cs-mood-icon-img" src="' + csEsc(mood.icon) + '" alt="' + csEsc(mood.label) + '"></span>';
+}
+function csGetMoodCalendarData(profile, monthOffset) {
+  var base = new Date();
+  base = new Date(base.getFullYear(), base.getMonth() + (monthOffset || 0), 1);
+  var first = new Date(base.getFullYear(), base.getMonth(), 1);
+  var offset = (first.getDay() + 6) % 7;
+  var start = new Date(base.getFullYear(), base.getMonth(), 1 - offset);
+  var days = [];
+  for (var i = 0; i < 42; i++) {
+    var cur = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+    var ymd = cur.getFullYear() + '-' + String(cur.getMonth()+1).padStart(2, '0') + '-' + String(cur.getDate()).padStart(2, '0');
+    var entry = profile.moodMap[ymd] || {};
+    days.push({
+      day: cur.getDate(),
+      ymd: ymd,
+      userMood: entry.user ? csMoodById(entry.user) : null,
+      charMood: entry.char ? csMoodById(entry.char) : null,
+      inMonth: cur.getMonth() === base.getMonth(),
+      isToday: ymd === csTodayStr()
+    });
+  }
+  return {
+    monthLabel: (base.getMonth() + 1) + '月',
+    yearLabel: base.getFullYear() + '年',
+    days: days
+  };
+}
+function csGetCurrentWeekMoodData(profile) {
+  var now = new Date();
+  var weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7));
+  var days = [];
+  var weekEnd = null;
+  for (var i = 0; i < 7; i++) {
+    var cur = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + i);
+    var ymd = cur.getFullYear() + '-' + String(cur.getMonth()+1).padStart(2, '0') + '-' + String(cur.getDate()).padStart(2, '0');
+    var entry = (profile && profile.moodMap && profile.moodMap[ymd]) || {};
+    weekEnd = cur;
+    days.push({
+      day: cur.getDate(),
+      ymd: ymd,
+      userMood: entry.user ? csMoodById(entry.user) : null,
+      charMood: entry.char ? csMoodById(entry.char) : null,
+      inMonth: true,
+      isToday: ymd === csTodayStr()
+    });
+  }
+  return {
+    monthLabel: '本周',
+    yearLabel: weekStart.getFullYear() + '年 ' + (weekStart.getMonth() + 1) + '/' + weekStart.getDate() + ' - ' + (weekEnd.getMonth() + 1) + '/' + weekEnd.getDate(),
+    days: days
+  };
+}
+function renderCoupleCalendarWidgets() {
+  var widgets = document.querySelectorAll('.photo-widget-couple-calendar');
+  if (!widgets.length) return;
+  var persona = csGetActivePersona();
+  var profile = csGetActiveProfile();
+  var cal = profile ? csGetCurrentWeekMoodData(profile) : null;
+  widgets.forEach(function(widget) {
+    var id = widget.id;
+    var inner = widget.querySelector('.pw-couple-cal-inner');
+    var monthEl = document.getElementById(id + '_month');
+    var yearEl = document.getElementById(id + '_year');
+    var gridEl = document.getElementById(id + '_grid');
+    var footEl = document.getElementById(id + '_foot');
+    if (!gridEl) return;
+    if (!profile || !persona || !cal) {
+      if (monthEl) monthEl.textContent = '本周';
+      if (yearEl) yearEl.textContent = '未绑定角色';
+      if (footEl) footEl.textContent = '绑定后同步';
+      gridEl.innerHTML = new Array(7).fill('<div class="pw-cc-day"><div class="pw-cc-daynum">·</div><div class="pw-cc-icons"><span class="pw-cc-empty"></span><span class="pw-cc-empty"></span></div></div>').join('');
+    } else {
+      if (monthEl) monthEl.textContent = cal.monthLabel;
+      if (yearEl) yearEl.textContent = cal.yearLabel;
+      if (footEl) footEl.textContent = csPersonaDisplayName(persona) + ' 本周同步';
+      gridEl.innerHTML = cal.days.map(function(day) {
+        return '<div class="pw-cc-day' + (day.inMonth ? '' : ' other') + (day.isToday ? ' today' : '') + '">'
+          + '<div class="pw-cc-daynum">' + day.day + '</div>'
+          + '<div class="pw-cc-icons">'
+          + (day.charMood ? '<span class="pw-cc-icon-box"><img class="pw-cc-icon" src="' + csEsc(day.charMood.icon) + '" alt="' + csEsc(day.charMood.label) + '"></span>' : '<span class="pw-cc-empty"></span>')
+          + (day.userMood ? '<span class="pw-cc-icon-box"><img class="pw-cc-icon" src="' + csEsc(day.userMood.icon) + '" alt="' + csEsc(day.userMood.label) + '"></span>' : '<span class="pw-cc-empty"></span>')
+          + '</div>'
+          + '</div>';
+      }).join('');
+    }
+    csApplyScaleToInner(widget, inner, 224, 224);
+  });
+}
+function renderMoodCalendar(profile) {
+  var cal = csGetMoodCalendarData(profile, csMoodMonthOffset);
+  var weekdays = ['一','二','三','四','五','六','日'];
+  var html = weekdays.map(function(day){ return '<div class="cs-mood-weekday-ref">' + day + '</div>'; }).join('');
+  cal.days.forEach(function(day) {
+    html += '<div class="cs-mood-day-ref' + (day.inMonth ? '' : ' other') + (day.isToday ? ' today' : '') + '">'
+      + (day.isToday ? '<div class="cs-mood-today-badge">今天</div>' : '')
+      + '<div class="cs-mood-daynum">' + day.day + '</div>'
+      + '<div class="cs-mood-icons-stack">'
+      + csMoodIconNode(day.charMood, 'char', '角色')
+      + csMoodIconNode(day.userMood, 'user', '用户')
+      + '</div>'
+      + '</div>';
+  });
+  return {
+    monthLabel: cal.monthLabel,
+    yearLabel: cal.yearLabel,
+    html: html
+  };
+}
+function csRenderHero(profile, persona, ann, count, userName, togetherDays) {
+  var personaDisplayName = csPersonaDisplayName(persona);
+  return ''
+    + '<section class="cs-hero' + (profile.coverImage ? ' has-cover' : '') + '">'
+    + '<div class="cs-hero-bg" style="background-image:url(\'' + csEsc(profile.coverImage) + '\')"></div>'
+    + '<div class="cs-hero-inner">'
+    + '<div class="cs-hero-top">'
+    + '<div><div class="cs-kicker">Couple Space</div><div class="cs-title">双人专属封面</div><div class="cs-subtitle">已绑定角色：' + csEsc(personaDisplayName) + '。纪念日会同步进角色记忆，聊天时也会被角色记住。</div></div>'
+    + '<div class="cs-chip"><i class="fas fa-heart"></i> 已绑定</div>'
+    + '</div>'
+    + '<div class="cs-avatars"><div class="cs-avatar">' + csGetAvatarSrc(userProfile, userName) + '</div><div class="cs-avatar-link"><i class="fas fa-link"></i></div><div class="cs-avatar">' + csGetAvatarSrc(persona, persona.name || 'T') + '</div></div>'
+    + '<div class="cs-name-line">' + csEsc(userName) + ' × ' + csEsc(personaDisplayName) + '</div>'
+    + '<div class="cs-pair-nickname">' + csEsc(profile.coupleNickname || (userName + ' × ' + personaDisplayName)) + '<br>' + csEsc(profile.duoSignature || '把重要的心情和纪念日都留在这里。') + '</div>'
+    + '<div class="cs-hero-stats">'
+    + '<div class="cs-stat"><div class="cs-stat-label">Love Day</div><div class="cs-stat-value">Day ' + togetherDays + '</div><div class="cs-stat-sub">在一起日期 · ' + csEsc(csFormatDate(profile.togetherSince)) + '</div></div>'
+    + '<div class="cs-stat"><div class="cs-stat-label">Widget Countdown</div><div class="cs-stat-value">' + csEsc(count.label) + '</div><div class="cs-stat-sub">' + csEsc((ann ? ann.name : '纪念日') + ' · ' + count.nextLabel) + '</div></div>'
+    + '</div>'
+    + '<div class="cs-actions">'
+    + '<button class="cs-btn" onclick="csUploadCover()">更换双人封面</button>'
+    + '<button class="cs-btn light" onclick="csUploadBackground()">更换情侣背景</button>'
+    + '<button class="cs-btn light" onclick="csUploadWidgetBackground()">桌件背景图</button>'
+    + '<button class="cs-btn ghost" onclick="openCoupleBindSheet()">切换绑定角色</button>'
+    + '<button class="cs-btn ghost" onclick="csUnbindPersona()">解绑</button>'
+    + '</div>'
+    + '</div>'
+    + '</section>';
+}
+function csRenderTabBar() {
+  var tabs = [
+    { id:'overview', label:'封面' },
+    { id:'anniversary', label:'纪念日' },
+    { id:'gallery', label:'相册' },
+    { id:'footprints', label:'足迹' },
+    { id:'moods', label:'情绪' }
+  ];
+  return '<div class="cs-tabbar">' + tabs.map(function(tab) {
+    return '<button class="cs-tab' + (csActiveTab === tab.id ? ' active' : '') + '" onclick="csSetTab(\'' + tab.id + '\')">' + tab.label + '</button>';
+  }).join('') + '</div>';
+}
+function csRenderOverviewTab(profile) {
+  return ''
+    + '<section class="cs-section">'
+    + '<div class="cs-section-head"><div><div class="cs-section-title">基础设定</div><div class="cs-section-desc">把双人资料、专属昵称和桌件显示内容整理在一个标签里，不再和其他模块堆在同一页。</div></div></div>'
+    + '<div class="cs-form-grid">'
+    + '<div class="cs-field"><label>专属昵称</label><input id="csCoupleNicknameInput" class="cs-input" value="' + csEsc(profile.coupleNickname || '') + '" placeholder="例如：白昼恋人"></div>'
+    + '<div class="cs-field"><label>在一起第一天</label><input id="csTogetherInput" class="cs-input" type="date" value="' + csEsc(profile.togetherSince || '') + '"></div>'
+    + '<div class="cs-field full"><label>双人签名</label><textarea id="csDuoSignatureInput" class="cs-textarea" placeholder="写下你们的双人签名...">' + csEsc(profile.duoSignature || '') + '</textarea></div>'
+    + '<div class="cs-field full"><label>桌件显示纪念日</label><select class="cs-select" onchange="csSetWidgetAnniversary(this.value)">' + profile.anniversaries.map(function(item){ return '<option value="' + csEsc(item.id) + '"' + (item.id === profile.selectedAnniversaryId ? ' selected' : '') + '>' + csEsc(item.name) + ' · ' + csEsc(csFormatDate(item.date)) + '</option>'; }).join('') + '</select></div>'
+    + '</div>'
+    + '<div class="cs-actions" style="margin-top:12px;"><button class="cs-btn" onclick="csSaveOverview()">保存基础设定</button></div>'
+    + '</section>';
+}
+function csRenderAnniversaryTab(profile, sortedAnns) {
+  return ''
+    + '<section class="cs-section">'
+    + '<div class="cs-section-head"><div><div class="cs-section-title">纪念日倒计时</div><div class="cs-section-desc">生日、在一起纪念日、告白日、情人节、见面日会自动提醒，也可以无限新增。所有纪念日都会写入该角色的记忆。</div></div></div>'
+    + '<div class="cs-anniv-list">' + sortedAnns.map(function(item) {
+      var info = csCountdownInfo(item.date);
+      return '<div class="cs-anniv-card">'
+        + '<div class="cs-anniv-top"><div class="cs-anniv-tag"><i class="fas fa-heart"></i>' + csEsc(item.auto ? '自动提醒' : '自定义') + '</div><div style="display:flex;gap:6px;"><button class="cs-mini-btn' + (item.id === profile.selectedAnniversaryId ? ' dark' : '') + '" onclick="csSetWidgetAnniversary(\'' + csEsc(item.id) + '\')">' + (item.id === profile.selectedAnniversaryId ? '桌件显示中' : '设为桌件') + '</button><button class="cs-mini-btn danger" onclick="csRemoveAnniversary(\'' + csEsc(item.id) + '\')">删除</button></div></div>'
+        + '<div class="cs-form-grid">'
+        + '<div class="cs-field"><label>名称</label><input class="cs-input" value="' + csEsc(item.name || '') + '" onchange="csUpdateAnniversaryField(\'' + csEsc(item.id) + '\',\'name\',this.value)"></div>'
+        + '<div class="cs-field"><label>日期</label><input class="cs-input" type="date" value="' + csEsc(item.date || '') + '" onchange="csUpdateAnniversaryField(\'' + csEsc(item.id) + '\',\'date\',this.value)"></div>'
+        + '</div>'
+        + '<div class="cs-pill-row" style="margin-top:10px;"><span class="cs-pill">' + csEsc(info.label) + '</span><span class="cs-pill">' + csEsc(info.nextLabel) + '</span></div>'
+        + '</div>';
+    }).join('') + '</div>'
+    + '<div class="cs-form-grid" style="margin-top:12px;">'
+    + '<div class="cs-field"><label>新增纪念日</label><input id="csNewAnnivName" class="cs-input" placeholder="例如：第一次旅行"></div>'
+    + '<div class="cs-field"><label>纪念类型</label><select id="csNewAnnivType" class="cs-select"><option value="custom">自定义</option><option value="birthday">生日</option><option value="meet">见面日</option><option value="trip">旅行日</option><option value="proposal">求婚日</option></select></div>'
+    + '<div class="cs-field full"><label>日期</label><input id="csNewAnnivDate" class="cs-input" type="date"></div>'
+    + '</div>'
+    + '<div class="cs-actions" style="margin-top:12px;"><button class="cs-btn" onclick="csAddAnniversary()">添加纪念日</button></div>'
+    + '</section>'
+    + '<section class="cs-section">'
+    + '<div class="cs-section-head"><div><div class="cs-section-title">纪念日日历</div><div class="cs-section-desc">把常驻提醒整理成单独模块，桌件与情侣空间可以共用同一份纪念日数据。</div></div></div>'
+    + '<div class="cs-calendar-grid">' + sortedAnns.map(function(item) {
+      var info = csCountdownInfo(item.date);
+      return '<div class="cs-calendar-item"><div><div class="cs-calendar-date">' + csEsc(csFormatDate(item.date).slice(5)) + '</div><div class="cs-calendar-name">' + csEsc(item.name || '纪念日') + '</div></div><div class="cs-calendar-count">' + csEsc(info.label) + ' · 下一次在 ' + info.nextLabel + '</div></div>';
+    }).join('') + '</div>'
+    + '</section>';
+}
+function csRenderGalleryTab(profile, persona) {
+  var items = csGetGalleryItems(profile);
+  var counts = csGalleryCounts(items);
+  var recent = items.slice(0, 4);
+  var personaDisplayName = csPersonaDisplayName(persona);
+  return ''
+    + '<section class="cs-section">'
+    + '<div class="cs-section-head"><div><div class="cs-section-title">相册合集</div><div class="cs-section-desc">这里会像 iOS 相簿一样整理你们的照片流。点击具体相片后，才会展开看那张照片的详细内容描述。</div></div><div class="cs-actions"><button class="cs-btn light" onclick="csGenerateAlbumIdeas()">' + (csBusy.album ? '生成中...' : 'AI生成相片') + '</button><button class="cs-btn" onclick="csPickGalleryUpload()">上传照片</button></div></div>'
+    + (items.length ? '<div class="cs-gallery-grid"><div class="cs-gallery-ios-shell">'
+      + '<div class="cs-gallery-summary-card"><div class="cs-gallery-summary-top"><div><div class="cs-gallery-summary-kicker">Recents</div><div class="cs-gallery-summary-title">最近项目</div><div class="cs-gallery-summary-sub">' + csEsc(personaDisplayName + ' 与你共同保存下来的日常、互动和纪念性瞬间。') + '</div></div><div class="cs-gallery-summary-count">' + items.length + ' 张相片</div></div>'
+      + '<div class="cs-gallery-mosaic"><div class="cs-gallery-mosaic-main">' + (recent[0] ? csRenderGalleryTile(recent[0], 'main') : '') + '</div><div class="cs-gallery-mosaic-sub">' + (recent[1] ? csRenderGalleryTile(recent[1], 'side') : '<div class="cs-gallery-photo-tile side"><div class="cs-gallery-placeholder"><div class="t1">Album</div><div class="t2">等待新的瞬间</div></div></div>') + (recent[2] ? csRenderGalleryTile(recent[2], 'side') : '<div class="cs-gallery-photo-tile side"><div class="cs-gallery-placeholder"><div class="t1">Memory</div><div class="t2">继续收藏你们的日常</div></div></div>') + '</div></div></div>'
+      + '<div class="cs-gallery-list">'
+      + '<div class="cs-gallery-row"><div class="cs-gallery-row-stack">' + csGalleryRowStack(items) + '</div><div class="cs-gallery-row-main"><div class="cs-gallery-row-title">所有照片</div><div class="cs-gallery-row-sub">双人相簿里保存的全部瞬间</div></div><div class="cs-gallery-row-count">' + counts.total + '</div></div>'
+      + '<div class="cs-gallery-row"><div class="cs-gallery-row-stack">' + csGalleryRowStack(items.filter(function(item){ return item.type === 'ai'; })) + '</div><div class="cs-gallery-row-main"><div class="cs-gallery-row-title">AI 生成</div><div class="cs-gallery-row-sub">依照当前连接 API 生成的真实照片感画面</div></div><div class="cs-gallery-row-count">' + counts.ai + '</div></div>'
+      + '<div class="cs-gallery-row"><div class="cs-gallery-row-stack">' + csGalleryRowStack(items.filter(function(item){ return item.type === 'upload'; })) + '</div><div class="cs-gallery-row-main"><div class="cs-gallery-row-title">已上传</div><div class="cs-gallery-row-sub">用户自己添加的照片与碎片记录</div></div><div class="cs-gallery-row-count">' + counts.upload + '</div></div>'
+      + '<div class="cs-gallery-row"><div class="cs-gallery-row-stack">' + csGalleryRowStack(items.filter(function(item){ return item.allowMoments; })) + '</div><div class="cs-gallery-row-main"><div class="cs-gallery-row-title">可发朋友圈</div><div class="cs-gallery-row-sub">允许角色在朋友圈引用使用的照片</div></div><div class="cs-gallery-row-count">' + counts.moments + '</div></div>'
+      + '</div>'
+      + '<div class="cs-gallery-collection"><div class="cs-gallery-collection-head"><div class="cs-gallery-collection-title">全部照片</div><div class="cs-gallery-collection-desc">点开单张相片查看详细描述</div></div><div class="cs-gallery-ios-grid">'
+      + items.map(function(item) {
+        return '<div class="cs-gallery-card" onclick="csOpenGalleryDetail(\'' + csEsc(item.id) + '\')">'
+          + csRenderGalleryTile(item, '')
+          + '<div class="cs-gallery-card-meta"><div class="cs-gallery-card-title">' + csEsc(item.title || '未命名相片') + '</div><div class="cs-gallery-card-sub">' + csEsc(item.desc || csGalleryStory(item)) + '</div></div></div>';
+      }).join('')
+      + '</div></div></div></div>'
+      : '<div class="cs-empty">还没有相册内容。可以先生成真实照片感的 AI 相片，或上传你们的合照、碎片和日常照片。</div>')
+    + '</section>';
+}
+function csRenderFootprintsTab(profile) {
+  return ''
+    + '<section class="cs-section">'
+    + '<div class="cs-section-head"><div><div class="cs-section-title">足迹打卡</div><div class="cs-section-desc">AI 足迹会使用当前 API 生成地点方案；如果接口支持生图，也会为足迹生成画面。</div></div><div class="cs-actions"><button class="cs-btn light" onclick="csGenerateFootprints()">' + (csBusy.footprints ? '生成中...' : 'AI生成足迹') + '</button></div></div>'
+    + (profile.footprints.length ? '<div class="cs-footprint-list">' + profile.footprints.map(function(item) {
+      var palette = item.palette || ['#f4f1ee', '#ddd6d2'];
+      return '<div class="cs-footprint-item"><div class="cs-footprint-cover' + (item.image ? ' has-image' : '') + '" style="' + (!item.image ? ('background:linear-gradient(145deg,' + palette[0] + ',' + palette[1] + ');') : '') + '">' + (item.image ? '<img src="' + csEsc(item.image) + '">' : '<div class="cs-gallery-placeholder"><div class="t1">' + csEsc(item.title || 'Footprint') + '</div><div class="t2">' + csEsc(item.location || '共同坐标') + '</div></div>') + '</div><div class="cs-footprint-body"><div class="cs-footprint-title">' + csEsc(item.title || '足迹') + '</div><div class="cs-footprint-desc">' + csEsc(item.desc || '') + '</div><div class="cs-footprint-meta"><span class="cs-pill">' + csEsc(item.location || '未填写地点') + '</span><span class="cs-pill">' + csEsc((item.date || '') + (item.time ? (' · ' + item.time) : '')) + '</span><button class="cs-mini-btn danger" onclick="csDeleteFootprint(\'' + csEsc(item.id) + '\')">删除</button></div></div></div>';
+    }).join('') + '</div>' : '<div class="cs-empty">还没有足迹。试试生成一组 AI 恋爱地图，或者手动记录今天的约会地点。</div>')
+    + '<div class="cs-form-grid" style="margin-top:12px;">'
+    + '<div class="cs-field"><label>地点标题</label><input id="csFootTitle" class="cs-input" placeholder="例如：第一次一起去的书店"></div>'
+    + '<div class="cs-field"><label>地点 / 城市</label><input id="csFootLoc" class="cs-input" placeholder="例如：首尔 / 弘大 / 小店名"></div>'
+    + '<div class="cs-field"><label>日期</label><input id="csFootDate" class="cs-input" type="date"></div>'
+    + '<div class="cs-field"><label>时间</label><input id="csFootTime" class="cs-input" type="time"></div>'
+    + '<div class="cs-field full"><label>描述</label><textarea id="csFootDesc" class="cs-textarea" placeholder="记录一下今天的约会细节、地点和心情..."></textarea></div>'
+    + '</div>'
+    + '<div class="cs-actions" style="margin-top:12px;"><button class="cs-btn light" onclick="csPickFootprintPhoto()">添加图片</button><button class="cs-btn" onclick="csAddManualFootprint()">保存足迹</button></div>'
+    + '<div class="cs-upload-preview" id="csFootPreview"><img src=""></div>'
+    + '</section>';
+}
+function csRenderMoodTab(profile, persona, mood, moodCalendar) {
+  return ''
+    + '<section class="cs-section">'
+    + '<div class="cs-section-head"><div><div class="cs-section-title">每日情绪</div><div class="cs-section-desc">角色情绪在上、用户情绪在下。角色只根据当天和这个角色的聊天内容自动判断。</div></div></div>'
+    + '<div class="cs-mood-ref-card">'
+    + '<div class="cs-mood-card-top"><div class="cs-mood-pet-left"><img src="' + csEsc(CS_ICON_BASE + 'cute.png') + '" alt=""></div><div class="cs-mood-title-wrap"><div class="cs-mood-title-main">' + csEsc(moodCalendar.monthLabel) + '</div><div class="cs-mood-title-sub">' + csEsc(moodCalendar.yearLabel) + '</div></div></div>'
+    + '<div class="cs-mood-nav"><button class="cs-icon-btn" onclick="csShiftMoodMonth(-1)"><i class="fas fa-chevron-left"></i></button><div class="cs-inline-note">角色在上 · 用户在下</div><button class="cs-icon-btn" onclick="csShiftMoodMonth(1)"><i class="fas fa-chevron-right"></i></button></div>'
+    + '<div class="cs-mood-grid-ref">' + moodCalendar.html + '</div>'
+    + '</div>'
+    + '<div class="cs-mood-panel"><div class="cs-inline-note">角色今日自动心情：<span class="cs-mood-inline-pill"><span class="cs-mood-icon-box"><img class="cs-mood-icon-img" src="' + csEsc(mood.icon) + '" alt="' + csEsc(mood.label) + '"></span>' + csEsc(mood.label) + '</span></div>'
+    + '<div class="cs-mood-picker-ref">' + CS_MOODS.map(function(item) {
+      var picked = profile.moodMap[csTodayStr()] && profile.moodMap[csTodayStr()].user === item.id;
+      return '<div class="cs-mood-choice' + (picked ? ' active' : '') + '" onclick="csSelectUserMood(\'' + item.id + '\')"><img src="' + csEsc(item.icon) + '" alt="' + csEsc(item.label) + '"><div class="cs-mood-option-label">' + csEsc(item.label) + '</div></div>';
+    }).join('') + '</div></div>'
+    + '</section>';
+}
+function renderCoupleSpace() {
+  renderCoupleSpaceWidget();
+  var stage = document.getElementById('coupleSpaceStage');
+  if (!stage) return;
+  var persona = csGetActivePersona();
+  var profile = csGetActiveProfile();
+  if (!persona || !profile) {
+    stage.style.backgroundImage = '';
+    stage.style.backgroundSize = '';
+    stage.style.backgroundPosition = '';
+    stage.innerHTML = ''
+      + '<section class="cs-hero"><div class="cs-hero-inner">'
+      + '<div class="cs-hero-top"><div><div class="cs-kicker">Couple Space</div><div class="cs-title">情侣空间</div><div class="cs-subtitle">绑定一个角色后，这里会生成双人专属封面、纪念日、相册、足迹和情绪日历。</div></div><div class="cs-chip"><i class="fas fa-link"></i> 未绑定</div></div>'
+      + '<div class="cs-avatars"><div class="cs-avatar">' + csGetAvatarSrc(userProfile, (userProfile && userProfile.name) || '你') + '</div><div class="cs-avatar-link"><i class="fas fa-heart"></i></div><div class="cs-avatar">TA</div></div>'
+      + '<div class="cs-actions"><button class="cs-btn" onclick="openCoupleBindSheet()">选择角色并开始</button></div>'
+      + '</div></section>'
+      + '<section class="cs-section"><div class="cs-section-title">待开启内容</div><div class="cs-section-desc">绑定之后会自动开启桌件纪念日倒计时、恋爱天数、纪念日日历、双人相册、足迹打卡，以及按当天聊天内容自动判断的角色心情日历。</div></section>';
+    csRenderGalleryDetailOverlay();
+    return;
+  }
+  profile = csEnsureProfile(persona.id);
+  if (profile.backgroundImage) {
+    stage.style.backgroundImage = 'linear-gradient(rgba(255,255,255,0.72), rgba(245,245,247,0.9)), url("' + profile.backgroundImage + '")';
+    stage.style.backgroundSize = 'cover';
+    stage.style.backgroundPosition = 'center';
+  } else {
+    stage.style.backgroundImage = '';
+    stage.style.backgroundSize = '';
+    stage.style.backgroundPosition = '';
+  }
+  var ann = csGetDisplayAnniversary(profile);
+  var count = ann ? csCountdownInfo(ann.date) : { label:'D-0', nextLabel:'未设定' };
+  var mood = csSetAutoCharMood();
+  var moodCalendar = renderMoodCalendar(profile);
+  var userName = (userProfile && userProfile.name) || '你';
+  var togetherDays = csLoveDays(profile);
+  var sortedAnns = profile.anniversaries.slice().sort(function(a, b) {
+    return (csCountdownInfo(a.date).days || 9999) - (csCountdownInfo(b.date).days || 9999);
+  });
+  if (csActiveTab !== 'gallery' && csGalleryDetailId) csGalleryDetailId = '';
+  var bodyHtml = '';
+  if (csActiveTab === 'anniversary') bodyHtml = csRenderAnniversaryTab(profile, sortedAnns);
+  else if (csActiveTab === 'gallery') bodyHtml = csRenderGalleryTab(profile, persona);
+  else if (csActiveTab === 'footprints') bodyHtml = csRenderFootprintsTab(profile);
+  else if (csActiveTab === 'moods') bodyHtml = csRenderMoodTab(profile, persona, mood, moodCalendar);
+  else bodyHtml = csRenderOverviewTab(profile);
+  stage.innerHTML = csRenderHero(profile, persona, ann, count, userName, togetherDays) + csRenderTabBar() + bodyHtml;
+  csRenderGalleryDetailOverlay();
+}
+function handleGalleryUpload(input) {
+  var profile = csGetActiveProfile();
+  if (!profile || !input || !input.files || !input.files.length) return;
+  Array.prototype.slice.call(input.files).forEach(function(file, idx) {
+    csReadFile(file, async function(dataUrl) {
+      var shortDesc = '已上传到双人共用相册。';
+      var detail = '这张照片已经保存进双人相簿，等待更完整的内容记录。';
+      var title = file.name.replace(/\.[^.]+$/, '') || '上传照片';
+      var viewpoint = '旁观镜头';
+      var shotAt = '共享相册';
+      try {
+        var aiDesc = await csDescribeImageWithChatApi(dataUrl, { preferredViewpoint: '角色视角' });
+        if (aiDesc && typeof aiDesc === 'object') {
+          if (aiDesc.title) title = aiDesc.title;
+          if (aiDesc.desc) shortDesc = aiDesc.desc;
+          if (aiDesc.detail) detail = aiDesc.detail;
+          viewpoint = csNormalizeGalleryViewpoint(aiDesc.viewpoint, '旁观镜头');
+          if (aiDesc.shotAt) shotAt = aiDesc.shotAt;
+        }
+      } catch(e) {
+        shortDesc = '当前聊天 API 没有返回短注脚，但照片已保存。';
+        detail = '当前聊天 API 没有返回详细描述，但这张照片已经保存在双人相簿里。';
+      }
+      var itemId = 'cs_gallery_upload_' + Date.now() + '_' + idx;
+      profile.gallery.unshift({
+        id: itemId,
+        type: 'upload',
+        title: title,
+        desc: shortDesc,
+        detail: detail,
+        viewpoint: viewpoint,
+        shotAt: shotAt,
+        image: dataUrl,
+        palette: ['#f3f3f4', '#d9d9dd'],
+        allowMoments: false,
+        roleViewRequestedAt: 0,
+        createdAt: Date.now()
+      });
+      csGalleryDetailId = itemId;
+      csSave();
+      renderCoupleSpace();
+    }, { maxSize: 1400, quality: 0.82 });
+  });
+  input.value = '';
+}
+function handleFootprintUpload(input) {
+  if (!input || !input.files || !input.files[0]) return;
+  csReadFile(input.files[0], function(dataUrl) {
+    csPendingFootprintImage = dataUrl;
+    var preview = document.getElementById('csFootPreview');
+    if (preview) {
+      preview.style.display = 'block';
+      var img = preview.querySelector('img');
+      if (img) img.src = dataUrl;
+    }
+  }, { maxSize: 1280, quality: 0.82 });
+  input.value = '';
+}
+window.openCoupleSpacePage = function() {
+  if (typeof window._iphIsEditMode === 'function' && window._iphIsEditMode()) return;
+  csReloadStateFromStorage();
+  renderCoupleSpace();
+  openApp('coupleSpacePage');
+};
+document.getElementById('csCoverInput').addEventListener('change', function(){ csHandleImageInput('coverImage', 'csCoverInput'); });
+document.getElementById('csBgInput').addEventListener('change', function(){ csHandleImageInput('backgroundImage', 'csBgInput'); });
+document.getElementById('csWidgetBgInput').addEventListener('change', function(){ csHandleImageInput('widgetBackground', 'csWidgetBgInput'); });
+document.getElementById('csGalleryUploadInput').addEventListener('change', function(){ handleGalleryUpload(this); });
+document.getElementById('csFootprintUploadInput').addEventListener('change', function(){ handleFootprintUpload(this); });
+window.openCoupleBindSheet = openCoupleBindSheet;
+window.closeCoupleBindSheet = closeCoupleBindSheet;
+window.csBindPersona = csBindPersona;
+window.csUnbindPersona = csUnbindPersona;
+window.csSetWidgetAnniversary = csSetWidgetAnniversary;
+window.csUpdateAnniversaryField = csUpdateAnniversaryField;
+window.csAddAnniversary = csAddAnniversary;
+window.csRemoveAnniversary = csRemoveAnniversary;
+window.csSaveOverview = csSaveOverview;
+window.csUploadCover = csUploadCover;
+window.csUploadBackground = csUploadBackground;
+window.csUploadWidgetBackground = csUploadWidgetBackground;
+window.csPickGalleryUpload = csPickGalleryUpload;
+window.csPickFootprintPhoto = csPickFootprintPhoto;
+window.csOpenGalleryDetail = csOpenGalleryDetail;
+window.csCloseGalleryDetail = csCloseGalleryDetail;
+window.csToggleGalleryMoments = csToggleGalleryMoments;
+window.csDeleteGallery = csDeleteGallery;
+window.csDeleteFootprint = csDeleteFootprint;
+window.csAddManualFootprint = csAddManualFootprint;
+window.csGenerateAlbumIdeas = csGenerateAlbumIdeas;
+window.csGenerateFootprints = csGenerateFootprints;
+window.csSelectUserMood = csSelectUserMood;
+window.csShiftMoodMonth = csShiftMoodMonth;
+window.csSetTab = csSetTab;
+window.csEnsurePlacedHomeWidget = csEnsurePlacedHomeWidget;
+window.renderCoupleCalendarWidgets = renderCoupleCalendarWidgets;
+window._monoApplyCoupleSpaceState = csApplyImportedState;
+window.renderCoupleSpace = renderCoupleSpace;
+function bootCoupleSpace() {
+  csReloadStateFromStorage();
+  if (csState.activePersonaId && !csFindPersona(csState.activePersonaId)) {
+    csState.activePersonaId = '';
+    csSave();
+  }
+  csEnsurePlacedHomeWidget('coupleSpaceWidget');
+  renderCoupleBindList();
+  renderCoupleSpace();
+  renderCoupleCalendarWidgets();
+}
+if (window.afterDB) window.afterDB(bootCoupleSpace);
+else if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootCoupleSpace);
+else bootCoupleSpace();
+window.addEventListener('beforeunload', csSave);
 })();
 </script>
 </body>

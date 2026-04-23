@@ -11,6 +11,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head>
@@ -796,6 +797,7 @@ window.onload = function() {
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=DotGothic16&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Montserrat:wght@300;500;700&family=DM+Serif+Display&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Montserrat:wght@300;500;700&display=swap');
@@ -1060,6 +1062,152 @@ body {
   background: rgba(255,255,255,0.90) !important;
   border-top: 0.5px solid #e0e0e0 !important;
 }
+/* ════════════════════════════════════
+   BUBBLE PRESET: 复古手账风 Vintage Journal
+   ════════════════════════════════════ */
+.bubble-preset-journal {
+    --yuna-base: #e6ece8;
+    --yuna-border: #7c9987;
+    --yuna-text: #48524a;
+    --do-base: #5f4b43;
+    --do-border: #d0c4b6;
+    --do-text: #fdf9ef;
+    --noise: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E");
+}
+/* 背景与字体 */
+.bubble-preset-journal #chatBox,
+.bubble-preset-journal .gc-messages {
+    background-color: transparent !important;
+}
+.bubble-preset-journal .chat-header,
+.bubble-preset-journal .gc-header {
+    background: rgba(230,236,232,0.95) !important;
+    border-bottom: 0.5px solid #7c9987 !important;
+}
+.bubble-preset-journal .input-row,
+.bubble-preset-journal #inputBar,
+.bubble-preset-journal .chat-input-area {
+    background: rgba(230,236,232,0.95) !important;
+    border-top: 0.5px solid #7c9987 !important;
+}
+/* 隐藏原始气泡，由 JS 注入新 HTML 结构 */
+.bubble-preset-journal .bubble-ai,
+.bubble-preset-journal .bubble-user {
+    background: transparent !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    border: none !important;
+    color: inherit !important;
+}
+.bubble-preset-journal .bubble-ai::before,
+.bubble-preset-journal .bubble-ai::after,
+.bubble-preset-journal .bubble-user::before,
+.bubble-preset-journal .bubble-user::after { display: none !important; }
+
+/* ── 尤娜气泡结构（AI） ── */
+.bubble-preset-journal .yuna-outer {
+    background: var(--yuna-border);
+    padding: 1.5px;
+    clip-path: polygon(8px 0, calc(100% - 8px) 0, calc(100% - 8px) 8px, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 8px calc(100% - 8px), 0 calc(100% - 8px), 0 8px, 8px 8px);
+    filter: drop-shadow(1px 2px 3px rgba(0,0,0,0.08));
+}
+.bubble-preset-journal .yuna-inner {
+    background-color: var(--yuna-base);
+    background-image: var(--noise);
+    color: var(--yuna-text); font-size: 14.5px; line-height: 1.6;
+    padding: 10px 18px; position: relative;
+    clip-path: polygon(7.5px 0, calc(100% - 7.5px) 0, calc(100% - 7.5px) 7.5px, 100% 7.5px, 100% calc(100% - 7.5px), calc(100% - 7.5px) calc(100% - 7.5px), calc(100% - 7.5px) 100%, 7.5px 100%, 7.5px calc(100% - 7.5px), 0 calc(100% - 7.5px), 0 7.5px, 7.5px 7.5px);
+}
+.bubble-preset-journal .yuna-inner::before {
+    content: ''; position: absolute; top: 3px; left: 3px; right: 3px; bottom: 3px;
+    border: 1.2px dashed var(--yuna-border);
+    clip-path: polygon(6px 0, calc(100% - 6px) 0, calc(100% - 6px) 6px, 100% 6px, 100% calc(100% - 6px), calc(100% - 6px) calc(100% - 6px), calc(100% - 6px) 100%, 6px 100%, 6px calc(100% - 6px), 0 calc(100% - 6px), 0 6px, 6px 6px);
+    pointer-events: none;
+}
+/* ── 道贤气泡结构（用户） ── */
+.bubble-preset-journal .do-outer {
+    background: var(--do-border); padding: 1.5px;
+    clip-path: polygon(8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px), 0 8px);
+    filter: drop-shadow(2px 3px 4px rgba(0,0,0,0.15));
+}
+.bubble-preset-journal .do-inner {
+    background-color: var(--do-base); background-image: var(--noise);
+    color: var(--do-text); font-size: 14.5px; line-height: 1.6;
+    padding: 10px 18px 10px 24px; position: relative;
+    clip-path: polygon(7.5px 0, calc(100% - 7.5px) 0, 100% 7.5px, 100% calc(100% - 7.5px), calc(100% - 7.5px) 100%, 7.5px 100%, 0 calc(100% - 7.5px), 0 7.5px);
+}
+.bubble-preset-journal .do-inner::before {
+    content: ''; position: absolute; inset: 4px; border: 1px solid rgba(255,255,255,0.25);
+    clip-path: polygon(6px 0, calc(100% - 6px) 0, 100% 6px, 100% calc(100% - 6px), calc(100% - 6px) 100%, 6px 100%, 0 calc(100% - 6px), 0 6px);
+    pointer-events: none;
+}
+/* 活页打孔线 */
+.bubble-preset-journal .do-holes {
+    position: absolute; top: 12px; bottom: 12px; left: 6px; width: 6px;
+    background: radial-gradient(circle at 3px 4px, var(--do-base) 2px, transparent 2px),
+                radial-gradient(circle at 3px 4px, var(--do-border) 3px, transparent 3px);
+    background-size: 100% 8px; z-index: 2; opacity: 0.9; pointer-events: none;
+}
+
+/* ── 手账贴纸层系统 ── */
+.bubble-preset-journal .j-sc {
+    position: relative; /* 贴纸定位锚点 */
+    display: inline-block; /* 包裹内容自适应宽度 */
+    max-width: 100%;
+}
+.bubble-preset-journal .j-sl {
+    position: absolute;
+    z-index: 20;
+    pointer-events: none;
+    /* 默认尺寸由 JS 动态写入 */
+}
+/* die-cut 白边模切效果 */
+.bubble-preset-journal .j-dc {
+    filter:
+        drop-shadow(1px  0px 0 #fff) drop-shadow(-1px  0px 0 #fff)
+        drop-shadow(0px  1px 0 #fff) drop-shadow( 0px -1px 0 #fff)
+        drop-shadow(1px  1px 0 #fff) drop-shadow(-1px -1px 0 #fff)
+        drop-shadow(2px 3px 4px rgba(0,0,0,0.22));
+}
+/* 纸质标签 */
+.bubble-preset-journal .j-lbl {
+    font-size: 12px; line-height: 1.2;
+    box-shadow: 2px 3px 5px rgba(0,0,0,0.15);
+    border-radius: 2px; padding: 1px 8px;
+    white-space: nowrap;
+}
+.bubble-preset-journal .j-lbl-lovely {
+    background: #e2e8e4; color: #7c9987;
+    border: 1px solid #cbd7ce; font-weight: bold;
+}
+.bubble-preset-journal .j-lbl-vibes {
+    background: #a38c78; color: #fdf9ef;
+    border: 1px solid #d0c4b6; text-align: center;
+    white-space: normal;
+}
+.bubble-preset-journal .j-lbl-special {
+    background: #a38c78; color: #fdf9ef;
+    border-radius: 10px; padding: 1px 10px;
+    border: 1px dashed #d0c4b6;
+    box-shadow: 0 0 0 1.5px #a38c78, 2px 3px 5px rgba(0,0,0,0.2);
+}
+.bubble-preset-journal .j-bookmark {
+    width: 12px; background: #5f4b43;
+    border: 1px solid #d0c4b6; border-bottom: none;
+    clip-path: polygon(0 0,100% 0,100% 100%,50% 82%,0 100%);
+    display: flex; justify-content: center; align-items: flex-start;
+    box-shadow: inset 0 0 3px rgba(0,0,0,0.4);
+}
+.bubble-preset-journal .j-bookmark::after {
+    content: '★'; color: #d0c4b6; font-size: 6px; margin-top: 10px;
+}
+/* 让气泡不裁掉外溢的贴纸 */
+.bubble-preset-journal .bubble-ai,
+.bubble-preset-journal .bubble-user,
+.bubble-preset-journal .msg-content,
+.bubble-preset-journal .msg-row { overflow: visible !important; }
+
 /* ════════════════════════════════════
    角色间聊天室样式 CC = CharChat
    ════════════════════════════════════ */
@@ -16986,6 +17134,15 @@ body:not(.ios-fullscreen) .family-widget {
               <div style="position:relative;overflow:hidden;background:linear-gradient(to bottom,#cef07a,#96cc38);color:#1e3300;border-radius:999px;border:0.5px solid #7db82a;box-shadow:inset 0 1px 0 rgba(255,255,255,0.85);padding:3px 10px;font-size:9px;max-width:72%;align-self:flex-end;"><span style="position:absolute;top:0;left:0;right:0;height:50%;background:linear-gradient(to bottom,rgba(255,255,255,0.65),rgba(255,255,255,0.06));border-radius:999px 999px 60% 60%;pointer-events:none;"></span>嗯</div>
             </div>
           </div>
+          <!-- Vintage Journal 复古手账风 -->
+          <div class="bubble-preset-option" id="bpOpt-journal" onclick="selectBubblePreset('journal')"
+            style="flex:1;min-width:80px;border:2px solid #ddd;border-radius:10px;padding:8px;cursor:pointer;text-align:center;background:#e6ece8;">
+            <div style="font-size:9px;font-weight:700;color:#48524a;letter-spacing:0.5px;margin-bottom:6px;">复古手账</div>
+            <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start;">
+              <div style="position:relative;background:#e6ece8;color:#48524a;padding:3px 8px;font-size:9px;max-width:75%;outline:1.2px solid #7c9987;outline-offset:-1.2px;clip-path:polygon(4px 0,calc(100% - 4px) 0,calc(100% - 4px) 4px,100% 4px,100% calc(100% - 4px),calc(100% - 4px) calc(100% - 4px),calc(100% - 4px) 100%,4px 100%,4px calc(100% - 4px),0 calc(100% - 4px),0 4px,4px 4px);">你好</div>
+              <div style="position:relative;background:#5f4b43;color:#fdf9ef;padding:3px 8px;font-size:9px;max-width:75%;align-self:flex-end;outline:1.2px solid #d0c4b6;outline-offset:-1.2px;clip-path:polygon(4px 0,calc(100% - 4px) 0,100% 4px,100% calc(100% - 4px),calc(100% - 4px) 100%,4px 100%,0 calc(100% - 4px),0 4px);">嗯</div>
+            </div>
+          </div>
         </div>
         <p style="font-size:9px;color:#aaa;margin-top:6px;">选择预设后，自定义 CSS 仍可叠加生效。</p>
         <input type="hidden" id="pBubblePreset" value="none">
@@ -20497,6 +20654,153 @@ function renderMessages(opts) {
     const _aiStyleAttr    = (_fontColorStyle || _aiExtraStyle)
       ? ` style="${p.bubbleAiFontColor ? 'color:' + p.bubbleAiFontColor + ';' : ''}${!isUser ? (p.bubbleAiCss||'') : ''}"`
       : '';
+    // ── 复古手账风 preset：替换为双层嵌套气泡结构 + 贴纸轮流系统 ──
+    const _isJournalPreset = (p.bubblePreset === 'journal');
+    if (_isJournalPreset) {
+
+      /*
+       * 贴纸设计原则：
+       *  1. 轮流：用 idx % 贴纸数量 依次选取，不随机
+       *  2. 位置固定：每种贴纸固定贴在气泡外边角，不遮挡文字
+       *  3. 大小自适应：渲染后测量气泡尺寸，动态调整贴纸大小
+       *  4. 用户贴纸 ≠ AI贴纸，分开轮流
+       *
+       * 贴纸"相对位置"说明：
+       *  - 贴纸父容器 .j-sc 包裹气泡外层 (.yuna-outer / .do-outer)
+       *  - 贴纸用 position:absolute，坐标相对于 .j-sc
+       *  - 气泡内文字有 padding 保护，贴纸只贴在气泡"外缘或角落"
+       *  - 大尺寸贴纸(die-cut图形)放在气泡角落外侧(负坐标)，不遮文字
+       *  - 小贴纸(星星/菱形)放在气泡内右下角，只占 padding 区域
+       */
+
+      // ── AI（尤娜）贴纸序列，青灰色系，轮流 ──
+      // 每项: { html(size)=>string, pos: {fixed CSS props...} }
+      // size 由渲染后动态传入 (单位px)
+      const _AI_STICKERS = [
+        // 0: 灰星星 — 左上角外侧，小巧
+        { pos: 'top:-10px;left:-13px;',
+          html: sz => `<svg class="j-sl" style="top:-10px;left:-13px;width:${sz}px;height:${sz}px;fill:#a5c0b1;filter:drop-shadow(1px 1px 1px rgba(0,0,0,0.12));" viewBox="0 0 24 24"><path d="M12 2l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/></svg>` },
+        // 1: lovely 纸标签 — 左下角外侧，旋转-4°
+        { pos: 'bottom:-14px;left:10px;',
+          html: sz => `<div class="j-sl j-lbl j-lbl-lovely" style="bottom:-14px;left:10px;transform:rotate(-4deg);font-size:${Math.max(9,sz*0.55)}px;padding:1px ${Math.max(5,sz*0.35)}px;">lovely</div>` },
+        // 2: 白边爱心(die-cut) — 左下角外侧
+        { pos: 'bottom:-13px;left:-14px;',
+          html: sz => `<div class="j-sl j-dc" style="bottom:-13px;left:-14px;width:${sz}px;height:${sz}px;"><svg viewBox="0 0 24 24" fill="#a5c0b1"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></div>` },
+        // 3: 蝴蝶结(die-cut) — 右上角外侧，旋转15°
+        { pos: 'top:-15px;right:4px;',
+          html: sz => `<div class="j-sl j-dc" style="top:-15px;right:4px;width:${sz}px;height:${sz}px;transform:rotate(15deg);"><svg viewBox="0 0 100 100"><path d="M50 50C0 10 0 60 50 50Z" fill="#cbdad6" stroke="#7c9987" stroke-width="3" stroke-linejoin="round"/><path d="M50 50C100 10 100 60 50 50Z" fill="#cbdad6" stroke="#7c9987" stroke-width="3" stroke-linejoin="round"/><path d="M50 50L30 85Q40 95 45 85Z" fill="#e6ece8" stroke="#7c9987" stroke-width="3" stroke-linejoin="round"/><path d="M50 50L70 85Q60 95 55 85Z" fill="#e6ece8" stroke="#7c9987" stroke-width="3" stroke-linejoin="round"/><rect x="42" y="38" width="16" height="24" rx="4" fill="#7c9987"/></svg></div>` },
+        // 4: 线框空心爱心(die-cut) — 右下角外侧
+        { pos: 'bottom:-13px;right:-9px;',
+          html: sz => `<div class="j-sl j-dc" style="bottom:-13px;right:-9px;width:${sz}px;height:${sz}px;"><svg viewBox="0 0 24 24" fill="none" stroke="#7c9987" stroke-width="2.5" stroke-linejoin="round"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></div>` },
+      ];
+
+      // ── 用户（道贤）贴纸序列，咖啡暖色系，轮流 ──
+      const _USER_STICKERS = [
+        // 0: 书签 — 右上角外突出
+        { pos: 'top:-8px;right:18px;',
+          html: sz => `<div class="j-sl j-bookmark" style="top:-9px;right:18px;width:12px;height:${Math.round(sz*1.1)}px;"></div>` },
+        // 1: 棕色五角星 — 右下角外侧，旋转15°
+        { pos: 'bottom:3px;right:-16px;',
+          html: sz => `<div class="j-sl" style="bottom:3px;right:-16px;width:${sz}px;height:${sz}px;transform:rotate(15deg);filter:drop-shadow(2px 3px 3px rgba(0,0,0,0.3));"><svg viewBox="0 0 100 100"><polygon points="50,5 61,35 98,35 68,57 79,91 50,70 21,91 32,57 2,35 39,35" fill="#5f4b43" stroke="#d0c4b6" stroke-width="4" stroke-linejoin="round"/></svg></div>` },
+        // 2: good vibes 标签 — 右下角外侧，旋转8°
+        { pos: 'bottom:-16px;right:-16px;',
+          html: sz => `<div class="j-sl j-lbl j-lbl-vibes" style="bottom:-16px;right:-16px;transform:rotate(8deg);font-size:${Math.max(9,sz*0.48)}px;padding:1px ${Math.max(5,sz*0.3)}px;">good<br>vibes</div>` },
+        // 3: special 胶囊标签 — 右下角外侧，旋转-6°
+        { pos: 'bottom:-10px;right:-13px;',
+          html: sz => `<div class="j-sl j-lbl j-lbl-special" style="bottom:-10px;right:-13px;transform:rotate(-6deg);font-size:${Math.max(9,sz*0.5)}px;">special</div>` },
+        // 4: 小熊(die-cut) — 右下角外侧，旋转12°（体积最大，比例最大）
+        { pos: 'bottom:-22px;right:-13px;',
+          html: sz => `<div class="j-sl j-dc" style="bottom:-22px;right:-13px;width:${sz}px;height:${sz}px;transform:rotate(12deg);"><svg viewBox="0 0 100 100"><defs><filter id="jbf"><feTurbulence type="fractalNoise" baseFrequency="0.5" numOctaves="2" result="noise"/><feComposite operator="in" in="noise" in2="SourceGraphic" result="c"/><feBlend mode="multiply" in="c" in2="SourceGraphic"/></filter></defs><g filter="url(#jbf)"><circle cx="20" cy="25" r="16" fill="#a38c78"/><circle cx="80" cy="25" r="16" fill="#a38c78"/><circle cx="20" cy="25" r="8" fill="#d0c4b6"/><circle cx="80" cy="25" r="8" fill="#d0c4b6"/><circle cx="50" cy="50" r="38" fill="#a38c78"/><circle cx="50" cy="65" r="18" fill="#d0c4b6"/></g><circle cx="32" cy="42" r="4.5" fill="#222"/><circle cx="68" cy="42" r="4.5" fill="#222"/><circle cx="50" cy="56" r="5" fill="#3b2b20"/><path d="M50 61L50 72M43 70Q50 78 57 70" stroke="#3b2b20" stroke-width="2.5" stroke-linecap="round" fill="none"/><circle cx="30" cy="40" r="1.5" fill="#fff"/><circle cx="66" cy="40" r="1.5" fill="#fff"/></svg></div>` },
+      ];
+
+      /*
+       * 白星星装饰（只加在用户气泡内右侧，走单独轮次，不影响主贴纸序列）
+       * 参考文件里部分用户气泡有1~2个小星星叠在气泡内右侧padding区
+       * 这里用独立计数器：idx % 3 === 0 加一个，=== 1 加两个，其余不加
+       */
+      function _miniStars(bubbleIdx) {
+        const mod = bubbleIdx % 3;
+        if (mod === 0) {
+          return `<svg class="j-sl" style="top:10px;right:13px;width:10px;fill:#fff;filter:drop-shadow(1px 1px 1px rgba(0,0,0,0.28));" viewBox="0 0 24 24"><path d="M12 2l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/></svg>`;
+        } else if (mod === 1) {
+          return `<svg class="j-sl" style="top:10px;right:14px;width:10px;fill:#fff;filter:drop-shadow(1px 1px 1px rgba(0,0,0,0.28));" viewBox="0 0 24 24"><path d="M12 2l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/></svg>`
+               + `<svg class="j-sl" style="bottom:14px;right:24px;width:8px;fill:#fff;filter:drop-shadow(1px 1px 1px rgba(0,0,0,0.28));" viewBox="0 0 24 24"><path d="M12 2l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/></svg>`;
+        }
+        return '';
+      }
+
+      /*
+       * 渲染后动态调整贴纸大小的函数
+       * 思路：测量 .j-sc 容器的宽高 → 取短边 → 限制贴纸最大为短边的 28%
+       * 目标尺寸写入贴纸元素的 width/height style
+       */
+      function _scheduleJournalStickerResize() {
+        // 用 requestAnimationFrame 等待 DOM 渲染完成后再测量
+        requestAnimationFrame(function() {
+          document.querySelectorAll('.j-sc[data-jsz]').forEach(function(wrap) {
+            const targetSz = parseInt(wrap.dataset.jsz, 10);
+            const w = wrap.offsetWidth;
+            const h = wrap.offsetHeight;
+            if (!w || !h) return;
+            const shortSide = Math.min(w, h);
+            // 计算合适尺寸：基准为短边28%，但不超过targetSz，不小于16px
+            const sz = Math.max(16, Math.min(targetSz, Math.round(shortSide * 0.28)));
+            // 将最终尺寸写入所有带 data-jresize 属性的子元素
+            wrap.querySelectorAll('[data-jresize]').forEach(function(el) {
+              const base = parseInt(el.dataset.jresize, 10) || sz;
+              // 等比缩放：实际尺寸 = 原始目标 * (sz / targetSz)
+              const final = Math.max(14, Math.round(base * sz / targetSz));
+              if (el.tagName === 'svg' || el.dataset.jrsz) {
+                el.style.width = final + 'px';
+                el.style.height = final + 'px';
+              } else {
+                // 标签类：调字号
+                const fs = Math.max(9, Math.round(final * 0.48));
+                el.style.fontSize = fs + 'px';
+              }
+            });
+          });
+        });
+      }
+
+      // 生成贴纸HTML：传入轮次idx和基准尺寸
+      function _getAiStickerHtml(bubbleIdx, baseSz) {
+        const def = _AI_STICKERS[bubbleIdx % _AI_STICKERS.length];
+        return def.html(baseSz);
+      }
+      function _getUserStickerHtml(bubbleIdx, baseSz) {
+        const def = _USER_STICKERS[bubbleIdx % _USER_STICKERS.length];
+        return def.html(baseSz);
+      }
+
+      // 基准尺寸
+      const _BASE_SZ = 26;
+
+      if (isUser) {
+        const _sHtml = _getUserStickerHtml(idx, _BASE_SZ) + _miniStars(idx);
+        const doInnerHtml = `<div class="j-sc" data-jsz="${_BASE_SZ}">${_sHtml}<div class="do-outer"><div class="do-inner" style="padding-right:34px;"><div class="do-holes"></div>${combinedQuoteHtml}${displayContent}${_translationHtml}</div></div></div>`;
+        return `<div class="msg-row user ${isSelected?'selected':''}" data-idx="${idx}">
+          <div class="msg-content">
+            <div class="bubble bubble-user"${_tAttrs}>${doInnerHtml}</div>
+            ${_msgMetaHtml}
+          </div>
+          <div class="msg-meta"><img src="${avatarSrc}" class="msg-avatar"><span class="msg-name">${authorName.substring(0,4)}</span></div>
+        </div>`;
+      } else {
+        const _sHtml = _getAiStickerHtml(idx, _BASE_SZ);
+        const yunaInnerHtml = `<div class="j-sc" data-jsz="${_BASE_SZ}">${_sHtml}<div class="yuna-outer"><div class="yuna-inner">${combinedQuoteHtml}${displayContent}${_translationHtml}</div></div></div>`;
+        const journalBubbleStr = blockedIndicator
+          ? `<div class="bubble-blocked-wrap"><div class="bubble bubble-ai"${_tAttrs}>${yunaInnerHtml}</div>${blockedIndicator}</div>`
+          : `<div class="bubble bubble-ai"${_tAttrs}>${yunaInnerHtml}</div>`;
+        return `<div class="msg-row ai ${isSelected?'selected':''}" data-idx="${idx}">
+          <div class="msg-meta"><img src="${avatarSrc}" class="msg-avatar"><span class="msg-name">${authorName.substring(0,4)}</span></div>
+          <div class="msg-content">
+            ${journalBubbleStr}
+            ${_msgMetaHtml}
+          </div>
+        </div>`;
+      }
+    }
     if (isUser) {
       return `<div class="msg-row user ${isSelected?'selected':''}" data-idx="${idx}">
         <div class="msg-content">
@@ -20521,6 +20825,68 @@ function renderMessages(opts) {
     }
   }).join('');
   box.innerHTML = html;
+  // 手账贴纸：渲染后碰撞检测，缩小直到不遮挡文字和时间戳
+  (function _journalStickerResize() {
+    requestAnimationFrame(function() {
+      box.querySelectorAll('.j-sc[data-jsz]').forEach(function(wrap) {
+        var stickers = Array.from(wrap.querySelectorAll('.j-sl'));
+        if (!stickers.length) return;
+
+        // 找时间戳（紧跟在 .bubble/.bubble-user 后面的 .msg-time-read，
+        // 或者 .j-sc 的下一个兄弟节点里的 .msg-time-read）
+        var msgContent = wrap.closest('.msg-content');
+        var timeEl = msgContent ? msgContent.querySelector('.msg-time-read') : null;
+
+        // 找气泡内层文字容器（.yuna-inner 或 .do-inner）
+        var innerEl = wrap.querySelector('.yuna-inner, .do-inner');
+
+        function rectsOverlap(a, b) {
+          return !(a.right  <= b.left  ||
+                   a.left   >= b.right ||
+                   a.bottom <= b.top   ||
+                   a.top    >= b.bottom);
+        }
+
+        stickers.forEach(function(sl) {
+          // 不断缩小，直到与 innerEl 文字区 和 timeEl 时间戳都不重叠
+          // 最多缩到 10px，避免无限循环
+          for (var iter = 0; iter < 20; iter++) {
+            var sr = sl.getBoundingClientRect();
+            var overlap = false;
+
+            if (innerEl) {
+              var ir = innerEl.getBoundingClientRect();
+              if (rectsOverlap(sr, ir)) overlap = true;
+            }
+            if (!overlap && timeEl) {
+              var tr = timeEl.getBoundingClientRect();
+              if (rectsOverlap(sr, tr)) overlap = true;
+            }
+            if (!overlap) break;
+
+            // 缩小：SVG/div 图形缩 width/height，文字标签缩 fontSize
+            var isLbl  = sl.classList.contains('j-lbl');
+            var isBkmk = sl.classList.contains('j-bookmark');
+            if (isLbl) {
+              var fs = parseFloat(getComputedStyle(sl).fontSize) || 10;
+              if (fs <= 8) break;
+              sl.style.fontSize = Math.max(8, fs - 1) + 'px';
+            } else if (isBkmk) {
+              var h = parseFloat(sl.style.height) || 20;
+              if (h <= 10) break;
+              sl.style.height = Math.max(10, h - 2) + 'px';
+            } else {
+              var w = parseFloat(sl.style.width)  || 16;
+              var hh = parseFloat(sl.style.height) || 16;
+              if (w <= 10) break;
+              sl.style.width  = Math.max(10, w  - 2) + 'px';
+              sl.style.height = Math.max(10, hh - 2) + 'px';
+            }
+          }
+        });
+      });
+    });
+  })();
   if (opts.preserveScrollPosition) {
     box.scrollTop = Math.max(0, box.scrollHeight - (opts.oldScrollHeight || 0) + (opts.oldScrollTop || 0));
   } else {
@@ -27421,7 +27787,7 @@ function resetGcRoomCss() {
 // ══════════════════════════════════════════
 // BUBBLE PRESET SYSTEM
 // ══════════════════════════════════════════
-var _BUBBLE_PRESET_CLASSES = ['bubble-preset-wechat', 'bubble-preset-imessage', 'bubble-preset-retro'];
+var _BUBBLE_PRESET_CLASSES = ['bubble-preset-wechat', 'bubble-preset-imessage', 'bubble-preset-retro', 'bubble-preset-journal'];
 function applyBubblePresetClass(preset) {
   var targets = [document.getElementById('chatPage'), document.getElementById('groupChatPage')].filter(Boolean);
   targets.forEach(function(el) {

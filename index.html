@@ -7919,6 +7919,13 @@ body.chat-page-active .menu-btn .menu-btn-label {
   font-size: 9.5px;
   line-height: 1;
 }
+#editorModal {
+  z-index: 220;
+}
+body.editor-modal-open .menu-btn,
+body.editor-modal-open #chatPage .app-back-bar {
+  display: none !important;
+}
 /* Override page positioning when in app mode (no bottom nav) */
 .page {
   position: absolute;
@@ -22104,9 +22111,15 @@ function openEditor(isEdit=false) {
     }
     document.getElementById('delBtn').classList.remove('hidden');
   }
+  try { document.body.classList.add('editor-modal-open'); } catch(e) {}
+  var _drawer = document.getElementById('contactsDrawer');
+  if (_drawer) _drawer.classList.remove('open');
   document.getElementById('editorModal').classList.remove('hidden');
 }
-function closeEditor() { document.getElementById('editorModal').classList.add('hidden'); }
+function closeEditor() {
+  try { document.body.classList.remove('editor-modal-open'); } catch(e) {}
+  document.getElementById('editorModal').classList.add('hidden');
+}
 function savePersona() {
   const name = document.getElementById('pName').value.trim();
   let avatar = document.getElementById('editAvatarPre').src;

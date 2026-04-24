@@ -15,6 +15,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head>
@@ -2968,7 +2969,13 @@ body {
 .gender-options { display: flex; gap: 10px; margin-bottom: 15px; }
 .gender-btn { flex: 1; padding: 10px; border: 1px solid #1a1a1a; border-radius: 4px; background: #fff; font-family: inherit; font-size: calc(13px * var(--fs, 1)); cursor: pointer; text-align: center; transition: all 0.2s; }
 .gender-btn.selected { background: #1a1a1a; color: #fff; }
-#chatPage { padding: 0; display: none; flex-direction: column; }
+#chatPage {
+  padding: 0;
+  display: none;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
 #chatPage.active { display: flex; }
 .chat-header { height: 64px; border-bottom: 1px solid #1a1a1a; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; flex-shrink: 0; margin-top: 8px; }
 @keyframes hvMarquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
@@ -2981,7 +2988,123 @@ body {
 #headHeartVoiceInner .hv-emotion-badge { background:#111; color:#fff; font-size:8.5px; font-weight:600; letter-spacing:0.5px; padding:1.5px 6px; border-radius:2px; }
 #headHeartVoiceInner .hv-heart { font-size:8px; color:#555; }
 #headHeartVoiceInner .hv-thought { font-size:9px; color:#555; font-style:normal; letter-spacing:0.1px; }
-.chat-messages { flex: 1; overflow-y: auto; padding: 16px; }
+.heart-voice-notif-layer {
+  position: fixed;
+  top: 118px;
+  right: 12px;
+  width: min(320px, calc(100% - 84px));
+  max-height: 46vh;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  z-index: 35;
+  pointer-events: auto;
+  overflow: visible;
+}
+.heart-voice-notif {
+  width: 100%;
+  position: relative;
+  border-radius: 22px;
+  padding: 10px 12px 11px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.84) 0%, rgba(243,244,249,0.78) 100%);
+  border: 1px solid rgba(255,255,255,0.82);
+  box-shadow:
+    0 14px 30px rgba(22,27,45,0.18),
+    0 2px 8px rgba(22,27,45,0.08),
+    inset 0 1px 0 rgba(255,255,255,0.75);
+  backdrop-filter: blur(18px) saturate(1.15);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  color: #111827;
+  transform-origin: top right;
+  animation: heartVoiceNotifIn 0.42s cubic-bezier(.2,.85,.2,1);
+  transition: margin-top 0.28s ease, transform 0.28s ease, box-shadow 0.28s ease;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.heart-voice-notif + .heart-voice-notif {
+  margin-top: 8px;
+}
+.heart-voice-notif-layer.collapsed .heart-voice-notif + .heart-voice-notif {
+  margin-top: -56px;
+}
+.heart-voice-notif-layer.collapsed .heart-voice-notif {
+  box-shadow:
+    0 10px 24px rgba(22,27,45,0.16),
+    0 1px 6px rgba(22,27,45,0.07),
+    inset 0 1px 0 rgba(255,255,255,0.72);
+}
+.heart-voice-notif-layer.collapsed .heart-voice-notif:hover {
+  transform: translateY(-2px);
+}
+.heart-voice-notif.closing {
+  animation: heartVoiceNotifOut 0.24s ease forwards;
+}
+.heart-voice-notif-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.heart-voice-notif-app {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.heart-voice-notif-app img {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+}
+.heart-voice-notif-app span {
+  font-size: calc(10px * var(--fs,1));
+  font-weight: 700;
+  color: rgba(17,24,39,0.74);
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.heart-voice-notif-time {
+  font-size: calc(10px * var(--fs,1));
+  color: rgba(17,24,39,0.42);
+  flex-shrink: 0;
+}
+.heart-voice-notif-title {
+  font-size: calc(11px * var(--fs,1));
+  font-weight: 800;
+  color: #111827;
+  letter-spacing: 0.1px;
+  margin-bottom: 4px;
+}
+.heart-voice-notif-body {
+  font-size: calc(12px * var(--fs,1));
+  line-height: 1.46;
+  color: rgba(17,24,39,0.86);
+  word-break: break-word;
+}
+.heart-voice-notif-body.reading { color: rgba(31,41,55,0.82); }
+.heart-voice-notif-body.replying { color: rgba(17,24,39,0.9); }
+@keyframes heartVoiceNotifIn {
+  0% { opacity: 0; transform: translate3d(0,-18px,0) scale(0.94); }
+  100% { opacity: 1; transform: translate3d(0,0,0) scale(1); }
+}
+@keyframes heartVoiceNotifOut {
+  0% { opacity: 1; transform: translate3d(0,0,0) scale(1); }
+  100% { opacity: 0; transform: translate3d(0,-10px,0) scale(0.96); }
+}
+.chat-messages { flex: 1; min-height: 0; overflow-y: auto; padding: 16px; }
+#typingArea,
+#quotePreview,
+#multiDeleteBar,
+.chat-footer {
+  flex-shrink: 0;
+}
 .chat-footer { padding: 12px 16px; border-top: 1px solid #1a1a1a; flex-shrink: 0; overflow: visible; position: relative; }
 .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #999; text-align: center; padding: 20px; }
 .empty-state i { font-size: calc(48px * var(--fs, 1)); margin-bottom: 16px; opacity: 0.3; }
@@ -3462,6 +3585,12 @@ body.ios-fullscreen .page { top: env(safe-area-inset-top, 44px); bottom: calc(60
 body.ios-fullscreen .phone-nav { bottom: env(safe-area-inset-bottom, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); height: calc(60px + env(safe-area-inset-bottom, 0px)); }
 body.ios-fullscreen .chat-header { margin-top: 0; }
 body.ios-fullscreen .contacts-drawer { top: env(safe-area-inset-top, 44px); height: calc(100% - env(safe-area-inset-top, 44px) - 60px - env(safe-area-inset-bottom, 0px)); }
+body.ios-fullscreen #chatPage.page {
+  bottom: 0;
+}
+body.ios-fullscreen #chatPage .chat-footer {
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+}
 body.ios-fullscreen .menu-btn { top: calc(env(safe-area-inset-top, 44px) + 10px); }
 .spy-btn { display: flex; align-items: center; gap: 4px; font-size: calc(9px * var(--fs, 1)); font-weight: 700; border: 1px solid #1a1a1a; padding: 5px 8px; border-radius: 20px; cursor: pointer; background: #fff; transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
 .spy-btn:hover { background: #1a1a1a; color: #fff; }
@@ -7761,7 +7890,7 @@ body:not(.ios-fullscreen) .family-widget {
   display: none;
   padding: 0;
 }
-.page.active { display: flex; flex-direction: column; }
+.page.active { display: flex; flex-direction: column; min-height: 0; }
 /* App open animation */
 @keyframes appOpen {
   from { opacity: 0; transform: scale(0.92); }
@@ -7771,7 +7900,11 @@ body:not(.ios-fullscreen) .family-widget {
   animation: appOpen 0.2s ease;
 }
 /* ===== Override pages to be full height without bottom nav ===== */
-#chatPage { padding: 0; }
+#chatPage {
+  padding: 0;
+  min-height: 0;
+  overflow: hidden;
+}
 #chatPage.active { display: flex; flex-direction: column; }
 #momentsPage.active { display: flex; flex-direction: column; }
 #diaryPage.active { display: flex; flex-direction: column; }
@@ -17529,7 +17662,7 @@ body:not(.ios-fullscreen) .family-widget {
       <div id="lastHeartVoicePreview" style="background:#fff0f5;border:1px solid #fcc;border-radius:8px;padding:10px;font-size:11px;color:#c0567a;display:none;"></div>
       <div style="margin-top:10px;display:flex;align-items:center;gap:8px;">
         <input type="checkbox" id="pShowHeartVoiceInHeader" style="width:16px;height:16px;accent-color:#e91e63;">
-        <label for="pShowHeartVoiceInHeader" style="font-size:11px;color:#555;cursor:pointer;">在聊天室顯示內心狀態心聲（顯示於角色名字下方）</label>
+        <label for="pShowHeartVoiceInHeader" style="font-size:11px;color:#555;cursor:pointer;">允许聊天室弹出角色心声通知（iOS 锁屏通知样式）</label>
       </div>
       <button type="button" onclick="clearLastHeartVoice()" style="margin-top:8px;font-size:10px;color:#999;background:none;border:1px solid #ddd;border-radius:6px;padding:4px 10px;cursor:pointer;">清除本次心声记录（重置情绪）</button>
     </div>
@@ -17817,8 +17950,13 @@ const BUILTIN_WB = `
 // ═══════════════════════════════════════════════════════════════
 const HEART_VOICE_INSTRUCTION = `
 [！！！绝对核心规则：心声！！！]
-在你的所有回复的【最后部分】，你必须另起一行，使用 \`[heart_voice]...[/heart_voice]\` 标签生成角色的实时内心状态。严格按照【单行JSON格式】书写，JSON对象内部【绝不能包含任何换行符】。格式：{"emotion":"(当前情绪)","thoughts":"(内心独白，30字内)","heartRate":"(心率如 90 bpm)","jealousy":"(醋意指数，无则留空)"}
-示例：[heart_voice]{"emotion":"期待","thoughts":"不知道TA今天心情好不好，有点紧张","heartRate":"105 bpm","jealousy":""}[/heart_voice]
+在你的所有回复的【最后部分】，你必须另起一行，使用 \`[heart_voice]...[/heart_voice]\` 标签生成角色的实时内心状态。严格按照【单行JSON格式】书写，JSON对象内部【绝不能包含任何换行符】。格式：{"emotion":"(当前情绪)","thoughts":"(内心独白，30字内)","heartRate":"(心率如 90 bpm)","jealousy":"(醋意指数，无则留空)","notificationLines":["(第一人称碎句心声1)","(第一人称碎句心声2)"]}
+其中 \`notificationLines\` 用来生成聊天室上方的心声弹窗，必须满足：
+1. 必须是角色第一人称的真实想法；
+2. 1 到 4 句即可，每句都像聊天碎句；
+3. 不要复述用户整句原话，不要写解释，不要加引号、编号或标签；
+4. 要基于角色刚刚回复完用户后的余波情绪来写。
+示例：[heart_voice]{"emotion":"期待","thoughts":"不知道TA今天心情好不好，有点紧张","heartRate":"105 bpm","jealousy":"","notificationLines":["我刚刚是不是太明显了","还是有点想继续黏着TA"]}[/heart_voice]
 这个标签会被系统自动隐藏，只为保持情感连贯性使用，不会显示给用户。`;
 // ═══════════════════════════════════════════════════════════════
 // 记忆核心 UI 管理函数
@@ -17922,6 +18060,7 @@ function clearLastHeartVoice() {
   saveData();
   const hvPreview = document.getElementById('lastHeartVoicePreview');
   if (hvPreview) hvPreview.style.display = 'none';
+  _clearHeartVoicePopup();
   updateHeadHeartVoice(p);
 }
 async function manualGenerateSummary() {
@@ -20023,10 +20162,14 @@ function selectPersona(id) {
       if (!Array.isArray(p.history)) p.history = [];
     } catch(e) { p.history = []; }
   }
+  if (p.lastHeartVoice) {
+    p.lastHeartVoice = _normalizeHeartVoicePayload(p.lastHeartVoice);
+  }
   try { _hydrateOfflineMemoriesIntoPersona(p.id, true); } catch(e) { console.warn('[chat] hydrate offline memories failed:', e); }
   document.getElementById('headName').innerText = p.name;
   document.getElementById('headAvatar').src = p.avatar;
   document.getElementById('headAvatar').classList.remove('hidden');
+  _clearHeartVoicePopup();
   updateHeadHeartVoice(p);
   var spyPanelBtn = document.getElementById('spyPanelBtn');
   var blockPanelBtn = document.getElementById('blockPanelBtn');
@@ -20066,41 +20209,233 @@ function updateHeadHeartVoice(p) {
   var el = document.getElementById('headHeartVoice');
   var inner = document.getElementById('headHeartVoiceInner');
   if (!el || !inner) return;
-  if (p && p.showHeartVoiceInHeader && p.lastHeartVoice) {
-    var hv = p.lastHeartVoice;
-    var seg = '';
-    if (hv.emotion) {
-      seg += '<span class="hv-emotion-badge">' + _hvEsc(hv.emotion) + '</span>';
-    }
-    if (hv.heartRate) {
-      var bpmNum = hv.heartRate.toString().replace(/[^0-9]/g,'');
-      if (seg) seg += '<span class="hv-dot">—</span>';
-      seg += '<span class="hv-tag">心率 </span><span class="hv-val">' + _hvEsc(bpmNum) + '</span>';
-    }
-    if (hv.jealousy && hv.jealousy.trim()) {
-      if (seg) seg += '<span class="hv-dot">—</span>';
-      seg += '<span class="hv-tag">醋意 </span><span class="hv-val">' + _hvEsc(hv.jealousy) + '</span>';
-    }
-    if (hv.thoughts) {
-      if (seg) seg += '<span class="hv-dot">·</span>';
-      seg += '<span class="hv-thought">' + _hvEsc(hv.thoughts) + '</span>';
-    }
-    if (!seg) { el.style.display = 'none'; return; }
-    var html = '<span class="hv-segment">' + seg + '</span><span class="hv-segment">' + seg + '</span>';
-    inner.innerHTML = html;
-    inner.style.animation = 'none';
-    inner.offsetHeight;
-    var segWidth = inner.querySelector('.hv-segment').scrollWidth;
-    var duration = Math.max(16, segWidth / 16);
-    inner.style.animation = 'hvMarquee ' + duration + 's linear infinite';
-    el.style.display = 'block';
-  } else {
-    inner.innerHTML = '';
-    el.style.display = 'none';
+  inner.innerHTML = '';
+  el.style.display = 'none';
+  if (!p || !p.showHeartVoiceInHeader || String(currentId || '') !== String(p.id || '')) {
+    _clearHeartVoicePopup();
   }
 }
 function _hvEsc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+var _heartVoicePopupSeq = 0;
+var _heartVoicePopupTimers = {};
+var _heartVoiceReadReqSeq = {};
+function _setHeartVoiceNotifLayerExpanded(expanded) {
+  var layer = _getHeartVoiceNotifLayer();
+  if (!layer) return;
+  layer.classList.toggle('expanded', !!expanded);
+  layer.classList.toggle('collapsed', !expanded);
+  layer.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+}
+function _getHeartVoiceNotifLayer() {
+  var existing = document.getElementById('heartVoiceNotifLayer');
+  if (existing) return existing;
+  var layer = document.createElement('div');
+  layer.id = 'heartVoiceNotifLayer';
+  layer.className = 'heart-voice-notif-layer collapsed';
+  layer.setAttribute('aria-live', 'polite');
+  layer.setAttribute('aria-atomic', 'false');
+  layer.setAttribute('aria-expanded', 'false');
+  layer.title = '点击展开或重叠角色心声';
+  layer.addEventListener('click', function() {
+    if (layer.children.length <= 1) return;
+    _setHeartVoiceNotifLayerExpanded(layer.classList.contains('collapsed'));
+  });
+  document.body.appendChild(layer);
+  return layer;
+}
+function _splitHeartVoicePopupText(text, limit) {
+  var max = Math.max(1, Math.min(12, limit || 12));
+  var raw = String(text || '').replace(/\r/g, '\n').replace(/###/g, '\n');
+  if (!raw.trim()) return [];
+  var chunks = [];
+  raw.split('\n').forEach(function(part) {
+    var clean = String(part || '').trim();
+    if (!clean) return;
+    if (/[。！？!?…；;]/.test(clean)) {
+      clean.split(/(?<=[。！？!?…；;])/).forEach(function(seg) {
+        var line = String(seg || '').trim();
+        if (line) chunks.push(line);
+      });
+    } else {
+      chunks.push(clean);
+    }
+  });
+  return Array.from(new Set(chunks.map(function(line) {
+    return String(line || '').replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').trim();
+  }).filter(Boolean))).slice(0, max);
+}
+function _normalizeHeartVoicePopupLines(lines, fallbackText, limit) {
+  var max = Math.max(1, Math.min(12, limit || 12));
+  var raw = [];
+  if (Array.isArray(lines)) raw = lines.slice();
+  else if (typeof lines === 'string' && lines.trim()) raw = [lines];
+  if (!raw.length && fallbackText) raw = _splitHeartVoicePopupText(fallbackText, max);
+  var out = [];
+  raw.forEach(function(item) {
+    _splitHeartVoicePopupText(item, max).forEach(function(line) {
+      if (out.length >= max) return;
+      var clean = String(line || '').replace(/\s+/g, ' ').trim();
+      if (!clean) return;
+      if (out.indexOf(clean) === -1) out.push(clean);
+    });
+  });
+  return out.slice(0, max);
+}
+function _normalizeHeartVoicePayload(raw) {
+  var hv = raw && typeof raw === 'object' ? Object.assign({}, raw) : {};
+  hv.emotion = String(hv.emotion || '').trim();
+  hv.thoughts = String(hv.thoughts || '').trim();
+  hv.heartRate = String(hv.heartRate || '').trim();
+  hv.jealousy = String(hv.jealousy || '').trim();
+  hv.notificationLines = _normalizeHeartVoicePopupLines(hv.notificationLines, hv.thoughts, 12);
+  return hv;
+}
+function _clearHeartVoicePopup() {
+  var layer = _getHeartVoiceNotifLayer();
+  Object.keys(_heartVoicePopupTimers).forEach(function(key) {
+    clearTimeout(_heartVoicePopupTimers[key]);
+    delete _heartVoicePopupTimers[key];
+  });
+  if (layer) layer.innerHTML = '';
+  _setHeartVoiceNotifLayerExpanded(false);
+}
+function _dismissHeartVoicePopupCard(cardId) {
+  var layer = _getHeartVoiceNotifLayer();
+  if (_heartVoicePopupTimers[cardId]) {
+    clearTimeout(_heartVoicePopupTimers[cardId]);
+    delete _heartVoicePopupTimers[cardId];
+  }
+  if (!layer) return;
+  var card = layer.querySelector('[data-heart-voice-card="' + cardId + '"]');
+  if (!card || card.classList.contains('closing')) return;
+  card.classList.add('closing');
+  setTimeout(function() {
+    if (card && card.parentNode) card.parentNode.removeChild(card);
+    if (layer && layer.children.length <= 1) _setHeartVoiceNotifLayerExpanded(false);
+  }, 240);
+}
+function _showHeartVoicePopupCard(p, line, opts) {
+  if (!p || !p.showHeartVoiceInHeader || String(currentId || '') !== String(p.id || '')) return;
+  var layer = _getHeartVoiceNotifLayer();
+  if (!layer) return;
+  while (layer.children.length >= 12) {
+    var oldest = layer.children[0];
+    if (!oldest) break;
+    var oldestId = oldest.getAttribute('data-heart-voice-card');
+    if (oldestId && _heartVoicePopupTimers[oldestId]) {
+      clearTimeout(_heartVoicePopupTimers[oldestId]);
+      delete _heartVoicePopupTimers[oldestId];
+    }
+    oldest.parentNode.removeChild(oldest);
+  }
+  var cardId = 'hv-popup-' + (++_heartVoicePopupSeq);
+  var card = document.createElement('div');
+  var timeLabel = (function() {
+    var now = new Date();
+    return String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+  })();
+  var type = opts && opts.type === 'reply' ? 'reply' : 'read';
+  var title = type === 'reply' ? '刚回完你之后' : '刚读完你的消息';
+  card.className = 'heart-voice-notif';
+  card.setAttribute('data-heart-voice-card', cardId);
+  card.style.zIndex = String(_heartVoicePopupSeq);
+  card.title = '点击展开或重叠角色心声';
+  card.innerHTML =
+    '<div class="heart-voice-notif-top">'
+      + '<div class="heart-voice-notif-app">'
+        + '<img src="' + _hvEsc(p.avatar || makeAvatar(p.name || '?', '#f2f2f2', '#1a1a1a')) + '" alt="">'
+        + '<span>Mono Heart · ' + _hvEsc(p.name || '角色') + '</span>'
+      + '</div>'
+      + '<div class="heart-voice-notif-time">' + timeLabel + '</div>'
+    + '</div>'
+    + '<div class="heart-voice-notif-title">' + title + '</div>'
+    + '<div class="heart-voice-notif-body ' + (type === 'reply' ? 'replying' : 'reading') + '">' + _hvEsc(line) + '</div>';
+  card.addEventListener('click', function(e) {
+    e.stopPropagation();
+    if (layer.children.length <= 1) return;
+    _setHeartVoiceNotifLayerExpanded(layer.classList.contains('collapsed'));
+  });
+  layer.appendChild(card);
+  if (layer.children.length > 1) _setHeartVoiceNotifLayerExpanded(false);
+  _heartVoicePopupTimers[cardId] = setTimeout(function() {
+    _dismissHeartVoicePopupCard(cardId);
+  }, type === 'reply' ? 14000 : 12000);
+}
+function _queueHeartVoicePopupLines(p, lines, opts) {
+  if (!p || !p.showHeartVoiceInHeader || String(currentId || '') !== String(p.id || '')) return;
+  var normalized = _normalizeHeartVoicePopupLines(lines, '', 12);
+  if (!normalized.length) return;
+  var type = opts && opts.type === 'reply' ? 'reply' : 'read';
+  var stepDelay = type === 'reply' ? 1800 : 1500;
+  normalized.slice(0, 12).forEach(function(line, index) {
+    setTimeout(function() {
+      _showHeartVoicePopupCard(p, line, opts || {});
+    }, index * stepDelay);
+  });
+}
+async function maybeGenerateReadHeartVoicePopup(personaId, userText) {
+  var p = personas.find(function(item) { return String(item.id) === String(personaId); });
+  if (!p || !p.showHeartVoiceInHeader || String(currentId || '') !== String(personaId)) return;
+  if (!apiConfig.url || !apiConfig.key) return;
+  var cleanUserText = String(userText || '').trim();
+  if (!cleanUserText) return;
+  var reqSeq = (_heartVoiceReadReqSeq[personaId] || 0) + 1;
+  _heartVoiceReadReqSeq[personaId] = reqSeq;
+  try {
+    var recentChat = (Array.isArray(p.history) ? p.history : []).slice(-16).map(function(m) {
+      return (m.role === 'user' ? (userProfile.name || '用户') : (p.name || '角色')) + '：' + String(m.content || '');
+    }).join('\n').slice(0, 1800);
+    var wbInjection = typeof buildWorldBookInjection === 'function' ? buildWorldBookInjection(recentChat, p.id) : '';
+    var langCode = typeof _detectPersonaLang === 'function' ? (_detectPersonaLang(p) || _detectPersonaLang((p.persona || '') + '\n' + wbInjection)) : '';
+    var langOverride = typeof _langOverridePrompt === 'function' ? _langOverridePrompt(langCode) : '';
+    var prompt =
+      `${LANG_SYSTEM_PREFIX}${STYLE_INSTRUCTIONS}
+你是${p.name}。人设：${p.persona}。你对用户（${userProfile.name}）的昵称是${p.nickname || p.name}。${langOverride}
+
+你现在刚刚读到用户发来的新消息，但你还没有正式回复。
+请只生成“我心里闪过的通知式心声”，像一条条突然弹出来的短句。
+
+【硬性要求】
+1. 必须完全使用第一人称，只能写“我”此刻的真实想法。
+2. 必须紧扣刚读到的这条消息、你的人设、你和用户现在的关系。
+3. 不要复述用户整句原话，不要解释规则，不要写旁白。
+4. 每条都要像聊天碎句，短、真、带情绪，可以有停顿感。
+5. 返回 1 到 4 条，单条尽量 6 到 24 个字。
+6. 不要编号，不要引号，不要 emoji，不要标签。
+7. 严格只返回单行 JSON：{"lines":["...","..."]}。
+
+【最近对话】
+${recentChat || '（暂无）'}
+${wbInjection || ''}`;
+    var payload = {
+      messages: [
+        { role: 'system', content: prompt },
+        { role: 'user', content: `我刚读到的新消息是：${cleanUserText}` }
+      ],
+      temperature: Math.min(1.2, Math.max(0.6, Number(p.temperature) || 0.95))
+    };
+    var effectiveModel = typeof _getEffectiveApiModel === 'function' ? _getEffectiveApiModel(apiConfig.model) : String(apiConfig.model || '').trim();
+    if (effectiveModel) payload.model = effectiveModel;
+    var response = await fetch(getApiUrl(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!response.ok) return;
+    var data = await response.json();
+    var raw = typeof _extractAssistantMessageContent === 'function'
+      ? _extractAssistantMessageContent(data)
+      : (((data || {}).choices || [])[0] || {}).message || {};
+    raw = typeof raw === 'string' ? raw : (raw.content || '');
+    var parsed = typeof _parseJsonFromText === 'function'
+      ? _parseJsonFromText(raw, { lines: [] })
+      : { lines: [] };
+    if ((_heartVoiceReadReqSeq[personaId] || 0) !== reqSeq) return;
+    if (String(currentId || '') !== String(personaId)) return;
+    _queueHeartVoicePopupLines(p, parsed && parsed.lines, { type: 'read' });
+  } catch (e) {}
 }
 // ===================== 消息渲染 =====================
 // ── 消息时间格式化 HH:MM ──
@@ -21324,6 +21659,9 @@ function sendMessage() {
   checkUserTransferIntent(text, p);
   // 根据角色回复模式决定是否自动回复
   if (typeof _handleAutoReplyAfterSend === "function") _handleAutoReplyAfterSend(currentId);
+  if (p.showHeartVoiceInHeader) {
+    maybeGenerateReadHeartVoicePopup(currentId, text);
+  }
 }
 // ===================== 微信模式 =====================
 function toggleWechatMode() {
@@ -30854,12 +31192,14 @@ window.addEventListener('load', () => {
 // ===================== HOME SCREEN =====================
 // updateHomeScreen and renderCalendarGrid are defined in the top script block
 function openApp(pageId) {
+  try { _clearHeartVoicePopup(); } catch(e) {}
   var ok = _showAppPage(pageId);
   if (ok && pageId === 'profilePage') {
     try { initMultiWorldUI(); } catch(e) {}
   }
 }
 function goHome() {
+  try { _clearHeartVoicePopup(); } catch(e) {}
   document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); p.style.display = 'none'; });
   document.getElementById('menuBtn').style.display = 'none';
 // REMOVED (addBtn): document.getElementById('addBtn').style.display = 'none';
@@ -31443,9 +31783,14 @@ ${modePrompt}${quoteTip}${fwdContext}${timeContext}${transferContext}${wbInjecti
     const hvMatch = rawContent.match(/\[heart_voice\]\s*(\{[\s\S]*?\})\s*(?:\[\/heart_voice\]|$)/);
     if (hvMatch && hvMatch[1]) {
       try {
-        const hvData = JSON.parse(hvMatch[1].trim());
+        const hvData = _normalizeHeartVoicePayload(JSON.parse(hvMatch[1].trim()));
         p.lastHeartVoice = hvData;
         if (p.id == currentId) updateHeadHeartVoice(p);
+        if (hvData.notificationLines && hvData.notificationLines.length) {
+          _queueHeartVoicePopupLines(p, hvData.notificationLines, { type: 'reply' });
+        } else if (hvData.thoughts) {
+          _queueHeartVoicePopupLines(p, [hvData.thoughts], { type: 'reply' });
+        }
       } catch(e) { /* JSON格式不正确时安全忽略 */ }
       rawContent = rawContent.replace(hvMatch[0], '').trim();
     }
@@ -32192,6 +32537,7 @@ function normalizeImportData(raw) {
     if (np.autoDiaryTime == null) np.autoDiaryTime = '21:00';
     if (np.autoMoments == null) np.autoMoments = false;
     if (np.autoMomentsTime == null) np.autoMomentsTime = '20:00';
+    if (np.showHeartVoiceInHeader == null) np.showHeartVoiceInHeader = false;
     if (np.momentsNickname == null) np.momentsNickname = '';
     if (np.momentsSignature == null) np.momentsSignature = '';
     if (np.momentsBanner == null) np.momentsBanner = '';
@@ -32210,6 +32556,7 @@ function normalizeImportData(raw) {
       if (nm.content == null) nm.content = '';
       return nm;
     });
+    if (np.lastHeartVoice) np.lastHeartVoice = _normalizeHeartVoicePayload(np.lastHeartVoice);
     return np;
   })};
   // --- diary ---

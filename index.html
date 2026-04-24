@@ -709,6 +709,7 @@ function openApp(pageId) {
   }
   target.classList.add('active');
   target.style.display = 'flex';
+  try { document.body.classList.toggle('chat-page-active', pageId === 'chatPage'); } catch(e) {}
   var menuBtn = document.getElementById('menuBtn');
   var addBtn = document.getElementById('addBtn');
   if (pageId === 'chatPage') {
@@ -727,6 +728,7 @@ function openApp(pageId) {
 }
 function goHome() {
   document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); p.style.display = 'none'; });
+  try { document.body.classList.remove('chat-page-active'); } catch(e) {}
   document.getElementById('menuBtn').style.display = 'none';
 // REMOVED (addBtn): document.getElementById('addBtn').style.display = 'none';
   document.getElementById('contactsDrawer').classList.remove('open');
@@ -2949,7 +2951,7 @@ body {
 .section-modal-content { background: #fff; padding: 20px; border-radius: 8px; width: 80%; max-width: 300px; max-height: 80vh; overflow-y: auto; }
 .action-btn { background: #1a1a1a; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; font-size: calc(12px * var(--fs, 1)); text-transform: uppercase; letter-spacing: 1px; cursor: pointer; transition: all 0.2s; margin: 10px 0; display: inline-block; }
 .action-btn:hover { background: #333; }
-.menu-btn { position: absolute; top: 88px; left: 15px; width: 40px; height: 40px; border-radius: 50%; background: #fff; border: 1px solid #1a1a1a; display: flex; align-items: center; justify-content: center; z-index: 100; cursor: pointer; }
+.menu-btn { position: absolute; top: 88px; left: 15px; min-width: 92px; height: 30px; padding: 0 12px; border-radius: 999px; background: rgba(255,255,255,0.96); border: 1px solid #1a1a1a; display: flex; align-items: center; justify-content: center; z-index: 100; cursor: pointer; font-size: calc(10px * var(--fs, 1)); font-weight: 700; letter-spacing: 0.4px; white-space: nowrap; box-sizing: border-box; }
 .add-btn { position: absolute; bottom: 20px; right: 15px; width: 44px; height: 44px; border-radius: 50%; background: #1a1a1a; color: #fff; display: flex; align-items: center; justify-content: center; font-size: calc(18px * var(--fs, 1)); box-shadow: 0 2px 10px rgba(0,0,0,0.2); cursor: pointer; z-index: 100; }
 .input-form { margin-bottom: 20px; }
 .form-label { font-size: calc(12px * var(--fs, 1)); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; display: block; }
@@ -2983,10 +2985,6 @@ body {
   padding-top: 18px;
   box-sizing: border-box;
   margin-top: 0;
-}
-#chatPage .chat-header > div:first-child {
-  padding-left: 46px;
-  min-width: 0;
 }
 @keyframes hvMarquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 #headHeartVoice { line-height: 16px; }
@@ -3602,7 +3600,7 @@ body.ios-fullscreen #chatPage .chat-footer {
   padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
 }
 body.ios-fullscreen .menu-btn { top: calc(env(safe-area-inset-top, 44px) + 10px); }
-body.ios-fullscreen #chatPage .menu-btn { top: 8px; }
+body.ios-fullscreen.chat-page-active .menu-btn { top: calc(env(safe-area-inset-top, 44px) + 4px); }
 body.ios-fullscreen #chatPage .app-back-bar { top: 8px; }
 .spy-btn { display: flex; align-items: center; gap: 4px; font-size: calc(9px * var(--fs, 1)); font-weight: 700; border: 1px solid #1a1a1a; padding: 5px 8px; border-radius: 20px; cursor: pointer; background: #fff; transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
 .spy-btn:hover { background: #1a1a1a; color: #fff; }
@@ -7908,10 +7906,18 @@ body:not(.ios-fullscreen) .family-widget {
 #chatPage .app-back-bar .app-back-title {
   display: none;
 }
-#chatPage .menu-btn {
-  top: 8px;
-  left: 12px;
+body.chat-page-active .menu-btn {
+  top: 48px;
+  left: 8px;
+  min-width: 82px;
+  height: 26px;
+  padding: 0 10px;
   z-index: 101;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+body.chat-page-active .menu-btn .menu-btn-label {
+  font-size: 9.5px;
+  line-height: 1;
 }
 /* Override page positioning when in app mode (no bottom nav) */
 .page {
@@ -14688,7 +14694,7 @@ body:not(.ios-fullscreen) .family-widget {
     </div>
   </div>
   <div class="menu-btn" id="menuBtn" onclick="toggleContactsDrawer()">
-    <i class="fas fa-bars"></i>
+    <span class="menu-btn-label">联络人列表</span>
   </div>
   <!-- 聊天页面 -->
   <div id="chatPage" class="page wechat-style" style="padding:0; display:none; flex-direction:column;">
@@ -19813,6 +19819,7 @@ function _showAppPage(pageId) {
   });
   target.classList.add('active');
   target.style.display = 'flex';
+  try { document.body.classList.toggle('chat-page-active', pageId === 'chatPage'); } catch(e) {}
   const menuBtn = document.getElementById('menuBtn');
   if (menuBtn) menuBtn.style.display = pageId === 'chatPage' ? 'flex' : 'none';
   const drawer = document.getElementById('contactsDrawer');
@@ -31365,6 +31372,7 @@ function openApp(pageId) {
 function goHome() {
   try { _clearHeartVoicePopup(); } catch(e) {}
   document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); p.style.display = 'none'; });
+  try { document.body.classList.remove('chat-page-active'); } catch(e) {}
   document.getElementById('menuBtn').style.display = 'none';
 // REMOVED (addBtn): document.getElementById('addBtn').style.display = 'none';
   document.getElementById('contactsDrawer').classList.remove('open');

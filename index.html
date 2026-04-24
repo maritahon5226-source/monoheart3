@@ -2978,6 +2978,16 @@ body {
 }
 #chatPage.active { display: flex; }
 .chat-header { height: 64px; border-bottom: 1px solid #1a1a1a; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; flex-shrink: 0; margin-top: 8px; }
+#chatPage .chat-header {
+  min-height: 84px;
+  padding-top: 18px;
+  box-sizing: border-box;
+  margin-top: 0;
+}
+#chatPage .chat-header > div:first-child {
+  padding-left: 46px;
+  min-width: 0;
+}
 @keyframes hvMarquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 #headHeartVoice { line-height: 16px; }
 #headHeartVoiceInner { animation: hvMarquee 32s linear infinite; }
@@ -2992,7 +3002,7 @@ body {
   position: fixed;
   top: 118px;
   right: 12px;
-  width: min(320px, calc(100% - 84px));
+  width: min(286px, calc(100% - 96px));
   max-height: 46vh;
   display: flex;
   flex-direction: column;
@@ -3004,8 +3014,8 @@ body {
 .heart-voice-notif {
   width: 100%;
   position: relative;
-  border-radius: 22px;
-  padding: 10px 12px 11px;
+  border-radius: 18px;
+  padding: 8px 10px 9px;
   background:
     linear-gradient(180deg, rgba(255,255,255,0.84) 0%, rgba(243,244,249,0.78) 100%);
   border: 1px solid rgba(255,255,255,0.82);
@@ -3023,10 +3033,10 @@ body {
   pointer-events: auto;
 }
 .heart-voice-notif + .heart-voice-notif {
-  margin-top: 8px;
+  margin-top: 6px;
 }
 .heart-voice-notif-layer.collapsed .heart-voice-notif + .heart-voice-notif {
-  margin-top: -56px;
+  margin-top: -50px;
 }
 .heart-voice-notif-layer.collapsed .heart-voice-notif {
   box-shadow:
@@ -3044,25 +3054,25 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 6px;
+  gap: 8px;
+  margin-bottom: 5px;
 }
 .heart-voice-notif-app {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   min-width: 0;
 }
 .heart-voice-notif-app img {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
   box-shadow: 0 1px 3px rgba(0,0,0,0.12);
 }
 .heart-voice-notif-app span {
-  font-size: calc(10px * var(--fs,1));
+  font-size: calc(9px * var(--fs,1));
   font-weight: 700;
   color: rgba(17,24,39,0.74);
   letter-spacing: 0.2px;
@@ -3071,20 +3081,20 @@ body {
   text-overflow: ellipsis;
 }
 .heart-voice-notif-time {
-  font-size: calc(10px * var(--fs,1));
+  font-size: calc(9px * var(--fs,1));
   color: rgba(17,24,39,0.42);
   flex-shrink: 0;
 }
 .heart-voice-notif-title {
-  font-size: calc(11px * var(--fs,1));
+  font-size: calc(10px * var(--fs,1));
   font-weight: 800;
   color: #111827;
   letter-spacing: 0.1px;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 .heart-voice-notif-body {
-  font-size: calc(12px * var(--fs,1));
-  line-height: 1.46;
+  font-size: calc(11px * var(--fs,1));
+  line-height: 1.4;
   color: rgba(17,24,39,0.86);
   word-break: break-word;
 }
@@ -3592,6 +3602,8 @@ body.ios-fullscreen #chatPage .chat-footer {
   padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
 }
 body.ios-fullscreen .menu-btn { top: calc(env(safe-area-inset-top, 44px) + 10px); }
+body.ios-fullscreen #chatPage .menu-btn { top: 8px; }
+body.ios-fullscreen #chatPage .app-back-bar { top: 8px; }
 .spy-btn { display: flex; align-items: center; gap: 4px; font-size: calc(9px * var(--fs, 1)); font-weight: 700; border: 1px solid #1a1a1a; padding: 5px 8px; border-radius: 20px; cursor: pointer; background: #fff; transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
 .spy-btn:hover { background: #1a1a1a; color: #fff; }
 .spy-btn i { font-size: calc(10px * var(--fs, 1)); }
@@ -7877,6 +7889,29 @@ body:not(.ios-fullscreen) .family-widget {
   flex: 1;
   text-align: center;
   padding-right: 60px;
+}
+#chatPage .app-back-bar {
+  position: absolute;
+  top: 8px;
+  left: 0;
+  right: 0;
+  z-index: 101;
+  justify-content: flex-end;
+  padding: 0 12px;
+  background: transparent;
+  border-bottom: none;
+  pointer-events: none;
+}
+#chatPage .app-back-bar .app-back-btn {
+  pointer-events: auto;
+}
+#chatPage .app-back-bar .app-back-title {
+  display: none;
+}
+#chatPage .menu-btn {
+  top: 8px;
+  left: 12px;
+  z-index: 101;
 }
 /* Override page positioning when in app mode (no bottom nav) */
 .page {
@@ -17661,8 +17696,23 @@ body:not(.ios-fullscreen) .family-widget {
       <p style="font-size:10px;color:#999;margin-bottom:6px;">已自动启用：每次回复后 AI 会记录内心状态（情绪、心率、心声），下次对话时从上次停下的情绪自然延续，不再每次"重置情绪"。</p>
       <div id="lastHeartVoicePreview" style="background:#fff0f5;border:1px solid #fcc;border-radius:8px;padding:10px;font-size:11px;color:#c0567a;display:none;"></div>
       <div style="margin-top:10px;display:flex;align-items:center;gap:8px;">
-        <input type="checkbox" id="pShowHeartVoiceInHeader" style="width:16px;height:16px;accent-color:#e91e63;">
-        <label for="pShowHeartVoiceInHeader" style="font-size:11px;color:#555;cursor:pointer;">允许聊天室弹出角色心声通知（iOS 锁屏通知样式）</label>
+        <input type="checkbox" id="pShowHeartVoiceInHeader" style="width:16px;height:16px;accent-color:#e91e63;" onchange="_updateHeartVoiceModeUI()">
+        <label for="pShowHeartVoiceInHeader" style="font-size:11px;color:#555;cursor:pointer;">启用角色心声显示</label>
+      </div>
+      <div id="heartVoiceModeOptions" style="margin-top:10px;display:flex;flex-direction:column;gap:8px;padding:10px 12px;background:#fff7fa;border:1px solid #f6d3df;border-radius:8px;">
+        <div style="font-size:10px;font-weight:700;color:#b24b74;letter-spacing:0.3px;">心声显示模式</div>
+        <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:11px;color:#555;">
+          <input type="radio" name="pHeartVoiceMode" id="pHeartVoiceModeHeader" value="header" style="margin-top:1px;accent-color:#e91e63;">
+          <span>顶部栏心声
+            <span style="display:block;font-size:10px;color:#999;margin-top:2px;">显示在聊天室顶部头像和名字下方，像之前那样持续滚动展示。</span>
+          </span>
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:11px;color:#555;">
+          <input type="radio" name="pHeartVoiceMode" id="pHeartVoiceModePopup" value="popup" style="margin-top:1px;accent-color:#e91e63;">
+          <span>通知弹窗心声
+            <span style="display:block;font-size:10px;color:#999;margin-top:2px;">显示在聊天室右上方，像 iOS 锁屏通知一样逐条弹出。</span>
+          </span>
+        </label>
       </div>
       <button type="button" onclick="clearLastHeartVoice()" style="margin-top:8px;font-size:10px;color:#999;background:none;border:1px solid #ddd;border-radius:6px;padding:4px 10px;cursor:pointer;">清除本次心声记录（重置情绪）</button>
     </div>
@@ -18062,6 +18112,72 @@ function clearLastHeartVoice() {
   if (hvPreview) hvPreview.style.display = 'none';
   _clearHeartVoicePopup();
   updateHeadHeartVoice(p);
+}
+function _normalizePersonaHeartVoiceSettings(p) {
+  var enabled = !!(p && (p.heartVoiceEnabled != null ? p.heartVoiceEnabled : p.showHeartVoiceInHeader));
+  var mode = String((p && p.heartVoiceMode) || '').trim();
+  if (mode !== 'header' && mode !== 'popup') mode = 'header';
+  return { enabled: enabled, mode: mode };
+}
+function _heartVoiceModeAllowsHeader(p) {
+  var settings = _normalizePersonaHeartVoiceSettings(p);
+  return settings.enabled && settings.mode === 'header';
+}
+function _heartVoiceModeAllowsPopup(p) {
+  var settings = _normalizePersonaHeartVoiceSettings(p);
+  return settings.enabled && settings.mode === 'popup';
+}
+function _getSelectedHeartVoiceMode() {
+  var checked = document.querySelector('input[name="pHeartVoiceMode"]:checked');
+  return checked ? checked.value : 'header';
+}
+function _updateHeartVoiceModeUI() {
+  var enabledEl = document.getElementById('pShowHeartVoiceInHeader');
+  var wrap = document.getElementById('heartVoiceModeOptions');
+  var enabled = !!(enabledEl && enabledEl.checked);
+  if (wrap) {
+    wrap.style.opacity = enabled ? '1' : '0.55';
+    wrap.style.pointerEvents = enabled ? 'auto' : 'none';
+  }
+}
+var _heartVoiceUiVisible = (function() {
+  try {
+    return localStorage.getItem('mono_heart_voice_ui_hidden') !== '1';
+  } catch(e) {
+    return true;
+  }
+})();
+function _isHeartVoiceUiVisible() {
+  return _heartVoiceUiVisible !== false;
+}
+function _applyHeartVoiceLayerVisibility() {
+  var layer = document.getElementById('heartVoiceNotifLayer');
+  if (layer) layer.style.display = _isHeartVoiceUiVisible() ? '' : 'none';
+}
+function refreshHeartVoiceVisibilityUi() {
+  var btn = document.getElementById('heartVoiceToggleBtn');
+  var text = document.getElementById('heartVoiceToggleBtnText');
+  if (!btn || !text) return;
+  var visible = _isHeartVoiceUiVisible();
+  btn.style.color = visible ? '#c0567a' : '#999';
+  btn.style.borderColor = visible ? '#d9a9bb' : '#ddd';
+  text.textContent = visible ? '心声开' : '心声关';
+  btn.title = visible ? '隐藏心声信息' : '显示心声信息';
+  _applyHeartVoiceLayerVisibility();
+}
+function setHeartVoiceVisibility(visible) {
+  _heartVoiceUiVisible = !!visible;
+  try {
+    localStorage.setItem('mono_heart_voice_ui_hidden', _heartVoiceUiVisible ? '0' : '1');
+  } catch(e) {}
+  refreshHeartVoiceVisibilityUi();
+  if (currentId) {
+    var p = personas.find(function(x) { return String(x.id) === String(currentId); });
+    if (p) updateHeadHeartVoice(p);
+  }
+}
+function toggleHeartVoiceVisibility() {
+  setHeartVoiceVisibility(!_isHeartVoiceUiVisible());
 }
 async function manualGenerateSummary() {
   if (!currentId) { alert('请先选择一个角色'); return; }
@@ -20169,6 +20285,7 @@ function selectPersona(id) {
   document.getElementById('headName').innerText = p.name;
   document.getElementById('headAvatar').src = p.avatar;
   document.getElementById('headAvatar').classList.remove('hidden');
+  refreshHeartVoiceVisibilityUi();
   _clearHeartVoicePopup();
   updateHeadHeartVoice(p);
   var spyPanelBtn = document.getElementById('spyPanelBtn');
@@ -20211,9 +20328,40 @@ function updateHeadHeartVoice(p) {
   if (!el || !inner) return;
   inner.innerHTML = '';
   el.style.display = 'none';
-  if (!p || !p.showHeartVoiceInHeader || String(currentId || '') !== String(p.id || '')) {
-    _clearHeartVoicePopup();
+  if (!_isHeartVoiceUiVisible()) {
+    _applyHeartVoiceLayerVisibility();
+    return;
   }
+  if (!p || String(currentId || '') !== String(p.id || '')) {
+    _clearHeartVoicePopup();
+    return;
+  }
+  if (!_heartVoiceModeAllowsHeader(p)) {
+    inner.style.animation = 'none';
+    if (!_heartVoiceModeAllowsPopup(p)) _clearHeartVoicePopup();
+    return;
+  }
+  var hv = p.lastHeartVoice ? _normalizeHeartVoicePayload(p.lastHeartVoice) : null;
+  if (!hv || (!hv.thoughts && !hv.emotion && !hv.heartRate && !hv.jealousy)) {
+    inner.style.animation = 'none';
+    el.style.display = 'none';
+    return;
+  }
+  var segments = [];
+  if (hv.emotion) segments.push('<span class="hv-emotion-badge">' + _hvEsc(hv.emotion) + '</span>');
+  if (hv.heartRate) segments.push('<span class="hv-segment"><span class="hv-tag">心率</span><span class="hv-val">' + _hvEsc(hv.heartRate) + '</span></span>');
+  if (hv.jealousy) segments.push('<span class="hv-segment"><span class="hv-tag">醋意</span><span class="hv-val">' + _hvEsc(hv.jealousy) + '</span></span>');
+  if (hv.thoughts) segments.push('<span class="hv-segment"><span class="hv-heart">♥</span><span class="hv-thought">' + _hvEsc(hv.thoughts) + '</span></span>');
+  if (!segments.length) {
+    inner.style.animation = 'none';
+    el.style.display = 'none';
+    return;
+  }
+  var joined = segments.join('<span class="hv-dot">•</span>');
+  var shouldMarquee = joined.length > 26;
+  inner.innerHTML = shouldMarquee ? (joined + '<span class="hv-dot">•</span>' + joined) : joined;
+  inner.style.animation = shouldMarquee ? 'hvMarquee 32s linear infinite' : 'none';
+  el.style.display = 'block';
 }
 function _hvEsc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -20230,7 +20378,10 @@ function _setHeartVoiceNotifLayerExpanded(expanded) {
 }
 function _getHeartVoiceNotifLayer() {
   var existing = document.getElementById('heartVoiceNotifLayer');
-  if (existing) return existing;
+  if (existing) {
+    _applyHeartVoiceLayerVisibility();
+    return existing;
+  }
   var layer = document.createElement('div');
   layer.id = 'heartVoiceNotifLayer';
   layer.className = 'heart-voice-notif-layer collapsed';
@@ -20243,6 +20394,7 @@ function _getHeartVoiceNotifLayer() {
     _setHeartVoiceNotifLayerExpanded(layer.classList.contains('collapsed'));
   });
   document.body.appendChild(layer);
+  _applyHeartVoiceLayerVisibility();
   return layer;
 }
 function _splitHeartVoicePopupText(text, limit) {
@@ -20317,7 +20469,7 @@ function _dismissHeartVoicePopupCard(cardId) {
   }, 240);
 }
 function _showHeartVoicePopupCard(p, line, opts) {
-  if (!p || !p.showHeartVoiceInHeader || String(currentId || '') !== String(p.id || '')) return;
+  if (!p || !_heartVoiceModeAllowsPopup(p) || !_isHeartVoiceUiVisible() || String(currentId || '') !== String(p.id || '')) return;
   var layer = _getHeartVoiceNotifLayer();
   if (!layer) return;
   while (layer.children.length >= 12) {
@@ -20364,7 +20516,7 @@ function _showHeartVoicePopupCard(p, line, opts) {
   }, type === 'reply' ? 14000 : 12000);
 }
 function _queueHeartVoicePopupLines(p, lines, opts) {
-  if (!p || !p.showHeartVoiceInHeader || String(currentId || '') !== String(p.id || '')) return;
+  if (!p || !_heartVoiceModeAllowsPopup(p) || String(currentId || '') !== String(p.id || '')) return;
   var normalized = _normalizeHeartVoicePopupLines(lines, '', 12);
   if (!normalized.length) return;
   var type = opts && opts.type === 'reply' ? 'reply' : 'read';
@@ -20377,7 +20529,7 @@ function _queueHeartVoicePopupLines(p, lines, opts) {
 }
 async function maybeGenerateReadHeartVoicePopup(personaId, userText) {
   var p = personas.find(function(item) { return String(item.id) === String(personaId); });
-  if (!p || !p.showHeartVoiceInHeader || String(currentId || '') !== String(personaId)) return;
+  if (!p || !_heartVoiceModeAllowsPopup(p) || !_isHeartVoiceUiVisible() || String(currentId || '') !== String(personaId)) return;
   if (!apiConfig.url || !apiConfig.key) return;
   var cleanUserText = String(userText || '').trim();
   if (!cleanUserText) return;
@@ -21659,7 +21811,7 @@ function sendMessage() {
   checkUserTransferIntent(text, p);
   // 根据角色回复模式决定是否自动回复
   if (typeof _handleAutoReplyAfterSend === "function") _handleAutoReplyAfterSend(currentId);
-  if (p.showHeartVoiceInHeader) {
+  if (_heartVoiceModeAllowsPopup(p) && _isHeartVoiceUiVisible()) {
     maybeGenerateReadHeartVoicePopup(currentId, text);
   }
 }
@@ -21730,6 +21882,9 @@ function saveCurrentPersona() {
     memoryCount: p.memoryCount,
     memoryCore: p.memoryCore || [],
     lastHeartVoice: p.lastHeartVoice || null,
+    showHeartVoiceInHeader: !!p.showHeartVoiceInHeader,
+    heartVoiceEnabled: !!(p.heartVoiceEnabled != null ? p.heartVoiceEnabled : p.showHeartVoiceInHeader),
+    heartVoiceMode: (p.heartVoiceMode === 'popup' ? 'popup' : 'header'),
     autoSummary: p.autoSummary || false,
     autoSummaryInterval: p.autoSummaryInterval || 20,
     history: p.history || [],
@@ -21797,6 +21952,9 @@ function openEditor(isEdit=false) {
     document.getElementById('pAutoSummary').checked = false;
     document.getElementById('pAutoSummaryInterval').value = 20;
     document.getElementById('pShowHeartVoiceInHeader').checked = false;
+    document.getElementById('pHeartVoiceModeHeader').checked = true;
+    document.getElementById('pHeartVoiceModePopup').checked = false;
+    _updateHeartVoiceModeUI();
     // Reply mode defaults
     document.getElementById('pReplyMode1').checked = true;
     document.getElementById('pReplyMode2').checked = false;
@@ -21867,7 +22025,11 @@ function openEditor(isEdit=false) {
     document.getElementById('pAutoMomentsTime').value = p.autoMomentsTime || '20:00';
     document.getElementById('pAutoSummary').checked = !!p.autoSummary;
     document.getElementById('pAutoSummaryInterval').value = p.autoSummaryInterval || 20;
-    document.getElementById('pShowHeartVoiceInHeader').checked = !!p.showHeartVoiceInHeader;
+    var _hvSettings = _normalizePersonaHeartVoiceSettings(p);
+    document.getElementById('pShowHeartVoiceInHeader').checked = !!_hvSettings.enabled;
+    document.getElementById('pHeartVoiceModeHeader').checked = (_hvSettings.mode === 'header');
+    document.getElementById('pHeartVoiceModePopup').checked = (_hvSettings.mode === 'popup');
+    _updateHeartVoiceModeUI();
     var _pAllowCallTts = !!p.allowCallTts;
     document.getElementById('pAllowCallTts').checked = _pAllowCallTts;
     document.getElementById('pCallTtsNote').style.display = _pAllowCallTts ? 'block' : 'none';
@@ -21963,15 +22125,17 @@ function savePersona() {
   const _saveOshiBlue = (document.getElementById('pOshiGlowBlue') || {}).value || '#cfd3d8';
   const _saveOshiPink = (document.getElementById('pOshiGlowPink') || {}).value || '#e5e5e5';
   const _saveOshiShowHeart = !document.getElementById('pOshiGlowShowHeart') || document.getElementById('pOshiGlowShowHeart').checked;
+  const heartVoiceEnabled = !!document.getElementById('pShowHeartVoiceInHeader').checked;
+  const heartVoiceMode = _getSelectedHeartVoiceMode();
   if (currentId && !document.getElementById('delBtn').classList.contains('hidden')) {
     const p = personas.find(x=>x.id==currentId);
     const _saveAiColor = document.getElementById('pBubbleAiFontColorEnabled').checked ? (document.getElementById('pBubbleAiFontColor').value||'') : '';
     const _saveUserColor = document.getElementById('pBubbleUserFontColorEnabled').checked ? (document.getElementById('pBubbleUserFontColor').value||'') : '';
-    if(p){ p.name=name; p.nickname=document.getElementById('pNick').value.trim(); p.persona=document.getElementById('pPersona').value.trim()||'一个简单的角色设定'; p.avatar=avatar; p.minReplyCount=minReply; p.maxReplyCount=maxReply; p.temperature=temperature; p.timeAwareness=timeAwareness; p.allowSticker=allowSticker; p.stickerLibraryIds=stickerLibraryIds; p.allowVoice=allowVoice; p.voiceId=voiceId; p.voiceSpeed=voiceSpeed; p.voiceLang=voiceLang; p.outputLang=outputLang; p.enableTranslation=enableTranslation; p.translateLang=translateLang; p.voiceFreq=voiceFreq; p.memoryCount=parseInt(document.getElementById('pMemoryCount').value)||100; p.autoMsg=document.getElementById('pAutoMsg').checked; p.autoMsgInterval=parseInt(document.getElementById('pAutoMsgInterval').value)||1; p.autoDiary=document.getElementById('pAutoDiary').checked; p.autoDiaryTime=document.getElementById('pAutoDiaryTime').value||'21:00'; p.autoMoments=document.getElementById('pAutoMoments').checked; p.autoMomentsTime=document.getElementById('pAutoMomentsTime').value||'20:00'; p.autoSummary=document.getElementById('pAutoSummary').checked; p.autoSummaryInterval=parseInt(document.getElementById('pAutoSummaryInterval').value)||20; p.bubbleAiCss=document.getElementById('pBubbleAiCss').value.trim(); p.bubbleUserCss=document.getElementById('pBubbleUserCss').value.trim(); p.chatRoomCustomCss=(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(); p.bubbleAiFontColor=_saveAiColor; p.bubbleUserFontColor=_saveUserColor; p.bubblePreset=(document.getElementById('pBubblePreset')||{}).value||'none'; p.oshiGlowBlue=_saveOshiBlue; p.oshiGlowPink=_saveOshiPink; p.oshiGlowShowHeart=_saveOshiShowHeart; if(document.getElementById('pChatBgImg').src && document.getElementById('pChatBgImg').style.display!=='none') p.chatBgImage=document.getElementById('pChatBgImg').src; else p.chatBgImage=''; p.replyMode=_getSelectedReplyMode(); var _spd=document.querySelector('input[name="pReplySpeed"]:checked'); p.replySpeed=_spd?_spd.value:'fast'; p.replySpeedCustomMin=parseInt(document.getElementById('pReplySpeedCustomMin').value)||0; p.replySpeedCustomMax=parseInt(document.getElementById('pReplySpeedCustomMax').value)||10; p.showHeartVoiceInHeader=document.getElementById('pShowHeartVoiceInHeader').checked; p.allowCallTts=document.getElementById('pAllowCallTts').checked; if (p.momentsNickname == null || !String(p.momentsNickname).trim()) p.momentsNickname = name; if (p.momentsSignature == null) p.momentsSignature = ''; if (p.momentsBanner == null) p.momentsBanner = ''; }
+    if(p){ p.name=name; p.nickname=document.getElementById('pNick').value.trim(); p.persona=document.getElementById('pPersona').value.trim()||'一个简单的角色设定'; p.avatar=avatar; p.minReplyCount=minReply; p.maxReplyCount=maxReply; p.temperature=temperature; p.timeAwareness=timeAwareness; p.allowSticker=allowSticker; p.stickerLibraryIds=stickerLibraryIds; p.allowVoice=allowVoice; p.voiceId=voiceId; p.voiceSpeed=voiceSpeed; p.voiceLang=voiceLang; p.outputLang=outputLang; p.enableTranslation=enableTranslation; p.translateLang=translateLang; p.voiceFreq=voiceFreq; p.memoryCount=parseInt(document.getElementById('pMemoryCount').value)||100; p.autoMsg=document.getElementById('pAutoMsg').checked; p.autoMsgInterval=parseInt(document.getElementById('pAutoMsgInterval').value)||1; p.autoDiary=document.getElementById('pAutoDiary').checked; p.autoDiaryTime=document.getElementById('pAutoDiaryTime').value||'21:00'; p.autoMoments=document.getElementById('pAutoMoments').checked; p.autoMomentsTime=document.getElementById('pAutoMomentsTime').value||'20:00'; p.autoSummary=document.getElementById('pAutoSummary').checked; p.autoSummaryInterval=parseInt(document.getElementById('pAutoSummaryInterval').value)||20; p.bubbleAiCss=document.getElementById('pBubbleAiCss').value.trim(); p.bubbleUserCss=document.getElementById('pBubbleUserCss').value.trim(); p.chatRoomCustomCss=(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(); p.bubbleAiFontColor=_saveAiColor; p.bubbleUserFontColor=_saveUserColor; p.bubblePreset=(document.getElementById('pBubblePreset')||{}).value||'none'; p.oshiGlowBlue=_saveOshiBlue; p.oshiGlowPink=_saveOshiPink; p.oshiGlowShowHeart=_saveOshiShowHeart; if(document.getElementById('pChatBgImg').src && document.getElementById('pChatBgImg').style.display!=='none') p.chatBgImage=document.getElementById('pChatBgImg').src; else p.chatBgImage=''; p.replyMode=_getSelectedReplyMode(); var _spd=document.querySelector('input[name="pReplySpeed"]:checked'); p.replySpeed=_spd?_spd.value:'fast'; p.replySpeedCustomMin=parseInt(document.getElementById('pReplySpeedCustomMin').value)||0; p.replySpeedCustomMax=parseInt(document.getElementById('pReplySpeedCustomMax').value)||10; p.showHeartVoiceInHeader=heartVoiceEnabled; p.heartVoiceEnabled=heartVoiceEnabled; p.heartVoiceMode=heartVoiceMode; p.allowCallTts=document.getElementById('pAllowCallTts').checked; if (p.momentsNickname == null || !String(p.momentsNickname).trim()) p.momentsNickname = name; if (p.momentsSignature == null) p.momentsSignature = ''; if (p.momentsBanner == null) p.momentsBanner = ''; }
   } else {
     const _saveAiColor = document.getElementById('pBubbleAiFontColorEnabled').checked ? (document.getElementById('pBubbleAiFontColor').value||'') : '';
     const _saveUserColor = document.getElementById('pBubbleUserFontColorEnabled').checked ? (document.getElementById('pBubbleUserFontColor').value||'') : '';
-    const newP = { id:Date.now(), name, nickname:document.getElementById('pNick').value.trim()||name, momentsNickname:name, momentsSignature:'', momentsBanner:'', persona:document.getElementById('pPersona').value.trim()||'一个简单的角色设定', avatar, history:[], memoryCore:[], lastHeartVoice:null, autoSummary:document.getElementById('pAutoSummary').checked, autoSummaryInterval:parseInt(document.getElementById('pAutoSummaryInterval').value)||20, minReplyCount:minReply, maxReplyCount:maxReply, temperature:temperature, timeAwareness:timeAwareness, allowSticker:allowSticker, stickerLibraryIds:stickerLibraryIds, allowVoice:allowVoice, voiceId:voiceId, voiceSpeed:voiceSpeed, voiceLang:voiceLang, outputLang:outputLang, enableTranslation:enableTranslation, translateLang:translateLang, voiceFreq:voiceFreq, memoryCount:parseInt(document.getElementById('pMemoryCount').value)||100, autoMsg:document.getElementById('pAutoMsg').checked, autoMsgInterval:parseInt(document.getElementById('pAutoMsgInterval').value)||1, autoDiary:document.getElementById('pAutoDiary').checked, autoDiaryTime:document.getElementById('pAutoDiaryTime').value||'21:00', autoMoments:document.getElementById('pAutoMoments').checked, autoMomentsTime:document.getElementById('pAutoMomentsTime').value||'20:00', bubbleAiCss:document.getElementById('pBubbleAiCss').value.trim(), bubbleUserCss:document.getElementById('pBubbleUserCss').value.trim(), chatRoomCustomCss:(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(), bubbleAiFontColor:_saveAiColor, bubbleUserFontColor:_saveUserColor, bubblePreset:(document.getElementById('pBubblePreset')||{}).value||'none', oshiGlowBlue:_saveOshiBlue, oshiGlowPink:_saveOshiPink, oshiGlowShowHeart:_saveOshiShowHeart, chatBgImage:(document.getElementById('pChatBgImg').style.display!=='none'?document.getElementById('pChatBgImg').src:''), replyMode:_getSelectedReplyMode(), replySpeed:(document.querySelector('input[name="pReplySpeed"]:checked')||{}).value||'fast', replySpeedCustomMin:parseInt(document.getElementById('pReplySpeedCustomMin').value)||0, replySpeedCustomMax:parseInt(document.getElementById('pReplySpeedCustomMax').value)||10, showHeartVoiceInHeader:document.getElementById('pShowHeartVoiceInHeader').checked, allowCallTts:document.getElementById('pAllowCallTts').checked };
+    const newP = { id:Date.now(), name, nickname:document.getElementById('pNick').value.trim()||name, momentsNickname:name, momentsSignature:'', momentsBanner:'', persona:document.getElementById('pPersona').value.trim()||'一个简单的角色设定', avatar, history:[], memoryCore:[], lastHeartVoice:null, autoSummary:document.getElementById('pAutoSummary').checked, autoSummaryInterval:parseInt(document.getElementById('pAutoSummaryInterval').value)||20, minReplyCount:minReply, maxReplyCount:maxReply, temperature:temperature, timeAwareness:timeAwareness, allowSticker:allowSticker, stickerLibraryIds:stickerLibraryIds, allowVoice:allowVoice, voiceId:voiceId, voiceSpeed:voiceSpeed, voiceLang:voiceLang, outputLang:outputLang, enableTranslation:enableTranslation, translateLang:translateLang, voiceFreq:voiceFreq, memoryCount:parseInt(document.getElementById('pMemoryCount').value)||100, autoMsg:document.getElementById('pAutoMsg').checked, autoMsgInterval:parseInt(document.getElementById('pAutoMsgInterval').value)||1, autoDiary:document.getElementById('pAutoDiary').checked, autoDiaryTime:document.getElementById('pAutoDiaryTime').value||'21:00', autoMoments:document.getElementById('pAutoMoments').checked, autoMomentsTime:document.getElementById('pAutoMomentsTime').value||'20:00', bubbleAiCss:document.getElementById('pBubbleAiCss').value.trim(), bubbleUserCss:document.getElementById('pBubbleUserCss').value.trim(), chatRoomCustomCss:(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(), bubbleAiFontColor:_saveAiColor, bubbleUserFontColor:_saveUserColor, bubblePreset:(document.getElementById('pBubblePreset')||{}).value||'none', oshiGlowBlue:_saveOshiBlue, oshiGlowPink:_saveOshiPink, oshiGlowShowHeart:_saveOshiShowHeart, chatBgImage:(document.getElementById('pChatBgImg').style.display!=='none'?document.getElementById('pChatBgImg').src:''), replyMode:_getSelectedReplyMode(), replySpeed:(document.querySelector('input[name="pReplySpeed"]:checked')||{}).value||'fast', replySpeedCustomMin:parseInt(document.getElementById('pReplySpeedCustomMin').value)||0, replySpeedCustomMax:parseInt(document.getElementById('pReplySpeedCustomMax').value)||10, showHeartVoiceInHeader:heartVoiceEnabled, heartVoiceEnabled:heartVoiceEnabled, heartVoiceMode:heartVoiceMode, allowCallTts:document.getElementById('pAllowCallTts').checked };
     personas.push(newP); currentId=newP.id;
   }
   saveData(); renderContactList(); if(currentId) selectPersona(currentId); closeEditor(); renderDiaryTabs();
@@ -32538,6 +32702,8 @@ function normalizeImportData(raw) {
     if (np.autoMoments == null) np.autoMoments = false;
     if (np.autoMomentsTime == null) np.autoMomentsTime = '20:00';
     if (np.showHeartVoiceInHeader == null) np.showHeartVoiceInHeader = false;
+    if (np.heartVoiceEnabled == null) np.heartVoiceEnabled = !!np.showHeartVoiceInHeader;
+    if (np.heartVoiceMode !== 'header' && np.heartVoiceMode !== 'popup') np.heartVoiceMode = 'header';
     if (np.momentsNickname == null) np.momentsNickname = '';
     if (np.momentsSignature == null) np.momentsSignature = '';
     if (np.momentsBanner == null) np.momentsBanner = '';

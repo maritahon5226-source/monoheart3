@@ -16,6 +16,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head>
@@ -45560,17 +45561,22 @@ async function startCall(source) {
   document.getElementById('incomingCallStatus').textContent = '正在接通...';
   document.getElementById('incomingAcceptBtn').style.display = 'none';
   document.getElementById('incomingCallScreen').classList.add('active');
-  var willAccept = Math.random() < 0.85;
+  var willAccept = Math.random() < 0.975;
   var api = _getCurrentActiveApiConfig();
   if (api.url && api.key) {
     try {
       var uName = source === 'dating' ? (datingPrefs.userName || '对方') : userProfile.name;
       var _callUProfileDesc = source === 'dating' ? _buildDatingUserProfileDesc() : '';
       var _callIdentityNote = source === 'dating' ? '你是对方的相親对象，' : '';
-      var prompt = '你是' + persona.name + '，人设：' + (persona.persona||'').slice(0,120) + '。' + _buildPersonaIdentityPrompt(persona) + _callIdentityNote + (_callUProfileDesc ? '对方資料：' + _callUProfileDesc + '。' : '') + uName + '主动打电话给你。根据你的性格和心情，你接吗？回覆JSON：{"accept":true或false} 只返回JSON。';
+      var prompt = '你是' + persona.name + '，人设：' + (persona.persona||'').slice(0,120) + '。' + _buildPersonaIdentityPrompt(persona) + _callIdentityNote + (_callUProfileDesc ? '对方資料：' + _callUProfileDesc + '。' : '') + uName + '主动打电话给你。除非此刻有非常明确、强烈、合理的拒接原因（例如正在激烈争吵、明确拉黑、极度厌恶、现实危险场景），否则你通常都会接。回覆JSON：{"accept":true或false,"refuseLevel":0到100} 只返回JSON。';
       var resp = await fetch(_datingApiEndpoint(api), {method:'POST', headers:_datingApiHeaders(api), body:JSON.stringify(_datingApiBody(api, prompt, 30))});
       var result = JSON.parse(_datingApiText(await resp.json()).replace(/```json|```/g,'').trim());
-      willAccept = result.accept !== false;
+      var refuseLevel = Math.max(0, Math.min(100, Number(result && result.refuseLevel) || 0));
+      if (result && result.accept === false) {
+        willAccept = refuseLevel < 88;
+      } else if (result && result.accept === true) {
+        willAccept = true;
+      }
     } catch(e) {}
   }
   await new Promise(function(r){ setTimeout(r, 1800 + Math.random()*1000); });
@@ -45809,29 +45815,97 @@ async function _callAIReply(userText) {
     _setCallSttStatus('🔊 角色说话中…');
   }
 }
+function _callEscapeHtml(text) {
+  return String(text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+function _callNeedsTranslation(persona, langCode) {
+  return !!(langCode && langCode !== 'zh' && langCode !== 'zh-cn' && langCode !== 'yue') && (!persona || persona.enableTranslation !== false);
+}
+function _callTranslationLabel(langCode) {
+  if (langCode === 'en') return 'EN · 译文';
+  if (langCode === 'ja') return '日 · 译文';
+  if (langCode === 'ko') return '한 · 译文';
+  if (langCode === 'ru') return 'RU · 译文';
+  return '🌐 译文';
+}
+function _callBuildTranslationHtml(translation, langCode) {
+  if (!translation) return '';
+  return '<div class="call-msg-translation">'
+    + '<span class="call-msg-tr-label">' + _callTranslationLabel(langCode) + '</span>'
+    + '<span class="call-msg-tr-text">' + _callEscapeHtml(translation).replace(/\n/g, '<br>') + '</span>'
+    + '</div>';
+}
+async function _callTranslateFallback(mainText, persona, langCode, container) {
+  if (!container || !mainText || !_callNeedsTranslation(persona, langCode)) return;
+  var clean = String(mainText || '').trim();
+  if (!clean) return;
+  var targetLang = (persona && persona.translateLang) || 'zh';
+  var cacheKey = _strHash('call::' + targetLang + '::' + clean);
+  var translationEl = container.querySelector('.call-msg-translation');
+  if (!translationEl) return;
+  if (_translationCache[cacheKey]) {
+    translationEl.outerHTML = _callBuildTranslationHtml(_translationCache[cacheKey], langCode);
+    return;
+  }
+  var api = _getCurrentActiveApiConfig();
+  if (!api || !api.url || !api.key) {
+    var noApiEl = translationEl.querySelector('.call-msg-tr-text');
+    if (noApiEl) noApiEl.textContent = '翻译失败';
+    return;
+  }
+  try {
+    var endpoint = (api.url || '').replace(/\/$/, '') + '/chat/completions';
+    var resp = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + api.key, 'Content-Type': 'application/json' },
+      body: JSON.stringify(_applyApiModel({
+        messages: [{ role: 'user', content: buildTranslationPrompt(clean, targetLang) }],
+        max_tokens: 180,
+        temperature: 0.2
+      }, api.model))
+    });
+    var data = await resp.json();
+    var translated = (((data || {}).choices || [])[0] || {}).message?.content || '';
+    translated = String(translated || '').trim();
+    if (!translated) throw new Error('empty translation');
+    _translationCache[cacheKey] = translated;
+    _saveTranslationCache();
+    if (container.isConnected) {
+      var latestEl = container.querySelector('.call-msg-translation');
+      if (latestEl) latestEl.outerHTML = _callBuildTranslationHtml(translated, langCode);
+    }
+  } catch(e) {
+    if (container.isConnected) {
+      var failEl = container.querySelector('.call-msg-translation .call-msg-tr-text');
+      if (failEl) failEl.textContent = '翻译失败';
+    }
+  }
+}
 function _addCallMsg(text, isUser) {
   var area = document.getElementById('callChatArea');
   var div = document.createElement('div');
   div.className = isUser ? 'call-msg-user' : 'call-msg-ai';
   if (!isUser) {
-    // Parse translation from format 「译文：[...]」
-    var translationMatch = text.match(/「译文：([\s\S]+?)」/);
+    // Parse translation from format 「译文：[...]」 or trailing 译文：...
+    var rawText = String(text || '');
+    var translationMatch = rawText.match(/(?:^|\n)[「"]?译文[:：]\s*([\s\S]+?)[」"]?\s*$/);
     var translation = translationMatch ? translationMatch[1].trim() : '';
     var mainText = _stripSpokenTranslation(text);
     // Detect language from persona
     var _callP = _getCallPersona ? _getCallPersona() : {};
     var _callLang = (_callP && typeof _detectPersonaLang === 'function') ? _detectPersonaLang(_callP) : '';
-    var needsTranslation = !!(_callLang && _callLang !== 'zh' && _callLang !== 'zh-cn' && _callLang !== 'yue') && (_callP.enableTranslation !== false);
-    // Build label for language
-    var langLabel = '';
-    if (_callLang === 'en') langLabel = 'EN · 译文';
-    else if (_callLang === 'ja') langLabel = '日 · 译文';
-    else if (_callLang === 'ko') langLabel = '한 · 译文';
-    var html = '<div class="call-msg-main-text">' + mainText.replace(/\n/g, '<br>') + '</div>';
+    var needsTranslation = _callNeedsTranslation(_callP, _callLang);
+    var html = '<div class="call-msg-main-text">' + _callEscapeHtml(mainText).replace(/\n/g, '<br>') + '</div>';
     if (needsTranslation && translation) {
+      html += _callBuildTranslationHtml(translation, _callLang);
+    } else if (needsTranslation && mainText) {
       html += '<div class="call-msg-translation">'
-        + '<span class="call-msg-tr-label">' + langLabel + '</span>'
-        + '<span class="call-msg-tr-text">' + translation + '</span>'
+        + '<span class="call-msg-tr-label">' + _callTranslationLabel(_callLang) + '</span>'
+        + '<span class="call-msg-tr-text">翻译中…</span>'
         + '</div>';
     }
     div.innerHTML = html;
@@ -45840,6 +45914,13 @@ function _addCallMsg(text, isUser) {
   }
   area.appendChild(div);
   area.scrollTop = area.scrollHeight;
+  if (!isUser) {
+    var _persona = _getCallPersona ? _getCallPersona() : {};
+    var _lang = (_persona && typeof _detectPersonaLang === 'function') ? _detectPersonaLang(_persona) : '';
+    if (_callNeedsTranslation(_persona, _lang) && !rawText.match(/(?:^|\n)[「"]?译文[:：]/) && _stripSpokenTranslation(text)) {
+      _callTranslateFallback(_stripSpokenTranslation(text), _persona, _lang, div);
+    }
+  }
 }
 function _showCallTyping() {
   var area = document.getElementById('callChatArea');
@@ -67167,6 +67248,7 @@ console.log('[RPC] 反向查岗系统已初始化');
 var rpc2State = {
   settings: {},
   currentPersona: null,
+  originPersonaId: null,
   pinEntry: '',
   isActive: false,
   startTime: null,
@@ -67191,6 +67273,22 @@ var rpc2State = {
   thoughtLog: [],      // [{page, thought}] 本次查岗所有心声
   inspectionLog: []    // [{page, summary}]  本次查岗所有浏览内容摘要
 };
+function rpc2RememberOriginPersona() {
+  try {
+    if (typeof currentId !== 'undefined' && currentId != null) {
+      rpc2State.originPersonaId = currentId;
+    }
+  } catch(e) {}
+}
+function rpc2RestoreOriginPersona() {
+  try {
+    var originId = rpc2State.originPersonaId;
+    if (!originId || typeof selectPersona !== 'function' || typeof currentId === 'undefined') return;
+    if (String(currentId) === String(originId)) return;
+    if (!Array.isArray(personas) || !personas.some(function(item) { return String(item.id) === String(originId); })) return;
+    selectPersona(originId);
+  } catch(e) {}
+}
 // 加载设置
 function rpc2LoadSettings() {
   try {
@@ -67225,6 +67323,7 @@ function rpc2UpdateLockTime() {
 }
 // 显示查岗请求弹窗
 function rpc2ShowRequest(persona) {
+  rpc2RememberOriginPersona();
   rpc2State.currentPersona = persona;
   
   document.getElementById('rpc2RequestAvatar').src = persona.avatar || '';
@@ -67708,12 +67807,7 @@ function rpc2CloseSummary() {
   var p = rpc2State.currentPersona;
   if (!p) return;
   /* 查岗结束总结 — 不发系统消息，改由自动发消息承接 */
-  // 切换到该角色的聊天室（确保消息发到正确的聊天室）
-  try {
-    if (typeof selectPersona === 'function' && typeof currentId !== 'undefined' && currentId != p.id) {
-      selectPersona(p.id);
-    }
-  } catch(e) {}
+  rpc2RestoreOriginPersona();
   // 延迟一秒后生成角色主动发送的消息（传入总结情绪保持连贯）
   setTimeout(function() { rpc2TriggerPostInspectionMessages(p, rpc2State.summaryResult); }, 1200);
 }
@@ -67786,9 +67880,9 @@ function rpc2SendMessagesSequentially(p, msgs, idx) {
     if (!p.history) p.history = [];
     p.history.push({ role: 'char', content: msgs[idx] });
     if (typeof savePersona === 'function') savePersona(p);
-    if (typeof renderMessages === 'function') renderMessages();
+    if (typeof currentId !== 'undefined' && String(currentId) === String(p.id) && typeof renderMessages === 'function') renderMessages();
     var box = document.getElementById('chatBox');
-    if (box) box.scrollTop = box.scrollHeight;
+    if (box && typeof currentId !== 'undefined' && String(currentId) === String(p.id)) box.scrollTop = box.scrollHeight;
   } catch(e) {}
   var delay = 1500 + Math.random() * 1500;
   setTimeout(function() { rpc2SendMessagesSequentially(p, msgs, idx + 1); }, delay);

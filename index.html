@@ -19,6 +19,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head>
@@ -446,6 +447,7 @@ self.addEventListener('notificationclick', e => {
   }
   // ── 攔截 localStorage ──
   const _realLS = window.localStorage;
+  window._monoRawLocalStorage = _realLS;
   // ══════════════════════════════════════════════════
   // 多世界系统：key转换层
   // 共享key（不随世界切换）：home布局/icons/字体/API等
@@ -11431,6 +11433,13 @@ body.editor-modal-open #chatPage .app-back-bar {
 }
 .shop-ing-qty-btn:active { background: #e0e0e0; }
 .shop-ing-qty-num { font-size: 14px; font-weight: 800; font-family:'DM Mono',monospace; min-width: 20px; text-align: center; }
+.shop-ing-qty-input {
+  width: 56px; height: 30px; border-radius: 9px; border: 1px solid #e2e2e2;
+  background: #fff; color: #1a1a1a; text-align: center; font-size: 12px;
+  font-weight: 800; font-family:'DM Mono',monospace; outline: none;
+  padding: 0 4px;
+}
+.shop-ing-qty-input:focus { border-color: #1a1a1a; }
 .shop-ing-price { font-size: 11px; font-weight: 700; color: #1a1a1a; white-space:nowrap; }
 .shop-ing-confirm-btn {
   padding: 7px 13px; background: #1a1a1a; color: #fff;
@@ -19186,6 +19195,61 @@ function saveForumState(nextCurrentSectionId) {
   localStorage.setItem('mono_forum_current_section', JSON.stringify(currentSectionId));
   return payload;
 }
+function _forumCompactText(text) {
+  return String(text || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, '')
+    .replace(/[，。！？、；：“”"'‘’（）()【】《》<>…\-—]/g, '')
+    .trim();
+}
+function _forumRecentPersonaPosts(personaId, limit) {
+  const pid = String(personaId);
+  const all = [];
+  const persona = (personas || []).find(function(p) { return String(p.id) === pid; });
+  const personaName = persona ? String(persona.name || '') : '';
+  Object.keys(forumData || {}).forEach(function(secId) {
+    const posts = Array.isArray(forumData[secId]) ? forumData[secId] : [];
+    posts.forEach(function(post) {
+      if (!post) return;
+      if (String(post.personaId) === pid || (post.realAuthor && String(post.realAuthor) === personaName)) {
+        all.push(post);
+      }
+    });
+  });
+  return all.sort(function(a, b) { return (b.time || 0) - (a.time || 0); }).slice(0, limit || 8);
+}
+function _forumBuildAvoidanceNotes(persona, recentPosts) {
+  if (!recentPosts || !recentPosts.length) return '';
+  return recentPosts.map(function(post, idx) {
+    const sec = (forumSections || []).find(function(s) { return String(s.id) === String(post.sectionId); });
+    const secName = sec ? sec.name : '论坛';
+    const title = String(post.title || '').trim();
+    const body = String(post.content || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim().slice(0, 60);
+    return (idx + 1) + '. [' + secName + '] ' + title + ' / ' + body;
+  }).join('\n');
+}
+function _forumTooSimilarToRecent(personaId, title, content) {
+  const recentPosts = _forumRecentPersonaPosts(personaId, 8);
+  if (!recentPosts.length) return false;
+  const nextTitle = _forumCompactText(title);
+  const nextContent = _forumCompactText(content);
+  if (!nextTitle && !nextContent) return true;
+  return recentPosts.some(function(post) {
+    const oldTitle = _forumCompactText(post.title || '');
+    const oldContent = _forumCompactText(post.content || '');
+    if (nextTitle && oldTitle && (nextTitle === oldTitle || nextTitle.includes(oldTitle) || oldTitle.includes(nextTitle))) return true;
+    if (nextContent && oldContent) {
+      const headA = nextContent.slice(0, 36);
+      const headB = oldContent.slice(0, 36);
+      if (headA && headB && (headA === headB || headA.includes(headB) || headB.includes(headA))) return true;
+      if (nextContent.length > 24 && oldContent.length > 24) {
+        const overlap = nextContent.slice(0, 24) === oldContent.slice(0, 24);
+        if (overlap) return true;
+      }
+    }
+    return false;
+  });
+}
 function isForumGeneratedAiPost(post) {
   if (!post || typeof post !== 'object') return false;
   if (post.authorType === 'ai') return true;
@@ -21509,7 +21573,7 @@ function renderMessages(opts) {
       ? (p.bubbleUserFontColor ? ' style="color:' + p.bubbleUserFontColor + '"' : '')
       : (p.bubbleAiFontColor  ? ' style="color:' + p.bubbleAiFontColor  + '"' : '');
     // ── 处理 [reply:原文] 引用指令，转为引用气泡 ──
-    let displayContent = msgContent.replace(/\\n/g, '\n').replace(/\n/g, '<br>');
+    let displayContent = _splitChatBubbleLines(msgContent.replace(/\\n/g, '\n'), 14).replace(/\n/g, '<br>');
     if (!isUser && displayContent) {
       const replyMatch = displayContent.match(/^\[reply:([\s\S]*?)\]\s*/);
       if (replyMatch) {
@@ -21517,7 +21581,7 @@ function renderMessages(opts) {
         displayContent = displayContent.replace(replyMatch[0], '').trim();
         if (!m.quote && quotedText) {
           // 注入临时引用块到 quoteHtml（不修改 m.quote 避免污染存储）
-          const existingQuoteHtml = `<div class="quote-block" style="border-left:3px solid #ccc;padding:4px 8px;background:rgba(0,0,0,0.04);border-radius:6px;font-size:11px;color:#888;margin-bottom:4px;">${quotedText}${quotedText.length>=60?'…':''}</div>`;
+          const existingQuoteHtml = `<div class="quote-block" style="border-left:3px solid #ccc;padding:4px 8px;background:rgba(0,0,0,0.04);border-radius:6px;font-size:11px;color:#888;margin-bottom:4px;">${_formatChatBubbleHtml(quotedText)}${quotedText.length>=60?'…':''}</div>`;
           // Prepend to quoteHtml below
           displayContent = '\x00QUOTED\x00' + existingQuoteHtml + '\x00ENDQUOTED\x00' + displayContent;
         }
@@ -21526,7 +21590,7 @@ function renderMessages(opts) {
     let quoteHtml = '';
     if (m.quote) {
       const qAuthor = m.quote.role === 'user' ? userProfile.name : p.name;
-      quoteHtml = `<div class="quote-block">${qAuthor}：${quoteContent.slice(0,50)}${quoteContent.length>50?'…':''}</div>`;
+      quoteHtml = `<div class="quote-block">${_formatChatBubbleHtml(qAuthor + '：' + quoteContent.slice(0,50))}${quoteContent.length>50?'…':''}</div>`;
     }
     // Extract prepended quote block from displayContent if present
     let prependedQuoteHtml = '';
@@ -21741,6 +21805,25 @@ function renderMessages(opts) {
     }
   }).join('');
   box.innerHTML = html;
+  (function _injectChatDateDividers() {
+    const rows = Array.from(box.querySelectorAll('.msg-row[data-idx]'));
+    let lastDateKey = '';
+    rows.forEach(function(row) {
+      const idx = Number(row.getAttribute('data-idx'));
+      if (!isFinite(idx) || !fullHistory[idx] || !fullHistory[idx].timestamp) return;
+      const ts = fullHistory[idx].timestamp;
+      const dateKey = _chatDateDividerKey(ts);
+      if (!dateKey || dateKey === lastDateKey) return;
+      lastDateKey = dateKey;
+      const divider = document.createElement('div');
+      divider.className = 'chat-date-divider';
+      divider.style.cssText = 'display:flex;justify-content:center;align-items:center;margin:14px 0 10px;padding:0 12px;';
+      divider.innerHTML = '<span style="display:inline-flex;align-items:center;justify-content:center;max-width:88%;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,0.82);border:1px solid rgba(0,0,0,0.06);box-shadow:0 2px 8px rgba(0,0,0,0.04);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);font-size:10px;line-height:1.4;color:#666;text-align:center;">'
+        + _escapeHtml(_formatChatDateDividerLabel(ts))
+        + '</span>';
+      box.insertBefore(divider, row);
+    });
+  })();
   // 手账贴纸：渲染后碰撞检测，缩小直到不遮挡文字和时间戳
   (function _journalStickerResize() {
     requestAnimationFrame(function() {
@@ -21956,7 +22039,7 @@ function sendMessage() {
   var chatBox = document.getElementById('chatBox');
   if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
   // Track chat message for task system
-  if (typeof taskTrackChatMessage === 'function') taskTrackChatMessage(currentId);
+  if (typeof taskTrackChatMessage === 'function') taskTrackChatMessage(currentId, newMsg.timestamp);
   // 侦测用戶是否要求角色转帳
   checkUserTransferIntent(text, p);
   // 根据角色回复模式决定是否自动回复
@@ -26132,7 +26215,7 @@ function postMoments() {
   localStorage.setItem('mono_moments', JSON.stringify(momentsData));
   renderMoments();
   // Track for task system
-  if (typeof taskTrackMomentPost === 'function') taskTrackMomentPost();
+  if (typeof taskTrackMomentPost === 'function') taskTrackMomentPost(newPost.time);
   if (currentId) {
     const p = personas.find(x => x.id == currentId);
     if (p && Math.random() > 0.3) {
@@ -26345,13 +26428,14 @@ function renderDiary() {
 function postDiary() {
   const content = document.getElementById('diaryInput').value.trim();
   if (!content) { alert("请输入日记内容！"); return; }
-  diaryData.unshift({ id: Date.now(), author: userProfile.name + ' 的日记', authorType: 'user', content, date: new Date().getTime() });
+  const _diaryPostTs = new Date().getTime();
+  diaryData.unshift({ id: Date.now(), author: userProfile.name + ' 的日记', authorType: 'user', content, date: _diaryPostTs });
   document.getElementById('diaryInput').value = '';
   closeComposeModal('diary');
   localStorage.setItem('mono_diary', JSON.stringify(diaryData));
   renderDiary();
   // Track for task system
-  if (typeof taskTrackDiaryPost === 'function') taskTrackDiaryPost();
+  if (typeof taskTrackDiaryPost === 'function') taskTrackDiaryPost(_diaryPostTs);
 }
 function deleteDiaryEntry(entryId) {
   if (!confirm('确定要删除这篇日记吗？')) return;
@@ -26959,7 +27043,7 @@ async function updateForum() {
   if (!currentSectionId || !apiConfig.url || !apiConfig.key) { alert("请先设置API并选择一个论坛板块！"); return; }
   const cs = forumSections.find(s => s.id === currentSectionId); if (!cs) return;
   try {
-    const prompt = `${LANG_SYSTEM_PREFIX}根据以下板块，用简体中文生成6个完整论坛帖子（标题、内容和评论）：\n板块名称：${cs.name}\n板块描述：${cs.desc}\n\n输出格式（每行一篇）：帖子标题|||帖子内容（80-150字）|||评论1|||评论2|||评论3\n6行，不加任何说明文字或格式符号。`;
+    const prompt = `${LANG_SYSTEM_PREFIX}根据以下板块，用简体中文生成6个完整论坛帖子（标题、内容和评论）。\n板块名称：${cs.name}\n板块描述：${cs.desc}\n\n要求：\n1. 六个帖子的话题必须明显不同，不能围绕同一件事反复改写。\n2. 话题来源要分散：日常见闻、个人经历、观点吐槽、兴趣爱好、工作学习、社交观察都可以。\n3. 不要让所有帖子都围绕聊天记录、聊天室、恋爱对象或同一个人物。\n4. 每条帖子都要像不同真人发的，语气、关注点、立场有差异。\n\n输出格式（每行一篇）：帖子标题|||帖子内容（80-150字）|||评论1|||评论2|||评论3\n6行，不加任何说明文字或格式符号。`;
     const r = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${apiConfig.key}`, 'Content-Type': 'application/json' },
@@ -27040,6 +27124,22 @@ async function generatePersonaForumPost(personaId) {
           groupCtx += g.history.slice(-12).map(h => `[${g.name || '群聊'}] ${h.author || h.role}：${h.content || ''}`).join('\n') + '\n';
       });
   } catch(e) {}
+  let ccRoomCtx = '';
+  try {
+    if (typeof ccGetRooms === 'function' && typeof ccGetHistory === 'function') {
+      ccGetRooms()
+        .filter(room => room && Array.isArray(room.members) && room.members.includes(persona.name))
+        .slice(0, 2)
+        .forEach(room => {
+          const hist = ccGetHistory(room.id) || [];
+          if (!hist.length) return;
+          const roomName = room.name || room.title || (room.members || []).join('、') || '角色聊天室';
+          ccRoomCtx += hist.slice(-12).map(msg =>
+            `[${roomName}] ${(msg.sender || msg.author || msg.role || '角色')}：${msg.content || ''}`
+          ).join('\n') + '\n';
+        });
+    }
+  } catch(e) {}
   const personaMoments = momentsData.filter(m => m.author === persona.name).slice(0, 3)
     .map(m => '朋友圈：' + (m.content || '')).join('\n');
   let offlineCtx = '';
@@ -27054,9 +27154,22 @@ async function generatePersonaForumPost(personaId) {
   const contextBlock = [
     recentChat   ? '【你（' + persona.name + '）最近说过的话/心情】\n' + recentChat   : '',
     groupCtx     ? '【群聊记录（近期）】\n' + groupCtx     : '',
+    ccRoomCtx    ? '【角色与角色之间的聊天室记录（近期）】\n' + ccRoomCtx : '',
     personaMoments ? '【朋友圈动态】\n' + personaMoments   : '',
     offlineCtx   ? '【线下模式剧情】\n' + offlineCtx       : ''
   ].filter(Boolean).join('\n\n');
+  const recentPersonaPosts = _forumRecentPersonaPosts(persona.id, 6);
+  const avoidanceNotes = _forumBuildAvoidanceNotes(persona, recentPersonaPosts);
+  const forumTopicDirections = [
+    '优先从你自己的日常生活、工作学习、兴趣习惯、突发小事里找灵感',
+    '优先从你的人设背景、成长经历、家庭关系、过去故事里找灵感',
+    '优先写你对板块话题的个人观点、吐槽、观察或经验分享',
+    '优先写你和身边朋友、同事、同学、邻居之间发生的小插曲，不必带上用户',
+    '优先写你最近的情绪波动、烦恼、好奇心或突然冒出来的想法',
+    '只有在真的合适时，才少量写到用户、群聊或角色之间的聊天室内容，不能默认每次都围绕这些'
+  ];
+  const recentDirectionIdx = recentPersonaPosts.length % forumTopicDirections.length;
+  const selectedTopicDirection = forumTopicDirections[recentDirectionIdx];
   // ── 显示加载状态 ──
   const fl = document.getElementById('forumList');
   const loadingDiv = document.createElement('div');
@@ -27067,18 +27180,29 @@ async function generatePersonaForumPost(personaId) {
   try {
     // ── Step 1：一次性生成帖子 + 所有NPC评论 + 角色回复NPC ──
     const npcCount = 4 + Math.floor(Math.random() * 4); // 4~7条NPC评论
-    const prompt = `${LANG_SYSTEM_PREFIX}你是${persona.name}，人设：${persona.persona}。
+    let result = null;
+    let lastRaw = '';
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const retryNote = attempt === 0
+        ? ''
+        : '\n【重试要求】你上一版和旧帖太像了。这一次必须明显换题材、换切入口、换事件，不要做同义改写。';
+      const prompt = `${LANG_SYSTEM_PREFIX}你是${persona.name}，人设：${persona.persona}。
 你即将在论坛（板块：${cs.name}，说明：${cs.desc || cs.name}）以${isAnonymous ? '"匿名"' : '"实名"'}身份发帖。
+以下资料只是可选灵感，不是必须使用，更不是唯一主题来源。不要每次都写用户、聊天室或最近私聊内容；如果适合，也可以少量参考角色与角色之间的聊天室互动。
+优先创作方向：${selectedTopicDirection}
 你的近期言行/心情素材（仅供灵感，按你的视角改写融入，不要直接引用原文）：
 ${contextBlock || '（暂无，请根据人设自由发挥）'}
-⚠️ 重要提醒：上述背景资料中所有内容都是从你「${persona.name}」的视角出发的，帖子内容必须完全以你自己的第一人称视角来写，绝对不能以对话对象或其他人的视角来写。
+${avoidanceNotes ? '【你最近已经发过的帖子，请避开这些主题、切口、措辞，不要重复】\n' + avoidanceNotes : ''}
+⚠️ 重要提醒：上述背景资料中所有内容都是从你「${persona.name}」的视角出发的，帖子内容必须完全以你自己的第一人称视角来写，绝对不能以对话对象或其他人的视角来写。${retryNote}
 任务：生成完整的帖子发布场景，包含帖子本身、其他网友的评论、以及你对部分评论的回复。
 要求：
 1. 帖子标题：吸引眼球，与板块主题相关，15字以内
 2. 帖子正文：100-200字，口语化，真实有感情，完全从你「${persona.name}」的内心视角和亲身经历出发，${isAnonymous ? '以匿名者角度叙述，不暴露真实身份' : '以你本人公开发帖的口吻叙述，让网友知道发帖者就是你'}，绝对不能从对话对象或任何其他人的视角写
-3. NPC评论：生成${npcCount}条不同网友的评论，昵称各异，风格多样（共鸣、追问、调侃、反驳、点赞），每条15-60字
-4. 角色回复NPC：你对其中2~3条NPC评论做出回复。${isAnonymous ? '回复时要以另一个匿名路人网友的身份互动，不能暴露你是发帖人，也不能显得认识发帖者。' : '回复时直接以你自己的身份互动，默认大家知道你就是发帖者。'} 内容要符合你的人设性格和说话方式，口语化，20-60字
-5. 所有内容用简体中文
+3. 题材必须足够开阔，可以来自：你自己的生活、人设背景、工作学习、兴趣、朋友关系、家庭经历、板块话题、见闻感想、尴尬小事、情绪碎片，也可以在合适时少量参考你和其他角色之间的聊天室互动。不要默认写聊天室聊天内容，也不要默认写用户；除非真的很适合，否则不要把用户当成帖子主轴。
+4. 标题和正文必须与「你最近已经发过的帖子」明显不同，不能只是换几个词。
+5. NPC评论：生成${npcCount}条不同网友的评论，昵称各异，风格多样（共鸣、追问、调侃、反驳、点赞），每条15-60字
+6. 角色回复NPC：你对其中2~3条NPC评论做出回复。${isAnonymous ? '回复时要以另一个匿名路人网友的身份互动，不能暴露你是发帖人，也不能显得认识发帖者。' : '回复时直接以你自己的身份互动，默认大家知道你就是发帖者。'} 内容要符合你的人设性格和说话方式，口语化，20-60字
+7. 所有内容用简体中文
 严格返回JSON（不加任何说明）：
 {
   "title": "帖子标题",
@@ -27091,9 +27215,14 @@ ${contextBlock || '（暂无，请根据人设自由发挥）'}
   ]
 }
 只返回JSON。`;
-    const raw = await _forumApiFetch(prompt, 2000);
-    const result = safeParseJSON(raw);
-    if (!result || !result.title || !result.content) throw new Error('生成内容格式错误');
+      lastRaw = await _forumApiFetch(prompt, 2000);
+      const parsed = safeParseJSON(lastRaw);
+      if (!parsed || !parsed.title || !parsed.content) continue;
+      if (_forumTooSimilarToRecent(persona.id, parsed.title, parsed.content)) continue;
+      result = parsed;
+      break;
+    }
+    if (!result || !result.title || !result.content) throw new Error('生成内容格式错误或与旧帖重复');
     // ── Step 2：构建帖子数据（一次性填入所有评论和回复） ──
     const npcComments = Array.isArray(result.npcComments) ? result.npcComments : [];
     const personaReplies = Array.isArray(result.personaReplies) ? result.personaReplies : [];
@@ -29132,6 +29261,35 @@ function formatDate(ts) {
   const d = new Date(ts);
   return d.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
 }
+function _resolveLocalDateInput(input) {
+  if (input instanceof Date) return new Date(input.getTime());
+  if (typeof input === 'number' || typeof input === 'string') {
+    const parsed = new Date(input);
+    if (!isNaN(parsed.getTime())) return parsed;
+  }
+  return new Date();
+}
+function _getLocalDateKey(input) {
+  const d = _resolveLocalDateInput(input);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function _chatDateDividerKey(ts) {
+  if (!ts) return '';
+  return _getLocalDateKey(ts);
+}
+function _formatChatDateDividerLabel(ts) {
+  if (!ts) return '';
+  const d = _resolveLocalDateInput(ts);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'long',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
 function saveData() {
   // ── 分离存储策略（无限容量）──
   // 1. chatBgImage 单独存 (每个可达1MB)
@@ -29650,9 +29808,13 @@ async function confirmRequestTransfer() {
 }
 // ── 角色自发偶爾转帳（在 triggerAutoReply 后触发）──
 async function tryPersonaInitiateTransfer(p, recentChat) {
-  if (Math.random() > 0.12) return; // 12% chance per reply cycle
+  const recentPersonaTransfer = (p.history || []).slice(-80).some(function(m) {
+    return m && m.msgType === 'transfer' && m.role === 'assistant';
+  });
+  if (recentPersonaTransfer) return;
+  if (Math.random() > 0.03) return; // lower proactive probability
   if (!apiConfig.url || !apiConfig.key || !apiConfig.model) return;
-  const prompt = `${LANG_SYSTEM_PREFIX}你是${p.name}，人设：${p.persona}。\n根据你的人设和以下聊天气氛，判斷你是否想主动转帳给${userProfile.name}？\n转帳是特殊情感行为，只在特别情況下发生（例如关心、表达心意、补偿歉意、慶祝、请客等），如果情境合适请积极转帳。\n金額無上限，完全根据角色人设和背景决定（可以是几元也可以是几十万）。\n${(()=>{const _tl=_detectPersonaLang(p);const _nt=!!(_tl&&_tl!=='zh'&&_tl!=='zh-cn');return _nt?`若决定转帳，便簽必須用符合你人设的语气以你的母语（${_tl}）书写（10-30字，不可为空，有个性和情感），并附 note_translation 字段提供简体中文翻译。\n请回覆JSON：{"transfer": true/false, "amount": 数字, "note": "便簽原文（transfer为true时必填）", "note_translation": "简体中文翻译（transfer为true时必填）"}`:'若决定转帳，便簽必須用符合你人设的语气写（10-30字，不可为空，有个性和情感）。\n请回覆JSON：{"transfer": true/false, "amount": 数字, "note": "便簽（transfer为true时必填）"}';})()}\n若transfer为false則只返回{"transfer": false}。只返回JSON，不加任何说明。\n\n【最近聊天】\n${recentChat}`;
+  const prompt = `${LANG_SYSTEM_PREFIX}你是${p.name}，人设：${p.persona}。\n根据你的人设和以下聊天气氛，判斷你是否真的有充分理由主动转帳给${userProfile.name}？\n转帳是非常少见的特殊情感行为，只有在极强动机下才会发生，例如：明确补偿、明确庆祝、明确请客、明确担心对方经济压力、或用户刚刚提到了需要钱/具体金額。\n如果只是普通聊天、日常关心、暧昧气氛、想表达好感，绝大多数情况都不要主动转帳，直接返回 false。\n除非情境真的很强烈，否则优先返回 false。\n金額無上限，但必须符合角色背景和当下事件，不能无缘无故转大额。\n${(()=>{const _tl=_detectPersonaLang(p);const _nt=!!(_tl&&_tl!=='zh'&&_tl!=='zh-cn');return _nt?`若决定转帳，便簽必須用符合你人设的语气以你的母语（${_tl}）书写（10-30字，不可为空，有个性和情感），并附 note_translation 字段提供简体中文翻译。\n请回覆JSON：{"transfer": true/false, "amount": 数字, "note": "便簽原文（transfer为true时必填）", "note_translation": "简体中文翻译（transfer为true时必填）"}`:'若决定转帳，便簽必須用符合你人设的语气写（10-30字，不可为空，有个性和情感）。\n请回覆JSON：{"transfer": true/false, "amount": 数字, "note": "便簽（transfer为true时必填）"}';})()}\n若transfer为false則只返回{"transfer": false}。只返回JSON，不加任何说明。\n\n【最近聊天】\n${recentChat}`;
   try {
     const r = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, {
       method: 'POST', headers: { 'Authorization': `Bearer ${apiConfig.key}`, 'Content-Type': 'application/json' },
@@ -30222,6 +30384,7 @@ async function sendImageMessage(base64DataUrl) {
     ? (_isMeme ? '[用户发送了一个表情包（meme），情绪/含义：' + imageDesc + '。表情包是用户态度或情绪的补充，请结合前后对话上下文自然回应，无需刻意提及"表情包"这个词]'
                : '[用户发送了一张图片：' + imageDesc + '，请结合对话上下文理解并回应]')
     : '[用户发送了一张图片，请结合上下文自然回应]';
+  const _imageMsgTs = Date.now();
   p.history.push({
     role: 'user',
     msgType: 'image',
@@ -30229,14 +30392,14 @@ async function sendImageMessage(base64DataUrl) {
     imageCaption: '',
     imageDesc: imageDesc,
     content: contentText,
-    timestamp: Date.now()
+    timestamp: _imageMsgTs
   });
   saveData();
   renderMessages();
   renderContactList();
   var chatBox = document.getElementById('chatBox');
   if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
-  if (typeof taskTrackChatMessage === 'function') taskTrackChatMessage(currentId);
+  if (typeof taskTrackChatMessage === 'function') taskTrackChatMessage(currentId, _imageMsgTs);
   // 根据角色回复模式决定是否自动回复
   if (typeof _handleAutoReplyAfterSend === "function") _handleAutoReplyAfterSend(currentId);
 }
@@ -30969,10 +31132,12 @@ function renderTransferBubble(m, idx, isUser, avatarSrc, authorName, isSelected)
   // Both user and persona use same black bubble style
   const styleClass = isUser ? 'user-transfer' : 'persona-transfer';
   const headerLabel = isUser ? '转帳' : `来自 ${authorName} 的转帳`;
+  const wrappedTransferNote = m.transferNote ? _formatChatBubbleHtml(m.transferNote) : '';
+  const wrappedTransferTranslation = m.transferNoteTranslation ? _formatChatBubbleHtml(m.transferNoteTranslation) : '';
   const bubbleHtml = `<div class="bubble-transfer ${styleClass}">
     <div class="bubble-transfer-header"><i class="fas fa-money-bill-wave"></i> ${headerLabel}</div>
     <div class="bubble-transfer-amount">¥${parseFloat(m.transferAmt || 0).toFixed(2)}</div>
-    ${m.transferNote ? `<div class="bubble-transfer-note">${m.transferNote}${m.transferNoteTranslation ? '<div style="margin-top:4px;font-size:10px;color:rgba(255,255,255,0.5);font-style:italic;border-top:1px solid rgba(255,255,255,0.15);padding-top:4px;"><span style="font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:0.7;font-family:\'DM Mono\',monospace;display:block;margin-bottom:2px;">译文</span>' + m.transferNoteTranslation + '</div>' : ''}</div>` : ''}
+    ${m.transferNote ? `<div class="bubble-transfer-note">${wrappedTransferNote}${m.transferNoteTranslation ? '<div style="margin-top:4px;font-size:10px;color:rgba(255,255,255,0.5);font-style:italic;border-top:1px solid rgba(255,255,255,0.15);padding-top:4px;"><span style="font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:0.7;font-family:\'DM Mono\',monospace;display:block;margin-bottom:2px;">译文</span>' + wrappedTransferTranslation + '</div>' : ''}</div>` : ''}
     <span class="bubble-transfer-status ${statusClass}">${statusText}</span>
     ${actionBtns}
   </div>`;
@@ -31023,6 +31188,27 @@ async function handleUserTransferAction(msgIdx, action) {
     }
   } catch(e) {}
   if (typing) typing.classList.add('hidden');
+}
+function _splitChatBubbleLines(text, maxCharsPerLine) {
+  var source = String(text || '').replace(/\r\n/g, '\n');
+  var limit = Math.max(1, parseInt(maxCharsPerLine, 10) || 14);
+  return source.split('\n').map(function(line) {
+    var current = String(line || '');
+    if (!current) return '';
+    var chars = Array.from(current);
+    var rows = [];
+    for (var i = 0; i < chars.length; i += limit) {
+      rows.push(chars.slice(i, i + limit).join(''));
+    }
+    return rows.join('\n');
+  }).join('\n');
+}
+function _formatChatBubbleHtml(text) {
+  return _splitChatBubbleLines(text, 14)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>');
 }
 // ════════════════════════════════════════════════
 // REAL VOICE RECORDING ENGINE
@@ -31399,7 +31585,7 @@ async function tryPersonaTransfer(p, recentChat) {
   if (!p.allowSticker && !p.allowVoice) return; // reuse: only if persona has rich media enabled
   // Actually let persona transfer independently:
   if (!apiConfig.url || !apiConfig.key || !apiConfig.model) return;
-  const prompt = `${LANG_SYSTEM_PREFIX}你是${p.name}，人设：${p.persona}。\n根据你的人设、以下聊天气氛和內容，判斷你是否想主动转帳给${userProfile.name}？\n转帳是一个特殊的情感行为，一般只在特别的情況下发生（例如关心对方、表达心意、补偿歉意、慶祝节日等）。\n请回覆JSON格式：{"transfer": true/false, "amount": 数字（如转帳）, "note": "便簽", "reason": "原因"}\n若transfer为false，reason可省略。只返回JSON。\n\n【最近聊天记录】\n${recentChat}`;
+  const prompt = `${LANG_SYSTEM_PREFIX}你是${p.name}，人设：${p.persona}。\n根据你的人设、以下聊天气氛和內容，判斷你是否真的有强理由主动转帳给${userProfile.name}？\n转帳是一个非常少见的特殊行为，不是日常示好手段。只有明确请客、补偿、庆祝、或用户明确提到资金需求时才考虑。\n普通聊天、暧昧、关心、撒娇都不够，默认应返回 false。\n请回覆JSON格式：{"transfer": true/false, "amount": 数字（如转帳）, "note": "便簽", "reason": "原因"}\n若transfer为false，reason可省略。只返回JSON。\n\n【最近聊天记录】\n${recentChat}`;
   try {
     const r = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, {
       method: 'POST', headers: { 'Authorization': `Bearer ${apiConfig.key}`, 'Content-Type': 'application/json' },
@@ -42058,10 +42244,120 @@ let taskData = (function() {
 if (!taskData.dailyChatCounts) taskData.dailyChatCounts = {};
 if (!taskData.tasks) taskData.tasks = {};
 if (!taskData.rewards) taskData.rewards = [];
+if (!taskData.pendingRewards) taskData.pendingRewards = [];
 if (!taskData.streaks) taskData.streaks = {};
 if (!taskData.streakRewards) taskData.streakRewards = [];
 if (!taskData.dailyMoments) taskData.dailyMoments = {};
 if (!taskData.dailyDiary) taskData.dailyDiary = {};
+let _taskDataHydrated = !!window._monoDBReady;
+let _taskDataSaveQueued = false;
+function _normalizeTaskDateKey(value) {
+  if (!value) return '';
+  if (typeof value === 'string') {
+    const match = value.trim().match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+    if (match) {
+      return match[1] + '-' + String(match[2]).padStart(2, '0') + '-' + String(match[3]).padStart(2, '0');
+    }
+  }
+  return _getLocalDateKey(value);
+}
+function _taskNormalizeDateMap(mapObj) {
+  const out = {};
+  Object.keys(mapObj || {}).forEach(function(key) {
+    const normalizedKey = _normalizeTaskDateKey(key) || key;
+    const value = mapObj[key];
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      out[normalizedKey] = Object.assign({}, out[normalizedKey] || {}, value);
+    } else {
+      out[normalizedKey] = value;
+    }
+  });
+  return out;
+}
+function _taskEnsureShape(data) {
+  const out = (data && typeof data === 'object') ? data : {};
+  if (!out.dailyChatCounts) out.dailyChatCounts = {};
+  if (!out.tasks) out.tasks = {};
+  if (!out.rewards) out.rewards = [];
+  if (!out.pendingRewards) out.pendingRewards = [];
+  if (!out.streaks) out.streaks = {};
+  if (!out.streakRewards) out.streakRewards = [];
+  if (!out.dailyMoments) out.dailyMoments = {};
+  if (!out.dailyDiary) out.dailyDiary = {};
+  out.dailyChatCounts = _taskNormalizeDateMap(out.dailyChatCounts);
+  out.tasks = _taskNormalizeDateMap(out.tasks);
+  out.dailyMoments = _taskNormalizeDateMap(out.dailyMoments);
+  out.dailyDiary = _taskNormalizeDateMap(out.dailyDiary);
+  Object.keys(out.streaks).forEach(function(pid) {
+    const streak = out.streaks[pid] || {};
+    streak.currentStreak = Number(streak.currentStreak) || 0;
+    streak.lastChatDate = _normalizeTaskDateKey(streak.lastChatDate);
+    if (!streak.milestones || typeof streak.milestones !== 'object') streak.milestones = {};
+    out.streaks[pid] = streak;
+  });
+  return out;
+}
+function _taskMergeRewardLists(baseList, currentList, keyFn) {
+  const seen = {};
+  const merged = [];
+  (Array.isArray(baseList) ? baseList : []).concat(Array.isArray(currentList) ? currentList : []).forEach(function(item) {
+    if (!item) return;
+    const key = keyFn(item);
+    if (seen[key]) return;
+    seen[key] = true;
+    merged.push(item);
+  });
+  return merged;
+}
+function _hydrateTaskDataFromStorage(forceMerge) {
+  if (_taskDataHydrated && !forceMerge) return;
+  if (!window._monoDBReady) return;
+  try {
+    const raw = localStorage.getItem('mono_task_data')
+      || (window._monoRawLocalStorage && window._monoRawLocalStorage.getItem('mono_task_data'))
+      || '';
+    if (!raw) {
+      _taskDataHydrated = true;
+      taskData = _taskEnsureShape(taskData);
+      return;
+    }
+    const parsed = _taskEnsureShape(JSON.parse(raw));
+    taskData = _taskEnsureShape(taskData);
+    taskData.dailyChatCounts = Object.assign({}, parsed.dailyChatCounts || {}, taskData.dailyChatCounts || {});
+    taskData.tasks = Object.assign({}, parsed.tasks || {}, taskData.tasks || {});
+    taskData.dailyMoments = Object.assign({}, parsed.dailyMoments || {}, taskData.dailyMoments || {});
+    taskData.dailyDiary = Object.assign({}, parsed.dailyDiary || {}, taskData.dailyDiary || {});
+    const mergedStreaks = Object.assign({}, parsed.streaks || {});
+    Object.keys(taskData.streaks || {}).forEach(function(pid) {
+      mergedStreaks[pid] = Object.assign({}, mergedStreaks[pid] || {}, taskData.streaks[pid] || {});
+    });
+    taskData.streaks = mergedStreaks;
+    taskData.rewards = _taskMergeRewardLists(parsed.rewards, taskData.rewards, function(item) {
+      return [
+        item.personaId || '',
+        item.date || '',
+        item.title || item.subcategory || '',
+        item.content || ''
+      ].join('||');
+    });
+    taskData.pendingRewards = _taskMergeRewardLists(parsed.pendingRewards, taskData.pendingRewards, function(item) {
+      return [
+        item.personaId || '',
+        item.date || '',
+        item.title || item.subcategory || ''
+      ].join('||');
+    });
+    taskData.streakRewards = _taskMergeRewardLists(parsed.streakRewards, taskData.streakRewards, function(item) {
+      return [
+        item.personaId || '',
+        item.days || '',
+        item.date || '',
+        item.content || ''
+      ].join('||');
+    });
+  } catch(e) {}
+  _taskDataHydrated = true;
+}
 // 启动时刷新所有连续天数（清除已断链的过期数值），由 refreshAllStreaks() 负责
 // 注意：refreshAllStreaks 在下方定义，此处延迟调用
 setTimeout(function() { if (typeof refreshAllStreaks === 'function') refreshAllStreaks(); }, 0);
@@ -42070,15 +42366,31 @@ let _taskPendingClaimCharCallback = null;
 // Tracks a reward that has been generated but not yet saved by the user
 let _currentGeneratedReward = null;
 function saveTaskData() {
-  localStorage.setItem('mono_task_data', JSON.stringify(taskData));
+  taskData = _taskEnsureShape(taskData);
+  if (!window._monoDBReady) {
+    if (!_taskDataSaveQueued && typeof window.afterDB === 'function') {
+      _taskDataSaveQueued = true;
+      window.afterDB(function() {
+        _taskDataSaveQueued = false;
+        _hydrateTaskDataFromStorage(true);
+        saveTaskData();
+      });
+    }
+    return;
+  }
+  _hydrateTaskDataFromStorage();
+  const raw = JSON.stringify(taskData);
+  localStorage.setItem('mono_task_data', raw);
+  try {
+    if (window._monoRawLocalStorage) window._monoRawLocalStorage.setItem('mono_task_data', raw);
+  } catch(e) {}
 }
 function getTaskDateStr(d) {
-  if (!d) d = new Date();
-  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  return _getLocalDateKey(d);
 }
 // 返回昨天的本地日期字符串
-function getYesterdayStr() {
-  const yd = new Date();
+function getYesterdayStr(baseDate) {
+  const yd = _resolveLocalDateInput(baseDate);
   yd.setDate(yd.getDate() - 1);
   return getTaskDateStr(yd);
 }
@@ -42096,6 +42408,11 @@ function refreshAllStreaks() {
     // 基本数据健康检查
     if (typeof s.currentStreak !== 'number' || isNaN(s.currentStreak) || s.currentStreak < 0) {
       s.currentStreak = 0; changed = true;
+    }
+    const normalizedLastChatDate = _normalizeTaskDateKey(s.lastChatDate);
+    if (s.lastChatDate !== normalizedLastChatDate) {
+      s.lastChatDate = normalizedLastChatDate;
+      changed = true;
     }
     if (!s.lastChatDate) s.lastChatDate = '';
     if (!s.milestones) s.milestones = {};
@@ -42247,8 +42564,8 @@ function getTaskTarget(taskType) {
   return 1;
 }
 // ---- Tracking hooks ----
-function taskTrackChatMessage(personaId) {
-  const today = getTaskDateStr();
+function taskTrackChatMessage(personaId, messageTimestamp) {
+  const today = getTaskDateStr(messageTimestamp);
   if (!taskData.dailyChatCounts[today]) taskData.dailyChatCounts[today] = {};
   taskData.dailyChatCounts[today][personaId] = (taskData.dailyChatCounts[today][personaId] || 0) + 1;
   // Update streak — 基于本地日期，凌晨 00:00 算新一天
@@ -42260,8 +42577,9 @@ function taskTrackChatMessage(personaId) {
   if (typeof streak.currentStreak !== 'number' || isNaN(streak.currentStreak) || streak.currentStreak < 0) {
     streak.currentStreak = 0;
   }
+  streak.lastChatDate = _normalizeTaskDateKey(streak.lastChatDate);
   if (streak.lastChatDate !== today) {
-    const yesterday = getYesterdayStr();
+    const yesterday = getYesterdayStr(messageTimestamp);
     if (streak.lastChatDate === yesterday) {
       // 昨天聊过 → 连续 +1
       streak.currentStreak = streak.currentStreak + 1;
@@ -42275,13 +42593,13 @@ function taskTrackChatMessage(personaId) {
   }
   saveTaskData();
 }
-function taskTrackMomentPost() {
-  const today = getTaskDateStr();
+function taskTrackMomentPost(postTimestamp) {
+  const today = getTaskDateStr(postTimestamp);
   taskData.dailyMoments[today] = true;
   saveTaskData();
 }
-function taskTrackDiaryPost() {
-  const today = getTaskDateStr();
+function taskTrackDiaryPost(postTimestamp) {
+  const today = getTaskDateStr(postTimestamp);
   taskData.dailyDiary[today] = true;
   saveTaskData();
 }
@@ -43194,10 +43512,15 @@ function taskCheckDailyReset() {
   const now = new Date();
   const cutoff = new Date(now.getTime() - 60 * 86400000);
   const cutoffStr = getTaskDateStr(cutoff);
-  ['dailyChatCounts', 'tasks'].forEach(key => {
+  ['dailyChatCounts', 'tasks', 'dailyMoments', 'dailyDiary'].forEach(key => {
     if (taskData[key]) {
       Object.keys(taskData[key]).forEach(dateKey => {
-        if (dateKey < cutoffStr) delete taskData[key][dateKey];
+        const normalizedDateKey = _normalizeTaskDateKey(dateKey);
+        if (normalizedDateKey !== dateKey) {
+          taskData[key][normalizedDateKey] = taskData[key][dateKey];
+          delete taskData[key][dateKey];
+        }
+        if (normalizedDateKey < cutoffStr) delete taskData[key][normalizedDateKey];
       });
     }
   });
@@ -43205,6 +43528,7 @@ function taskCheckDailyReset() {
 }
 // Init on load
 window.afterDB(function() {
+  _hydrateTaskDataFromStorage(true);
   taskCheckDailyReset();
   // Check and notify unclaimed completed tasks
   setTimeout(function() {
@@ -47588,7 +47912,11 @@ function _normalizeOfflineSession(session) {
 }
 function _persistOfflineSettings() {
   _offlineState.settings = _normalizeOfflineSettings(_offlineState.settings);
-  localStorage.setItem('mono_offline_settings', JSON.stringify(_offlineState.settings));
+  var jsonStr = JSON.stringify(_offlineState.settings);
+  localStorage.setItem('mono_offline_settings', jsonStr);
+  try {
+    if (window._monoRawLocalStorage) window._monoRawLocalStorage.setItem('mono_offline_settings', jsonStr);
+  } catch(e) {}
 }
 function _getOfflineModeConfig(mode, session) {
   var key = _getOfflineModeKey(mode);
@@ -47599,7 +47927,12 @@ function _getOfflineModeConfig(mode, session) {
   return Object.assign({}, OFFLINE_MODE_CONFIG_DEFAULTS[key], sessionConfig || {}, base || {});
 }
 function _loadOfflineSessions() {
-  try { _offlineState.sessions = JSON.parse(localStorage.getItem(OFFLINE_STORAGE_KEY) || '{}'); } catch(e) { _offlineState.sessions = {}; }
+  try {
+    var raw = localStorage.getItem(OFFLINE_STORAGE_KEY)
+      || (window._monoRawLocalStorage && window._monoRawLocalStorage.getItem(OFFLINE_STORAGE_KEY))
+      || '{}';
+    _offlineState.sessions = JSON.parse(raw);
+  } catch(e) { _offlineState.sessions = {}; }
   if (!_offlineState.sessions || typeof _offlineState.sessions !== 'object') _offlineState.sessions = {};
   Object.keys(_offlineState.sessions).forEach(function(pid) {
     var list = Array.isArray(_offlineState.sessions[pid]) ? _offlineState.sessions[pid] : [];
@@ -47611,6 +47944,9 @@ function _saveOfflineSessions() {
   // localStorage 代理会同步写入 _cache + _realLS，并自动队列写入 IDB（含 oncomplete 保障）
   // 不再额外绕过代理直接写 IDB（那条路径缺少 oncomplete/onerror，快速关闭时会丢数据）
   localStorage.setItem(OFFLINE_STORAGE_KEY, jsonStr);
+  try {
+    if (window._monoRawLocalStorage) window._monoRawLocalStorage.setItem(OFFLINE_STORAGE_KEY, jsonStr);
+  } catch(e) {}
 }
 function _getCurrentSession() {
   var pid = String(_offlineState.personaId);
@@ -51091,7 +51427,7 @@ const SHOP_RENO_LEVELS = [
   { lv:1, name:'进階裝修', desc:'风格化桌椅·氛围燈光·裝饰牆', cost:500,
     perks:['營收 +15%','顾客好评率 +10%','更多訂单機率'], revenueBonus:15, friendBonus:10 },
   { lv:2, name:'限定裝修', desc:'暧昧主題裝饰·專屬打卡点·限定燈串', cost:0,
-    perks:['營收 +30%','角色到店概率 +25%','解锁「探店打卡」功能','訂单量翻倍'], revenueBonus:30, friendBonus:25, requireAchv:'心动店主' },
+    perks:['營收 +30%','角色到店概率 +25%','解锁「探店打卡」功能','訂单量翻倍'], revenueBonus:30, friendBonus:25, requireAchv:'lover' },
 ];
 // ── Daily shop tasks ──
 const SHOP_DAILY_TASKS = [
@@ -51104,7 +51440,7 @@ const SHOP_DAILY_TASKS = [
 // ── Achievements ──
 const SHOP_ACHIEVEMENTS = [
   { key:'open',    name:'开業大吉',   icon:'★', cond:'首次开業並盈利',       reward:'基礎裝修包 + 心动幣 ×500', target:1,   stat:'totalOrders' },
-  { key:'lover',   name:'心动店主',   icon:'♡', cond:'给角色送食材20次',     reward:'限定裝修（心动燈串）解锁', target:20,  stat:'ingredientsSent' },
+  { key:'lover',   name:'心动店长',   icon:'♡', cond:'给角色送食材20次',     reward:'限定裝修（心动燈串）解锁', target:20,  stat:'ingredientsSent' },
   { key:'popular', name:'人气店长',   icon:'◆', cond:'累計盈利满¥10000',   reward:'稀有員工位解锁 + 限定商品配方', target:10000, stat:'totalRevenue' },
   { key:'partner', name:'默契搭檔',   icon:'◉', cond:'招募並保留員工30天',   reward:'員工最高等級解锁Lv6',    target:30,  stat:'staffDays' },
   { key:'explorer',name:'探店达人',   icon:'▲', cond:'角色留言10次',        reward:'限定裝修完全解锁',        target:10,  stat:'messages' },
@@ -52774,8 +53110,15 @@ function _renderShopReno() {
   const t = _loadShopTasks();
   const achvClaimed = t.achvClaimed||{};
   const html = SHOP_RENO_LEVELS.map(function(lv) {
+    const reqAchv = lv.requireAchv
+      ? (SHOP_ACHIEVEMENTS.find(function(achv) {
+          return achv.key === lv.requireAchv || achv.name === lv.requireAchv;
+        }) || null)
+      : null;
+    const reqAchvKey = reqAchv ? reqAchv.key : lv.requireAchv;
+    const reqAchvLabel = reqAchv ? reqAchv.name : lv.requireAchv;
     const isCurrent = lv.lv===cur;
-    const isLocked  = lv.lv > cur+1 || (lv.requireAchv && !achvClaimed[lv.requireAchv]);
+    const isLocked  = lv.lv > cur+1 || (reqAchvKey && !achvClaimed[reqAchvKey]);
     const isNext    = lv.lv===cur+1 && !isLocked;
     return '<div class="shop-reno-level-card'+(isCurrent?' active':'')+(isLocked?' locked':'')+'">'
       +'<div class="shop-reno-level-header">'
@@ -52792,7 +53135,7 @@ function _renderShopReno() {
       +(isNext?'<div style="padding:0 14px 14px;"><button class="shop-reno-upgrade-btn" onclick="upgradeShopReno('+lv.lv+')">'
         +(lv.cost>0?'升級 (¥'+lv.cost+')':'任务达成后解锁')
         +'</button></div>':'')
-      +(lv.requireAchv&&isLocked?'<div style="padding:0 16px 12px;font-size:10px;color:#aaa;">需先完成成就「'+lv.requireAchv+'」</div>':'')
+      +(reqAchvKey&&isLocked?'<div style="padding:0 16px 12px;font-size:10px;color:#aaa;">需先完成成就「'+reqAchvLabel+'」</div>':'')
       +'</div>';
   }).join('');
   document.getElementById('shopAppBody').innerHTML = '<div class="shop-reno-wrap">'+html+'</div>';
@@ -53090,7 +53433,7 @@ function _renderIngList() {
       + '</div>'
       + '<div class="shop-ing-buy-controls">'
       + '<button class="shop-ing-qty-btn" onclick="shopIngChangeQty(\'' + ing.name.replace(/'/g,"\\'") + '\',-1)">-</button>'
-      + '<div class="shop-ing-qty-num">' + qty + '</div>'
+      + '<input type="number" min="0" max="999" step="1" class="shop-ing-qty-input" value="' + qty + '" onchange="shopIngSetQty(\'' + ing.name.replace(/'/g,"\\'") + '\',this.value)" onfocus="this.select()">'
       + '<button class="shop-ing-qty-btn" onclick="shopIngChangeQty(\'' + ing.name.replace(/'/g,"\\'") + '\',1)">+</button>'
       + '</div>'
       + '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;min-width:64px;">'
@@ -53102,7 +53445,12 @@ function _renderIngList() {
 }
 function shopIngChangeQty(ingName, delta) {
   const cur = _shopIngQtys[ingName] || 0;
-  _shopIngQtys[ingName] = Math.max(0, Math.min(99, cur + delta));
+  _shopIngQtys[ingName] = Math.max(0, Math.min(999, cur + delta));
+  _renderIngList();
+}
+function shopIngSetQty(ingName, value) {
+  const qty = parseInt(String(value || '').trim(), 10);
+  _shopIngQtys[ingName] = Math.max(0, Math.min(999, isNaN(qty) ? 0 : qty));
   _renderIngList();
 }
 function shopIngBuy(ingName) {

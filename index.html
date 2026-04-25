@@ -17,6 +17,8 @@
 
 
 
+
+
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head>
@@ -900,8 +902,10 @@ body {
 .msg-row.ai { justify-content: flex-start; }
 .msg-meta { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .msg-avatar { width: 32px; height: 32px; border-radius: 50%; border: 1px solid #1a1a1a; object-fit: cover; flex-shrink: 0; }
-.msg-name { font-size: calc(9px * var(--fs, 1)); text-transform: uppercase; letter-spacing: 0.5px; color: #999; white-space: nowrap; }
-.msg-content { display: flex; flex-direction: column; max-width: 70%; }
+.msg-name { font-size: calc(9px * var(--fs, 1)); text-transform: uppercase; letter-spacing: 0.5px; color: var(--chat-meta-name-color, #999); white-space: nowrap; }
+/* Chat meta text color overrides via CSS vars (set by JS) */
+.msg-time-read { color: var(--chat-meta-time-color, #bbb) !important; }
+.msg-time-read span { color: inherit !important; }
 .msg-row.user .msg-content { align-items: flex-end; }
 .msg-row.ai .msg-content { align-items: flex-start; }
 .bubble { padding: 12px 16px; font-size: calc(14px * var(--fs, 1)); line-height: 1.6; letter-spacing: 0.02em; cursor: pointer; user-select: none; }
@@ -993,6 +997,68 @@ body {
 .bubble-preset-imessage .input-row,
 .bubble-preset-imessage #inputBar,
 .bubble-preset-imessage .chat-input-area { background: #ffffff !important; border-top: 0.5px solid #e0e0e0 !important; }
+/* ══════════════════════════════════════════════
+   BUBBLE PRESET: LINE 风格
+   ══════════════════════════════════════════════ */
+.bubble-preset-line #chatBox,
+.bubble-preset-line .gc-messages { background-color: #8aafd4 !important; }
+/* AI bubble: fully rounded, curved hook tail bottom-left */
+/* AI bubble — white, fully rounded, LINE-style tail seamlessly attached left */
+.bubble-preset-line .bubble-ai {
+  background: #ffffff !important;
+  color: #000000 !important;
+  border-radius: 18px !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15) !important;
+  position: relative !important;
+  overflow: visible !important;
+}
+.bubble-preset-line .bubble-ai::before {
+  display: none !important;
+}
+/* Solid white rectangle whose right half is hidden under the bubble,
+   left half is clipped into a point — seamlessly attached, no gap */
+.bubble-preset-line .bubble-ai::after {
+  content: '' !important;
+  position: absolute !important;
+  bottom: 8px !important;
+  left: -9px !important;
+  width: 14px !important;
+  height: 16px !important;
+  background: #ffffff !important;
+  clip-path: polygon(100% 0%, 100% 100%, 0% 50%) !important;
+  box-shadow: none !important;
+  border-style: none !important;
+  border-width: 0 !important;
+  border-radius: 0 !important;
+  transform: none !important;
+}
+/* User bubble — green, fully rounded, LINE-style tail seamlessly attached right */
+.bubble-preset-line .bubble-user {
+  background: #4cd964 !important;
+  color: #000000 !important;
+  border-radius: 18px !important;
+  position: relative !important;
+  overflow: visible !important;
+}
+.bubble-preset-line .bubble-user::before {
+  display: none !important;
+}
+/* Solid green rectangle, right half clipped into a rightward point */
+.bubble-preset-line .bubble-user::after {
+  content: '' !important;
+  position: absolute !important;
+  bottom: 8px !important;
+  right: -9px !important;
+  width: 14px !important;
+  height: 16px !important;
+  background: #4cd964 !important;
+  clip-path: polygon(0% 0%, 0% 100%, 100% 50%) !important;
+  box-shadow: none !important;
+  border-style: none !important;
+  border-width: 0 !important;
+  border-radius: 0 !important;
+  transform: none !important;
+}
 /* ══════════════════════════════════════════════
    BUBBLE PRESET: 古早短信风格 Retro SMS
    ══════════════════════════════════════════════ */
@@ -5851,7 +5917,28 @@ body:not(.ios-fullscreen) .family-widget {
   color: rgba(255,255,255,0.7);
   background: rgba(255,255,255,0.12);
 }
-.dating-msg-time { font-size: 9px; color: #bbb; align-self: flex-end; margin-bottom: 2px; flex-shrink: 0; }
+.dating-msg-time { font-size: 9px; color: var(--chat-meta-time-color, #bbb); align-self: flex-end; margin-bottom: 2px; flex-shrink: 0; }
+/* ── Dating: LINE preset overrides ── */
+#datingChatPage.bubble-preset-line .dating-chat-bg { background: #8aafd4 !important; }
+#datingChatPage.bubble-preset-line .dating-msg-row.char .dating-msg-bubble { background: #ffffff !important; color: #000000 !important; border-radius: 18px !important; overflow: visible !important; position: relative !important; }
+#datingChatPage.bubble-preset-line .dating-msg-row.char .dating-msg-bubble::after { content: '' !important; position: absolute !important; bottom: 8px !important; left: -9px !important; width: 14px !important; height: 16px !important; background: #ffffff !important; clip-path: polygon(100% 0%, 100% 100%, 0% 50%) !important; box-shadow: none !important; border-style: none !important; border-width: 0 !important; border-radius: 0 !important; }
+#datingChatPage.bubble-preset-line .dating-msg-row.user .dating-msg-bubble { background: #4cd964 !important; color: #000000 !important; border-radius: 18px !important; overflow: visible !important; position: relative !important; }
+#datingChatPage.bubble-preset-line .dating-msg-row.user .dating-msg-bubble::after { content: '' !important; position: absolute !important; bottom: 8px !important; right: -9px !important; width: 14px !important; height: 16px !important; background: #4cd964 !important; clip-path: polygon(0% 0%, 0% 100%, 100% 50%) !important; box-shadow: none !important; border-style: none !important; border-width: 0 !important; border-radius: 0 !important; }
+/* ── Dating: WeChat preset overrides ── */
+#datingChatPage.bubble-preset-wechat .dating-chat-bg { background: #ededed !important; }
+#datingChatPage.bubble-preset-wechat .dating-msg-row.char .dating-msg-bubble { background: #ffffff !important; color: #000000 !important; border-radius: 4px !important; }
+#datingChatPage.bubble-preset-wechat .dating-msg-row.user .dating-msg-bubble { background: #95ec69 !important; color: #000000 !important; border-radius: 4px !important; }
+/* ── Dating: iMessage preset overrides ── */
+#datingChatPage.bubble-preset-imessage .dating-chat-bg { background: #ffffff !important; }
+#datingChatPage.bubble-preset-imessage .dating-msg-row.char .dating-msg-bubble { background: #e5e5ea !important; color: #000000 !important; border-radius: 18px 18px 18px 5px !important; }
+#datingChatPage.bubble-preset-imessage .dating-msg-row.user .dating-msg-bubble { background: #007aff !important; color: #ffffff !important; border-radius: 18px 18px 5px 18px !important; }
+/* ── Dating: user avatar ── */
+.dating-msg-row.user .dating-user-avatar {
+  width: 32px; height: 32px; border-radius: 50%; background: #e0d5da;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; color: #888; overflow: hidden; flex-shrink: 0; align-self: flex-end;
+}
+.dating-msg-row.user .dating-user-avatar img { width: 100%; height: 100%; object-fit: cover; }
 /* ── Dating Plus Panel ── */
 #datingPlusPanel {
   display: none;
@@ -10365,7 +10452,7 @@ body.editor-modal-open #chatPage .app-back-bar {
 .gc-page .msg-row.ai { justify-content: flex-start; }
 .gc-page .msg-meta { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .gc-page .msg-avatar { width: 32px; height: 32px; border-radius: 50%; border: 1px solid #1a1a1a; object-fit: cover; flex-shrink: 0; }
-.gc-page .msg-name { font-size: calc(9px * var(--fs, 1)); text-transform: uppercase; letter-spacing: 0.5px; color: #999; white-space: nowrap; }
+.gc-page .msg-name { font-size: calc(9px * var(--fs, 1)); text-transform: uppercase; letter-spacing: 0.5px; color: var(--chat-meta-name-color, #999); white-space: nowrap; }
 .gc-page .msg-content { display: flex; flex-direction: column; max-width: 70%; }
 .gc-page .msg-row.user .msg-content { align-items: flex-end; }
 .gc-page .msg-row.ai .msg-content { align-items: flex-start; }
@@ -10396,6 +10483,13 @@ body.editor-modal-open #chatPage .app-back-bar {
 .gc-page.bubble-preset-retro .bubble-user { background: linear-gradient(to bottom, #cef07a 0%, #96cc38 100%) !important; color: #1e3300 !important; border-radius: 999px !important; border: 0.5px solid #7db82a !important; box-shadow: inset 0 1px 0 rgba(255,255,255,0.85), 0 1px 3px rgba(60,110,0,0.22) !important; padding: 9px 18px !important; position: relative !important; overflow: hidden !important; }
 .gc-page.bubble-preset-retro .bubble-user::before { content: '' !important; display: block !important; position: absolute !important; top: 0 !important; left: 0 !important; right: 0 !important; height: 50% !important; background: linear-gradient(to bottom, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0.06) 100%) !important; border-radius: 999px 999px 60% 60% !important; pointer-events: none !important; z-index: 1 !important; }
 .gc-page.bubble-preset-retro .bubble-user::after { display: none !important; }
+.gc-page.bubble-preset-line .gc-messages { background-color: #8aafd4 !important; }
+.gc-page.bubble-preset-line .bubble-ai  { background: #ffffff !important; color: #000000 !important; border-radius: 18px !important; box-shadow: 0 1px 3px rgba(0,0,0,0.15) !important; position: relative !important; overflow: visible !important; }
+.gc-page.bubble-preset-line .bubble-ai::before  { display: none !important; }
+.gc-page.bubble-preset-line .bubble-ai::after  { content: '' !important; position: absolute !important; bottom: 8px !important; left: -9px !important; width: 14px !important; height: 16px !important; background: #ffffff !important; clip-path: polygon(100% 0%, 100% 100%, 0% 50%) !important; box-shadow: none !important; border-style: none !important; border-width: 0 !important; border-radius: 0 !important; }
+.gc-page.bubble-preset-line .bubble-user { background: #4cd964 !important; color: #000000 !important; border-radius: 18px !important; position: relative !important; overflow: visible !important; }
+.gc-page.bubble-preset-line .bubble-user::before { display: none !important; }
+.gc-page.bubble-preset-line .bubble-user::after { content: '' !important; position: absolute !important; bottom: 8px !important; right: -9px !important; width: 14px !important; height: 16px !important; background: #4cd964 !important; clip-path: polygon(0% 0%, 0% 100%, 100% 50%) !important; box-shadow: none !important; border-style: none !important; border-width: 0 !important; border-radius: 0 !important; }
 .gc-page .msg-row.selected .bubble { outline: 2px solid #1a1a1a; }
 .gc-page .msg-row.selected .bubble-user { outline: 2px solid #fff; }
 .gc-page .quote-block {
@@ -17556,6 +17650,19 @@ body.editor-modal-open #chatPage .app-back-bar {
               <div style="background:#007aff;color:#fff;border-radius:14px 14px 3px 14px;padding:3px 7px;font-size:9px;max-width:72%;align-self:flex-end;">嗯</div>
             </div>
           </div>
+          <!-- LINE -->
+          <div class="bubble-preset-option" id="bpOpt-line" onclick="selectBubblePreset('line')"
+            style="flex:1;min-width:80px;border:2px solid #ddd;border-radius:10px;padding:8px;cursor:pointer;text-align:center;background:#8aafd4;">
+            <div style="font-size:9px;font-weight:700;color:#fff;letter-spacing:1px;margin-bottom:6px;text-shadow:0 1px 2px rgba(0,0,0,0.2);">LINE</div>
+            <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start;">
+              <div style="position:relative;overflow:visible;background:#fff;color:#000;border-radius:12px;padding:3px 8px;font-size:9px;max-width:72%;">你好
+                <span style="position:absolute;bottom:-1px;left:-7px;width:12px;height:12px;background:transparent;border-bottom-right-radius:12px;box-shadow:4px 3px 0 0 #fff;display:block;"></span>
+              </div>
+              <div style="position:relative;overflow:visible;background:#4cd964;color:#000;border-radius:12px;padding:3px 8px;font-size:9px;max-width:72%;align-self:flex-end;">嗯
+                <span style="position:absolute;bottom:-1px;right:-7px;width:12px;height:12px;background:transparent;border-bottom-left-radius:12px;box-shadow:-4px 3px 0 0 #4cd964;display:block;"></span>
+              </div>
+            </div>
+          </div>
           <!-- Retro SMS 古早短信 -->
           <div class="bubble-preset-option" id="bpOpt-retro" onclick="selectBubblePreset('retro')"
             style="flex:1;min-width:80px;border:2px solid #ddd;border-radius:10px;padding:8px;cursor:pointer;text-align:center;background-color:#fff;background-image:radial-gradient(circle,#d0d0d0 1px,transparent 1px);background-size:12px 12px;">
@@ -17609,6 +17716,33 @@ body.editor-modal-open #chatPage .app-back-bar {
       <div class="custom-btn-row">
         <button class="custom-btn" onclick="previewBubbleCss()">預覽</button>
         <button class="custom-btn danger" onclick="resetBubbleCss()">重置为預设</button>
+      </div>
+      <!-- ── 系统文字颜色自定义 ── -->
+      <div style="margin-top:14px;padding:12px;border:1px solid #eee;border-radius:10px;background:#fafafa;">
+        <div style="font-size:9px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">💬 聊天系统文字颜色 Chat Meta Colors</div>
+        <p style="font-size:9px;color:#bbb;margin-bottom:10px;line-height:1.5;">自定义聊天室中显示的时间、角色名字、已读/未读等系统文字颜色，适用于私聊、群聊及心动聊天室。</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:10px;color:#666;">
+            <span>时间戳</span>
+            <input type="color" id="pMetaTimeColor" value="#bbbbbb" oninput="livePreviewMetaColors()" style="width:34px;height:26px;border:1px solid #ddd;border-radius:6px;padding:1px;background:#fff;">
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:10px;color:#666;">
+            <span>角色名字</span>
+            <input type="color" id="pMetaNameColor" value="#999999" oninput="livePreviewMetaColors()" style="width:34px;height:26px;border:1px solid #ddd;border-radius:6px;padding:1px;background:#fff;">
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:10px;color:#666;">
+            <span>已读色</span>
+            <input type="color" id="pMetaReadColor" value="#aaaaaa" oninput="livePreviewMetaColors()" style="width:34px;height:26px;border:1px solid #ddd;border-radius:6px;padding:1px;background:#fff;">
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:10px;color:#666;">
+            <span>未读色</span>
+            <input type="color" id="pMetaUnreadColor" value="#cccccc" oninput="livePreviewMetaColors()" style="width:34px;height;26px;border:1px solid #ddd;border-radius:6px;padding:1px;background:#fff;">
+          </label>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="custom-btn" onclick="livePreviewMetaColors()" style="font-size:9px;padding:4px 10px;">预览</button>
+          <button class="custom-btn danger" onclick="resetMetaColors()" style="font-size:9px;padding:4px 10px;">重置</button>
+        </div>
       </div>
     </div>
     <!-- ===== 聊天室完整自定义 CSS ===== -->
@@ -20320,6 +20454,7 @@ function selectPersona(id) {
   try { applyChatBackground(p); } catch(e) { console.warn('[chat] applyChatBackground failed:', e); }
   try { applyBubbleStyles(p); } catch(e) { console.warn('[chat] applyBubbleStyles failed:', e); }
   try { applyChatRoomCustomCss(p); } catch(e) { console.warn('[chat] applyChatRoomCustomCss failed:', e); }
+  try { applyMetaColors(p); } catch(e) { console.warn('[chat] applyMetaColors failed:', e); }
   try {
     renderMessages();
   } catch(e) {
@@ -21142,8 +21277,8 @@ function renderMessages(opts) {
     const _readStatus = isUser
       ? (m._recalled ? '' : (m._readByChar ? '已读' : '未读'))
       : (m._recalled ? '' : (m._readByUser ? '已读' : '未读'));
-    const _readStatusColor = (isUser ? (m._readByChar ? '#aaa' : '#ccc') : (m._readByUser ? '#aaa' : '#ccc'));
-    const _msgMetaHtml = `<div class="msg-time-read" style="font-size:9px;color:#bbb;margin-top:2px;display:flex;gap:4px;align-items:center;${isUser?'justify-content:flex-end;':'justify-content:flex-start;'}">${_msgTimeStr ? `<span>${_msgTimeStr}</span>` : ''}${_readStatus ? `<span style="color:${_readStatusColor};">${_readStatus}</span>` : ''}</div>`;
+    const _readStatusColor = (isUser ? (m._readByChar ? 'var(--chat-meta-read-color, #aaa)' : 'var(--chat-meta-unread-color, #ccc)') : (m._readByUser ? 'var(--chat-meta-read-color, #aaa)' : 'var(--chat-meta-unread-color, #ccc)'));
+    const _msgMetaHtml = `<div class="msg-time-read" style="font-size:9px;color:var(--chat-meta-time-color,#bbb);margin-top:2px;display:flex;gap:4px;align-items:center;${isUser?'justify-content:flex-end;':'justify-content:flex-start;'}">${_msgTimeStr ? `<span>${_msgTimeStr}</span>` : ''}${_readStatus ? `<span style="color:${_readStatusColor};">${_readStatus}</span>` : ''}</div>`;
     // ── 已撤回消息 ──
     if (m._recalled) {
       if (isUser) {
@@ -22003,6 +22138,10 @@ function openEditor(isEdit=false) {
     if (document.getElementById('pOshiGlowBlue')) document.getElementById('pOshiGlowBlue').value = '#cfd3d8';
     if (document.getElementById('pOshiGlowPink')) document.getElementById('pOshiGlowPink').value = '#e5e5e5';
     if (document.getElementById('pOshiGlowShowHeart')) document.getElementById('pOshiGlowShowHeart').checked = true;
+    if (document.getElementById('pMetaTimeColor'))   document.getElementById('pMetaTimeColor').value   = '#bbbbbb';
+    if (document.getElementById('pMetaNameColor'))   document.getElementById('pMetaNameColor').value   = '#999999';
+    if (document.getElementById('pMetaReadColor'))   document.getElementById('pMetaReadColor').value   = '#aaaaaa';
+    if (document.getElementById('pMetaUnreadColor')) document.getElementById('pMetaUnreadColor').value = '#cccccc';
     document.getElementById('pChatBgImg').style.display = 'none';
     document.getElementById('pChatBgPlaceholder').style.display = '';
     document.getElementById('pChatBgImg').src = '';
@@ -22099,6 +22238,11 @@ function openEditor(isEdit=false) {
     if (document.getElementById('pOshiGlowBlue')) document.getElementById('pOshiGlowBlue').value = (p.oshiGlowBlue && p.oshiGlowBlue !== '#6699ff') ? p.oshiGlowBlue : '#cfd3d8';
     if (document.getElementById('pOshiGlowPink')) document.getElementById('pOshiGlowPink').value = (p.oshiGlowPink && p.oshiGlowPink !== '#ff99cc') ? p.oshiGlowPink : '#e5e5e5';
     if (document.getElementById('pOshiGlowShowHeart')) document.getElementById('pOshiGlowShowHeart').checked = p.oshiGlowShowHeart !== false;
+    // Load meta text colors
+    if (document.getElementById('pMetaTimeColor'))   document.getElementById('pMetaTimeColor').value   = p.metaTimeColor   || '#bbbbbb';
+    if (document.getElementById('pMetaNameColor'))   document.getElementById('pMetaNameColor').value   = p.metaNameColor   || '#999999';
+    if (document.getElementById('pMetaReadColor'))   document.getElementById('pMetaReadColor').value   = p.metaReadColor   || '#aaaaaa';
+    if (document.getElementById('pMetaUnreadColor')) document.getElementById('pMetaUnreadColor').value = p.metaUnreadColor || '#cccccc';
     const _bgForEditor = p.chatBgImage === '__ref__'
       ? (localStorage.getItem('mono_bg_' + p.id) || '')
       : (p.chatBgImage || '');
@@ -22152,11 +22296,11 @@ function savePersona() {
     const p = personas.find(x=>x.id==currentId);
     const _saveAiColor = document.getElementById('pBubbleAiFontColorEnabled').checked ? (document.getElementById('pBubbleAiFontColor').value||'') : '';
     const _saveUserColor = document.getElementById('pBubbleUserFontColorEnabled').checked ? (document.getElementById('pBubbleUserFontColor').value||'') : '';
-    if(p){ p.name=name; p.nickname=document.getElementById('pNick').value.trim(); p.persona=document.getElementById('pPersona').value.trim()||'一个简单的角色设定'; p.avatar=avatar; p.minReplyCount=minReply; p.maxReplyCount=maxReply; p.temperature=temperature; p.timeAwareness=timeAwareness; p.allowSticker=allowSticker; p.stickerLibraryIds=stickerLibraryIds; p.allowVoice=allowVoice; p.voiceId=voiceId; p.voiceSpeed=voiceSpeed; p.voiceLang=voiceLang; p.outputLang=outputLang; p.enableTranslation=enableTranslation; p.translateLang=translateLang; p.voiceFreq=voiceFreq; p.memoryCount=parseInt(document.getElementById('pMemoryCount').value)||100; p.autoMsg=document.getElementById('pAutoMsg').checked; p.autoMsgInterval=parseInt(document.getElementById('pAutoMsgInterval').value)||1; p.autoDiary=document.getElementById('pAutoDiary').checked; p.autoDiaryTime=document.getElementById('pAutoDiaryTime').value||'21:00'; p.autoMoments=document.getElementById('pAutoMoments').checked; p.autoMomentsTime=document.getElementById('pAutoMomentsTime').value||'20:00'; p.autoSummary=document.getElementById('pAutoSummary').checked; p.autoSummaryInterval=parseInt(document.getElementById('pAutoSummaryInterval').value)||20; p.bubbleAiCss=document.getElementById('pBubbleAiCss').value.trim(); p.bubbleUserCss=document.getElementById('pBubbleUserCss').value.trim(); p.chatRoomCustomCss=(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(); p.bubbleAiFontColor=_saveAiColor; p.bubbleUserFontColor=_saveUserColor; p.bubblePreset=(document.getElementById('pBubblePreset')||{}).value||'none'; p.oshiGlowBlue=_saveOshiBlue; p.oshiGlowPink=_saveOshiPink; p.oshiGlowShowHeart=_saveOshiShowHeart; if(document.getElementById('pChatBgImg').src && document.getElementById('pChatBgImg').style.display!=='none') p.chatBgImage=document.getElementById('pChatBgImg').src; else p.chatBgImage=''; p.replyMode=_getSelectedReplyMode(); var _spd=document.querySelector('input[name="pReplySpeed"]:checked'); p.replySpeed=_spd?_spd.value:'fast'; p.replySpeedCustomMin=parseInt(document.getElementById('pReplySpeedCustomMin').value)||0; p.replySpeedCustomMax=parseInt(document.getElementById('pReplySpeedCustomMax').value)||10; p.showHeartVoiceInHeader=heartVoiceEnabled; p.heartVoiceEnabled=heartVoiceEnabled; p.heartVoiceMode=heartVoiceMode; p.allowCallTts=document.getElementById('pAllowCallTts').checked; if (p.momentsNickname == null || !String(p.momentsNickname).trim()) p.momentsNickname = name; if (p.momentsSignature == null) p.momentsSignature = ''; if (p.momentsBanner == null) p.momentsBanner = ''; }
+    if(p){ p.name=name; p.nickname=document.getElementById('pNick').value.trim(); p.persona=document.getElementById('pPersona').value.trim()||'一个简单的角色设定'; p.avatar=avatar; p.minReplyCount=minReply; p.maxReplyCount=maxReply; p.temperature=temperature; p.timeAwareness=timeAwareness; p.allowSticker=allowSticker; p.stickerLibraryIds=stickerLibraryIds; p.allowVoice=allowVoice; p.voiceId=voiceId; p.voiceSpeed=voiceSpeed; p.voiceLang=voiceLang; p.outputLang=outputLang; p.enableTranslation=enableTranslation; p.translateLang=translateLang; p.voiceFreq=voiceFreq; p.memoryCount=parseInt(document.getElementById('pMemoryCount').value)||100; p.autoMsg=document.getElementById('pAutoMsg').checked; p.autoMsgInterval=parseInt(document.getElementById('pAutoMsgInterval').value)||1; p.autoDiary=document.getElementById('pAutoDiary').checked; p.autoDiaryTime=document.getElementById('pAutoDiaryTime').value||'21:00'; p.autoMoments=document.getElementById('pAutoMoments').checked; p.autoMomentsTime=document.getElementById('pAutoMomentsTime').value||'20:00'; p.autoSummary=document.getElementById('pAutoSummary').checked; p.autoSummaryInterval=parseInt(document.getElementById('pAutoSummaryInterval').value)||20; p.bubbleAiCss=document.getElementById('pBubbleAiCss').value.trim(); p.bubbleUserCss=document.getElementById('pBubbleUserCss').value.trim(); p.chatRoomCustomCss=(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(); p.bubbleAiFontColor=_saveAiColor; p.bubbleUserFontColor=_saveUserColor; p.bubblePreset=(document.getElementById('pBubblePreset')||{}).value||'none'; p.oshiGlowBlue=_saveOshiBlue; p.oshiGlowPink=_saveOshiPink; p.oshiGlowShowHeart=_saveOshiShowHeart; p.metaTimeColor=(document.getElementById('pMetaTimeColor')||{}).value||''; p.metaNameColor=(document.getElementById('pMetaNameColor')||{}).value||''; p.metaReadColor=(document.getElementById('pMetaReadColor')||{}).value||''; p.metaUnreadColor=(document.getElementById('pMetaUnreadColor')||{}).value||''; if(document.getElementById('pChatBgImg').src && document.getElementById('pChatBgImg').style.display!=='none') p.chatBgImage=document.getElementById('pChatBgImg').src; else p.chatBgImage=''; p.replyMode=_getSelectedReplyMode(); var _spd=document.querySelector('input[name="pReplySpeed"]:checked'); p.replySpeed=_spd?_spd.value:'fast'; p.replySpeedCustomMin=parseInt(document.getElementById('pReplySpeedCustomMin').value)||0; p.replySpeedCustomMax=parseInt(document.getElementById('pReplySpeedCustomMax').value)||10; p.showHeartVoiceInHeader=heartVoiceEnabled; p.heartVoiceEnabled=heartVoiceEnabled; p.heartVoiceMode=heartVoiceMode; p.allowCallTts=document.getElementById('pAllowCallTts').checked; if (p.momentsNickname == null || !String(p.momentsNickname).trim()) p.momentsNickname = name; if (p.momentsSignature == null) p.momentsSignature = ''; if (p.momentsBanner == null) p.momentsBanner = ''; }
   } else {
     const _saveAiColor = document.getElementById('pBubbleAiFontColorEnabled').checked ? (document.getElementById('pBubbleAiFontColor').value||'') : '';
     const _saveUserColor = document.getElementById('pBubbleUserFontColorEnabled').checked ? (document.getElementById('pBubbleUserFontColor').value||'') : '';
-    const newP = { id:Date.now(), name, nickname:document.getElementById('pNick').value.trim()||name, momentsNickname:name, momentsSignature:'', momentsBanner:'', persona:document.getElementById('pPersona').value.trim()||'一个简单的角色设定', avatar, history:[], memoryCore:[], lastHeartVoice:null, autoSummary:document.getElementById('pAutoSummary').checked, autoSummaryInterval:parseInt(document.getElementById('pAutoSummaryInterval').value)||20, minReplyCount:minReply, maxReplyCount:maxReply, temperature:temperature, timeAwareness:timeAwareness, allowSticker:allowSticker, stickerLibraryIds:stickerLibraryIds, allowVoice:allowVoice, voiceId:voiceId, voiceSpeed:voiceSpeed, voiceLang:voiceLang, outputLang:outputLang, enableTranslation:enableTranslation, translateLang:translateLang, voiceFreq:voiceFreq, memoryCount:parseInt(document.getElementById('pMemoryCount').value)||100, autoMsg:document.getElementById('pAutoMsg').checked, autoMsgInterval:parseInt(document.getElementById('pAutoMsgInterval').value)||1, autoDiary:document.getElementById('pAutoDiary').checked, autoDiaryTime:document.getElementById('pAutoDiaryTime').value||'21:00', autoMoments:document.getElementById('pAutoMoments').checked, autoMomentsTime:document.getElementById('pAutoMomentsTime').value||'20:00', bubbleAiCss:document.getElementById('pBubbleAiCss').value.trim(), bubbleUserCss:document.getElementById('pBubbleUserCss').value.trim(), chatRoomCustomCss:(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(), bubbleAiFontColor:_saveAiColor, bubbleUserFontColor:_saveUserColor, bubblePreset:(document.getElementById('pBubblePreset')||{}).value||'none', oshiGlowBlue:_saveOshiBlue, oshiGlowPink:_saveOshiPink, oshiGlowShowHeart:_saveOshiShowHeart, chatBgImage:(document.getElementById('pChatBgImg').style.display!=='none'?document.getElementById('pChatBgImg').src:''), replyMode:_getSelectedReplyMode(), replySpeed:(document.querySelector('input[name="pReplySpeed"]:checked')||{}).value||'fast', replySpeedCustomMin:parseInt(document.getElementById('pReplySpeedCustomMin').value)||0, replySpeedCustomMax:parseInt(document.getElementById('pReplySpeedCustomMax').value)||10, showHeartVoiceInHeader:heartVoiceEnabled, heartVoiceEnabled:heartVoiceEnabled, heartVoiceMode:heartVoiceMode, allowCallTts:document.getElementById('pAllowCallTts').checked };
+    const newP = { id:Date.now(), name, nickname:document.getElementById('pNick').value.trim()||name, momentsNickname:name, momentsSignature:'', momentsBanner:'', persona:document.getElementById('pPersona').value.trim()||'一个简单的角色设定', avatar, history:[], memoryCore:[], lastHeartVoice:null, autoSummary:document.getElementById('pAutoSummary').checked, autoSummaryInterval:parseInt(document.getElementById('pAutoSummaryInterval').value)||20, minReplyCount:minReply, maxReplyCount:maxReply, temperature:temperature, timeAwareness:timeAwareness, allowSticker:allowSticker, stickerLibraryIds:stickerLibraryIds, allowVoice:allowVoice, voiceId:voiceId, voiceSpeed:voiceSpeed, voiceLang:voiceLang, outputLang:outputLang, enableTranslation:enableTranslation, translateLang:translateLang, voiceFreq:voiceFreq, memoryCount:parseInt(document.getElementById('pMemoryCount').value)||100, autoMsg:document.getElementById('pAutoMsg').checked, autoMsgInterval:parseInt(document.getElementById('pAutoMsgInterval').value)||1, autoDiary:document.getElementById('pAutoDiary').checked, autoDiaryTime:document.getElementById('pAutoDiaryTime').value||'21:00', autoMoments:document.getElementById('pAutoMoments').checked, autoMomentsTime:document.getElementById('pAutoMomentsTime').value||'20:00', bubbleAiCss:document.getElementById('pBubbleAiCss').value.trim(), bubbleUserCss:document.getElementById('pBubbleUserCss').value.trim(), chatRoomCustomCss:(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(), bubbleAiFontColor:_saveAiColor, bubbleUserFontColor:_saveUserColor, bubblePreset:(document.getElementById('pBubblePreset')||{}).value||'none', oshiGlowBlue:_saveOshiBlue, oshiGlowPink:_saveOshiPink, oshiGlowShowHeart:_saveOshiShowHeart, metaTimeColor:(document.getElementById('pMetaTimeColor')||{}).value||'', metaNameColor:(document.getElementById('pMetaNameColor')||{}).value||'', metaReadColor:(document.getElementById('pMetaReadColor')||{}).value||'', metaUnreadColor:(document.getElementById('pMetaUnreadColor')||{}).value||'', chatBgImage:(document.getElementById('pChatBgImg').style.display!=='none'?document.getElementById('pChatBgImg').src:''), replyMode:_getSelectedReplyMode(), replySpeed:(document.querySelector('input[name="pReplySpeed"]:checked')||{}).value||'fast', replySpeedCustomMin:parseInt(document.getElementById('pReplySpeedCustomMin').value)||0, replySpeedCustomMax:parseInt(document.getElementById('pReplySpeedCustomMax').value)||10, showHeartVoiceInHeader:heartVoiceEnabled, heartVoiceEnabled:heartVoiceEnabled, heartVoiceMode:heartVoiceMode, allowCallTts:document.getElementById('pAllowCallTts').checked };
     personas.push(newP); currentId=newP.id;
   }
   saveData(); renderContactList(); if(currentId) selectPersona(currentId); closeEditor(); renderDiaryTabs();
@@ -28556,6 +28700,58 @@ function removeBubbleStyles() {
   const e = document.getElementById('customBubbleStyle'); if (e) e.remove();
 }
 // ══════════════════════════════════════════════════════════
+// 聊天系统文字颜色（时间/名字/已读未读）Meta Text Colors
+// ══════════════════════════════════════════════════════════
+function _getMetaColorStyleTag() {
+  let el = document.getElementById('_chatMetaColorStyle');
+  if (!el) { el = document.createElement('style'); el.id = '_chatMetaColorStyle'; document.head.appendChild(el); }
+  return el;
+}
+function applyMetaColors(p) {
+  const timeColor   = (p && p.metaTimeColor)   || '';
+  const nameColor   = (p && p.metaNameColor)   || '';
+  const readColor   = (p && p.metaReadColor)   || '';
+  const unreadColor = (p && p.metaUnreadColor) || '';
+  const el = _getMetaColorStyleTag();
+  let css = '';
+  if (timeColor)   css += ':root { --chat-meta-time-color: ' + timeColor + '; }\n';
+  else              css += ':root { --chat-meta-time-color: #bbb; }\n';
+  if (nameColor)   css += ':root { --chat-meta-name-color: ' + nameColor + '; }\n';
+  else              css += ':root { --chat-meta-name-color: #999; }\n';
+  // read/unread applied via inline data-read-color attr and JS patch below
+  el.textContent = css;
+  // patch read/unread color on rendered messages via CSS vars
+  const rootStyle = document.documentElement.style;
+  rootStyle.setProperty('--chat-meta-read-color',   readColor   || '#aaa');
+  rootStyle.setProperty('--chat-meta-unread-color', unreadColor || '#ccc');
+}
+function livePreviewMetaColors() {
+  const p = {
+    metaTimeColor:   (document.getElementById('pMetaTimeColor')   || {}).value || '',
+    metaNameColor:   (document.getElementById('pMetaNameColor')   || {}).value || '',
+    metaReadColor:   (document.getElementById('pMetaReadColor')   || {}).value || '',
+    metaUnreadColor: (document.getElementById('pMetaUnreadColor') || {}).value || '',
+  };
+  applyMetaColors(p);
+  // Live patch existing rendered read/unread spans
+  document.querySelectorAll('.msg-time-read span:last-child').forEach(function(span) {
+    var txt = span.textContent;
+    if (txt === '已读') span.style.color = p.metaReadColor || '#aaa';
+    else if (txt === '未读') span.style.color = p.metaUnreadColor || '#ccc';
+  });
+}
+function resetMetaColors() {
+  var defaults = { metaTimeColor: '#bbbbbb', metaNameColor: '#999999', metaReadColor: '#aaaaaa', metaUnreadColor: '#cccccc' };
+  var el;
+  el = document.getElementById('pMetaTimeColor');   if (el) el.value = defaults.metaTimeColor;
+  el = document.getElementById('pMetaNameColor');   if (el) el.value = defaults.metaNameColor;
+  el = document.getElementById('pMetaReadColor');   if (el) el.value = defaults.metaReadColor;
+  el = document.getElementById('pMetaUnreadColor'); if (el) el.value = defaults.metaUnreadColor;
+  applyMetaColors(defaults);
+  var p = personas.find(function(x){ return x.id == currentId; });
+  if (p) { p.metaTimeColor = ''; p.metaNameColor = ''; p.metaReadColor = ''; p.metaUnreadColor = ''; saveData(); }
+}
+// ══════════════════════════════════════════════════════════
 // 每个聊天室完整自定义 CSS — Per-Room Full Custom CSS
 // ══════════════════════════════════════════════════════════
 function _getRoomCssStyleTag(id) {
@@ -28616,14 +28812,14 @@ function resetGcRoomCss() {
 // ══════════════════════════════════════════
 // BUBBLE PRESET SYSTEM
 // ══════════════════════════════════════════
-var _BUBBLE_PRESET_CLASSES = ['bubble-preset-wechat', 'bubble-preset-imessage', 'bubble-preset-retro', 'bubble-preset-oshiglow', 'bubble-preset-journal'];
+var _BUBBLE_PRESET_CLASSES = ['bubble-preset-wechat', 'bubble-preset-imessage', 'bubble-preset-line', 'bubble-preset-retro', 'bubble-preset-oshiglow', 'bubble-preset-journal'];
 function normalizeBubblePreset(preset) {
   preset = preset || 'none';
   return _BUBBLE_PRESET_CLASSES.indexOf('bubble-preset-' + preset) === -1 ? 'none' : preset;
 }
 function applyBubblePresetClass(preset) {
   preset = normalizeBubblePreset(preset);
-  var targets = [document.getElementById('chatPage'), document.getElementById('groupChatPage')].filter(Boolean);
+  var targets = [document.getElementById('chatPage'), document.getElementById('groupChatPage'), document.getElementById('datingChatPage')].filter(Boolean);
   targets.forEach(function(el) {
     _BUBBLE_PRESET_CLASSES.forEach(function(cls) { el.classList.remove(cls); });
     if (preset && preset !== 'none') { el.classList.add('bubble-preset-' + preset); }
@@ -38948,8 +39144,8 @@ function renderGroupMessages(g) {
     const _gcReadStatus = isUser
       ? (msg._recalled ? '' : (msg._readByChar ? '已读' : '未读'))
       : (msg._recalled ? '' : (msg._readByUser ? '已读' : '未读'));
-    const _gcReadColor = (isUser ? (msg._readByChar ? '#aaa' : '#bbb') : (msg._readByUser ? '#aaa' : '#bbb'));
-    const _gcMetaRow = `<div style="font-size:8px;color:#bbb;margin-top:2px;display:flex;gap:4px;${isUser?'justify-content:flex-end;':'justify-content:flex-start;'}">${timeStr?`<span>${timeStr}</span>`:''} ${_gcReadStatus?`<span style="color:${_gcReadColor};">${_gcReadStatus}</span>`:''} ${msg.edited?'<span>(已编辑)</span>':''}</div>`;
+    const _gcReadColor = (isUser ? (msg._readByChar ? 'var(--chat-meta-read-color, #aaa)' : 'var(--chat-meta-unread-color, #ccc)') : (msg._readByUser ? 'var(--chat-meta-read-color, #aaa)' : 'var(--chat-meta-unread-color, #ccc)'));
+    const _gcMetaRow = `<div style="font-size:8px;color:var(--chat-meta-time-color,#bbb);margin-top:2px;display:flex;gap:4px;${isUser?'justify-content:flex-end;':'justify-content:flex-start;'}">${timeStr?`<span>${timeStr}</span>`:''} ${_gcReadStatus?`<span style="color:${_gcReadColor};">${_gcReadStatus}</span>`:''} ${msg.edited?'<span>(已编辑)</span>':''}</div>`;
     if (msg._recalled) {
       const _rName = isUser ? userProfile.name : name;
       return `<div class="msg-row ${side}${selectedClass}" id="${msgId}" data-idx="${idx}">
@@ -44256,6 +44452,9 @@ function openDatingChatRoom(pid) {
   bg.style.backgroundSize = 'cover';
   bg.style.backgroundPosition = 'center';
   _applyDatingBubbleStyles(session, persona);
+  // Apply bubble preset class and meta colors from persona
+  try { applyBubblePresetClass(persona.bubblePreset || 'none'); } catch(e) {}
+  try { applyMetaColors(persona); } catch(e) {}
   renderDatingMessages(persona, session);
   document.getElementById('datingChatPage').classList.add('active');
   _scrollDatingChat();
@@ -44283,6 +44482,10 @@ function renderDatingMessages(persona, session) {
   var avatarHtml = persona.avatar
     ? '<img src="' + persona.avatar + '" style="width:100%;height:100%;object-fit:cover;">'
     : '<i class="fas fa-user" style="font-size:13px;color:#c8a0b0;"></i>';
+  var _dtUserAvSrc = (typeof userProfile !== 'undefined' && userProfile.avatar) ? userProfile.avatar : '';
+  var userAvatarHtml = _dtUserAvSrc
+    ? '<div class="dating-user-avatar"><img src="' + _dtUserAvSrc + '" style="width:100%;height:100%;object-fit:cover;"></div>'
+    : '<div class="dating-user-avatar"><i class="fas fa-user" style="font-size:13px;color:#888;"></i></div>';
   bg.innerHTML = history.map(function(msg, i) {
     // 隐藏上下文消息不在UI中显示
     if (msg._hiddenContext || msg._systemNote) return '';
@@ -44295,13 +44498,13 @@ function renderDatingMessages(persona, session) {
     var _dtReadStatus = isUser
       ? (msg._recalled ? '' : (msg._readByChar ? '已读' : '未读'))
       : (msg._recalled ? '' : (msg._readByUser ? '已读' : '未读'));
-    var _dtReadColor = isUser ? (msg._readByChar ? 'rgba(180,180,180,0.7)' : 'rgba(200,200,200,0.5)') : (msg._readByUser ? 'rgba(180,180,180,0.7)' : 'rgba(200,200,200,0.5)');
+    var _dtReadColor = isUser ? (msg._readByChar ? 'var(--chat-meta-read-color, rgba(180,180,180,0.7))' : 'var(--chat-meta-unread-color, rgba(200,200,200,0.5))') : (msg._readByUser ? 'var(--chat-meta-read-color, rgba(180,180,180,0.7))' : 'var(--chat-meta-unread-color, rgba(200,200,200,0.5))');
     var timeEl = showTime ? '<div class="dating-msg-time">' + _fmtDatingTime(msg.ts) + '</div>' : '';
-    var _dtMetaEl = '<div style="font-size:8px;margin-top:2px;display:flex;gap:4px;' + (isUser?'justify-content:flex-end;':'justify-content:flex-start;') + '">' + (showTime ? '<span style="color:rgba(180,180,180,0.6);">' + _fmtMsgTime(msg.ts) + '</span>' : '') + (_dtReadStatus ? '<span style="color:' + _dtReadColor + ';">' + _dtReadStatus + '</span>' : '') + '</div>';
+    var _dtMetaEl = '<div style="font-size:8px;margin-top:2px;display:flex;gap:4px;' + (isUser?'justify-content:flex-end;':'justify-content:flex-start;') + '">' + (showTime ? '<span style="color:var(--chat-meta-time-color, rgba(180,180,180,0.6));">' + _fmtMsgTime(msg.ts) + '</span>' : '') + (_dtReadStatus ? '<span style="color:' + _dtReadColor + ';">' + _dtReadStatus + '</span>' : '') + '</div>';
     // ── 已撤回消息 ──
     if (msg._recalled) {
       if (isUser) {
-        return '<div class="dating-msg-row user' + selectedClass + selectableClass + '"' + rowAttrs + '><div style="font-size:11px;color:rgba(180,180,180,0.6);font-style:italic;padding:5px 10px;">你撤回了一条消息</div>' + _dtMetaEl + '</div>';
+        return '<div class="dating-msg-row user' + selectedClass + selectableClass + '"' + rowAttrs + '><div style="font-size:11px;color:rgba(180,180,180,0.6);font-style:italic;padding:5px 10px;">你撤回了一条消息</div>' + _dtMetaEl + userAvatarHtml + '</div>';
       }
       var showAvRc = i === 0 || history[i-1].role === 'user';
       return '<div class="dating-msg-row char' + selectedClass + selectableClass + '"' + rowAttrs + '>'
@@ -44327,7 +44530,7 @@ function renderDatingMessages(persona, session) {
         + (cDur ? '<div class="call-duration">' + cDur + '</div>' : '')
         + (cHasMsgs ? '<div class="call-view-hint">查看通话记录</div>' : '')
         + '</div></div>';
-      if (isUser) return '<div class="dating-msg-row user' + selectedClass + selectableClass + '"' + rowAttrs + '>' + timeEl + cBubble + '</div>';
+      if (isUser) return '<div class="dating-msg-row user' + selectedClass + selectableClass + '"' + rowAttrs + '>' + userAvatarHtml + '<div style="display:flex;flex-direction:column;align-items:flex-end;">' + cBubble + '</div>' + timeEl + '</div>';
       var showAvC = i===0 || history[i-1].role==='user';
       return '<div class="dating-msg-row char' + selectedClass + selectableClass + '"' + rowAttrs + '>'
         + (showAvC ? '<div class="dating-msg-avatar">' + avatarHtml + '</div>' : '<div style="width:32px;flex-shrink:0;"></div>')
@@ -44424,8 +44627,10 @@ function renderDatingMessages(persona, session) {
     var _dtTrHtml = _dtCached ? _buildTranslationHtml(_dtCached, _dtSenderLangCode) : '';
     var bubbleContent = specialBubble || ('<div class="dating-msg-bubble"' + _dtTAttrs + '>' + quoteHtml + _esc(msg.content) + _dtTrHtml + '</div>');
     if (isUser) {
-      return '<div class="dating-msg-row user' + selectedClass + selectableClass + '"' + rowAttrs + ' ondblclick="_datingRecallUserMsg(' + i + ')">' + timeEl
-        + bubbleContent + _dtMetaEl + '</div>';
+      return '<div class="dating-msg-row user' + selectedClass + selectableClass + '"' + rowAttrs + ' ondblclick="_datingRecallUserMsg(' + i + ')">'
+        + userAvatarHtml
+        + '<div style="display:flex;flex-direction:column;align-items:flex-end;">' + bubbleContent + _dtMetaEl + '</div>'
+        + timeEl + '</div>';
     }
     var showAvatar = i === 0 || history[i-1].role === 'user';
     return '<div class="dating-msg-row char' + selectedClass + selectableClass + '"' + rowAttrs + '>'

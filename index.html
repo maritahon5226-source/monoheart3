@@ -44891,6 +44891,8 @@ async function _sendDatingInitialGreeting(pid) {
     _removeDatingTyping(typingId);
     _showApiErrorToast('约会 · 初始问候失败', e);
   }
+  datingIsTyping = false;
+  var rb = document.getElementById('datingReplyBtn');
   if (rb) { rb.disabled = false; rb.classList.remove('loading'); rb.innerHTML = '<i class="fas fa-reply"></i>'; }
   var sb = document.getElementById('datingChatSendBtn');
   if (sb) sb.disabled = false;
@@ -75597,18 +75599,19 @@ window._monoExportCoupleSpaceState = function() {
 };
 function bootCoupleSpace() {
   csReloadStateFromStorage();
-  csSave();
-  csHydrateMediaRefs().then(function(changed) {
-    if (changed) {
-      renderCoupleSpace();
-      renderCoupleCalendarWidgets();
-    }
-  }).catch(function(){});
+  // Fix: 先完成 IndexedDB 媒体水合，再统一渲染，避免切换世界刷新后数据/图片闪消失
+  csHydrateMediaRefs().then(function() {
+    _finishBootCoupleSpace();
+  }).catch(function() {
+    _finishBootCoupleSpace();
+  });
+}
+function _finishBootCoupleSpace() {
   var currentPersonas = csGetPersonas();
   if (csState.activePersonaId && currentPersonas.length && !csFindPersona(csState.activePersonaId)) {
     csState.activePersonaId = '';
-    csSave();
   }
+  csSave();
   csEnsurePlacedHomeWidget('coupleSpaceWidget');
   renderCoupleBindList();
   renderCoupleSpace();

@@ -10972,6 +10972,8 @@ body.editor-modal-open #chatPage .app-back-bar {
 }
 /* ===== IMAGE MESSAGE & VISION API & BATCH STICKER ===== */
 .bubble-image { max-width: 200px; border-radius: 10px; overflow: hidden; cursor: pointer; background: linear-gradient(180deg, #f7f7f7, #ececec); min-height: 72px; }
+.bubble-image.is-text-image { max-width: 220px; overflow: visible; }
+.bubble-image.is-text-image img { border-radius: 10px 10px 0 0; }
 .bubble-image img { width: 100%; height: auto; display: block; border-radius: 10px; }
 .bubble-image img.chat-lazy-image { opacity: 0; transition: opacity 0.2s ease; min-height: 72px; }
 .bubble-image img.chat-lazy-image.loaded { opacity: 1; min-height: 0; }
@@ -11027,6 +11029,8 @@ body.editor-modal-open #chatPage .app-back-bar {
 /* Subtle "text image" badge on bubble */
 .bubble-image.is-text-image { position: relative; }
 .bubble-image.is-text-image::after { content: '文字图'; position: absolute; bottom: 5px; right: 7px; font-size: 9px; color: rgba(255,255,255,0.65); background: rgba(0,0,0,0.28); border-radius: 4px; padding: 1px 5px; pointer-events: none; }
+.text-image-view-btn { display: block; width: 100%; margin-top: 0; padding: 7px 0; background: rgba(0,0,0,0.55); color: rgba(255,255,255,0.92); font-size: 12px; font-weight: 600; border: none; border-radius: 0 0 10px 10px; cursor: pointer; letter-spacing: 0.5px; font-family: inherit; backdrop-filter: blur(2px); transition: background 0.15s; }
+.text-image-view-btn:active { background: rgba(0,0,0,0.75); }
 /* ===== NEW FEATURES: Clear Chat, Bubble CSS, Chat BG, Font, Sticker URL ===== */
 .confirm-overlay {
   position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -20288,7 +20292,8 @@ async function regenerateMsg(idx) {
   const _regenHealthInject = typeof _buildHealthInjection === 'function' ? _buildHealthInjection(p.id) : '';
   const _regenLangCode = _detectPersonaLang(p);
   const _regenLangOv = _langOverridePrompt(_regenLangCode);
-  const sysPrompt = `${LANG_SYSTEM_PREFIX}${STYLE_INSTRUCTIONS}\n你是${p.name}。人设：${p.persona}。你对用户的暱称是${p.nickname||p.name}。${_regenLangOv}\n请连续发送 ${count} 条消息，消息之间用 "###" 分隔。这些消息要像同一个人连续说话一样自然流动，意思和情绪一脉相承，读起来连贯流畅，而不是各自独立的碎片。绝对遵守人设。${modePrompt}${_regenWbInject}${_regenGcInject}${_regenHealthInject}`;
+  const _regenLangHeader = _regenLangOv ? `${_regenLangOv}\n⚠️ 上述语言指令为最高优先级，整个回复必须严格遵守，不得使用其他语言。\n\n` : '';
+  const sysPrompt = `${_regenLangHeader}${LANG_SYSTEM_PREFIX}${STYLE_INSTRUCTIONS}\n你是${p.name}。人设：${p.persona}。你对用户的暱称是${p.nickname||p.name}。${_regenLangOv}\n请连续发送 ${count} 条消息，消息之间用 "###" 分隔。这些消息要像同一个人连续说话一样自然流动，意思和情绪一脉相承，读起来连贯流畅，而不是各自独立的碎片。绝对遵守人设。${modePrompt}${_regenWbInject}${_regenGcInject}${_regenHealthInject}`;
   try {
     const memC = p.memoryCount || 100;
     const historyToSend = p.history.slice(-memC).map((m, idx, arr) => {
@@ -22100,8 +22105,12 @@ function renderMessages(opts) {
       const _imgSrc = _escapeAttrText(m.imageSrc || '');
       const _isSimulated = m.imageSimulated ? '1' : '';
       const _imgDesc = _escapeAttrText(m.textImagePrompt || m.imageDesc || '');
+      const _viewTextBtnHtml = m.imageSimulated
+        ? `<button class="text-image-view-btn" onclick="event.stopPropagation();(function(b){var s=b.getAttribute('data-img-src')||'';var d=b.getAttribute('data-img-desc')||'';showTextImageDescOverlay(s,d);})(this.closest('.bubble-image'))" title="查看文字内容">查看文字</button>`
+        : '';
       const imgBubble = `<div class="bubble-image${m.imageSimulated ? ' is-text-image' : ''}" data-img-src="${_imgSrc}" data-img-simulated="${_isSimulated}" data-img-desc="${_imgDesc}" onclick="handleImageBubbleClick(event, this)" data-msg-idx="${idx}">
         <img class="chat-lazy-image" src="${_CHAT_LAZY_MEDIA_PIXEL}" data-lazy-src="${_imgSrc}" loading="lazy" alt="image">
+        ${_viewTextBtnHtml}
       </div>`;
       const imageCaptionHtml = m.imageCaption ? '<div class="bubble-image-caption">' + m.imageCaption + '</div>' : '';
       if (isUser) {
@@ -27790,7 +27799,10 @@ async function generateForumComments(postId, title, content) {
     if (!post2) return;
     comments.forEach((c, i) => {
       const ru = mockUsers[Math.floor(Math.random() * mockUsers.length)];
-      post2.comments.push({ id: Date.now() + i, author: c.author || ru.name, avatar: ru.avatar, content: c.content, time: new Date().getTime() - Math.floor(Math.random() * 3600000), replies: [] });
+      // 评论时间必须晚于帖子发布时间
+      const _dynSpan = Date.now() - (post2.time || Date.now());
+      const _dynCTime = (post2.time || Date.now()) + Math.floor(Math.random() * Math.max(_dynSpan, 1));
+      post2.comments.push({ id: Date.now() + i, author: c.author || ru.name, avatar: ru.avatar, content: c.content, time: _dynCTime, replies: [] });
     });
     _forumSyncMemoriesForPost(post2, currentSectionId);
     saveForumState();
@@ -28112,18 +28124,26 @@ async function updateForum() {
       const parts = lines[i].split('|||').map(p => p.trim());
       if (parts.length < 3) continue;
       const ru = mockUsers[Math.floor(Math.random() * mockUsers.length)];
+      // ── 先确定帖子时间，评论时间必须在帖子时间之后 ──
+      const _postTime = new Date().getTime() - Math.floor(Math.random() * 86400000 * 3);
+      const _randomCommentTime = () => {
+        const span = Date.now() - _postTime;
+        return _postTime + Math.floor(Math.random() * Math.max(span, 1));
+      };
       const comments = [];
       for (let j = 2; j < Math.min(parts.length, 7); j++) {
         if (!parts[j]) continue;
         let cu = mockUsers[Math.floor(Math.random() * mockUsers.length)];
-        comments.push({ id: Date.now() + j, author: cu.name, avatar: cu.avatar, content: parts[j], time: new Date().getTime() - Math.floor(Math.random() * 86400000), replies: [] });
+        comments.push({ id: Date.now() + j, author: cu.name, avatar: cu.avatar, content: parts[j], time: _randomCommentTime(), replies: [] });
       }
+      // 按时间排序，让评论按先后顺序排列
+      comments.sort((a, b) => a.time - b.time);
       while (comments.length < 3) {
         const cu = mockUsers[Math.floor(Math.random() * mockUsers.length)];
         const dc = ["说得有道理！", "不太同意这个", "求详细说说", "路过支持！", "有没有更多资讯？"];
-        comments.push({ id: Date.now() + comments.length, author: cu.name, avatar: cu.avatar, content: dc[Math.floor(Math.random() * dc.length)], time: new Date().getTime() - Math.floor(Math.random() * 86400000), replies: [] });
+        comments.push({ id: Date.now() + comments.length, author: cu.name, avatar: cu.avatar, content: dc[Math.floor(Math.random() * dc.length)], time: _randomCommentTime(), replies: [] });
       }
-      aiPosts.push({ id: Date.now() + i, title: parts[0], author: ru.name, avatar: ru.avatar, authorType: 'ai', content: parts[1], time: new Date().getTime() - Math.floor(Math.random() * 86400000 * 3), comments, sectionId: currentSectionId });
+      aiPosts.push({ id: Date.now() + i, title: parts[0], author: ru.name, avatar: ru.avatar, authorType: 'ai', content: parts[1], time: _postTime, comments, sectionId: currentSectionId });
     }
     // Preserve all non-AI posts so custom posts, persona匿名帖、以及原有互动都不会被清空。
     const existingPosts = forumData[currentSectionId] || [];
@@ -31576,25 +31596,32 @@ function _escapeSvgText(text) {
     .replace(/'/g, '&#39;');
 }
 function _wrapTextImageLines(text, maxChars, maxLines) {
-  const clean = String(text || '').replace(/\s+/g, ' ').trim();
-  if (!clean) return [];
-  const lines = [];
-  let rest = clean;
-  const width = Math.max(6, maxChars || 12);
-  const limit = Math.max(1, maxLines || 3);
-  while (rest && lines.length < limit) {
-    if (rest.length <= width) {
-      lines.push(rest);
-      rest = '';
-      break;
+  // 先按换行符拆段落，再对每段按字数换行
+  const rawLines = String(text || '').split(/\n|\r\n|\r/);
+  const result = [];
+  const width = Math.max(6, maxChars || 20);
+  const limit = maxLines && maxLines < 9999 ? Math.max(1, maxLines) : 9999;
+  for (let r = 0; r < rawLines.length && result.length < limit; r++) {
+    let rest = rawLines[r].replace(/\s+/g, ' ').trim();
+    if (!rest) { result.push(''); continue; }
+    while (rest && result.length < limit) {
+      if (rest.length <= width) {
+        result.push(rest);
+        rest = '';
+        break;
+      }
+      let cut = width;
+      // 英文单词不拆断
+      while (cut > 4 && /[a-zA-Z0-9]/.test(rest.charAt(cut - 1)) && /[a-zA-Z0-9]/.test(rest.charAt(cut))) cut--;
+      result.push(rest.slice(0, cut).trim());
+      rest = rest.slice(cut).trim();
     }
-    let cut = width;
-    while (cut > 4 && /[a-zA-Z0-9]/.test(rest.charAt(cut - 1)) && /[a-zA-Z0-9]/.test(rest.charAt(cut))) cut--;
-    lines.push(rest.slice(0, cut).trim());
-    rest = rest.slice(cut).trim();
   }
-  if (rest && lines.length) lines[lines.length - 1] = lines[lines.length - 1].replace(/…?$/, '') + '…';
-  return lines;
+  // 如果内容被截断（只有 maxLines < 9999 时才加省略号）
+  if (maxLines && maxLines < 9999 && result.length >= limit) {
+    result[result.length - 1] = result[result.length - 1].replace(/…?$/, '') + '…';
+  }
+  return result;
 }
 function _buildSimulatedTextImageDataUrl(desc, opts) {
   const cleanDesc = String(desc || '').trim() || '一张模糊却真实的小照片';
@@ -31607,17 +31634,34 @@ function _buildSimulatedTextImageDataUrl(desc, opts) {
     ['#eee3d8', '#dccbbb', '#c4ae98']
   ][seed % 5];
   const senderName = String((opts && opts.senderName) || '用户').trim() || '用户';
-  const lines = _wrapTextImageLines(cleanDesc, 12, 3);
-  const chip = _escapeSvgText(lines[0] || cleanDesc.slice(0, 12));
+
+  // ── 动态换行：每行20字，不限行数，完整显示所有内容 ──
+  const CHARS_PER_LINE = 20;
+  const LINE_HEIGHT = 40;
+  const FONT_SIZE = 28;
+  const lines = _wrapTextImageLines(cleanDesc, CHARS_PER_LINE, 9999);
+
+  // ── 动态高度计算 ──
+  const TEXT_START_Y = 570;   // 第一行文字基线
+  const lastTextY = TEXT_START_Y + (lines.length - 1) * LINE_HEIGHT;
+  const CHIP_Y = lastTextY + 58;
+  const CHIP_RECT_Y = CHIP_Y - 28;
+  const FROM_Y = lastTextY + 112;
+  const SVG_HEIGHT = Math.max(860, lastTextY + 168);
+
+  const chip = _escapeSvgText(lines[0] ? lines[0].slice(0, 14) : cleanDesc.slice(0, 14));
   const textSvg = lines.map(function(line, idx) {
-    return '<text x="86" y="' + (566 + idx * 48) + '" font-size="30" font-weight="700" fill="#2a2a2a" letter-spacing="1.2">' + _escapeSvgText(line) + '</text>';
+    return '<text x="86" y="' + (TEXT_START_Y + idx * LINE_HEIGHT) + '" font-size="' + FONT_SIZE + '" font-weight="700" fill="#2a2a2a" letter-spacing="1">' + _escapeSvgText(line) + '</text>';
   }).join('');
+
   const dotX = 520 + (seed % 80);
   const dotY = 176 + (seed % 120);
   const dotR = 54 + (seed % 22);
   const tilt = (seed % 7) - 3;
+  const photoCardH = SVG_HEIGHT - 148;  // 动态卡片高度
+
   const svg = ''
-    + '<svg xmlns="http://www.w3.org/2000/svg" width="720" height="900" viewBox="0 0 720 900">'
+    + '<svg xmlns="http://www.w3.org/2000/svg" width="720" height="' + SVG_HEIGHT + '" viewBox="0 0 720 ' + SVG_HEIGHT + '">'
     + '<defs>'
     + '<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">'
     + '<stop offset="0%" stop-color="' + palette[0] + '"/>'
@@ -31628,10 +31672,10 @@ function _buildSimulatedTextImageDataUrl(desc, opts) {
     + '<stop offset="100%" stop-color="#f4f4f1"/>'
     + '</linearGradient>'
     + '</defs>'
-    + '<rect width="720" height="900" rx="44" fill="url(#bg)"/>'
+    + '<rect width="720" height="' + SVG_HEIGHT + '" rx="44" fill="url(#bg)"/>'
     + '<circle cx="' + dotX + '" cy="' + dotY + '" r="' + dotR + '" fill="' + palette[2] + '" opacity="0.28"/>'
     + '<circle cx="160" cy="138" r="88" fill="#ffffff" opacity="0.18"/>'
-    + '<rect x="68" y="74" width="584" height="752" rx="34" fill="url(#photo)"/>'
+    + '<rect x="68" y="74" width="584" height="' + photoCardH + '" rx="34" fill="url(#photo)"/>'
     + '<rect x="94" y="106" width="532" height="396" rx="26" fill="' + palette[1] + '"/>'
     + '<g transform="rotate(' + tilt + ' 360 304)">'
     + '<rect x="132" y="150" width="456" height="306" rx="24" fill="#ffffff" opacity="0.95"/>'
@@ -31643,11 +31687,11 @@ function _buildSimulatedTextImageDataUrl(desc, opts) {
     + '<rect x="182" y="360" width="256" height="14" rx="7" fill="#ffffff" opacity="0.24"/>'
     + '<rect x="182" y="388" width="178" height="14" rx="7" fill="#ffffff" opacity="0.24"/>'
     + '</g>'
-    + '<text x="86" y="556" font-size="15" font-weight="700" fill="#8b8b8b" letter-spacing="4">SIM PHOTO</text>'
+    + '<text x="86" y="552" font-size="15" font-weight="700" fill="#8b8b8b" letter-spacing="4">SIM PHOTO</text>'
     + textSvg
-    + '<rect x="86" y="698" width="172" height="42" rx="21" fill="#f1efeb"/>'
-    + '<text x="104" y="725" font-size="18" font-weight="700" fill="#7b776f">' + chip + '</text>'
-    + '<text x="86" y="780" font-size="18" fill="#8f8f8f">from ' + _escapeSvgText(senderName) + '</text>'
+    + '<rect x="86" y="' + CHIP_RECT_Y + '" width="172" height="42" rx="21" fill="#f1efeb"/>'
+    + '<text x="104" y="' + CHIP_Y + '" font-size="18" font-weight="700" fill="#7b776f">' + chip + '</text>'
+    + '<text x="86" y="' + FROM_Y + '" font-size="18" fill="#8f8f8f">from ' + _escapeSvgText(senderName) + '</text>'
     + '</svg>';
   return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
 }
@@ -33812,7 +33856,11 @@ ${followUps ? `\n${userProfile.name} 转发后还补充说了：${followUps}` : 
       return inject;
     } catch(e) { return ''; }
   })();
-  const sysPrompt = memoryCoreContext + `${LANG_SYSTEM_PREFIX}${STYLE_INSTRUCTIONS}\n你是${p.name}。人设：${p.persona}。你对用户（${userProfile.name}）的昵称是${p.nickname||p.name}。${_langOverride}${lastHeartVoiceInject}${userPersonaInject}${_mwRelInject}${_ccRoomMemoryInject}${timeGapAlert}
+  // ── 语言优先级修复：当角色有明确语言设定时，将语言指令前置为最高优先级 ──
+  const _langPriorityHeader = _langOverride
+    ? `${_langOverride}\n⚠️ 上述语言指令为最高优先级，必须在整个回复中严格遵守，不得使用其他语言。\n\n`
+    : '';
+  const sysPrompt = (_langPriorityHeader || memoryCoreContext) + (_langPriorityHeader ? memoryCoreContext : '') + `${LANG_SYSTEM_PREFIX}${STYLE_INSTRUCTIONS}\n你是${p.name}。人设：${p.persona}。你对用户（${userProfile.name}）的昵称是${p.nickname||p.name}。${_langOverride}${lastHeartVoiceInject}${userPersonaInject}${_mwRelInject}${_ccRoomMemoryInject}${timeGapAlert}
 ${_buildPersonaIdentityPrompt(p)}
 【回复要求】
 1. 你的每一条消息都必须像这个角色本人在说话——语气、用词、节奏都要忠实于人设，不能千篇一律。

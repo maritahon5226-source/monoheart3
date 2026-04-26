@@ -11013,6 +11013,20 @@ body.editor-modal-open #chatPage .app-back-bar {
 .image-preview-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 10001; align-items: center; justify-content: center; cursor: pointer; }
 .image-preview-overlay.show { display: flex; }
 .image-preview-overlay img { max-width: 90%; max-height: 90%; object-fit: contain; }
+/* Text image description overlay */
+.text-image-desc-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.72); z-index: 10002; align-items: flex-end; justify-content: center; padding-bottom: env(safe-area-inset-bottom,0); }
+.text-image-desc-overlay.show { display: flex; }
+.text-image-desc-box { background: #1e1e1e; border-radius: 20px 20px 0 0; width: 100%; max-width: 560px; padding: 18px 20px 28px; box-shadow: 0 -4px 32px rgba(0,0,0,0.4); animation: slideUpSheet 0.22s ease; }
+@keyframes slideUpSheet { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.text-image-desc-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.text-image-desc-label { font-size: 13px; font-weight: 600; color: #aaa; letter-spacing: 0.5px; }
+.text-image-desc-close { background: none; border: none; color: #666; font-size: 18px; cursor: pointer; padding: 2px 6px; line-height: 1; }
+.text-image-desc-img-wrap { display: flex; justify-content: center; margin-bottom: 14px; }
+.text-image-desc-img-wrap img { max-width: 180px; max-height: 220px; border-radius: 12px; object-fit: contain; box-shadow: 0 2px 14px rgba(0,0,0,0.35); }
+.text-image-desc-text { font-size: 15px; color: #e8e8e8; line-height: 1.7; background: #2a2a2a; border-radius: 12px; padding: 14px 16px; white-space: pre-wrap; word-break: break-word; }
+/* Subtle "text image" badge on bubble */
+.bubble-image.is-text-image { position: relative; }
+.bubble-image.is-text-image::after { content: '文字图'; position: absolute; bottom: 5px; right: 7px; font-size: 9px; color: rgba(255,255,255,0.65); background: rgba(0,0,0,0.28); border-radius: 4px; padding: 1px 5px; pointer-events: none; }
 /* ===== NEW FEATURES: Clear Chat, Bubble CSS, Chat BG, Font, Sticker URL ===== */
 .confirm-overlay {
   position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -15653,6 +15667,19 @@ body.editor-modal-open #chatPage .app-back-bar {
     <!-- Image Preview Overlay -->
     <div class="image-preview-overlay" id="imagePreviewOverlay" onclick="closeImagePreview()">
       <img id="imagePreviewImg" src="">
+    </div>
+    <!-- Text Image Description Overlay -->
+    <div class="text-image-desc-overlay" id="textImageDescOverlay" onclick="closeTextImageDescOverlay()">
+      <div class="text-image-desc-box" onclick="event.stopPropagation()">
+        <div class="text-image-desc-header">
+          <span class="text-image-desc-label">📷 文字图内容</span>
+          <button class="text-image-desc-close" onclick="closeTextImageDescOverlay()">✕</button>
+        </div>
+        <div class="text-image-desc-img-wrap">
+          <img id="textImageDescImg" src="" alt="文字图">
+        </div>
+        <div class="text-image-desc-text" id="textImageDescText"></div>
+      </div>
     </div>
     <!-- Global Image Preview Overlay (for moments/diary pages) -->
     <div id="globalImagePreviewOverlay" onclick="closeGlobalImagePreview()" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);z-index:9999;align-items:center;justify-content:center;cursor:pointer;">
@@ -22071,7 +22098,9 @@ function renderMessages(opts) {
     // 图片消息
     if (m.msgType === 'image') {
       const _imgSrc = _escapeAttrText(m.imageSrc || '');
-      const imgBubble = `<div class="bubble-image" data-img-src="${_imgSrc}" onclick="handleImageBubbleClick(event, this)" data-msg-idx="${idx}">
+      const _isSimulated = m.imageSimulated ? '1' : '';
+      const _imgDesc = _escapeAttrText(m.textImagePrompt || m.imageDesc || '');
+      const imgBubble = `<div class="bubble-image${m.imageSimulated ? ' is-text-image' : ''}" data-img-src="${_imgSrc}" data-img-simulated="${_isSimulated}" data-img-desc="${_imgDesc}" onclick="handleImageBubbleClick(event, this)" data-msg-idx="${idx}">
         <img class="chat-lazy-image" src="${_CHAT_LAZY_MEDIA_PIXEL}" data-lazy-src="${_imgSrc}" loading="lazy" alt="image">
       </div>`;
       const imageCaptionHtml = m.imageCaption ? '<div class="bubble-image-caption">' + m.imageCaption + '</div>' : '';
@@ -30571,22 +30600,12 @@ async function tryPersonaSendTextImage(p, recentChat) {
   if (recentMsgs.slice(-3).some(function(m) { return m && m.role === 'assistant' && m.msgType === 'image'; })) return;
   const strongCue = /照片|图片|自拍|穿搭|看看|发来|发我|给我看|图呢|拍给我|想看|看下|猫猫|狗狗|晚霞|天空|奶茶|饭|外卖/.test(recentText);
   const personaText = String(p.persona || '');
-  let baseProb = strongCue ? 0.68 : 0.18;
-  if (/分享欲|摄影|爱拍照|活泼|可爱|俏皮|喜欢记录|浪漫|感性|黏人|热情/.test(personaText)) baseProb += 0.12;
-  if (/高冷|冷淡|克制|寡言|理智|稳重|严肃/.test(personaText)) baseProb -= 0.08;
-  if (Math.random() > Math.max(0.05, Math.min(baseProb, 0.82))) return;
+  let baseProb = strongCue ? 0.68 : 0.06;
+  if (/分享欲|摄影|爱拍照|活泼|可爱|俏皮|喜欢记录|浪漫|感性|黏人|热情/.test(personaText)) baseProb += 0.05;
+  if (/高冷|冷淡|克制|寡言|理智|稳重|严肃/.test(personaText)) baseProb -= 0.03;
+  if (Math.random() > Math.max(0.02, Math.min(baseProb, 0.75))) return;
   const prompt = `${LANG_SYSTEM_PREFIX}你是${p.name}，人设：${p.persona}。
-你现在可以选择是否额外发送一张“文字描述生成的模拟图片”给${userProfile.name}。这张图会以真实图片消息的形式出现在聊天里。
-【发送原则】
-1. 只有当你真的会想“顺手给对方看一眼什么”时才发，例如自拍、穿搭、手边食物、天空、桌面、小动物、正在做的事、截图式小梗图。
-2. 默认宁缺毋滥；如果当前只是普通问答、严肃沟通、争执、解释、安慰沉重情绪，就不要发。
-3. 如果用户刚表达“想看”“发我看看”“图呢”等，或当前气氛很暧昧/轻松/分享欲强，可以更积极一点。
-4. desc 必须是“画面里看得见的东西”，像真实照片描述，不能写抽象感想，不能写“我给你发一张图”这种说明。
-5. desc 控制在18到60字，细节具体，像镜头画面。
-请只返回 JSON，不要解释：{"send":true/false,"desc":"图片画面描述","caption":"可留空的短配文"}
-
-【最近聊天】
-${recentChat || '（暂无）'}`;
+你现在可以选择是否额外发送一张“文字描述生成的模拟图片”给${userProfile.name}。这张图会以真实图片消息的形式出现在聊天里。\n【核心要求：图片必须与当前聊天内容强相关】\n- 图片内容必须直接来源于当前对话：对话在聊什么、提到了什么地点/事物/行为，图片就顺势拍什么。\n- 不要凭空发一张和话题毫无关联的图。如果当前话题想不到自然对应的画面，直接返回 send:false。\n- 举例：聊到“在吃火锅”→ 拍桌上的锅和食材；聊到“今天去爬山”→ 山顶或山路的画面；聊到“你穿了什么”→ 自己当天的穿搭；用户说“发我看看”→ 结合上文正在聊的具体内容拍给对方。\n【发送原则】\n1. 只有当前对话有明确可视化的内容，或用户明确要求看时才发。\n2. 如果当前只是普通问答、严肃沟通、争执、解释、安慰沉重情绪，不要发。\n3. desc 必须是“画面里看得见的东西”，像真实照片描述，细节具体，不写抄象感想，不写“我给你发一张图”这种说明。\n4. desc 控制在 18 到 60 字。\n请只返回 JSON，不要解释：{"send":true/false,"desc":"图片画面描述（必须与聊天内容直接相关）","caption":"可留空的短配文"}\n\n【最近聊天】\n${recentChat || '（暂无）'}`;
   try {
     const r = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, {
       method: 'POST',
@@ -31908,22 +31927,65 @@ let _imgClickTimer = null;
 let _imgClickCount = 0;
 function handleImageBubbleClick(e, el) {
   e.stopPropagation();
+  // Always resolve to the .bubble-image wrapper div, even if the inner <img> was clicked
+  const bubble = (el && el.classList && el.classList.contains('bubble-image')) ? el : (el && el.closest ? el.closest('.bubble-image') : el);
+  if (!bubble) return;
   _imgClickCount++;
   if (_imgClickCount === 1) {
     _imgClickTimer = setTimeout(() => {
       _imgClickCount = 0;
-      // Single click: show image preview
-      const src = el.getAttribute('data-img-src');
-      if (src) showImagePreview(src);
+      const src = bubble.getAttribute('data-img-src') || '';
+      // Check simulated flag on bubble div
+      const simAttr = bubble.getAttribute('data-img-simulated');
+      let isSimulated = (simAttr === '1');
+      // Fallback: check history via msg-idx if attribute missing
+      if (!isSimulated) {
+        const msgIdx = parseInt(bubble.getAttribute('data-msg-idx'));
+        if (!isNaN(msgIdx)) {
+          const p = personas.find(x => x.id == currentId);
+          if (p && p.history[msgIdx] && p.history[msgIdx].imageSimulated) isSimulated = true;
+        }
+      }
+      if (isSimulated) {
+        // Get desc: from attribute, or fallback to history
+        let desc = bubble.getAttribute('data-img-desc') || '';
+        if (!desc) {
+          const msgIdx = parseInt(bubble.getAttribute('data-msg-idx'));
+          const p = personas.find(x => x.id == currentId);
+          if (p && !isNaN(msgIdx) && p.history[msgIdx]) {
+            desc = p.history[msgIdx].textImagePrompt || p.history[msgIdx].imageDesc || '';
+          }
+        }
+        showTextImageDescOverlay(src, desc);
+      } else if (src) {
+        showImagePreview(src);
+      }
     }, 280);
   } else if (_imgClickCount >= 2) {
     clearTimeout(_imgClickTimer);
     _imgClickCount = 0;
     // Double click: show context menu
-    const idx = parseInt(el.getAttribute('data-msg-idx'));
-    const row = el.closest('.msg-row[data-idx]');
-    if (row) showImageContextMenu(e, idx, el);
+    const idx = parseInt(bubble.getAttribute('data-msg-idx'));
+    const row = bubble.closest('.msg-row[data-idx]');
+    if (row) showImageContextMenu(e, idx, bubble);
   }
+}
+function showTextImageDescOverlay(src, desc) {
+  var overlay = document.getElementById('textImageDescOverlay');
+  if (!overlay) {
+    // Fallback: show simple alert if overlay missing
+    if (desc) alert(desc);
+    return;
+  }
+  var img = document.getElementById('textImageDescImg');
+  var txt = document.getElementById('textImageDescText');
+  if (img) { img.src = src || ''; img.style.display = src ? 'block' : 'none'; }
+  if (txt) txt.textContent = desc || '（无描述）';
+  overlay.classList.add('show');
+}
+function closeTextImageDescOverlay() {
+  var overlay = document.getElementById('textImageDescOverlay');
+  if (overlay) { overlay.classList.remove('show'); }
 }
 function handleStickerBubbleClick(e, el) {
   e.stopPropagation();
@@ -32670,15 +32732,55 @@ async function handleUserTransferAction(msgIdx, action) {
 }
 function _splitChatBubbleLines(text, maxCharsPerLine) {
   var source = String(text || '').replace(/\r\n/g, '\n');
-  var limit = Math.max(1, parseInt(maxCharsPerLine, 10) || 14);
+  var baseLimit = Math.max(1, parseInt(maxCharsPerLine, 10) || 14);
+  // Visual-width limit: CJK chars = 2 units, everything else = 1 unit.
+  // baseLimit 14 → visualLimit 28, so 14 Chinese chars OR ~28 Latin chars per line.
+  var visualLimit = baseLimit * 2;
+
+  function charVisualWidth(ch) {
+    var code = ch.codePointAt ? ch.codePointAt(0) : ch.charCodeAt(0);
+    if (
+      (code >= 0x1100 && code <= 0x11FF)  ||  // Hangul Jamo
+      (code >= 0x2E80 && code <= 0x2EFF)  ||  // CJK Radicals Supplement
+      (code >= 0x2F00 && code <= 0x2FDF)  ||  // Kangxi Radicals
+      (code >= 0x3000 && code <= 0x303F)  ||  // CJK Symbols & Punctuation
+      (code >= 0x3040 && code <= 0x309F)  ||  // Hiragana
+      (code >= 0x30A0 && code <= 0x30FF)  ||  // Katakana
+      (code >= 0x3100 && code <= 0x312F)  ||  // Bopomofo
+      (code >= 0x3400 && code <= 0x4DBF)  ||  // CJK Extension A
+      (code >= 0x4E00 && code <= 0x9FFF)  ||  // CJK Unified Ideographs
+      (code >= 0xAC00 && code <= 0xD7AF)  ||  // Hangul Syllables
+      (code >= 0xF900 && code <= 0xFAFF)  ||  // CJK Compatibility Ideographs
+      (code >= 0xFE10 && code <= 0xFE1F)  ||  // Vertical Forms
+      (code >= 0xFE30 && code <= 0xFE4F)  ||  // CJK Compatibility Forms
+      (code >= 0xFF00 && code <= 0xFF60)  ||  // Fullwidth / Halfwidth Forms
+      (code >= 0xFFE0 && code <= 0xFFE6)  ||  // Fullwidth Signs
+      (code >= 0x20000 && code <= 0x2A6DF) || // CJK Extension B
+      (code >= 0x2A700 && code <= 0x2CEAF) || // CJK Extension C/D/E
+      (code >= 0x2CEB0 && code <= 0x2EBEF) || // CJK Extension F
+      (code >= 0x30000 && code <= 0x3134F)    // CJK Extension G
+    ) { return 2; }
+    return 1;
+  }
+
   return source.split('\n').map(function(line) {
     var current = String(line || '');
     if (!current) return '';
     var chars = Array.from(current);
     var rows = [];
-    for (var i = 0; i < chars.length; i += limit) {
-      rows.push(chars.slice(i, i + limit).join(''));
+    var rowChars = [];
+    var rowWidth = 0;
+    for (var i = 0; i < chars.length; i++) {
+      var w = charVisualWidth(chars[i]);
+      if (rowWidth + w > visualLimit && rowChars.length > 0) {
+        rows.push(rowChars.join(''));
+        rowChars = [];
+        rowWidth = 0;
+      }
+      rowChars.push(chars[i]);
+      rowWidth += w;
     }
+    if (rowChars.length > 0) rows.push(rowChars.join(''));
     return rows.join('\n');
   }).join('\n');
 }

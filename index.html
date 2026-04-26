@@ -20,6 +20,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head>
@@ -1441,6 +1442,377 @@ body {
 .cc-bubble-right { background:#9eea6a; color:#1a1a1a; border-radius:12px 2px 2px 12px; }
 .cc-bubble-right::after { content:''; position:absolute; right:-6px; top:10px; border:6px solid transparent; border-left-color:#9eea6a; border-right:0; }
 .cc-time-divider { text-align:center; font-size:10px; color:#aaa; margin:10px 0; }
+.cc-msg-meta {
+  font-size: 9px;
+  color: #9a9a9a;
+  margin-top: 4px;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.cc-msg-row.cc-right .cc-msg-meta { justify-content: flex-end; }
+.cc-msg-row:not(.cc-right) .cc-msg-meta { justify-content: flex-start; }
+.cc-chat-empty-tip {
+  text-align: center;
+  padding: 40px 20px;
+  color: #bbb;
+}
+.cc-rich-media-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 220px;
+}
+.cc-rich-media-wrap .bubble-image {
+  max-width: 220px;
+}
+.cc-rich-media-wrap .bubble-voice {
+  margin: 0;
+}
+.cc-msg-row .bubble-voice {
+  max-width: 220px;
+}
+.cc-msg-row .bubble-user.bubble-voice {
+  background: #9eea6a;
+  color: #1a1a1a;
+}
+.cc-msg-row .bubble-ai.bubble-voice {
+  background: #fff;
+  color: #1a1a1a;
+}
+.cc-takeout-card {
+  width: min(240px, 72vw);
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff 0%, #f3f3f5 100%);
+  border: 1px solid #dddde3;
+  box-shadow: 0 12px 28px rgba(0,0,0,0.08);
+  overflow: hidden;
+}
+.cc-takeout-card-head {
+  padding: 12px 14px 10px;
+  background: linear-gradient(180deg, #f8f8fa 0%, #efeff2 100%);
+  border-bottom: 1px solid #e7e7eb;
+}
+.cc-takeout-card-kicker {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: #8c8c95;
+}
+.cc-takeout-card-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #202028;
+  margin-top: 6px;
+}
+.cc-takeout-card-sub {
+  font-size: 11px;
+  color: #7f7f88;
+  margin-top: 4px;
+  line-height: 1.5;
+}
+.cc-takeout-card-body {
+  padding: 12px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cc-takeout-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: flex-start;
+}
+.cc-takeout-label {
+  font-size: 10px;
+  color: #9999a3;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  flex-shrink: 0;
+}
+.cc-takeout-value {
+  font-size: 12px;
+  color: #2a2a31;
+  text-align: right;
+  line-height: 1.5;
+}
+.cc-takeout-price {
+  font-size: 20px;
+  font-weight: 900;
+  color: #2d2d36;
+  letter-spacing: -0.3px;
+}
+.cc-takeout-note {
+  padding: 10px 11px;
+  border-radius: 12px;
+  background: rgba(120,120,132,0.08);
+  color: #5f5f68;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.cc-takeout-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #ececf0;
+  color: #6b6b75;
+  font-size: 10px;
+  font-weight: 700;
+}
+.cc-composer-shell {
+  position: relative;
+  background: #f5f5f5;
+  border-top: 0.5px solid #c8c8c8;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.cc-composer-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.cc-mode-hint {
+  font-size: 11px;
+  color: #8a8a8a;
+}
+.cc-inline-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cc-composer-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+.cc-composer-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cc-icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  border: none;
+  background: #e8e8eb;
+  color: #4e4e57;
+  cursor: pointer;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s, background 0.15s;
+}
+.cc-icon-btn:active {
+  transform: scale(0.95);
+  background: #dddddf;
+}
+.cc-sender-select {
+  min-width: 92px;
+  max-width: 118px;
+  border: 1px solid #d7d7db;
+  border-radius: 12px;
+  background: #fff;
+  color: #333;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 0 30px 0 10px;
+  height: 36px;
+  appearance: none;
+  -webkit-appearance: none;
+  font-family: inherit;
+  background-image: linear-gradient(45deg, transparent 50%, #999 50%), linear-gradient(135deg, #999 50%, transparent 50%);
+  background-position: calc(100% - 15px) 15px, calc(100% - 10px) 15px;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+.cc-textarea {
+  flex: 1;
+  min-height: 36px;
+  max-height: 108px;
+  border: 1px solid #d7d7db;
+  border-radius: 16px;
+  background: #fff;
+  padding: 9px 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: none;
+  outline: none;
+  font-family: inherit;
+}
+.cc-send-btn {
+  min-width: 60px;
+  height: 36px;
+  border-radius: 12px;
+  border: none;
+  background: #1a1a1a;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: inherit;
+}
+.cc-send-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.cc-plus-panel {
+  display: none;
+  padding: 10px;
+  border-radius: 18px;
+  background: #fff;
+  border: 1px solid #e3e3e7;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+}
+.cc-plus-panel.open { display: block; }
+.cc-plus-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.cc-plus-action {
+  border: none;
+  background: #f5f5f7;
+  border-radius: 14px;
+  padding: 12px 8px 10px;
+  cursor: pointer;
+  color: #444;
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.cc-plus-action i {
+  font-size: 16px;
+  color: #666;
+}
+.cc-plus-action span {
+  font-size: 10px;
+  font-weight: 700;
+}
+.cc-sheet-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 9700;
+  align-items: flex-end;
+  justify-content: center;
+}
+.cc-sheet-card {
+  background: #fff;
+  width: 100%;
+  max-width: 480px;
+  border-radius: 22px 22px 0 0;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.cc-sheet-head {
+  padding: 16px;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cc-sheet-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #1a1a1a;
+  flex: 1;
+}
+.cc-sheet-close {
+  border: none;
+  background: none;
+  font-size: 18px;
+  color: #999;
+  cursor: pointer;
+}
+.cc-sheet-body {
+  padding: 14px 16px 18px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.cc-field-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #8e8e98;
+  margin-bottom: 6px;
+}
+.cc-field-input,
+.cc-field-textarea,
+.cc-field-select {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #dbdbe0;
+  border-radius: 12px;
+  background: #fff;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #1a1a1a;
+  font-family: inherit;
+  outline: none;
+}
+.cc-field-textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+.cc-sheet-actions {
+  display: flex;
+  gap: 10px;
+}
+.cc-sheet-primary,
+.cc-sheet-secondary {
+  flex: 1;
+  height: 42px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 800;
+  font-family: inherit;
+  cursor: pointer;
+}
+.cc-sheet-primary {
+  border: none;
+  background: #1a1a1a;
+  color: #fff;
+}
+.cc-sheet-secondary {
+  border: 1px solid #ddd;
+  background: #f7f7f7;
+  color: #555;
+}
+.cc-media-hint {
+  font-size: 11px;
+  color: #8f8f98;
+  line-height: 1.6;
+}
+.cc-media-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  background: #f3f3f6;
+  border-radius: 999px;
+  padding: 7px 11px;
+  color: #666975;
+  font-size: 11px;
+  font-weight: 700;
+}
 /* 截图气泡 in 用户聊天室 */
 .cc-snap-preview { border-radius:10px; overflow:hidden; max-width:200px; cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,0.15); border:1px solid #e0e0e0; }
 .cc-snap-preview img { width:100%; display:block; }
@@ -1643,17 +2015,21 @@ body {
 .plus-panel {
   display: none;
   position: absolute;
-  bottom: 100%;
+  bottom: calc(100% + 6px);
   left: 0;
   right: 0;
   background: #fff;
   border: 1px solid #1a1a1a;
   border-bottom: none;
+  border-radius: 16px 16px 0 0;
   padding: 10px 12px;
   gap: 8px;
-  z-index: 200;
+  z-index: 520;
   animation: panelSlideUp 0.18s ease;
   flex-wrap: wrap;
+  max-height: min(50vh, 240px);
+  overflow-y: auto;
+  box-shadow: 0 -10px 28px rgba(0,0,0,0.12);
 }
 .plus-panel.show { display: flex; }
 @keyframes panelSlideUp { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: translateY(0); } }
@@ -1665,9 +2041,9 @@ body {
   cursor: pointer;
   border-radius: 8px;
   transition: all 0.15s;
-  flex: 1 1 calc(25% - 8px);
-  min-width: 54px;
-  max-width: calc(25% - 8px);
+  flex: 1 1 calc(33.333% - 8px);
+  min-width: 72px;
+  max-width: calc(33.333% - 8px);
   box-sizing: border-box;
   font-family: 'Montserrat', sans-serif;
 }
@@ -3074,7 +3450,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  z-index: 35;
+  z-index: 12000;
   pointer-events: auto;
   overflow: visible;
 }
@@ -6604,6 +6980,26 @@ body:not(.ios-fullscreen) .family-widget {
   z-index: 8888;
 }
 #musicMiniBar.visible { display: flex; }
+.music-mini-restore-pill {
+  position: fixed;
+  right: 14px;
+  bottom: 66px;
+  z-index: 8889;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 999px;
+  border: 1px solid #d8d8d8;
+  background: rgba(255,255,255,0.96);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  color: #1a1a1a;
+  font-size: calc(11px * var(--fs, 1));
+  font-weight: 700;
+  cursor: pointer;
+}
+.music-mini-restore-pill.visible { display: inline-flex; }
 .mini-bar-cover {
   width: 36px; height: 36px; border-radius: 8px;
   background: #ddd; flex-shrink: 0; overflow: hidden;
@@ -6762,6 +7158,74 @@ body:not(.ios-fullscreen) .family-widget {
 /* Library tab */
 .music-library-empty { text-align: center; padding: 40px 20px; color: #bbb; font-size: calc(13px * var(--fs, 1)); }
 .music-library-empty i { font-size: calc(40px * var(--fs, 1)); margin-bottom: 12px; display: block; }
+.music-library-shell { padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+.music-library-card {
+  background: #fff;
+  border: 1px solid #ececec;
+  border-radius: 16px;
+  padding: 14px;
+}
+.music-library-card-title {
+  font-size: calc(11px * var(--fs, 1));
+  font-weight: 800;
+  color: #1a1a1a;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.music-library-card-sub {
+  font-size: calc(11px * var(--fs, 1));
+  color: #888;
+  line-height: 1.6;
+}
+.music-library-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.music-library-pill-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: #1a1a1a;
+  color: #fff;
+  font-size: calc(10px * var(--fs, 1));
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+.music-library-pill-btn.ghost {
+  background: #f3f3f3;
+  color: #555;
+}
+.music-library-section-title {
+  font-size: calc(10px * var(--fs, 1));
+  color: #999;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  font-weight: 800;
+  padding: 0 4px;
+}
+.music-import-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #f3f3f3;
+  color: #777;
+  font-size: calc(9px * var(--fs, 1));
+  font-weight: 700;
+  margin-top: 6px;
+}
+.music-track-meta-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.music-track-vip-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #1a1a1a;
+  color: #fff;
+  font-size: calc(8px * var(--fs, 1));
+  font-weight: 800;
+  letter-spacing: 0.6px;
+}
 /* Invite character panel */
 .music-invite-panel {
   background: #fff; border-top: 1px solid #f0f0f0; flex-shrink: 0;
@@ -14685,12 +15149,17 @@ body.editor-modal-open #chatPage .app-back-bar {
       <div class="mini-bar-progress"><div class="mini-bar-progress-fill" id="miniProgressFill"></div></div>
     </div>
     <div class="mini-bar-controls">
+      <button class="mini-bar-btn" onclick="toggleMusicMiniBarVisibility(true)" title="隐藏音乐条"><i class="fas fa-eye-slash"></i></button>
       <button class="mini-bar-btn" onclick="playMusicPrev()"><i class="fas fa-step-backward"></i></button>
       <button class="mini-bar-btn" id="miniPlayBtn" onclick="toggleMusicPlay()"><i class="fas fa-play"></i></button>
       <button class="mini-bar-btn" onclick="playMusicNext()"><i class="fas fa-step-forward"></i></button>
       <button class="mini-bar-stop" onclick="stopMusicFromMini()">停止</button>
     </div>
   </div>
+  <button class="music-mini-restore-pill" id="musicMiniRestorePill" onclick="toggleMusicMiniBarVisibility(false)">
+    <i class="fas fa-music"></i>
+    <span>显示音乐条</span>
+  </button>
   <!-- Music Share Modal -->
   <div id="musicShareModal" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.45);align-items:flex-end;justify-content:center;">
     <div style="background:#fff;width:100%;max-width:390px;border-radius:20px 20px 0 0;padding:20px;max-height:70vh;overflow-y:auto;">
@@ -14700,6 +15169,57 @@ body.editor-modal-open #chatPage .app-back-bar {
       </div>
       <input type="hidden" id="musicShareTrackData">
       <div id="musicShareCharList"></div>
+    </div>
+  </div>
+  <div id="musicAccountModal" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.45);align-items:flex-end;justify-content:center;">
+    <div style="background:#fff;width:100%;max-width:420px;border-radius:22px 22px 0 0;padding:20px;max-height:78vh;overflow-y:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <div style="font-size:12px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;">连接网易云账号</div>
+        <button onclick="closeMusicAccountModal()" style="background:none;border:none;font-size:18px;color:#888;cursor:pointer;">&times;</button>
+      </div>
+      <div style="font-size:11px;color:#777;line-height:1.7;margin-bottom:12px;">
+        粘贴你自己网易云已登录浏览器里的 <b>MUSIC_U</b> 或完整 Cookie。连接后会优先尝试走你的账号拿播放链接，VIP 歌曲也会尽量按你的会员状态播放。
+      </div>
+      <textarea id="musicAccountCookieInput" placeholder="粘贴 MUSIC_U=... 或完整 Cookie" style="width:100%;min-height:110px;box-sizing:border-box;border:1px solid #e0e0e0;border-radius:14px;padding:12px 14px;font-size:12px;line-height:1.6;resize:vertical;font-family:inherit;outline:none;background:#fafafa;color:#1a1a1a;"></textarea>
+      <div id="musicAccountStatus" style="margin-top:12px;font-size:11px;color:#888;line-height:1.7;"></div>
+      <div style="display:flex;gap:8px;margin-top:14px;">
+        <button class="music-library-pill-btn" style="flex:1;" onclick="saveMusicAccountCookie()">保存并连接</button>
+        <button class="music-library-pill-btn ghost" style="flex:1;" onclick="clearMusicAccountCookie()">断开账号</button>
+      </div>
+    </div>
+  </div>
+  <div id="musicImportModal" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.45);align-items:flex-end;justify-content:center;">
+    <div style="background:#fff;width:100%;max-width:420px;border-radius:22px 22px 0 0;padding:20px;max-height:82vh;overflow-y:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <div style="font-size:12px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;">导入歌曲</div>
+        <button onclick="closeMusicImportModal()" style="background:none;border:none;font-size:18px;color:#888;cursor:pointer;">&times;</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div>
+          <div style="font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#999;margin-bottom:6px;">音频文件</div>
+          <input type="file" id="musicImportAudioInput" accept="audio/*" onchange="handleMusicImportAudioChange(this)" style="width:100%;font-size:12px;">
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#999;margin-bottom:6px;">歌曲名</div>
+          <input type="text" id="musicImportTitleInput" placeholder="输入歌曲名" style="width:100%;box-sizing:border-box;border:1px solid #e0e0e0;border-radius:12px;padding:10px 12px;font-size:12px;font-family:inherit;outline:none;background:#fafafa;color:#1a1a1a;">
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#999;margin-bottom:6px;">歌手名</div>
+          <input type="text" id="musicImportArtistInput" placeholder="输入歌手名（可选）" style="width:100%;box-sizing:border-box;border:1px solid #e0e0e0;border-radius:12px;padding:10px 12px;font-size:12px;font-family:inherit;outline:none;background:#fafafa;color:#1a1a1a;">
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#999;margin-bottom:6px;">歌词文件</div>
+          <input type="file" id="musicImportLyricsFileInput" accept=".lrc,.txt,text/plain" style="width:100%;font-size:12px;">
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#999;margin-bottom:6px;">歌词内容</div>
+          <textarea id="musicImportLyricsTextarea" placeholder="可直接粘贴 .lrc 歌词；如果没有时间轴，也会按普通歌词显示。" style="width:100%;min-height:140px;box-sizing:border-box;border:1px solid #e0e0e0;border-radius:14px;padding:12px 14px;font-size:12px;line-height:1.6;resize:vertical;font-family:inherit;outline:none;background:#fafafa;color:#1a1a1a;"></textarea>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button class="music-library-pill-btn" style="flex:1;" onclick="importMusicTrack()">导入到音乐库</button>
+        <button class="music-library-pill-btn ghost" style="flex:1;" onclick="closeMusicImportModal()">取消</button>
+      </div>
     </div>
   </div>
   <!-- ===== BLACK BOX APP ===== -->
@@ -14886,6 +15406,18 @@ body.editor-modal-open #chatPage .app-back-bar {
           <i class="fas fa-image"></i>
           <span>发送图片</span>
         </div>
+        <div class="plus-panel-btn" onclick="openChatTextImageModal()">
+          <i class="fas fa-images"></i>
+          <span>文字图</span>
+        </div>
+        <div class="plus-panel-btn" onclick="openChatSimVoiceModal()">
+          <i class="fas fa-microphone-lines"></i>
+          <span>模拟语音</span>
+        </div>
+        <div class="plus-panel-btn" onclick="openChatTakeoutModal()">
+          <i class="fas fa-bag-shopping"></i>
+          <span>外卖卡</span>
+        </div>
         <div class="plus-panel-btn" onclick="openTransferModal()">
           <i class="fas fa-money-bill-transfer"></i>
           <span>转帳给TA</span>
@@ -14911,7 +15443,96 @@ body.editor-modal-open #chatPage .app-back-bar {
           <span>親密付</span>
         </div>
       </div>
-      <div class="flex items-center gap-2 border-b border-black pb-2" style="overflow:hidden;min-width:0;">
+      <div id="chatSimVoiceModal" class="cc-sheet-modal">
+        <div class="cc-sheet-card">
+          <div class="cc-sheet-head">
+            <div class="cc-sheet-title">发送模拟语音</div>
+            <button class="cc-sheet-close" onclick="closeChatSimVoiceModal()">✕</button>
+          </div>
+          <div class="cc-sheet-body">
+            <div>
+              <div class="cc-field-label">发送者</div>
+              <div class="cc-media-pill" id="chatSimVoiceSenderHint">用户</div>
+            </div>
+            <div>
+              <div class="cc-field-label">语音文字</div>
+              <textarea id="chatSimVoiceTextInput" class="cc-field-textarea" placeholder="输入会显示在模拟语音条里的文字内容…"></textarea>
+            </div>
+            <div>
+              <div class="cc-field-label">时长（可选）</div>
+              <input id="chatSimVoiceDurationInput" class="cc-field-input" type="text" placeholder="留空将按文字自动估算，如 0:12">
+            </div>
+            <div class="cc-media-hint">这是不会真正播音频的文字语音条，适合发一些想说但不好意思直接打出来的话。</div>
+            <div class="cc-sheet-actions">
+              <button class="cc-sheet-secondary" onclick="closeChatSimVoiceModal()">取消</button>
+              <button class="cc-sheet-primary" onclick="sendChatSimVoiceMessage()">发送语音</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="chatTextImageModal" class="cc-sheet-modal">
+        <div class="cc-sheet-card">
+          <div class="cc-sheet-head">
+            <div class="cc-sheet-title">发送文字图</div>
+            <button class="cc-sheet-close" onclick="closeChatTextImageModal()">✕</button>
+          </div>
+          <div class="cc-sheet-body">
+            <div>
+              <div class="cc-field-label">发送者</div>
+              <div class="cc-media-pill" id="chatTextImageSenderHint">用户</div>
+            </div>
+            <div>
+              <div class="cc-field-label">图片描述</div>
+              <textarea id="chatTextImageDescInput" class="cc-field-textarea" placeholder="例如：昏黄床头灯下，一只抱着奶茶的手，毛绒睡衣袖口蹭进镜头里"></textarea>
+            </div>
+            <div class="cc-media-hint">输入画面描述后，会生成一张模拟图片发送给角色。角色会把它当成你真的发来的图片来理解和回应。</div>
+            <div class="cc-sheet-actions">
+              <button class="cc-sheet-secondary" onclick="closeChatTextImageModal()">取消</button>
+              <button class="cc-sheet-primary" onclick="sendChatTextImageMessage()">发送文字图</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="chatTakeoutModal" class="cc-sheet-modal">
+        <div class="cc-sheet-card">
+          <div class="cc-sheet-head">
+            <div class="cc-sheet-title">发送外卖卡</div>
+            <button class="cc-sheet-close" onclick="closeChatTakeoutModal()">✕</button>
+          </div>
+          <div class="cc-sheet-body">
+            <div>
+              <div class="cc-field-label">发送者</div>
+              <div class="cc-media-pill" id="chatTakeoutSenderHint">用户</div>
+            </div>
+            <div>
+              <div class="cc-field-label">送给谁</div>
+              <div class="cc-media-pill" id="chatTakeoutRecipientHint">当前角色</div>
+            </div>
+            <div>
+              <div class="cc-field-label">外卖名称</div>
+              <input id="chatTakeoutName" class="cc-field-input" type="text" placeholder="例：草莓奶油蛋糕 / 韩式炸鸡套餐">
+            </div>
+            <div>
+              <div class="cc-field-label">店铺 / 平台</div>
+              <input id="chatTakeoutShop" class="cc-field-input" type="text" placeholder="例：春日厨房 / 心动外卖">
+            </div>
+            <div>
+              <div class="cc-field-label">价格</div>
+              <input id="chatTakeoutPrice" class="cc-field-input" type="number" min="0" step="0.01" placeholder="例：68.00">
+            </div>
+            <div>
+              <div class="cc-field-label">卡片留言</div>
+              <textarea id="chatTakeoutNote" class="cc-field-textarea" placeholder="写一句附在外卖卡上的备注，角色之后也会记得这次投喂…"></textarea>
+            </div>
+            <div class="cc-media-hint">发送后会以韩系灰白风格卡片进入私聊记录，角色会把这次外卖当成真实发生过的事来记住。</div>
+            <div class="cc-sheet-actions">
+              <button class="cc-sheet-secondary" onclick="closeChatTakeoutModal()">取消</button>
+              <button class="cc-sheet-primary" onclick="sendChatTakeoutCard()">发送外卖卡</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="inputBar" class="input-row flex items-center gap-2 border-b border-black pb-2" style="overflow:hidden;min-width:0;">
         <div class="chat-plus-btn" id="chatPlusBtn" onclick="togglePlusPanel()" style="flex-shrink:0;">+</div>
         <!-- Real Voice Record Button (hold to record) -->
         <div class="chat-voice-record-btn" id="chatVoiceBtn"
@@ -14925,7 +15546,7 @@ body.editor-modal-open #chatPage .app-back-bar {
           ontouchcancel="cancelVoiceRecord()">
           <i class="fas fa-microphone" id="chatVoiceBtnIcon"></i>
         </div>
-        <input type="text" id="userInput" placeholder="输入消息..." class="flex-1 bg-transparent outline-none text-sm font-light tracking-wide italic" style="min-width:0;">
+        <input type="text" id="userInput" placeholder="输入消息..." class="chat-input-textarea flex-1 bg-transparent outline-none text-sm font-light tracking-wide italic" style="min-width:0;">
         <button onclick="triggerAutoReply()" class="text-[10px] font-bold border border-gray-400 px-2 py-1 rounded-full hover:bg-black hover:text-white transition" title="让角色自动回覆" style="white-space:nowrap;flex-shrink:0;">
           <i class="fas fa-robot"></i> 回覆
         </button>
@@ -17758,7 +18379,7 @@ body.editor-modal-open #chatPage .app-back-bar {
     <div class="custom-section" id="roomCssSection">
       <div class="custom-section-title"><i class="fas fa-code" style="margin-right:6px;color:#6c5ce7;"></i>聊天室完整自定义 CSS <span style="font-size:9px;font-weight:400;color:#aaa;margin-left:4px;">Room Custom CSS</span></div>
       <p style="font-size:10px;color:#999;margin-bottom:8px;line-height:1.7;">
-        为此聊天室编写任意 CSS，实时生效。可美化气泡、背景、头像、输入栏、转账卡、音乐卡、剧本邀请、朋友圈转发、购物订单、亲密付等所有元素。不影响功能，只改变外观。
+        为此聊天室编写任意 CSS，实时生效。可美化气泡、背景、头像、输入栏、转账卡、音乐卡、剧本邀请、朋友圈转发、购物订单、亲密付等所有元素。不影响功能，只改变外观。系统会自动把样式限定在聊天室内，并自动提高覆盖优先级，默认不写 <code>!important</code> 也能覆盖大部分默认样式。
       </p>
       <!-- Reference card -->
       <div style="background:#1a1a1a;border-radius:10px;padding:10px 12px;margin-bottom:10px;overflow-x:auto;">
@@ -17791,7 +18412,7 @@ body.editor-modal-open #chatPage .app-back-bar {
       <textarea
         class="custom-css-editor"
         id="pRoomCustomCss"
-        placeholder="/* 在此输入此聊天室的完整 CSS... */&#10;&#10;/* 示例：修改对方气泡为渐变色 */&#10;.bubble-ai {&#10;  background: linear-gradient(135deg, #f5f7fa, #c3cfe2) !important;&#10;  border-radius: 20px !important;&#10;}&#10;&#10;/* 示例：修改我的气泡 */&#10;.bubble-user {&#10;  background: #2d3436 !important;&#10;  color: #fff !important;&#10;}&#10;&#10;/* 示例：为AI气泡添加左上角装饰图 */&#10;.bubble-ai::before {&#10;  content: '' !important;&#10;  position: absolute !important;&#10;  background-image: url('你的图片链接') !important;&#10;  width: 30px !important; height: 30px !important;&#10;  top: -20px !important; right: 0 !important;&#10;  background-size: contain !important;&#10;  background-repeat: no-repeat !important;&#10;}&#10;&#10;/* 示例：修改转账卡片 */&#10;.transfer-card {&#10;  background: linear-gradient(135deg, #f8b500, #f0a) !important;&#10;}&#10;&#10;/* 示例：修改聊天室背景 */&#10;#chatBox {&#10;  background: #f0f4ff !important;&#10;}"
+        placeholder="/* 在此输入此聊天室的完整 CSS... */&#10;/* 系统会自动提高覆盖优先级，不写 !important 也可以 */&#10;&#10;.bubble-ai {&#10;  background: linear-gradient(135deg, #f5f7fa, #c3cfe2);&#10;  border-radius: 20px;&#10;}&#10;&#10;.bubble-user {&#10;  background: #2d3436;&#10;  color: #fff;&#10;}&#10;&#10;.bubble-ai::before {&#10;  content: '';&#10;  position: absolute;&#10;  background-image: url('你的图片链接');&#10;  width: 30px; height: 30px;&#10;  top: -20px; right: 0;&#10;  background-size: contain;&#10;  background-repeat: no-repeat;&#10;}&#10;&#10;.voice-message-bar {&#10;  border-radius: 18px;&#10;  backdrop-filter: blur(10px);&#10;}&#10;&#10;.chat-input-textarea {&#10;  color: #222;&#10;  font-style: normal;&#10;}&#10;&#10;#chatBox {&#10;  background: #f0f4ff;&#10;}"
         style="min-height:200px;font-family:monospace;font-size:11px;"
         oninput="livePreviewRoomCss()"
       ></textarea>
@@ -19649,15 +20270,10 @@ async function regenerateMsg(idx) {
         content = content ? `[语音消息] ${content}` : '[语音消息（內容不明）]';
       }
       if (m.msgType === 'image') {
-        const imgDesc = m.imageDesc || content || '[用户发送了一张图片]';
-        const prevMsg = arr[idx - 1];
-        const prevText = (prevMsg && prevMsg.role === 'user' && !prevMsg.msgType && prevMsg.content) ? prevMsg.content : '';
-        const nextMsg = arr[idx + 1];
-        const nextText = (nextMsg && nextMsg.role === 'user' && !nextMsg.msgType && nextMsg.content) ? nextMsg.content : '';
-        let hint = '';
-        if (prevText) hint += `（前文：用户刚说了"${prevText}"）`;
-        if (nextText) hint += `（后续：用户接着说了"${nextText}"）`;
-        return { role: 'user', content: imgDesc + (hint ? ' ' + hint : '') };
+        return {
+          role: m.role === 'user' ? 'user' : 'assistant',
+          content: _buildImageHistoryText(m, idx, arr)
+        };
       }
       if (m.msgType === 'sticker') {
         const caption = m.caption || '';
@@ -19670,6 +20286,12 @@ async function regenerateMsg(idx) {
         if (nextText) sc += `（用户接着说了："${nextText}"）`;
         sc += '（请综合上下文自然回应，无需刻意提及表情包本身）';
         return { role: m.role === 'user' ? 'user' : 'assistant', content: sc };
+      }
+      if (m.msgType === 'takeout_card') {
+        return {
+          role: m.role === 'user' ? 'user' : 'assistant',
+          content: _buildTakeoutHistoryText(m.takeoutData || {})
+        };
       }
       return { role: m.role === 'user' ? 'user' : 'assistant', content };
     });
@@ -20455,9 +21077,10 @@ function _getChatListPreviewText(persona) {
   const history = persona && Array.isArray(persona.history) ? persona.history : [];
   if (!history.length) return '开始对话...';
   const lastMsg = history[history.length - 1] || {};
-  if (lastMsg.msgType === 'image') return '[图片]';
+  if (lastMsg.msgType === 'image') return lastMsg.imageSimulated ? '[文字图]' : '[图片]';
   if (lastMsg.msgType === 'sticker') return '[表情包]';
   if (lastMsg.msgType === 'voice') return '[语音] ' + (_safeMsgText(lastMsg.transcript || lastMsg.content) || '');
+  if (lastMsg.msgType === 'takeout_card') return '[外卖卡]';
   if (lastMsg.msgType === 'call') return '[通话记录]';
   if (lastMsg.msgType === 'transfer') return '[转账]';
   if (lastMsg.msgType === 'order_notify' || lastMsg.msgType === 'pay_request' || lastMsg.msgType === 'receive_notify') return '[订单通知]';
@@ -20682,10 +21305,26 @@ function _dismissHeartVoicePopupCard(cardId) {
     if (layer && layer.children.length <= 1) _setHeartVoiceNotifLayerExpanded(false);
   }, 240);
 }
+function _heartVoicePopupContextMatches(p, opts) {
+  if (!p) return false;
+  if (opts && opts.forcePopup) return true;
+  if (!_isHeartVoiceUiVisible()) return false;
+  if (!_heartVoiceModeAllowsPopup(p)) return false;
+  if (String(currentId || '') === String(p.id || '')) return true;
+  try {
+    var offlinePage = document.getElementById('offlinePage');
+    var offlineActive = !!(offlinePage && offlinePage.classList.contains('active') && typeof _offlineState !== 'undefined');
+    if (offlineActive && String((_offlineState && _offlineState.personaId) || '') === String(p.id || '') && opts && opts.allowWhenOffline) {
+      return true;
+    }
+  } catch(e) {}
+  return false;
+}
 function _showHeartVoicePopupCard(p, line, opts) {
-  if (!p || !_heartVoiceModeAllowsPopup(p) || !_isHeartVoiceUiVisible() || String(currentId || '') !== String(p.id || '')) return;
+  if (!_heartVoicePopupContextMatches(p, opts)) return;
   var layer = _getHeartVoiceNotifLayer();
   if (!layer) return;
+  if (opts && opts.forcePopup) layer.style.display = '';
   while (layer.children.length >= 12) {
     var oldest = layer.children[0];
     if (!oldest) break;
@@ -20704,6 +21343,7 @@ function _showHeartVoicePopupCard(p, line, opts) {
   })();
   var type = opts && opts.type === 'reply' ? 'reply' : 'read';
   var title = type === 'reply' ? '刚回完你之后' : '刚读完你的消息';
+  if (opts && opts.offline) title = type === 'reply' ? '线下刚回完你之后' : '线下正在想着你';
   card.className = 'heart-voice-notif';
   card.setAttribute('data-heart-voice-card', cardId);
   card.style.zIndex = String(_heartVoicePopupSeq);
@@ -20730,7 +21370,7 @@ function _showHeartVoicePopupCard(p, line, opts) {
   }, type === 'reply' ? 14000 : 12000);
 }
 function _queueHeartVoicePopupLines(p, lines, opts) {
-  if (!p || !_heartVoiceModeAllowsPopup(p) || String(currentId || '') !== String(p.id || '')) return;
+  if (!_heartVoicePopupContextMatches(p, opts)) return;
   var normalized = _normalizeHeartVoicePopupLines(lines, '', 12);
   if (!normalized.length) return;
   var type = opts && opts.type === 'reply' ? 'reply' : 'read';
@@ -20743,7 +21383,7 @@ function _queueHeartVoicePopupLines(p, lines, opts) {
 }
 async function maybeGenerateReadHeartVoicePopup(personaId, userText) {
   var p = personas.find(function(item) { return String(item.id) === String(personaId); });
-  if (!p || !_heartVoiceModeAllowsPopup(p) || !_isHeartVoiceUiVisible() || String(currentId || '') !== String(personaId)) return;
+  if (!p || !_heartVoicePopupContextMatches(p, {})) return;
   if (!apiConfig.url || !apiConfig.key) return;
   var cleanUserText = String(userText || '').trim();
   if (!cleanUserText) return;
@@ -21289,6 +21929,38 @@ function _resetChatRenderWindow(personaId) {
   _chatRenderPersonaId = personaId == null ? null : String(personaId);
   _chatRenderVisibleCount = _getChatRenderBatchSize();
 }
+function renderTakeoutCardBubble(m, idx, isUser, avatarSrc, authorName, isSelected) {
+  const td = m.takeoutData || {};
+  const senderName = td.senderName || (isUser ? ((userProfile && userProfile.name) || '你') : (authorName || '角色'));
+  const recipientName = td.recipientName || (isUser ? (authorName || '角色') : ((userProfile && userProfile.name) || '你'));
+  const title = td.name || '暖心外卖';
+  const kicker = isUser ? 'You Sent A Delivery' : 'Character Delivery';
+  const sub = senderName + ' 送给 ' + recipientName;
+  const bubbleHtml = '<div class="cc-takeout-card">'
+    + '<div class="cc-takeout-card-head">'
+    + '<div class="cc-takeout-card-kicker">' + _esc(kicker) + '</div>'
+    + '<div class="cc-takeout-card-title">' + _esc(title) + '</div>'
+    + '<div class="cc-takeout-card-sub">' + _esc(sub) + '</div>'
+    + '</div>'
+    + '<div class="cc-takeout-card-body">'
+    + '<div class="cc-takeout-badge"><i class="fas fa-bag-shopping"></i><span>韩系灰白外卖卡</span></div>'
+    + (td.shop ? '<div class="cc-takeout-row"><span class="cc-takeout-label">店铺</span><span class="cc-takeout-value">' + _esc(td.shop) + '</span></div>' : '')
+    + '<div class="cc-takeout-row"><span class="cc-takeout-label">收件人</span><span class="cc-takeout-value">' + _esc(recipientName) + '</span></div>'
+    + (td.price ? '<div class="cc-takeout-row"><span class="cc-takeout-label">金额</span><span class="cc-takeout-price">¥' + _esc(td.price) + '</span></div>' : '')
+    + (td.note ? '<div class="cc-takeout-note">' + _esc(td.note).replace(/\n/g, '<br>') + '</div>' : '')
+    + '</div>'
+    + '</div>';
+  if (isUser) {
+    return '<div class="msg-row user ' + (isSelected ? 'selected' : '') + '" data-idx="' + idx + '">'
+      + '<div class="msg-content" style="align-items:flex-end;">' + bubbleHtml + '</div>'
+      + '<div class="msg-meta"><img src="' + avatarSrc + '" class="msg-avatar"><span class="msg-name">' + authorName.substring(0,4) + '</span></div>'
+      + '</div>';
+  }
+  return '<div class="msg-row ai ' + (isSelected ? 'selected' : '') + '" data-idx="' + idx + '">'
+    + '<div class="msg-meta"><img src="' + avatarSrc + '" class="msg-avatar"><span class="msg-name">' + authorName.substring(0,4) + '</span></div>'
+    + '<div class="msg-content" style="align-items:flex-start;">' + bubbleHtml + '</div>'
+    + '</div>';
+}
 function loadOlderMessages() {
   if (!currentId) return;
   const p = personas.find(x => x.id == currentId);
@@ -21342,7 +22014,7 @@ function renderMessages(opts) {
       ? (m._recalled ? '' : (m._readByChar ? '已读' : '未读'))
       : (m._recalled ? '' : (m._readByUser ? '已读' : '未读'));
     const _readStatusColor = (isUser ? (m._readByChar ? 'var(--chat-meta-read-color, #aaa)' : 'var(--chat-meta-unread-color, #ccc)') : (m._readByUser ? 'var(--chat-meta-read-color, #aaa)' : 'var(--chat-meta-unread-color, #ccc)'));
-    const _msgMetaHtml = `<div class="msg-time-read" style="font-size:9px;color:var(--chat-meta-time-color,#bbb);margin-top:2px;display:flex;gap:4px;align-items:center;${isUser?'justify-content:flex-end;':'justify-content:flex-start;'}">${_msgTimeStr ? `<span>${_msgTimeStr}</span>` : ''}${_readStatus ? `<span style="color:${_readStatusColor};">${_readStatus}</span>` : ''}</div>`;
+    const _msgMetaHtml = `<div class="msg-time msg-time-read" style="font-size:9px;color:var(--chat-meta-time-color,#bbb);margin-top:2px;display:flex;gap:4px;align-items:center;${isUser?'justify-content:flex-end;':'justify-content:flex-start;'}">${_msgTimeStr ? `<span>${_msgTimeStr}</span>` : ''}${_readStatus ? `<span style="color:${_readStatusColor};">${_readStatus}</span>` : ''}</div>`;
     // ── 已撤回消息 ──
     if (m._recalled) {
       if (isUser) {
@@ -21381,7 +22053,7 @@ function renderMessages(opts) {
       const sourceLabel = isForumPost ? '論坛' : '朋友圈';
       const titleHtml = isForumPost && fd.title
         ? `<div class="bubble-fwd-title">${fd.title}</div>` : '';
-      const fwdBubble = `<div class="bubble-fwd">
+      const fwdBubble = `<div class="bubble-fwd ${isForumPost ? 'forum-share-card' : 'moments-share-card'}">
         <div class="bubble-fwd-header"><i class="fas fa-share-alt"></i>${sourceLabel}转发</div>
         <div class="bubble-fwd-source">
           <img src="${fd.avatar || userProfile.avatar}" alt="">
@@ -21401,24 +22073,24 @@ function renderMessages(opts) {
       const _imgSrc = _escapeAttrText(m.imageSrc || '');
       const imgBubble = `<div class="bubble-image" data-img-src="${_imgSrc}" onclick="handleImageBubbleClick(event, this)" data-msg-idx="${idx}">
         <img class="chat-lazy-image" src="${_CHAT_LAZY_MEDIA_PIXEL}" data-lazy-src="${_imgSrc}" loading="lazy" alt="image">
-        ${m.imageCaption ? '<div class="bubble-image-caption">' + m.imageCaption + '</div>' : ''}
       </div>`;
+      const imageCaptionHtml = m.imageCaption ? '<div class="bubble-image-caption">' + m.imageCaption + '</div>' : '';
       if (isUser) {
         return `<div class="msg-row user ${isSelected?'selected':''}" data-idx="${idx}">
-          <div class="msg-content">${imgBubble}</div>
+          <div class="msg-content">${imgBubble}${imageCaptionHtml}</div>
           <div class="msg-meta"><img src="${avatarSrc}" class="msg-avatar"><span class="msg-name">${authorName.substring(0,4)}</span></div>
         </div>`;
       } else {
         return `<div class="msg-row ai ${isSelected?'selected':''}" data-idx="${idx}">
           <div class="msg-meta"><img src="${avatarSrc}" class="msg-avatar"><span class="msg-name">${authorName.substring(0,4)}</span></div>
-          <div class="msg-content">${imgBubble}</div>
+          <div class="msg-content">${imgBubble}${imageCaptionHtml}</div>
         </div>`;
       }
     }
 
     if (m.msgType === 'sticker') {
       const captionClass = '';
-      const stickerBubble = `<div class="bubble-sticker ${isUser ? '' : ''}" onclick="handleStickerBubbleClick(event, this)" data-msg-idx="${idx}" title="${m.caption ? m.caption : ''}">
+      const stickerBubble = `<div class="bubble-sticker sticker-bubble ${isUser ? '' : ''}" onclick="handleStickerBubbleClick(event, this)" data-msg-idx="${idx}" title="${m.caption ? m.caption : ''}">
         <img src="${m.stickerSrc}" alt="sticker">
         ${m.caption ? `<div class="bubble-sticker-caption">${m.caption}</div>` : ''}
       </div>`;
@@ -21433,6 +22105,9 @@ function renderMessages(opts) {
           <div class="msg-content">${stickerBubble}</div>
         </div>`;
       }
+    }
+    if (m.msgType === 'takeout_card') {
+      return renderTakeoutCardBubble(m, idx, isUser, avatarSrc, authorName, isSelected);
     }
     // 语音消息
     if (m.msgType === 'voice') {
@@ -21484,7 +22159,7 @@ function renderMessages(opts) {
       const _voiceTranscriptAttrs = displayText
         ? ` data-lazy-transcript-text="${_escapeAttrText(displayText)}" data-lazy-transcript-show="${autoShow ? '1' : '0'}"`
         : '';
-      const voiceBubble = `<div class="bubble ${isUser ? 'bubble-user' : 'bubble-ai'} bubble-voice${_voiceExtraClass}" onclick="toggleVoiceTranscript(this)" data-audio-url="${_escapeAttrText(m.audioUrl || '')}"${_vTAttrs}${_voiceTranscriptAttrs}>
+      const voiceBubble = `<div class="bubble ${isUser ? 'bubble-user' : 'bubble-ai'} bubble-voice voice-message-bar${_voiceExtraClass}" onclick="toggleVoiceTranscript(this)" data-audio-url="${_escapeAttrText(m.audioUrl || '')}"${_vTAttrs}${_voiceTranscriptAttrs}>
         ${_voiceInner}
         ${_vTranslationHtml}
       </div>`;
@@ -23108,10 +23783,10 @@ function _ccSyncMessagesToPersonaMemory(room, newMsgs) {
   const weekdayStr = weekdays[now.getDay()];
   const timeOfDayStr = now.getHours() < 6 ? '深夜' : now.getHours() < 12 ? '上午' : now.getHours() < 14 ? '中午' : now.getHours() < 18 ? '下午' : now.getHours() < 22 ? '晚上' : '深夜';
   // 把这批新消息整理成可读的对话摘要
-  const dialogLines = newMsgs.map(m => `  ${m.sender}：${m.content || ''}`).join('\n');
+  const dialogLines = newMsgs.map(m => `  ${m.sender}：${_ccMessagePreviewText(m)}`).join('\n');
   // 从对话内容中提取可能的行动/事件关键词（供逻辑一致性参考）
   // 比如「出去逛街」「去图书馆」「在睡觉」等，让角色知道这段时间自己在干什么
-  const allContent = newMsgs.map(m => m.content || '').join(' ');
+  const allContent = newMsgs.map(m => _ccMessagePreviewText(m)).join(' ');
   // 为每个聊天室成员注入记忆
   room.members.forEach(memberName => {
     const p = allPersonas.find(x => x.name === memberName);
@@ -23185,6 +23860,286 @@ function ccGetWorldDailyTurns() {
 }
 // ── 当前打开的房间 ID ──
 let _ccCurrentRoomId = null;
+const CC_USER_SENDER = '__cc_user__';
+let _ccSelectedSenderId = CC_USER_SENDER;
+function _ccGetUserProfileSafe() {
+  try {
+    if (typeof getUserProfile === 'function') {
+      const profile = getUserProfile() || {};
+      if (profile && (profile.name || profile.avatar)) return profile;
+    }
+  } catch(e) {}
+  try { return JSON.parse(localStorage.getItem('mono_user_profile') || '{}'); } catch(e) { return {}; }
+}
+function _ccGetUserDisplayName() {
+  const profile = _ccGetUserProfileSafe();
+  return profile.name || '我';
+}
+function _ccGetUserAvatar() {
+  const profile = _ccGetUserProfileSafe();
+  return profile.avatar || '';
+}
+function _ccGetRoomById(roomId) {
+  return ccGetRooms().find(function(r) { return r.id === roomId; }) || null;
+}
+function _ccGetParticipantOptions(room) {
+  if (!room) return [];
+  const personas = _ccGetPersonas();
+  const out = [{
+    id: CC_USER_SENDER,
+    name: _ccGetUserDisplayName(),
+    avatar: _ccGetUserAvatar(),
+    senderType: 'user'
+  }];
+  (room.members || []).forEach(function(name) {
+    const p = personas.find(function(x) { return x.name === name; });
+    out.push({
+      id: name,
+      name: name,
+      avatar: p && p.avatar ? p.avatar : '',
+      senderType: 'persona'
+    });
+  });
+  return out;
+}
+function _ccFindParticipant(room, senderId) {
+  const opts = _ccGetParticipantOptions(room);
+  const found = opts.find(function(opt) { return String(opt.id) === String(senderId); });
+  return found || opts[0] || { id: CC_USER_SENDER, name: _ccGetUserDisplayName(), avatar: '', senderType: 'user' };
+}
+function _ccCurrentSenderInfo() {
+  const room = _ccGetRoomById(_ccCurrentRoomId);
+  if (!room) return null;
+  const select = document.getElementById('ccSenderSelect');
+  const senderId = select && select.value ? select.value : _ccSelectedSenderId;
+  return _ccFindParticipant(room, senderId);
+}
+function _ccSetComposerParticipants(roomId, preferredSenderId) {
+  const room = _ccGetRoomById(roomId);
+  const select = document.getElementById('ccSenderSelect');
+  if (!room || !select) return;
+  const opts = _ccGetParticipantOptions(room);
+  const candidate = preferredSenderId || _ccSelectedSenderId || select.value || CC_USER_SENDER;
+  const hasCandidate = opts.some(function(opt) { return String(opt.id) === String(candidate); });
+  _ccSelectedSenderId = hasCandidate ? candidate : (opts[0] ? opts[0].id : CC_USER_SENDER);
+  select.innerHTML = opts.map(function(opt) {
+    return '<option value="' + _escapeAttrText(opt.id) + '">' + _esc(opt.name) + (opt.senderType === 'user' ? ' · 用户' : ' · 角色') + '</option>';
+  }).join('');
+  select.value = _ccSelectedSenderId;
+  ccHandleSenderChange();
+}
+function ccHandleSenderChange() {
+  const select = document.getElementById('ccSenderSelect');
+  if (!select) return;
+  _ccSelectedSenderId = select.value || CC_USER_SENDER;
+  const info = _ccCurrentSenderInfo();
+  const label = info ? (info.name + (info.senderType === 'user' ? ' · 用户' : ' · 角色')) : '用户';
+  const voiceHint = document.getElementById('ccVoiceSenderHint');
+  const takeoutHint = document.getElementById('ccTakeoutSenderHint');
+  if (voiceHint) voiceHint.textContent = label;
+  if (takeoutHint) takeoutHint.textContent = label;
+}
+function ccAutoResizeComposer(el) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 108) + 'px';
+}
+function toggleCcPlusPanel(forceOpen) {
+  const panel = document.getElementById('ccPlusPanel');
+  if (!panel) return;
+  const shouldOpen = typeof forceOpen === 'boolean' ? forceOpen : !panel.classList.contains('open');
+  panel.classList.toggle('open', shouldOpen);
+}
+function closeCcPlusPanel() {
+  const panel = document.getElementById('ccPlusPanel');
+  if (panel) panel.classList.remove('open');
+}
+function _ccBuildManualMessageBase(senderInfo) {
+  return {
+    sender: senderInfo.name,
+    senderType: senderInfo.senderType,
+    timestamp: Date.now()
+  };
+}
+function _ccMessagePreviewText(msg) {
+  if (!msg) return '';
+  if (msg.msgType === 'image') {
+    return '[图片]' + (msg.imageCaption ? ' ' + msg.imageCaption : '');
+  }
+  if (msg.msgType === 'voice') {
+    return '[模拟语音] ' + (msg.transcript || msg.content || '');
+  }
+  if (msg.msgType === 'cc_takeout') {
+    const td = msg.takeoutData || {};
+    const target = td.recipientName ? (' → ' + td.recipientName) : '';
+    return '[外卖卡]' + target + ' ' + (td.name || msg.content || '');
+  }
+  return msg.content || '';
+}
+function ccAppendMessage(roomId, msg) {
+  const room = _ccGetRoomById(roomId);
+  if (!room || !msg) return;
+  if (!msg.timestamp) msg.timestamp = Date.now();
+  if (!msg.content) msg.content = _ccMessagePreviewText(msg);
+  const hist = ccGetHistory(roomId);
+  hist.push(msg);
+  ccSaveHistory(roomId, hist);
+  try { _ccSyncMessagesToPersonaMemory(room, [msg]); } catch(e) {
+    console.warn('[CC记忆同步:手动消息]', e);
+  }
+  ccRenderChatMessages(roomId);
+  ccRenderRoomList();
+}
+function sendCcManualText() {
+  const roomId = _ccCurrentRoomId;
+  if (!roomId) return;
+  const input = document.getElementById('ccComposerInput');
+  const text = input ? input.value.trim() : '';
+  if (!text) return;
+  const senderInfo = _ccCurrentSenderInfo();
+  if (!senderInfo) return;
+  ccAppendMessage(roomId, Object.assign(_ccBuildManualMessageBase(senderInfo), {
+    content: text
+  }));
+  input.value = '';
+  ccAutoResizeComposer(input);
+}
+function openCcVoiceModal() {
+  if (!_ccCurrentRoomId) return;
+  closeCcPlusPanel();
+  ccHandleSenderChange();
+  const modal = document.getElementById('ccVoiceModal');
+  const textInput = document.getElementById('ccVoiceTextInput');
+  const durInput = document.getElementById('ccVoiceDurationInput');
+  const composer = document.getElementById('ccComposerInput');
+  if (textInput) textInput.value = composer && composer.value.trim() ? composer.value.trim() : '';
+  if (durInput) durInput.value = '';
+  if (modal) modal.style.display = 'flex';
+}
+function closeCcVoiceModal() {
+  const modal = document.getElementById('ccVoiceModal');
+  if (modal) modal.style.display = 'none';
+}
+function sendCcVoiceMessage() {
+  const roomId = _ccCurrentRoomId;
+  if (!roomId) return;
+  const senderInfo = _ccCurrentSenderInfo();
+  const text = (document.getElementById('ccVoiceTextInput') || {}).value;
+  const cleanText = String(text || '').trim();
+  if (!cleanText) {
+    alert('请先填写语音文字内容。');
+    return;
+  }
+  const durRaw = String((document.getElementById('ccVoiceDurationInput') || {}).value || '').trim();
+  const duration = durRaw || calcVoiceDuration(cleanText);
+  ccAppendMessage(roomId, Object.assign(_ccBuildManualMessageBase(senderInfo), {
+    msgType: 'voice',
+    transcript: cleanText,
+    duration: duration,
+    content: cleanText
+  }));
+  const composer = document.getElementById('ccComposerInput');
+  if (composer && composer.value.trim() === cleanText) {
+    composer.value = '';
+    ccAutoResizeComposer(composer);
+  }
+  closeCcVoiceModal();
+}
+function triggerCcImagePicker() {
+  const input = document.getElementById('ccImageInput');
+  if (!input) return;
+  input.value = '';
+  input.click();
+}
+function handleCcImagePicked(input) {
+  const roomId = _ccCurrentRoomId;
+  if (!roomId || !input || !input.files || !input.files[0]) return;
+  const senderInfo = _ccCurrentSenderInfo();
+  const captionInput = document.getElementById('ccComposerInput');
+  const caption = captionInput ? captionInput.value.trim() : '';
+  const file = input.files[0];
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const dataUrl = e && e.target ? e.target.result : '';
+    if (!dataUrl) return;
+    ccAppendMessage(roomId, Object.assign(_ccBuildManualMessageBase(senderInfo), {
+      msgType: 'image',
+      imageSrc: dataUrl,
+      imageCaption: caption,
+      content: '[图片]' + (caption ? ' ' + caption : '')
+    }));
+    if (captionInput) {
+      captionInput.value = '';
+      ccAutoResizeComposer(captionInput);
+    }
+    input.value = '';
+  };
+  reader.readAsDataURL(file);
+}
+function openCcTakeoutModal() {
+  const room = _ccGetRoomById(_ccCurrentRoomId);
+  if (!room) return;
+  ccHandleSenderChange();
+  const senderInfo = _ccCurrentSenderInfo();
+  const recipients = _ccGetParticipantOptions(room).filter(function(opt) {
+    return String(opt.id) !== String(senderInfo.id);
+  });
+  if (recipients.length === 0) {
+    alert('当前没有可选的外卖收件人。');
+    return;
+  }
+  const recipientSelect = document.getElementById('ccTakeoutRecipient');
+  recipientSelect.innerHTML = recipients.map(function(opt) {
+    return '<option value="' + _escapeAttrText(opt.id) + '">' + _esc(opt.name) + (opt.senderType === 'user' ? ' · 用户' : ' · 角色') + '</option>';
+  }).join('');
+  recipientSelect.value = recipients[0].id;
+  ['ccTakeoutName','ccTakeoutShop','ccTakeoutPrice','ccTakeoutNote'].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('ccTakeoutModal').style.display = 'flex';
+}
+function closeCcTakeoutModal() {
+  const modal = document.getElementById('ccTakeoutModal');
+  if (modal) modal.style.display = 'none';
+}
+function sendCcTakeoutCard() {
+  const room = _ccGetRoomById(_ccCurrentRoomId);
+  if (!room) return;
+  const senderInfo = _ccCurrentSenderInfo();
+  const recipientId = (document.getElementById('ccTakeoutRecipient') || {}).value || '';
+  const recipientInfo = _ccFindParticipant(room, recipientId);
+  const name = String((document.getElementById('ccTakeoutName') || {}).value || '').trim();
+  const shop = String((document.getElementById('ccTakeoutShop') || {}).value || '').trim();
+  const price = String((document.getElementById('ccTakeoutPrice') || {}).value || '').trim();
+  const note = String((document.getElementById('ccTakeoutNote') || {}).value || '').trim();
+  if (!name) {
+    alert('请先填写外卖名称。');
+    return;
+  }
+  ccAppendMessage(_ccCurrentRoomId, Object.assign(_ccBuildManualMessageBase(senderInfo), {
+    msgType: 'cc_takeout',
+    takeoutData: {
+      senderName: senderInfo.name,
+      recipientName: recipientInfo.name,
+      name: name,
+      shop: shop,
+      price: price,
+      note: note
+    },
+    content: senderInfo.name + ' 给 ' + recipientInfo.name + ' 点了「' + name + '」' + (note ? '：' + note : '')
+  }));
+  closeCcTakeoutModal();
+}
+document.addEventListener('click', function(e) {
+  const panel = document.getElementById('ccPlusPanel');
+  const btn = document.getElementById('ccPlusBtn');
+  const modal = document.getElementById('ccChatRoomModal');
+  if (!panel || !btn || !modal || modal.style.display === 'none') return;
+  if (panel.classList.contains('open') && !panel.contains(e.target) && !btn.contains(e.target)) {
+    closeCcPlusPanel();
+  }
+}, true);
 // ── 打开聊天室列表 ──
 function openCharChatRoomList() {
   if (!ccIsWorldEnabled()) {
@@ -23218,7 +24173,8 @@ function ccRenderRoomList() {
   container.innerHTML = rooms.map(r => {
     const hist = ccGetHistory(r.id);
     const lastMsg = hist.length > 0 ? hist[hist.length - 1] : null;
-    const lastContent = lastMsg ? (lastMsg.content || '').slice(0, 30) + (lastMsg.content && lastMsg.content.length > 30 ? '…' : '') : '暂无对话';
+    const lastText = lastMsg ? _ccMessagePreviewText(lastMsg) : '';
+    const lastContent = lastText ? lastText.slice(0, 30) + (lastText.length > 30 ? '…' : '') : '暂无对话';
     const lastSender = lastMsg ? (lastMsg.sender || '') : '';
     const memberStr = (r.members || []).join('、');
     const isGroup = (r.members || []).length > 2;
@@ -23278,8 +24234,9 @@ function renderCcRoomDrawer() {
     html += rooms.map(r => {
       const hist = ccGetHistory(r.id);
       const lastMsg = hist.length > 0 ? hist[hist.length - 1] : null;
+      const lastText = lastMsg ? _ccMessagePreviewText(lastMsg) : '';
       const lastContent = lastMsg
-        ? (lastMsg.sender ? lastMsg.sender + '：' : '') + (lastMsg.content || '').slice(0, 20) + ((lastMsg.content || '').length > 20 ? '…' : '')
+        ? (lastMsg.sender ? lastMsg.sender + '：' : '') + lastText.slice(0, 20) + (lastText.length > 20 ? '…' : '')
         : '暂无对话';
       const memberStr = (r.members || []).join('、');
       const avatarBlock = _buildRoomAvatars(r);
@@ -23457,12 +24414,68 @@ function openCcChatRoom(roomId) {
     ? `群聊 · ${room.members.length} 位成员`
     : `私聊 · ${room.members.join(' 与 ')}`;
   ccRenderChatMessages(roomId);
+  _ccSetComposerParticipants(roomId, CC_USER_SENDER);
+  const composer = document.getElementById('ccComposerInput');
+  if (composer) {
+    composer.value = '';
+    ccAutoResizeComposer(composer);
+  }
   // Restore today's turns label if any
   _ccUpdateTurnsLabel(roomId);
 }
 function closeCcChatRoom() {
   document.getElementById('ccChatRoomModal').style.display = 'none';
+  closeCcPlusPanel();
+  closeCcVoiceModal();
+  closeCcTakeoutModal();
   _ccCurrentRoomId = null;
+}
+function _ccRenderMessageBubble(msg, isRight) {
+  if (msg.msgType === 'image') {
+    const imgSrc = _escapeAttrText(msg.imageSrc || '');
+    return '<div class="cc-rich-media-wrap">'
+      + '<div class="bubble-image" data-img-src="' + imgSrc + '" onclick="handleImageBubbleClick(event, this)">'
+      + '<img src="' + imgSrc + '" alt="image">'
+      + '</div>'
+      + (msg.imageCaption ? '<div class="bubble-image-caption">' + _esc(msg.imageCaption) + '</div>' : '')
+      + '</div>';
+  }
+  if (msg.msgType === 'voice') {
+    const dur = _esc(msg.duration || calcVoiceDuration(msg.transcript || msg.content || ''));
+    const bubbleClass = isRight ? 'bubble bubble-user bubble-voice bubble-voice-simulated' : 'bubble bubble-ai bubble-voice bubble-voice-simulated';
+    return '<div class="' + bubbleClass + '" onclick="toggleVoiceTranscript(this)">'
+      + '<div class="bubble-voice-row">'
+      + '<i class="fas fa-microphone bubble-voice-icon"></i>'
+      + '<div class="voice-wave">'
+      + '<div class="voice-bar"></div><div class="voice-bar"></div><div class="voice-bar"></div><div class="voice-bar"></div>'
+      + '<div class="voice-bar"></div><div class="voice-bar"></div><div class="voice-bar"></div><div class="voice-bar"></div>'
+      + '</div>'
+      + '<span class="bubble-voice-duration">' + dur + '<span class="voice-type-badge simulated">模拟</span></span>'
+      + '</div>'
+      + '<div class="voice-transcript show">' + _esc(msg.transcript || msg.content || '') + '</div>'
+      + '</div>';
+  }
+  if (msg.msgType === 'cc_takeout') {
+    const td = msg.takeoutData || {};
+    const title = td.name || '暖心外卖';
+    const kicker = msg.senderType === 'user' ? 'You Sent A Delivery' : 'Character Delivery';
+    const sub = (td.senderName || msg.sender || '') + ' 送给 ' + (td.recipientName || '对方');
+    return '<div class="cc-takeout-card">'
+      + '<div class="cc-takeout-card-head">'
+      + '<div class="cc-takeout-card-kicker">' + _esc(kicker) + '</div>'
+      + '<div class="cc-takeout-card-title">' + _esc(title) + '</div>'
+      + '<div class="cc-takeout-card-sub">' + _esc(sub) + '</div>'
+      + '</div>'
+      + '<div class="cc-takeout-card-body">'
+      + '<div class="cc-takeout-badge"><i class="fas fa-bag-shopping"></i><span>韩系灰白外卖卡</span></div>'
+      + (td.shop ? '<div class="cc-takeout-row"><span class="cc-takeout-label">店铺</span><span class="cc-takeout-value">' + _esc(td.shop) + '</span></div>' : '')
+      + '<div class="cc-takeout-row"><span class="cc-takeout-label">收件人</span><span class="cc-takeout-value">' + _esc(td.recipientName || '对方') + '</span></div>'
+      + (td.price ? '<div class="cc-takeout-row"><span class="cc-takeout-label">金额</span><span class="cc-takeout-price">¥' + _esc(td.price) + '</span></div>' : '')
+      + (td.note ? '<div class="cc-takeout-note">' + _esc(td.note).replace(/\n/g, '<br>') + '</div>' : '')
+      + '</div>'
+      + '</div>';
+  }
+  return '<div class="' + (isRight ? 'cc-bubble cc-bubble-right' : 'cc-bubble cc-bubble-left') + '">' + _esc(msg.content || '').replace(/\n/g, '<br>') + '</div>';
 }
 // ── 渲染聊天室消息（微信风格）──
 function ccRenderChatMessages(roomId) {
@@ -23474,21 +24487,29 @@ function ccRenderChatMessages(roomId) {
   const msgList = document.getElementById('ccChatMsgList');
   if (!msgList) return;
   if (hist.length === 0) {
-    msgList.innerHTML = `<div style="text-align:center;padding:40px 20px;color:#bbb;">
+    msgList.innerHTML = `<div class="cc-chat-empty-tip">
       <i class="fas fa-comment-dots" style="font-size:28px;margin-bottom:8px;display:block;"></i>
-      <div style="font-size:12px;">暂无对话，点击「生成对话」让角色开始聊天</div>
+      <div style="font-size:12px;">暂无对话，点击「手动生成」或直接用下方输入框参与聊天</div>
     </div>`;
+    const emptyHint = document.getElementById('ccModeHint');
+    if (emptyHint) emptyHint.textContent = '可观察，也可手动让用户或角色参与聊天';
     return;
   }
-  // Group members — for 2-person chats: first member is "left", second is "right"
-  // For group chats: all members alternate left
-  const firstMember = room.members[0];
+  const userName = _ccGetUserDisplayName();
+  const userAvatar = _ccGetUserAvatar();
+  const hasUserParticipation = hist.some(function(msg) { return msg.senderType === 'user' || msg.sender === userName; });
+  const modeHint = document.getElementById('ccModeHint');
+  if (modeHint) {
+    modeHint.textContent = hasUserParticipation
+      ? '当前房间里已经有用户发言，角色后续会按在场状态接话'
+      : '当前主要是角色之间的聊天，也可以随时切换为用户或角色手动发言';
+  }
   let lastDateStr = '';
   msgList.innerHTML = hist.map(msg => {
-    const p = personas.find(x => x.name === msg.sender);
-    const avatarSrc = p ? p.avatar : '';
-    const isRight = room.members.length === 2 && msg.sender === room.members[1];
-    const bubbleClass = isRight ? 'cc-bubble cc-bubble-right' : 'cc-bubble cc-bubble-left';
+    const isUserMsg = msg.senderType === 'user' || msg.sender === userName;
+    const p = isUserMsg ? null : personas.find(x => x.name === msg.sender);
+    const avatarSrc = isUserMsg ? userAvatar : (p ? p.avatar : '');
+    const isRight = isUserMsg || (!hasUserParticipation && room.members.length === 2 && msg.sender === room.members[1]);
     const rowClass = 'cc-msg-row' + (isRight ? ' cc-right' : '');
     // Time divider
     let timeDivider = '';
@@ -23503,12 +24524,14 @@ function ccRenderChatMessages(roomId) {
     const avatarHtml = avatarSrc
       ? `<img src="${avatarSrc}" class="cc-avatar" alt="${msg.sender}">`
       : `<div class="cc-avatar-placeholder">${(msg.sender||'?').charAt(0)}</div>`;
-    const safeContent = (msg.content || '').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    const metaHtml = msg.timestamp ? '<div class="cc-msg-meta"><span>' + _fmtMsgTime(msg.timestamp) + '</span></div>' : '';
+    const bubbleHtml = _ccRenderMessageBubble(msg, isRight);
     return `${timeDivider}<div class="${rowClass}">
       ${avatarHtml}
       <div class="cc-msg-body">
         <div class="cc-sender-name">${msg.sender}</div>
-        <div class="${bubbleClass}">${safeContent}</div>
+        ${bubbleHtml}
+        ${metaHtml}
       </div>
     </div>`;
   }).join('');
@@ -23756,7 +24779,7 @@ async function _ccGenerateOneTurn(room) {
   const relEntries = mwGetRelEntries();
   const hist = ccGetHistory(room.id);
   // Build recent chat history (last 30 msgs for better context)
-  const recentHist = hist.slice(-30).map(m => `${m.sender}：${m.content || ''}`).join('\n');
+  const recentHist = hist.slice(-30).map(m => `${m.sender}：${_ccMessagePreviewText(m)}`).join('\n');
   // Build each member's persona + relationship block with other members
   let allCharContext = '';
   room.members.forEach(name => {
@@ -23783,21 +24806,22 @@ async function _ccGenerateOneTurn(room) {
     try { return JSON.parse(localStorage.getItem('mono_user_profile') || '{}'); } catch(e) { return {}; }
   })();
   const userName = userProfile.name || '用户';
+  const userHasJoined = hist.some(function(m) { return m.senderType === 'user' || m.sender === userName; });
   const sysPrompt = `你是一个对话生成引擎，负责以「灵魂附体」的方式生成角色之间高度还原的${chatType}对话。
 每个角色都有完整的人设、核心记忆和关系背景，必须严格遵守。
 ═══════════════════════════════════
 【聊天室成员】：${membersStr}
 【聊天室类型】：${chatType}
-【用户（${userName}）是否在场】：❌ 完全不在场，不是聊天室成员，也不会收到这些消息
+【用户（${userName}）是否在场】：${userHasJoined ? '✅ 最近历史里出现过用户消息，说明用户现在也在群里/串门发言过' : '❌ 最近历史里没有用户消息，当前主要是角色们私下聊天'}
 ${relSummary}═══════════════════════════════════
 ${allCharContext}
 ═══════════════════════════════════
 【铁律规则 · 必须100%遵守】：
-★ 关于"用户不在场"（最重要）：
-  - 这个聊天室里只有：${membersStr}。用户「${userName}」不在这个聊天室里。
-  - 角色们在这里是在私下聊天，彼此是对话的主体，不存在任何一方在"配合用户"或"回应用户"。
-  - 绝对不能出现"你（用户）""主人""大人"等称呼用户的方式，也不能让角色表现得像是在和用户说话。
-  - 角色们只对聊天室里的彼此说话，收件人就是另一位（或几位）成员。
+★ 关于"用户是否在场"（最重要）：
+  - AI 本轮只允许代替这些角色发言：${membersStr}。绝对不能生成用户「${userName}」的消息。
+  - 如果最近历史里没有用户消息，就把这里当成角色们的私下聊天，不要强行提及用户。
+  - 如果最近历史里出现了用户「${userName}」的消息，说明用户此刻也在这个聊天室里发过言。角色可以自然回应用户、提到用户，但输出仍然只能是角色成员的回复。
+  - 无论哪种情况，都绝对不能让角色把用户称作"主人""大人"之类与当前群聊场景不符的称呼，除非该角色本身的人设和上下文真的会这么说。
 ★ 关于"认清对方身份与关系"：
   - 每个角色必须清楚知道自己在和谁聊天，以及两人之间的具体关系。
   - 说话的语气、亲疏、措辞必须完全符合两人的关系（已在各角色的[关系及对话风格]块中给出指导）。
@@ -23811,6 +24835,7 @@ ${allCharContext}
   5. 话题自然衔接历史对话，或从角色记忆/日常引出新话题，有生活感。
   6. 每条消息长度像真实聊天：短则一两句，长则三四句，不要像作文。
   7. 绝对不能出现"用户""设定""角色卡""AI""系统"等元词汇。
+  8. 如果历史里刚出现图片、模拟语音、外卖卡等特殊消息，你要把它们当成真实已发生的聊天事件，正常接话、吐槽、关心或追问。
   9. 输出格式必须严格为JSON数组，每个元素只含 sender 和 content 两个字段。
 ═══════════════════════════════════
 【聊天记录（最近30条）】：
@@ -28889,25 +29914,59 @@ function _getRoomCssStyleTag(id) {
   if (!el) { el = document.createElement('style'); el.id = id; document.head.appendChild(el); }
   return el;
 }
+function _roomCssSelectorNeedsGlobalScope(selector) {
+  const s = String(selector || '').trim();
+  return /^(html|body|:root)\b/i.test(s) || /^\.phone-nav\b/.test(s) || /^#(?:chatPage|groupChatPage)\b/.test(s);
+}
+function _roomCssScopeSelector(selector, scopeRoot) {
+  const s = String(selector || '').trim();
+  if (!s) return '';
+  if (_roomCssSelectorNeedsGlobalScope(s)) return s;
+  return scopeRoot + ' ' + s;
+}
+function _roomCssForceImportant(body) {
+  return String(body || '').replace(/([a-zA-Z_-][\w-]*)\s*:\s*([^;{}]+)(;?)/g, function(match, prop, value, semi) {
+    if (String(prop || '').indexOf('--') === 0) return match;
+    if (/!important\s*$/i.test(value)) return prop + ': ' + value.trim() + (semi || '');
+    return prop + ': ' + value.trim() + ' !important' + (semi || '');
+  });
+}
+function _compileScopedRoomCustomCss(rawCss, scopeRoot) {
+  const raw = String(rawCss || '').replace(/\/\*[\s\S]*?\*\//g, '').trim();
+  if (!raw) return '';
+  return raw.replace(/(^|})(\s*)([^@{}][^{}]*)\{([^{}]*)\}/g, function(match, closeBrace, ws, selectorText, body) {
+    const selectors = String(selectorText || '')
+      .split(',')
+      .map(function(sel) { return _roomCssScopeSelector(sel, scopeRoot); })
+      .filter(Boolean);
+    if (!selectors.length) return match;
+    return (closeBrace || '') + (ws || '') + selectors.join(', ') + ' { ' + _roomCssForceImportant(body).trim() + ' }';
+  });
+}
+function _getCompiledRoomCss(rawCss, scopeRoot) {
+  const compiled = _compileScopedRoomCustomCss(rawCss, scopeRoot);
+  if (!compiled) return '';
+  return '/* room-custom-css: compiled for strong override */\n' + compiled;
+}
 function removeChatRoomCustomCss() {
   const e = document.getElementById('_roomCustomCssStyle'); if (e) e.textContent = '';
   const g = document.getElementById('_gcRoomCustomCssStyle'); if (g) g.textContent = '';
 }
 function applyChatRoomCustomCss(p) {
   const el = _getRoomCssStyleTag('_roomCustomCssStyle');
-  el.textContent = (p && p.chatRoomCustomCss) ? p.chatRoomCustomCss : '';
+  el.textContent = (p && p.chatRoomCustomCss) ? _getCompiledRoomCss(p.chatRoomCustomCss, '#chatPage') : '';
   // Also clear group room CSS when switching to 1-on-1
   const g = document.getElementById('_gcRoomCustomCssStyle'); if (g) g.textContent = '';
 }
 function applyGcRoomCustomCss(group) {
   const el = _getRoomCssStyleTag('_gcRoomCustomCssStyle');
-  el.textContent = (group && group.chatRoomCustomCss) ? group.chatRoomCustomCss : '';
+  el.textContent = (group && group.chatRoomCustomCss) ? _getCompiledRoomCss(group.chatRoomCustomCss, '#groupChatPage') : '';
   // Also clear persona room CSS when switching to group chat
   const p = document.getElementById('_roomCustomCssStyle'); if (p) p.textContent = '';
 }
 function livePreviewRoomCss() {
   const css = (document.getElementById('pRoomCustomCss') || {}).value || '';
-  _getRoomCssStyleTag('_roomCustomCssStyle').textContent = css;
+  _getRoomCssStyleTag('_roomCustomCssStyle').textContent = _getCompiledRoomCss(css, '#chatPage');
 }
 function saveRoomCss() {
   const css = (document.getElementById('pRoomCustomCss') || {}).value || '';
@@ -28930,7 +29989,7 @@ function resetRoomCss() {
 // Group chat room CSS live preview/reset
 function livePreviewGcRoomCss() {
   const css = (document.getElementById('gcRoomCustomCss') || {}).value || '';
-  _getRoomCssStyleTag('_gcRoomCustomCssStyle').textContent = css;
+  _getRoomCssStyleTag('_gcRoomCustomCssStyle').textContent = _getCompiledRoomCss(css, '#groupChatPage');
 }
 function resetGcRoomCss() {
   if (!confirm('确定要重置此群聊室的自定义 CSS 吗？')) return;
@@ -29503,6 +30562,65 @@ ${recentChat}
     saveData(); if (currentId == p.id) renderMessages();
   } catch(e) { console.warn('tryPersonaSendSticker error:', e); }
 }
+async function tryPersonaSendTextImage(p, recentChat) {
+  if (!p || !apiConfig.url || !apiConfig.key || !apiConfig.model) return;
+  const recentMsgs = Array.isArray(p.history) ? p.history.slice(-8) : [];
+  if (!recentMsgs.length) return;
+  const recentText = recentMsgs.map(function(m) { return String(m.content || ''); }).join(' ');
+  if (/去世|死|病危|自杀|分手|离婚|葬礼|急救|住院|崩溃|绝望|遗书/.test(recentText)) return;
+  if (recentMsgs.slice(-3).some(function(m) { return m && m.role === 'assistant' && m.msgType === 'image'; })) return;
+  const strongCue = /照片|图片|自拍|穿搭|看看|发来|发我|给我看|图呢|拍给我|想看|看下|猫猫|狗狗|晚霞|天空|奶茶|饭|外卖/.test(recentText);
+  const personaText = String(p.persona || '');
+  let baseProb = strongCue ? 0.68 : 0.18;
+  if (/分享欲|摄影|爱拍照|活泼|可爱|俏皮|喜欢记录|浪漫|感性|黏人|热情/.test(personaText)) baseProb += 0.12;
+  if (/高冷|冷淡|克制|寡言|理智|稳重|严肃/.test(personaText)) baseProb -= 0.08;
+  if (Math.random() > Math.max(0.05, Math.min(baseProb, 0.82))) return;
+  const prompt = `${LANG_SYSTEM_PREFIX}你是${p.name}，人设：${p.persona}。
+你现在可以选择是否额外发送一张“文字描述生成的模拟图片”给${userProfile.name}。这张图会以真实图片消息的形式出现在聊天里。
+【发送原则】
+1. 只有当你真的会想“顺手给对方看一眼什么”时才发，例如自拍、穿搭、手边食物、天空、桌面、小动物、正在做的事、截图式小梗图。
+2. 默认宁缺毋滥；如果当前只是普通问答、严肃沟通、争执、解释、安慰沉重情绪，就不要发。
+3. 如果用户刚表达“想看”“发我看看”“图呢”等，或当前气氛很暧昧/轻松/分享欲强，可以更积极一点。
+4. desc 必须是“画面里看得见的东西”，像真实照片描述，不能写抽象感想，不能写“我给你发一张图”这种说明。
+5. desc 控制在18到60字，细节具体，像镜头画面。
+请只返回 JSON，不要解释：{"send":true/false,"desc":"图片画面描述","caption":"可留空的短配文"}
+
+【最近聊天】
+${recentChat || '（暂无）'}`;
+  try {
+    const r = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${apiConfig.key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(_applyApiModel({
+        messages: [{ role: 'user', content: prompt }],
+        temperature: Math.max(0.7, p.temperature || 0.9),
+        max_tokens: 180
+      }, apiConfig.model))
+    });
+    const data = await r.json();
+    let raw = String(data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content || '').trim();
+    raw = raw.replace(/```json|```/g, '').trim();
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (match) raw = match[0];
+    const result = JSON.parse(raw);
+    if (!result || !result.send) return;
+    const desc = String(result.desc || '').trim();
+    const caption = String(result.caption || '').trim();
+    if (!desc) return;
+    await new Promise(function(res) { setTimeout(res, 650 + Math.random() * 950); });
+    const imageSrc = _buildSimulatedTextImageDataUrl(desc, { senderName: p.name || '角色' });
+    _pushChatImageMessage(p, 'assistant', imageSrc, {
+      imageDesc: desc,
+      imageCaption: caption,
+      imageSimulated: true,
+      textImagePrompt: desc
+    });
+    saveData();
+    if (currentId == p.id) renderMessages();
+  } catch(e) {
+    console.warn('tryPersonaSendTextImage error:', e);
+  }
+}
 // ---- PERSONA VOICE SENDING ----
 async function tryPersonaSendVoice(p, textMessages) {
   const _freqMap = { all: 1.0, high: 0.7, mid: 0.3, low: 0.1 };
@@ -29828,6 +30946,64 @@ async function tryPersonaInitiateTransfer(p, recentChat) {
       p.history.push({ role: 'assistant', msgType: 'transfer', transferAmt: parseFloat(result.amount), transferNote: result.note || '', transferNoteTranslation: result.note_translation || '', transferStatus: 'pending', content: '[角色转帳: ¥' + parseFloat(result.amount).toFixed(2) + ']' });
       saveData(); if (currentId == p.id) renderMessages();
     }
+  } catch(e) {}
+}
+async function tryPersonaInitiateTakeout(p, recentChat) {
+  const recentPersonaTakeout = (p.history || []).slice(-80).some(function(m) {
+    return m && m.msgType === 'takeout_card' && m.role === 'assistant';
+  });
+  if (recentPersonaTakeout) return;
+  if (Math.random() > 0.035) return;
+  if (!apiConfig.url || !apiConfig.key || !apiConfig.model) return;
+  const prompt = `${LANG_SYSTEM_PREFIX}你是${p.name}，人设：${p.persona}。
+根据你的人设和以下聊天氛围，判断你是否真的会想主动给${userProfile.name}点一份外卖、奶茶、甜品或夜宵。
+这同样是少见的特殊关心行为，不是每次聊天都发生。只有在这些情境才考虑：
+1. 想哄对方
+2. 想庆祝某件事
+3. 深夜担心对方没吃饭
+4. 想请客或投喂
+5. 用户刚提到饿了、累了、想吃某类东西
+如果只是普通聊天、日常暧昧或随便闲聊，绝大多数情况都返回 false。
+若决定点外卖，品类、店铺、金额、留言必须符合你的人设和当下情绪。
+请只返回 JSON，不要解释：
+{"send":true,"name":"外卖名称","shop":"店铺/平台","price":"数字或字符串","note":"留给对方的一句自然留言"}
+或者
+{"send":false}
+
+【最近聊天】
+${recentChat}`;
+  try {
+    const r = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${apiConfig.key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: apiConfig.model, messages: [{ role: 'user', content: prompt }], temperature: p.temperature || 1.0, max_tokens: 160 })
+    });
+    if (!r.ok) return;
+    const data = await r.json();
+    let raw = (((data || {}).choices || [])[0] || {}).message;
+    raw = raw && raw.content ? raw.content.trim().replace(/```json|```/g, '').trim() : '';
+    if (!raw) return;
+    const result = JSON.parse(raw);
+    if (!result || !result.send || !result.name) return;
+    const takeoutData = {
+      senderName: p.name || '角色',
+      recipientName: (userProfile && userProfile.name) ? userProfile.name : '你',
+      name: String(result.name || '').trim(),
+      shop: String(result.shop || '').trim(),
+      price: String(result.price || '').trim(),
+      note: String(result.note || '').trim()
+    };
+    if (!takeoutData.name) return;
+    await new Promise(res => setTimeout(res, 900 + Math.random() * 1400));
+    p.history.push({
+      role: 'assistant',
+      msgType: 'takeout_card',
+      takeoutData: takeoutData,
+      content: _buildTakeoutHistoryText(takeoutData),
+      timestamp: Date.now()
+    });
+    saveData();
+    if (currentId == p.id) renderMessages();
   } catch(e) {}
 }
 // ===================== 表情包库 STICKER LIBRARY =====================
@@ -30348,6 +31524,168 @@ function isVisionApiConfigured() {
   if (mode === 'custom') return !!(cfg.customUrl && cfg.customKey && cfg.customModel);
   return !!(apiConfig.url && apiConfig.key && apiConfig.model);
 }
+function _buildTakeoutHistoryText(takeoutData) {
+  const td = takeoutData || {};
+  const sender = String(td.senderName || '一方').trim() || '一方';
+  const recipient = String(td.recipientName || '另一方').trim() || '另一方';
+  const name = String(td.name || '暖心外卖').trim() || '暖心外卖';
+  const shop = String(td.shop || '').trim();
+  const price = String(td.price || '').trim();
+  const note = String(td.note || '').trim();
+  let text = `[外卖卡] ${sender} 给 ${recipient} 点了「${name}」`;
+  if (shop) text += `，店铺是 ${shop}`;
+  if (price) text += `，金额 ¥${price}`;
+  if (note) text += `，留言：${note}`;
+  text += '。这是已经真实发生过的送餐/投喂事件，请自然承接。';
+  return text;
+}
+function _hashTextSeed(text) {
+  const str = String(text || '');
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash) || 1;
+}
+function _escapeSvgText(text) {
+  return String(text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+function _wrapTextImageLines(text, maxChars, maxLines) {
+  const clean = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!clean) return [];
+  const lines = [];
+  let rest = clean;
+  const width = Math.max(6, maxChars || 12);
+  const limit = Math.max(1, maxLines || 3);
+  while (rest && lines.length < limit) {
+    if (rest.length <= width) {
+      lines.push(rest);
+      rest = '';
+      break;
+    }
+    let cut = width;
+    while (cut > 4 && /[a-zA-Z0-9]/.test(rest.charAt(cut - 1)) && /[a-zA-Z0-9]/.test(rest.charAt(cut))) cut--;
+    lines.push(rest.slice(0, cut).trim());
+    rest = rest.slice(cut).trim();
+  }
+  if (rest && lines.length) lines[lines.length - 1] = lines[lines.length - 1].replace(/…?$/, '') + '…';
+  return lines;
+}
+function _buildSimulatedTextImageDataUrl(desc, opts) {
+  const cleanDesc = String(desc || '').trim() || '一张模糊却真实的小照片';
+  const seed = _hashTextSeed(cleanDesc + '|' + ((opts && opts.senderName) || ''));
+  const palette = [
+    ['#efe7df', '#d8d2ca', '#b8b0a8'],
+    ['#e7ecef', '#d5dce2', '#b5c0cc'],
+    ['#efe6e8', '#ddcfd4', '#c1b2ba'],
+    ['#e8eadf', '#d4d7c7', '#b4baa3'],
+    ['#eee3d8', '#dccbbb', '#c4ae98']
+  ][seed % 5];
+  const senderName = String((opts && opts.senderName) || '用户').trim() || '用户';
+  const lines = _wrapTextImageLines(cleanDesc, 12, 3);
+  const chip = _escapeSvgText(lines[0] || cleanDesc.slice(0, 12));
+  const textSvg = lines.map(function(line, idx) {
+    return '<text x="86" y="' + (566 + idx * 48) + '" font-size="30" font-weight="700" fill="#2a2a2a" letter-spacing="1.2">' + _escapeSvgText(line) + '</text>';
+  }).join('');
+  const dotX = 520 + (seed % 80);
+  const dotY = 176 + (seed % 120);
+  const dotR = 54 + (seed % 22);
+  const tilt = (seed % 7) - 3;
+  const svg = ''
+    + '<svg xmlns="http://www.w3.org/2000/svg" width="720" height="900" viewBox="0 0 720 900">'
+    + '<defs>'
+    + '<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">'
+    + '<stop offset="0%" stop-color="' + palette[0] + '"/>'
+    + '<stop offset="100%" stop-color="' + palette[1] + '"/>'
+    + '</linearGradient>'
+    + '<linearGradient id="photo" x1="0" y1="0" x2="0.9" y2="1">'
+    + '<stop offset="0%" stop-color="#ffffff"/>'
+    + '<stop offset="100%" stop-color="#f4f4f1"/>'
+    + '</linearGradient>'
+    + '</defs>'
+    + '<rect width="720" height="900" rx="44" fill="url(#bg)"/>'
+    + '<circle cx="' + dotX + '" cy="' + dotY + '" r="' + dotR + '" fill="' + palette[2] + '" opacity="0.28"/>'
+    + '<circle cx="160" cy="138" r="88" fill="#ffffff" opacity="0.18"/>'
+    + '<rect x="68" y="74" width="584" height="752" rx="34" fill="url(#photo)"/>'
+    + '<rect x="94" y="106" width="532" height="396" rx="26" fill="' + palette[1] + '"/>'
+    + '<g transform="rotate(' + tilt + ' 360 304)">'
+    + '<rect x="132" y="150" width="456" height="306" rx="24" fill="#ffffff" opacity="0.95"/>'
+    + '<rect x="154" y="172" width="412" height="262" rx="18" fill="' + palette[0] + '"/>'
+    + '<rect x="182" y="206" width="190" height="18" rx="9" fill="#ffffff" opacity="0.75"/>'
+    + '<rect x="182" y="238" width="264" height="18" rx="9" fill="#ffffff" opacity="0.55"/>'
+    + '<rect x="182" y="270" width="224" height="18" rx="9" fill="#ffffff" opacity="0.38"/>'
+    + '<rect x="182" y="332" width="318" height="14" rx="7" fill="#ffffff" opacity="0.35"/>'
+    + '<rect x="182" y="360" width="256" height="14" rx="7" fill="#ffffff" opacity="0.24"/>'
+    + '<rect x="182" y="388" width="178" height="14" rx="7" fill="#ffffff" opacity="0.24"/>'
+    + '</g>'
+    + '<text x="86" y="556" font-size="15" font-weight="700" fill="#8b8b8b" letter-spacing="4">SIM PHOTO</text>'
+    + textSvg
+    + '<rect x="86" y="698" width="172" height="42" rx="21" fill="#f1efeb"/>'
+    + '<text x="104" y="725" font-size="18" font-weight="700" fill="#7b776f">' + chip + '</text>'
+    + '<text x="86" y="780" font-size="18" fill="#8f8f8f">from ' + _escapeSvgText(senderName) + '</text>'
+    + '</svg>';
+  return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
+}
+function _isMemeLikeImageDesc(imageDesc) {
+  return !!(imageDesc && /表情包|meme|贴图|sticker|emoji|配字|配文|搞笑图|reaction|颜文字/i.test(imageDesc));
+}
+function _buildImageEventContent(role, imageDesc) {
+  const cleanDesc = String(imageDesc || '').trim();
+  const actor = role === 'assistant' ? '你' : '用户';
+  if (!cleanDesc) {
+    return role === 'assistant'
+      ? '[你发送了一张图片，请自然延续对话]'
+      : '[用户发送了一张图片，请结合上下文自然回应]';
+  }
+  if (_isMemeLikeImageDesc(cleanDesc)) {
+    return role === 'assistant'
+      ? '[你发送了一个表情包（meme），情绪/含义：' + cleanDesc + '。这是你刚刚真实发出的图片消息，请延续当前语气与情绪]'
+      : '[用户发送了一个表情包（meme），情绪/含义：' + cleanDesc + '。表情包是用户态度或情绪的补充，请结合前后对话上下文自然回应，无需刻意提及"表情包"这个词]';
+  }
+  return '[' + actor + '发送了一张图片：' + cleanDesc + '，请结合对话上下文理解并回应]';
+}
+function _pushChatImageMessage(p, role, imageSrc, opts) {
+  if (!p || !imageSrc) return null;
+  const meta = opts || {};
+  const ts = meta.timestamp || Date.now();
+  const msg = {
+    role: role === 'assistant' ? 'assistant' : 'user',
+    msgType: 'image',
+    imageSrc: imageSrc,
+    imageCaption: String(meta.imageCaption || '').trim(),
+    imageDesc: String(meta.imageDesc || '').trim(),
+    imageSimulated: !!meta.imageSimulated,
+    textImagePrompt: String(meta.textImagePrompt || meta.imageDesc || '').trim(),
+    content: _buildImageEventContent(role, meta.imageDesc || ''),
+    timestamp: ts
+  };
+  p.history.push(msg);
+  return msg;
+}
+function _buildImageHistoryText(msg, idx, arr) {
+  const m = msg || {};
+  const desc = String(m.imageDesc || m.content || '').trim() || (m.role === 'assistant' ? '[你发送了一张图片]' : '[用户发送了一张图片]');
+  const caption = String(m.imageCaption || '').trim();
+  const base = m.role === 'assistant'
+    ? '[你发送了一张图片：' + desc + ']'
+    : '[用户发送了一张图片：' + desc + ']';
+  if (m.role !== 'user') return caption ? (base + '（图片配文：' + caption + '）') : base;
+  const prevMsg = arr && arr[idx - 1];
+  const prevText = (prevMsg && prevMsg.role === 'user' && !prevMsg.msgType && prevMsg.content) ? prevMsg.content : '';
+  const nextMsg = arr && arr[idx + 1];
+  const nextText = (nextMsg && nextMsg.role === 'user' && !nextMsg.msgType && nextMsg.content) ? nextMsg.content : '';
+  let contextHint = '';
+  if (prevText) contextHint += `（前文：用户刚说了"${prevText}"）`;
+  if (nextText) contextHint += `（后续：用户接着说了"${nextText}"）`;
+  if (caption) contextHint += `（图片配文：${caption}）`;
+  return base + (contextHint ? ' ' + contextHint : '');
+}
 // ===================== 发送图片功能 =====================
 function openImageSendPicker() {
   closePlusPanel();
@@ -30378,20 +31716,9 @@ async function sendImageMessage(base64DataUrl) {
       imageDesc = '';
     }
   }
-  // Detect if image is a meme/sticker based on description keywords
-  const _isMeme = imageDesc && /表情包|meme|贴图|sticker|emoji|配字|配文|搞笑图|reaction|颜文字/i.test(imageDesc);
-  const contentText = imageDesc
-    ? (_isMeme ? '[用户发送了一个表情包（meme），情绪/含义：' + imageDesc + '。表情包是用户态度或情绪的补充，请结合前后对话上下文自然回应，无需刻意提及"表情包"这个词]'
-               : '[用户发送了一张图片：' + imageDesc + '，请结合对话上下文理解并回应]')
-    : '[用户发送了一张图片，请结合上下文自然回应]';
   const _imageMsgTs = Date.now();
-  p.history.push({
-    role: 'user',
-    msgType: 'image',
-    imageSrc: base64DataUrl,
-    imageCaption: '',
+  _pushChatImageMessage(p, 'user', base64DataUrl, {
     imageDesc: imageDesc,
-    content: contentText,
     timestamp: _imageMsgTs
   });
   saveData();
@@ -30402,6 +31729,158 @@ async function sendImageMessage(base64DataUrl) {
   if (typeof taskTrackChatMessage === 'function') taskTrackChatMessage(currentId, _imageMsgTs);
   // 根据角色回复模式决定是否自动回复
   if (typeof _handleAutoReplyAfterSend === "function") _handleAutoReplyAfterSend(currentId);
+}
+function openChatTextImageModal() {
+  if (!currentId) { alert('请先选择一个角色'); return; }
+  closePlusPanel();
+  const senderHint = document.getElementById('chatTextImageSenderHint');
+  const descInput = document.getElementById('chatTextImageDescInput');
+  const composer = document.getElementById('userInput');
+  if (senderHint) senderHint.textContent = (userProfile && userProfile.name) ? userProfile.name : '用户';
+  if (descInput) descInput.value = composer && composer.value.trim() ? composer.value.trim() : '';
+  const modal = document.getElementById('chatTextImageModal');
+  if (modal) modal.style.display = 'flex';
+}
+function closeChatTextImageModal() {
+  const modal = document.getElementById('chatTextImageModal');
+  if (modal) modal.style.display = 'none';
+}
+function sendChatTextImageMessage() {
+  if (!currentId) return;
+  const p = personas.find(x => x.id == currentId);
+  if (!p) return;
+  const desc = String((document.getElementById('chatTextImageDescInput') || {}).value || '').trim();
+  if (!desc) {
+    alert('请先填写图片描述。');
+    return;
+  }
+  const ts = Date.now();
+  const imageSrc = _buildSimulatedTextImageDataUrl(desc, {
+    senderName: (userProfile && userProfile.name) ? userProfile.name : '用户'
+  });
+  _pushChatImageMessage(p, 'user', imageSrc, {
+    imageDesc: desc,
+    imageSimulated: true,
+    textImagePrompt: desc,
+    timestamp: ts
+  });
+  saveData();
+  renderMessages();
+  renderContactList();
+  const composer = document.getElementById('userInput');
+  if (composer && composer.value.trim() === desc) composer.value = '';
+  const chatBox = document.getElementById('chatBox');
+  if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+  if (typeof taskTrackChatMessage === 'function') taskTrackChatMessage(currentId, ts);
+  closeChatTextImageModal();
+  if (typeof _handleAutoReplyAfterSend === 'function') _handleAutoReplyAfterSend(currentId);
+}
+function openChatSimVoiceModal() {
+  if (!currentId) { alert('请先选择一个角色'); return; }
+  closePlusPanel();
+  const senderHint = document.getElementById('chatSimVoiceSenderHint');
+  const textInput = document.getElementById('chatSimVoiceTextInput');
+  const durInput = document.getElementById('chatSimVoiceDurationInput');
+  const composer = document.getElementById('userInput');
+  if (senderHint) senderHint.textContent = (userProfile && userProfile.name) ? userProfile.name : '用户';
+  if (textInput) textInput.value = composer && composer.value.trim() ? composer.value.trim() : '';
+  if (durInput) durInput.value = '';
+  const modal = document.getElementById('chatSimVoiceModal');
+  if (modal) modal.style.display = 'flex';
+}
+function closeChatSimVoiceModal() {
+  const modal = document.getElementById('chatSimVoiceModal');
+  if (modal) modal.style.display = 'none';
+}
+function sendChatSimVoiceMessage() {
+  if (!currentId) return;
+  const p = personas.find(x => x.id == currentId);
+  if (!p) return;
+  const text = String((document.getElementById('chatSimVoiceTextInput') || {}).value || '').trim();
+  if (!text) {
+    alert('请先填写语音文字内容。');
+    return;
+  }
+  const durRaw = String((document.getElementById('chatSimVoiceDurationInput') || {}).value || '').trim();
+  const duration = durRaw || calcVoiceDuration(text);
+  const ts = Date.now();
+  p.history.push({
+    role: 'user',
+    msgType: 'voice',
+    content: text,
+    transcript: text,
+    duration: duration,
+    hasTranscript: true,
+    simulated: true,
+    timestamp: ts
+  });
+  saveData();
+  renderMessages();
+  renderContactList();
+  const composer = document.getElementById('userInput');
+  if (composer && composer.value.trim() === text) composer.value = '';
+  const chatBox = document.getElementById('chatBox');
+  if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+  if (typeof taskTrackChatMessage === 'function') taskTrackChatMessage(currentId, ts);
+  closeChatSimVoiceModal();
+  if (typeof _handleAutoReplyAfterSend === 'function') _handleAutoReplyAfterSend(currentId);
+}
+function openChatTakeoutModal() {
+  if (!currentId) { alert('请先选择一个角色'); return; }
+  const p = personas.find(x => x.id == currentId);
+  if (!p) return;
+  closePlusPanel();
+  const senderHint = document.getElementById('chatTakeoutSenderHint');
+  const recipientHint = document.getElementById('chatTakeoutRecipientHint');
+  if (senderHint) senderHint.textContent = (userProfile && userProfile.name) ? userProfile.name : '用户';
+  if (recipientHint) recipientHint.textContent = p.name || '当前角色';
+  ['chatTakeoutName','chatTakeoutShop','chatTakeoutPrice','chatTakeoutNote'].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const modal = document.getElementById('chatTakeoutModal');
+  if (modal) modal.style.display = 'flex';
+}
+function closeChatTakeoutModal() {
+  const modal = document.getElementById('chatTakeoutModal');
+  if (modal) modal.style.display = 'none';
+}
+function sendChatTakeoutCard() {
+  if (!currentId) return;
+  const p = personas.find(x => x.id == currentId);
+  if (!p) return;
+  const name = String((document.getElementById('chatTakeoutName') || {}).value || '').trim();
+  const shop = String((document.getElementById('chatTakeoutShop') || {}).value || '').trim();
+  const price = String((document.getElementById('chatTakeoutPrice') || {}).value || '').trim();
+  const note = String((document.getElementById('chatTakeoutNote') || {}).value || '').trim();
+  if (!name) {
+    alert('请先填写外卖名称。');
+    return;
+  }
+  const takeoutData = {
+    senderName: (userProfile && userProfile.name) ? userProfile.name : '你',
+    recipientName: p.name || '角色',
+    name: name,
+    shop: shop,
+    price: price,
+    note: note
+  };
+  const ts = Date.now();
+  p.history.push({
+    role: 'user',
+    msgType: 'takeout_card',
+    takeoutData: takeoutData,
+    content: _buildTakeoutHistoryText(takeoutData),
+    timestamp: ts
+  });
+  saveData();
+  renderMessages();
+  renderContactList();
+  const chatBox = document.getElementById('chatBox');
+  if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+  if (typeof taskTrackChatMessage === 'function') taskTrackChatMessage(currentId, ts);
+  closeChatTakeoutModal();
+  if (typeof _handleAutoReplyAfterSend === 'function') _handleAutoReplyAfterSend(currentId);
 }
 // Image preview
 function showImagePreview(src) {
@@ -30481,7 +31960,7 @@ function showImageContextMenu(e, idx, bubbleEl) {
     ev.stopPropagation();
     const quoteContent = msg.msgType === 'sticker'
       ? '[表情包' + (msg.caption ? ': ' + msg.caption : '') + ']'
-      : '[图片' + (msg.imageDesc ? ': ' + msg.imageDesc : (msg.imageCaption ? ': ' + msg.imageCaption : '')) + ']';
+      : '[' + (msg.imageSimulated ? '文字图' : '图片') + (msg.imageDesc ? ': ' + msg.imageDesc : (msg.imageCaption ? ': ' + msg.imageCaption : '')) + ']';
     currentQuoteMsg = { role: msg.role, content: quoteContent, index: idx };
     const preview = document.getElementById('quotePreview');
     const previewText = document.getElementById('quotePreviewText');
@@ -32242,6 +33721,7 @@ ${_buildPersonaIdentityPrompt(p)}
 6. 如果对话告一段落，角色可以根据人设主动延伸——分享自己的事、抛出新话题、发出疑问，方式必须符合这个角色的性格。
 7. 允许并鼓励角色展现细腻的情绪层次：轻微的不耐烦、隐约的开心、说了一半又收回去、突然沉默或简短——这些都比永远热情更真实。
 8. 角色有记忆，可以呼应用户之前说过的细节，体现"我有在听"。
+8.2. 如果最近消息里出现了图片、表情包、模拟语音、外卖卡等特殊消息，要把它们当成已经真实发生的聊天事件，自然接话、关心、吐槽或追问，不要装作没看到。
 8.5. 默认消息风格是短句分开发，尽量不要用逗号和句号；问号、感叹号、省略号可以保留来表达情绪。除非你的人设或世界书明确要求别的格式，否则都按这个默认风格来写；如果一句话明显过长，就主动拆成两条或多条，用 "###" 分隔。
 9. 【线下连续性】如果你的记忆里存在近期线下互动、线下剧情总结、见面时发生过的事，你必须把它们当作真实已发生事件来理解当前私聊。只要用户提到相关情绪、约定、场景或延续性话题，你都要能自然接住，绝不能表现得像完全忘记了线下发生过什么。
 10. 【引用回复】此功能仅限以下情况使用：当用户连续发送了多条内容不同的消息时，你可以选择性地引用其中某一条来回复，格式为 \`[reply:原文片段]\` 放在该条消息开头，例如：\`[reply:你说不想出门]\` 那也陪你宅着。
@@ -32266,16 +33746,10 @@ ${modePrompt}${quoteTip}${fwdContext}${timeContext}${transferContext}${wbInjecti
           };
         }
         if (m.msgType === 'image') {
-          const imgDesc = m.imageDesc || m.content || '[用户发送了一张图片]';
-          // 查找前后相邻的文字消息，作为上下文提示
-          const prevMsg = arr[idx - 1];
-          const prevText = (prevMsg && prevMsg.role === 'user' && !prevMsg.msgType && prevMsg.content) ? prevMsg.content : '';
-          const nextMsg = arr[idx + 1];
-          const nextText = (nextMsg && nextMsg.role === 'user' && !nextMsg.msgType && nextMsg.content) ? nextMsg.content : '';
-          let contextHint = '';
-          if (prevText) contextHint += `（前文：用户刚说了"${prevText}"）`;
-          if (nextText) contextHint += `（后续：用户接着说了"${nextText}"）`;
-          return { role: 'user', content: imgDesc + (contextHint ? ' ' + contextHint : '') };
+          return {
+            role: m.role === 'user' ? 'user' : 'assistant',
+            content: _buildImageHistoryText(m, idx, arr)
+          };
         }
         if (m.msgType === 'sticker') {
           const caption = m.caption || '';
@@ -32291,6 +33765,12 @@ ${modePrompt}${quoteTip}${fwdContext}${timeContext}${transferContext}${wbInjecti
           if (nextText) stickerContext += `（用户接着说了："${nextText}"）`;
           stickerContext += '（请综合上下文自然回应，无需刻意提及表情包本身）';
           return { role: m.role === 'user' ? 'user' : 'assistant', content: stickerContext };
+        }
+        if (m.msgType === 'takeout_card') {
+          return {
+            role: m.role === 'user' ? 'user' : 'assistant',
+            content: _buildTakeoutHistoryText(m.takeoutData || {})
+          };
         }
         if (m.msgType === 'forwarded_post') {
           const fd = m.fwdData || {};
@@ -32410,6 +33890,7 @@ ${modePrompt}${quoteTip}${fwdContext}${timeContext}${transferContext}${wbInjecti
     if (p.allowSticker) {
       await tryPersonaSendSticker(p);
     }
+    await tryPersonaSendTextImage(p, p.history.slice(-(p.memoryCount||100)).map(m => `${m.role==='user'?userProfile.name:p.name}：${m.content||''}`).join('\n'));
     // Check if persona should send voice
     if (p.allowVoice) {
       await tryPersonaSendVoice(p, messages.map(m => String(m || '').trim()));
@@ -32418,6 +33899,7 @@ ${modePrompt}${quoteTip}${fwdContext}${timeContext}${transferContext}${wbInjecti
     // Check if persona wants to transfer
     const recentChatForTransfer = p.history.slice(-(p.memoryCount||100)).map(m => `${m.role==='user'?userProfile.name:p.name}：${m.content||''}`).join('\n');
     await tryPersonaInitiateTransfer(p, recentChatForTransfer);
+    await tryPersonaInitiateTakeout(p, recentChatForTransfer);
     spyDataCache = {};
     try { renderContactList(); } catch(e) {}
     // Black Box: generate thought record (async, non-blocking)
@@ -36264,7 +37746,7 @@ function scriptBuildInviteBubbleHTML(scriptTitle, charName, charRole, charPerson
   const now = new Date();
   const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
   const tagArr = tags ? tags.split(',').filter(t => t) : [];
-  return `<div class="script-invite-bubble">
+  return `<div class="script-invite-bubble script-invite-card">
     <div class="script-invite-pattern"><span></span><span></span><span></span><span></span><span></span></div>
     <div class="script-invite-header">
       <div class="script-invite-icon"><i class="fas fa-theater-masks"></i></div>
@@ -36290,7 +37772,7 @@ function scriptBuildInviteBubbleHTML(scriptTitle, charName, charRole, charPerson
 function scriptBuildInviteResponseHTML(status, responseText) {
   const statusLabel = status === 'accepted' ? '已接受邀请' : '已婉拒邀请';
   const statusClass = status === 'accepted' ? 'accepted' : 'declined';
-  return `<div class="script-invite-bubble" style="max-width:240px;">
+  return `<div class="script-invite-bubble script-invite-card" style="max-width:240px;">
     <div class="script-invite-status ${statusClass}">${statusLabel}</div>
     <div style="padding:8px 16px;font-size:11px;color:#555;line-height:1.6;">${responseText}</div>
     <div class="script-invite-pattern"><span></span><span></span><span></span><span></span><span></span></div>
@@ -39232,7 +40714,7 @@ function renderGroupMessages(g) {
     else if (msg.type === 'sticker' && msg.stickerData) {
       const cap = msg.stickerData.caption ? ' caption-show' : '';
       const stickerSrc = msg.stickerData.src || msg.stickerData.image || '';
-      bubbleContent = `<div class="bubble-sticker${cap}" style="background:none;border:none;padding:4px;">
+      bubbleContent = `<div class="bubble-sticker sticker-bubble${cap}" style="background:none;border:none;padding:4px;">
         <img src="${stickerSrc}" alt="表情包" style="max-width:120px;max-height:120px;border-radius:8px;display:block;object-fit:contain;" onerror="this.style.display='none'">
         ${msg.stickerData.caption ? `<div class="bubble-sticker-caption">${msg.stickerData.caption}</div>` : ''}
       </div>`;
@@ -39291,7 +40773,7 @@ function renderGroupMessages(g) {
       const _gcVoiceTranscriptAttrs = displayVoiceText
         ? ` data-lazy-transcript-text="${_escapeAttrText(displayVoiceText)}" data-lazy-transcript-show="${isUserMsg ? '1' : '0'}"`
         : '';
-      bubbleContent = `<div class="bubble ${bubbleClass} bubble-voice${_gcVoiceExtraClass}" onclick="toggleVoiceTranscript(this)" data-audio-url="${_escapeAttrText(msg.audioUrl || '')}"${_gcVTAttrs}${_gcVoiceTranscriptAttrs}>
+      bubbleContent = `<div class="bubble ${bubbleClass} bubble-voice voice-message-bar${_gcVoiceExtraClass}" onclick="toggleVoiceTranscript(this)" data-audio-url="${_escapeAttrText(msg.audioUrl || '')}"${_gcVTAttrs}${_gcVoiceTranscriptAttrs}>
         ${_gcVoiceInner}
         ${_gcVTranslationHtml}
       </div>`;
@@ -39331,7 +40813,7 @@ function renderGroupMessages(g) {
       ? (msg._recalled ? '' : (msg._readByChar ? '已读' : '未读'))
       : (msg._recalled ? '' : (msg._readByUser ? '已读' : '未读'));
     const _gcReadColor = (isUser ? (msg._readByChar ? 'var(--chat-meta-read-color, #aaa)' : 'var(--chat-meta-unread-color, #ccc)') : (msg._readByUser ? 'var(--chat-meta-read-color, #aaa)' : 'var(--chat-meta-unread-color, #ccc)'));
-    const _gcMetaRow = `<div style="font-size:8px;color:var(--chat-meta-time-color,#bbb);margin-top:2px;display:flex;gap:4px;${isUser?'justify-content:flex-end;':'justify-content:flex-start;'}">${timeStr?`<span>${timeStr}</span>`:''} ${_gcReadStatus?`<span style="color:${_gcReadColor};">${_gcReadStatus}</span>`:''} ${msg.edited?'<span>(已编辑)</span>':''}</div>`;
+    const _gcMetaRow = `<div class="msg-time msg-time-read" style="font-size:8px;color:var(--chat-meta-time-color,#bbb);margin-top:2px;display:flex;gap:4px;${isUser?'justify-content:flex-end;':'justify-content:flex-start;'}">${timeStr?`<span>${timeStr}</span>`:''} ${_gcReadStatus?`<span style="color:${_gcReadColor};">${_gcReadStatus}</span>`:''} ${msg.edited?'<span>(已编辑)</span>':''}</div>`;
     if (msg._recalled) {
       const _rName = isUser ? userProfile.name : name;
       return `<div class="msg-row ${side}${selectedClass}" id="${msgId}" data-idx="${idx}">
@@ -41482,11 +42964,241 @@ let musicState = {
   savedTracks: [],
   currentTab: 'search', // search, library, invite
   miniVisible: false,
+  miniHiddenByUser: false,
   repeatMode: 0, // 0=off,1=all,2=one
   shuffleMode: false,
   duration: 0,
-  currentTime: 0
+  currentTime: 0,
+  importedTracks: [],
+  accountCookie: '',
+  accountProfile: null
 };
+const MUSIC_IMPORTED_META_KEY = 'mono_music_imported_tracks_v1';
+const MUSIC_ACCOUNT_COOKIE_KEY = 'mono_music_account_cookie_v1';
+const MUSIC_ACCOUNT_PROFILE_KEY = 'mono_music_account_profile_v1';
+function _musicEsc(text) {
+  return String(text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function loadMusicAccountCookie() {
+  try { musicState.accountCookie = localStorage.getItem(MUSIC_ACCOUNT_COOKIE_KEY) || ''; } catch(e) { musicState.accountCookie = ''; }
+  return musicState.accountCookie;
+}
+function saveMusicAccountProfile(profile) {
+  musicState.accountProfile = profile || null;
+  try {
+    localStorage.setItem(MUSIC_ACCOUNT_PROFILE_KEY, JSON.stringify(musicState.accountProfile || null));
+  } catch(e) {}
+}
+function loadMusicAccountProfile() {
+  try { musicState.accountProfile = JSON.parse(localStorage.getItem(MUSIC_ACCOUNT_PROFILE_KEY) || 'null'); } catch(e) { musicState.accountProfile = null; }
+  return musicState.accountProfile;
+}
+function getMusicAccountCookieQuery() {
+  const cookie = String(musicState.accountCookie || '').trim();
+  return cookie ? '&cookie=' + encodeURIComponent(cookie) : '';
+}
+function loadMusicImportedTracks() {
+  try { musicState.importedTracks = JSON.parse(localStorage.getItem(MUSIC_IMPORTED_META_KEY) || '[]'); } catch(e) { musicState.importedTracks = []; }
+  if (!Array.isArray(musicState.importedTracks)) musicState.importedTracks = [];
+  return musicState.importedTracks;
+}
+function saveMusicImportedTracks() {
+  try { localStorage.setItem(MUSIC_IMPORTED_META_KEY, JSON.stringify(musicState.importedTracks || [])); } catch(e) {}
+}
+function makeImportedMusicBlobKey(trackId, kind) {
+  return 'music_import_' + kind + '_' + trackId;
+}
+function readTextFile(file) {
+  return new Promise(function(resolve, reject) {
+    if (!file) return resolve('');
+    const reader = new FileReader();
+    reader.onload = function(e) { resolve(String(e.target.result || '')); };
+    reader.onerror = function() { reject(reader.error || new Error('读取文件失败')); };
+    reader.readAsText(file, 'utf-8');
+  });
+}
+async function refreshMusicAccountStatus(silent) {
+  loadMusicAccountCookie();
+  loadMusicAccountProfile();
+  if (!musicState.accountCookie) {
+    musicState.accountProfile = null;
+    saveMusicAccountProfile(null);
+    if (!silent) renderMusicLibrary();
+    return null;
+  }
+  try {
+    const statusData = await neteaseApiFetch('/login/status?timestamp=' + Date.now() + getMusicAccountCookieQuery());
+    const profile = (statusData && (statusData.data && statusData.data.profile || statusData.profile)) || null;
+    if (profile) {
+      const normalized = {
+        nickname: profile.nickname || '网易云用户',
+        avatarUrl: profile.avatarUrl || '',
+        userId: profile.userId || ''
+      };
+      saveMusicAccountProfile(normalized);
+      if (!silent) renderMusicLibrary();
+      return normalized;
+    }
+  } catch(e) {}
+  const fallback = musicState.accountProfile || {
+    nickname: '已连接的网易云账号',
+    avatarUrl: '',
+    userId: ''
+  };
+  saveMusicAccountProfile(fallback);
+  if (!silent) renderMusicLibrary();
+  return fallback;
+}
+function openMusicAccountModal() {
+  loadMusicAccountCookie();
+  loadMusicAccountProfile();
+  const modal = document.getElementById('musicAccountModal');
+  const input = document.getElementById('musicAccountCookieInput');
+  const status = document.getElementById('musicAccountStatus');
+  if (input) input.value = musicState.accountCookie || '';
+  if (status) {
+    if (musicState.accountProfile) {
+      status.innerHTML = '当前状态：<b style="color:#1a1a1a;">已连接</b><br>账号：' + _musicEsc(musicState.accountProfile.nickname || '网易云用户');
+    } else {
+      status.textContent = musicState.accountCookie ? '已保存 Cookie，等待校验账号状态。' : '还没有连接账号。';
+    }
+  }
+  if (modal) modal.style.display = 'flex';
+}
+function closeMusicAccountModal() {
+  const modal = document.getElementById('musicAccountModal');
+  if (modal) modal.style.display = 'none';
+}
+async function saveMusicAccountCookie() {
+  const input = document.getElementById('musicAccountCookieInput');
+  const status = document.getElementById('musicAccountStatus');
+  const raw = String(input && input.value || '').trim();
+  let cookie = raw;
+  const match = raw.match(/MUSIC_U=([^;]+)/i);
+  if (match && match[1]) cookie = 'MUSIC_U=' + match[1].trim();
+  musicState.accountCookie = cookie;
+  try { localStorage.setItem(MUSIC_ACCOUNT_COOKIE_KEY, cookie); } catch(e) {}
+  if (status) status.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:6px;"></i>正在校验账号...';
+  const profile = await refreshMusicAccountStatus(true);
+  if (status) {
+    status.innerHTML = profile
+      ? '当前状态：<b style="color:#1a1a1a;">已连接</b><br>账号：' + _musicEsc(profile.nickname || '网易云用户')
+      : 'Cookie 已保存。部分 API 实例不返回账号资料，但之后会优先用你的账号尝试拿播放链接。';
+  }
+  renderMusicLibrary();
+}
+function clearMusicAccountCookie() {
+  musicState.accountCookie = '';
+  saveMusicAccountProfile(null);
+  try { localStorage.removeItem(MUSIC_ACCOUNT_COOKIE_KEY); } catch(e) {}
+  const input = document.getElementById('musicAccountCookieInput');
+  const status = document.getElementById('musicAccountStatus');
+  if (input) input.value = '';
+  if (status) status.textContent = '账号已断开。';
+  renderMusicLibrary();
+}
+function openMusicImportModal() {
+  const modal = document.getElementById('musicImportModal');
+  if (modal) modal.style.display = 'flex';
+}
+function closeMusicImportModal() {
+  const modal = document.getElementById('musicImportModal');
+  if (modal) modal.style.display = 'none';
+}
+function handleMusicImportAudioChange(input) {
+  const file = input && input.files && input.files[0];
+  const titleInput = document.getElementById('musicImportTitleInput');
+  if (file && titleInput && !titleInput.value.trim()) {
+    titleInput.value = file.name.replace(/\.[^.]+$/, '');
+  }
+}
+async function importMusicTrack() {
+  const audioInput = document.getElementById('musicImportAudioInput');
+  const lyricsInput = document.getElementById('musicImportLyricsFileInput');
+  const titleInput = document.getElementById('musicImportTitleInput');
+  const artistInput = document.getElementById('musicImportArtistInput');
+  const lyricsTextarea = document.getElementById('musicImportLyricsTextarea');
+  const audioFile = audioInput && audioInput.files && audioInput.files[0];
+  if (!audioFile) return alert('请先选择音频文件');
+  const title = String(titleInput && titleInput.value || '').trim() || audioFile.name.replace(/\.[^.]+$/, '');
+  if (!title) return alert('请填写歌曲名');
+  let lyricsRaw = String(lyricsTextarea && lyricsTextarea.value || '').trim();
+  const lyricsFile = lyricsInput && lyricsInput.files && lyricsInput.files[0];
+  if (!lyricsRaw && lyricsFile) {
+    try { lyricsRaw = (await readTextFile(lyricsFile)).trim(); } catch(e) {}
+  }
+  const trackId = 'imported_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+  const audioKey = makeImportedMusicBlobKey(trackId, 'audio');
+  const audioBuffer = await audioFile.arrayBuffer();
+  if (window._monoIdbBlobSet) await window._monoIdbBlobSet(audioKey, audioBuffer).catch(function(){});
+  const track = {
+    id: trackId,
+    source: 'imported',
+    name: title,
+    artist: String(artistInput && artistInput.value || '').trim() || '本地导入',
+    album: '本地导入',
+    cover: '',
+    duration: 0,
+    fee: 0,
+    audioRef: 'idb:' + audioKey,
+    lyricsRaw: lyricsRaw,
+    importedAt: Date.now()
+  };
+  loadMusicImportedTracks();
+  musicState.importedTracks.unshift(track);
+  saveMusicImportedTracks();
+  if (audioInput) audioInput.value = '';
+  if (lyricsInput) lyricsInput.value = '';
+  if (titleInput) titleInput.value = '';
+  if (artistInput) artistInput.value = '';
+  if (lyricsTextarea) lyricsTextarea.value = '';
+  closeMusicImportModal();
+  renderMusicLibrary();
+}
+async function removeImportedTrack(trackId) {
+  loadMusicImportedTracks();
+  const track = musicState.importedTracks.find(function(item) { return item.id === trackId; });
+  musicState.importedTracks = musicState.importedTracks.filter(function(item) { return item.id !== trackId; });
+  saveMusicImportedTracks();
+  if (track && track.audioRef && String(track.audioRef).startsWith('idb:') && window._monoIdbBlobDel) {
+    await window._monoIdbBlobDel(String(track.audioRef).slice(4)).catch(function(){});
+  }
+  renderMusicLibrary();
+}
+function playImportedTrack(index) {
+  loadMusicImportedTracks();
+  musicState.playlist = musicState.importedTracks.slice();
+  playMusicTrack(index);
+}
+function buildMusicLibraryAccountCard() {
+  const profile = musicState.accountProfile;
+  const hasCookie = !!String(musicState.accountCookie || '').trim();
+  const title = profile
+    ? ('已连接 · ' + _musicEsc(profile.nickname || '网易云用户'))
+    : (hasCookie ? '已保存账号凭证' : '还没有连接账号');
+  const subtitle = profile
+    ? 'VIP 歌曲会优先尝试用你的账号获取播放链接。'
+    : hasCookie
+      ? '有些公开 API 实例不返回账号资料，但仍会优先用你的凭证拉取歌曲链接。'
+      : '连接自己的网易云账号后，VIP 歌曲会优先按你的会员状态尝试播放。';
+  return '<div class="music-library-card">'
+    + '<div class="music-library-card-title">网易云账号</div>'
+    + '<div class="music-library-card-sub"><b style="color:#1a1a1a;">' + title + '</b><br>' + subtitle + '</div>'
+    + '<div class="music-library-actions">'
+      + '<button class="music-library-pill-btn" onclick="openMusicAccountModal()">连接账号</button>'
+      + '<button class="music-library-pill-btn ghost" onclick="refreshMusicAccountStatus()">刷新状态</button>'
+    + '</div>'
+  + '</div>';
+}
+function buildMusicImportCard() {
+  return '<div class="music-library-card">'
+    + '<div class="music-library-card-title">本地导入</div>'
+    + '<div class="music-library-card-sub">导入你自己的歌曲和歌词，播放器与歌词区会沿用和网易云同样的播放模式。</div>'
+    + '<div class="music-library-actions">'
+      + '<button class="music-library-pill-btn" onclick="openMusicImportModal()">导入歌曲</button>'
+    + '</div>'
+  + '</div>';
+}
 function openMusicApp() {
   document.getElementById('homeScreen').style.display = 'none';
   document.querySelectorAll('.page').forEach(p => { p.classList.remove('active'); p.style.display = 'none'; });
@@ -41494,7 +43206,12 @@ function openMusicApp() {
   page.classList.add('active');
   page.style.display = 'flex';
   hideMusicMiniBar();
+  toggleMusicMiniBarVisibility(false, true);
   loadMusicSavedTracks();
+  loadMusicImportedTracks();
+  loadMusicAccountCookie();
+  loadMusicAccountProfile();
+  refreshMusicAccountStatus(true);
   if (musicState.currentTab === 'search') switchMusicTab('search');
   else if (musicState.currentTab === 'library') switchMusicTab('library');
   renderMusicCharSelector();
@@ -41505,7 +43222,10 @@ function closeMusicApp() {
   page.style.display = 'none';
   document.getElementById('homeScreen').style.display = 'flex';
   updateHomeScreen();
-  if (musicState.isPlaying) showMusicMiniBar();
+  if (musicState.isPlaying) {
+    if (musicState.miniHiddenByUser) showMusicMiniRestorePill();
+    else showMusicMiniBar();
+  }
 }
 function switchMusicTab(tab) {
   musicState.currentTab = tab;
@@ -41543,7 +43263,7 @@ async function neteaseApiFetch(path, hosts) {
 }
 async function searchNetease(keyword) {
   const q = encodeURIComponent(keyword);
-  const data = await neteaseApiFetch(`/search?keywords=${q}&limit=30&type=1`);
+  const data = await neteaseApiFetch(`/search?keywords=${q}&limit=30&type=1${getMusicAccountCookieQuery()}`);
   if (!data) return null; // null = API unreachable
   const songs = (data.result && data.result.songs) || data.songs || [];
   return songs.map(s => ({
@@ -41558,8 +43278,18 @@ async function searchNetease(keyword) {
   }));
 }
 async function getMusicUrl(songId) {
+  if (musicState.currentTrack && musicState.currentTrack.source === 'imported') {
+    return musicState.currentTrack.audioRef || null;
+  }
+  const cookieQuery = getMusicAccountCookieQuery();
+  if (cookieQuery) {
+    const vipData = await neteaseApiFetch(`/song/url/v1?id=${songId}&level=lossless${cookieQuery}`);
+    if (vipData && vipData.data && Array.isArray(vipData.data) && vipData.data[0] && vipData.data[0].url) {
+      return vipData.data[0].url;
+    }
+  }
   // Try NeteaseCloudMusicApi /song/url endpoint first
-  const data = await neteaseApiFetch(`/song/url?id=${songId}&br=128000`);
+  const data = await neteaseApiFetch(`/song/url?id=${songId}&br=128000${cookieQuery}`);
   if (data && data.data && Array.isArray(data.data) && data.data[0] && data.data[0].url) {
     return data.data[0].url;
   }
@@ -41567,6 +43297,9 @@ async function getMusicUrl(songId) {
   return `https://music.163.com/song/media/outer/url?id=${songId}.mp3`;
 }
 async function getLyrics(songId) {
+  if (musicState.currentTrack && musicState.currentTrack.source === 'imported') {
+    return parseLRC(musicState.currentTrack.lyricsRaw || '');
+  }
   const data = await neteaseApiFetch(`/lyric?id=${songId}`);
   if (!data) return [];
   const lrcText = (data.lrc && data.lrc.lyric) || '';
@@ -41585,6 +43318,11 @@ function parseLRC(lrc) {
       const t = parseInt(m[1])*60 + parseInt(m[2]) + parseInt(m[3])/1000;
       result.push({ time: t, text });
     }
+  }
+  if (!result.length) {
+    return lines.map(function(line) { return String(line || '').trim(); }).filter(Boolean).map(function(text, idx) {
+      return { time: null, text: text, staticIndex: idx };
+    });
   }
   return result.sort((a,b) => a.time - b.time);
 }
@@ -41630,11 +43368,15 @@ function renderTrackItem(t, i) {
   const coverHtml = t.cover
     ? `<img src="${t.cover}" onerror="this.style.display='none'">`
     : `<div class="music-track-cover-placeholder"><i class="fas fa-music"></i></div>`;
+  const vipBadge = t.fee === 1 ? `<span class="music-track-vip-badge">VIP</span>` : '';
   return `<div class="music-track-item${isPlaying?' playing':''}" onclick="playMusicTrack(${i})">
     <div class="music-track-cover">${coverHtml}</div>
     <div class="music-track-info">
       <div class="music-track-name">${t.name}</div>
-      <div class="music-track-artist">${t.artist}${t.album?' · '+t.album:''}</div>
+      <div class="music-track-meta-row">
+        <div class="music-track-artist">${t.artist}${t.album?' · '+t.album:''}</div>
+        ${vipBadge}
+      </div>
     </div>
     <div class="music-track-actions">
       <button class="music-track-btn${isSaved?' saved':''}" onclick="event.stopPropagation();toggleSaveTrack(${t.id})" title="${isSaved?'取消收藏':'收藏'}"><i class="fas fa-${isSaved?'bookmark':'bookmark'}" style="font-weight:${isSaved?'900':'400'};"></i></button>
@@ -41673,6 +43415,9 @@ async function playMusicTrack(indexOrTrack) {
     url = await getMusicUrl(track.id);
   } catch(e) {
     url = `https://music.163.com/song/media/outer/url?id=${track.id}.mp3`;
+  }
+  if (url && String(url).startsWith('idb:')) {
+    url = await _resolveAudioRef(url);
   }
   musicState.audio = new Audio();
   musicState.audio.crossOrigin = 'anonymous';
@@ -41818,6 +43563,12 @@ function renderMusicLyrics() {
     panel.innerHTML = `<div class="music-lyrics-loading">暂无歌词</div>`;
     return;
   }
+  if (musicState.lyrics.every(l => l.time == null)) {
+    panel.innerHTML = musicState.lyrics.map((l, i) =>
+      `<div class="music-lyric-line${i===0?' active':''}" id="lyric_${i}">${l.text}</div>`
+    ).join('');
+    return;
+  }
   panel.innerHTML = musicState.lyrics.map((l, i) =>
     `<div class="music-lyric-line" id="lyric_${i}">${l.text}</div>`
   ).join('');
@@ -41826,6 +43577,7 @@ function startLyricSync() {
   if (musicState.lyricTimer) clearInterval(musicState.lyricTimer);
   musicState.lyricTimer = setInterval(() => {
     if (!musicState.audio || !musicState.lyrics.length) return;
+    if (musicState.lyrics.every(l => l.time == null)) return;
     const cur = musicState.audio.currentTime || 0;
     let activeIdx = -1;
     for (let i = 0; i < musicState.lyrics.length; i++) {
@@ -41851,6 +43603,7 @@ function saveMusicTrackList() {
 function toggleSaveTrack(trackId) {
   loadMusicSavedTracks();
   const track = musicState.playlist.find(t => t.id == trackId) || (musicState.currentTrack && musicState.currentTrack.id == trackId ? musicState.currentTrack : null);
+  if (track && track.source === 'imported') return;
   const idx = musicState.savedTracks.findIndex(s => s.id == trackId);
   if (idx >= 0) {
     musicState.savedTracks.splice(idx, 1);
@@ -41872,37 +43625,62 @@ function updateMusicPlayerSaveBtn() {
   const isSaved = musicState.savedTracks.some(s => s.id == musicState.currentTrack.id);
   const btn = document.getElementById('musicPlayerSaveBtn');
   if (btn) {
+    if (musicState.currentTrack.source === 'imported') {
+      btn.classList.add('active');
+      btn.querySelector('span').textContent = '已导入';
+      return;
+    }
     btn.classList.toggle('active', isSaved);
     btn.querySelector('span').textContent = isSaved ? '已收藏' : '收藏';
   }
 }
+function renderMusicLibraryTrackRow(t, i, opts) {
+  opts = opts || {};
+  const isPlaying = musicState.currentTrack && musicState.currentTrack.id == t.id;
+  const coverHtml = t.cover
+    ? `<img src="${t.cover}" onerror="this.style.display='none'">`
+    : `<div class="music-track-cover-placeholder"><i class="fas fa-music"></i></div>`;
+  const badge = t.source === 'imported'
+    ? `<span class="music-import-badge"><i class="fas fa-file-audio"></i>本地导入</span>`
+    : (t.fee === 1 ? `<span class="music-track-vip-badge">VIP</span>` : '');
+  const actionHtml = t.source === 'imported'
+    ? `<button class="music-track-btn saved" onclick="event.stopPropagation();removeImportedTrack('${t.id}')" title="删除导入"><i class="fas fa-trash"></i></button>`
+    : `<button class="music-track-btn saved" onclick="event.stopPropagation();removeFromLibrary(${t.id})" title="取消收藏"><i class="fas fa-bookmark"></i></button>
+       <button class="music-track-btn" onclick="event.stopPropagation();shareMusicToChar(${JSON.stringify(t).replace(/"/g,'&quot;')})" title="分享"><i class="fas fa-share"></i></button>`;
+  const playFn = opts.playFn || 'playFromLibrary';
+  return `<div class="music-track-item${isPlaying?' playing':''}" onclick="${playFn}(${i})">
+    <div class="music-track-cover">${coverHtml}</div>
+    <div class="music-track-info">
+      <div class="music-track-name">${_musicEsc(t.name)}</div>
+      <div class="music-track-meta-row">
+        <div class="music-track-artist">${_musicEsc(t.artist)}</div>
+        ${badge}
+      </div>
+    </div>
+    <div class="music-track-actions">${actionHtml}</div>
+  </div>`;
+}
 function renderMusicLibrary() {
   loadMusicSavedTracks();
+  loadMusicImportedTracks();
+  loadMusicAccountCookie();
+  loadMusicAccountProfile();
   const el = document.getElementById('musicLibraryList');
   if (!el) return;
-  if (!musicState.savedTracks.length) {
-    el.innerHTML = `<div class="music-library-empty"><i class="fas fa-music"></i>收藏列表为空<br>在搜索结果中点击书签图标收藏歌曲</div>`;
-    return;
-  }
-  // Temporarily set playlist to saved for playback
-  const savedPlaylist = [...musicState.savedTracks];
-  el.innerHTML = musicState.savedTracks.map((t, i) => {
-    const isPlaying = musicState.currentTrack && musicState.currentTrack.id == t.id;
-    const coverHtml = t.cover
-      ? `<img src="${t.cover}" onerror="this.style.display='none'">`
-      : `<div class="music-track-cover-placeholder"><i class="fas fa-music"></i></div>`;
-    return `<div class="music-track-item${isPlaying?' playing':''}" onclick="playFromLibrary(${i})">
-      <div class="music-track-cover">${coverHtml}</div>
-      <div class="music-track-info">
-        <div class="music-track-name">${t.name}</div>
-        <div class="music-track-artist">${t.artist}</div>
-      </div>
-      <div class="music-track-actions">
-        <button class="music-track-btn saved" onclick="event.stopPropagation();removeFromLibrary(${t.id})" title="取消收藏"><i class="fas fa-bookmark"></i></button>
-        <button class="music-track-btn" onclick="event.stopPropagation();shareMusicToChar(${JSON.stringify(t).replace(/"/g,'&quot;')})" title="分享"><i class="fas fa-share"></i></button>
-      </div>
-    </div>`;
-  }).join('');
+  const importedHtml = musicState.importedTracks.length
+    ? musicState.importedTracks.map((t, i) => renderMusicLibraryTrackRow(t, i, { playFn: 'playImportedTrack' })).join('')
+    : `<div class="music-library-empty" style="padding:24px 20px;"><i class="fas fa-file-audio"></i>还没有导入歌曲<br>导入后会和网易云歌曲一样进入播放器与歌词区</div>`;
+  const savedHtml = musicState.savedTracks.length
+    ? musicState.savedTracks.map((t, i) => renderMusicLibraryTrackRow(t, i, { playFn: 'playFromLibrary' })).join('')
+    : `<div class="music-library-empty" style="padding:24px 20px;"><i class="fas fa-music"></i>收藏列表为空<br>在搜索结果中点击书签图标收藏歌曲</div>`;
+  el.innerHTML = `<div class="music-library-shell">
+    ${buildMusicLibraryAccountCard()}
+    ${buildMusicImportCard()}
+    <div class="music-library-section-title">导入歌曲</div>
+    <div class="music-library-card" style="padding:0;overflow:hidden;">${importedHtml}</div>
+    <div class="music-library-section-title">我的收藏</div>
+    <div class="music-library-card" style="padding:0;overflow:hidden;">${savedHtml}</div>
+  </div>`;
 }
 function playFromLibrary(i) {
   musicState.playlist = [...musicState.savedTracks];
@@ -41914,8 +43692,31 @@ function removeFromLibrary(trackId) {
   renderMusicLibrary();
 }
 // ── Mini Bar ──
+function showMusicMiniRestorePill() {
+  const pill = document.getElementById('musicMiniRestorePill');
+  if (pill && musicState.isPlaying) pill.classList.add('visible');
+}
+function hideMusicMiniRestorePill() {
+  const pill = document.getElementById('musicMiniRestorePill');
+  if (pill) pill.classList.remove('visible');
+}
+function toggleMusicMiniBarVisibility(hidden, forceHidePill) {
+  musicState.miniHiddenByUser = !!hidden;
+  if (hidden) {
+    hideMusicMiniBar();
+    if (musicState.isPlaying) showMusicMiniRestorePill();
+  } else {
+    hideMusicMiniRestorePill();
+    if (!forceHidePill && musicState.isPlaying) showMusicMiniBar();
+  }
+}
 function showMusicMiniBar() {
   const bar = document.getElementById('musicMiniBar');
+  if (musicState.miniHiddenByUser) {
+    showMusicMiniRestorePill();
+    return;
+  }
+  hideMusicMiniRestorePill();
   if (bar) { bar.classList.add('visible'); musicState.miniVisible = true; }
   updateMusicMiniBar();
 }
@@ -41927,7 +43728,9 @@ function stopMusicFromMini() {
   if (musicState.audio) { musicState.audio.pause(); musicState.audio.src = ''; }
   musicState.isPlaying = false;
   musicState.currentTrack = null;
+  musicState.miniHiddenByUser = false;
   hideMusicMiniBar();
+  hideMusicMiniRestorePill();
 }
 function updateMusicMiniBar() {
   const t = musicState.currentTrack;
@@ -41940,6 +43743,11 @@ function updateMusicMiniBar() {
   if (coverEl) {
     if (t.cover) coverEl.innerHTML = `<img src="${t.cover}" style="width:100%;height:100%;object-fit:cover;">`;
     else coverEl.innerHTML = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:16px;"><i class="fas fa-music"></i></div>`;
+  }
+  const pill = document.getElementById('musicMiniRestorePill');
+  if (pill) {
+    const span = pill.querySelector('span');
+    if (span) span.textContent = t.name ? `显示 ${t.name}` : '显示音乐条';
   }
 }
 // ── Invite Character ──
@@ -42169,7 +43977,7 @@ async function confirmShareMusic(personaId) {
   const coverHtml = track.cover
     ? `<img src="${track.cover}" style="width:44px;height:44px;object-fit:cover;border-radius:10px;">`
     : `<div style="width:44px;height:44px;background:#ccc;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;color:#888;"><i class='fas fa-music'></i></div>`;
-  const shareBubbleHTML = `<div class="music-share-bubble">
+  const shareBubbleHTML = `<div class="music-share-bubble music-share-card">
     <div class="music-share-cover">${coverHtml}</div>
     <div class="music-share-info">
       <div class="music-share-name">${track.name}</div>
@@ -47797,6 +49605,7 @@ var _offlineState = {
     saveToMemory: true,
     locationShare: false,
     bgmMode: false,
+    heartVoicePopup: true,
     worldBookEntries: {},
     style: 0,  // 0=细膩写实 1=浪漫唯美 2=日常轻松 3=紧张刺激
     theme: 'dark' // 'dark' | 'white' | 'cream' | 'navy'
@@ -49040,6 +50849,16 @@ async function _generateOfflineResponse(session) {
         '不要解释为什麼选这首，直接放在最前面一行后换行继续剧情。'
       ].join('\n');
     }
+    var offlineHeartVoiceRule = '';
+    if (_offlineState.settings.heartVoicePopup) {
+      offlineHeartVoiceRule = [
+        '【线下剧情心声规则】',
+        '在本次回复的最后，必须另起一行追加 [heart_voice]...[/heart_voice] 标签。',
+        '标签内必须是单行 JSON，格式：{"emotion":"当前情绪","thoughts":"30字内的第一人称心声","heartRate":"心率如 92 bpm","jealousy":"醋意指数，无则留空","notificationLines":["像通知弹窗那样的碎句心声1","碎句心声2"]}',
+        'notificationLines 可写 1-3 条，必须像刚回完消息后脑海里一闪而过的第一人称碎句。',
+        '除了这一段 [heart_voice] 标签外，不要解释规则。'
+      ].join('\n');
+    }
     var systemPrompt = (_offlineState.tab === 'if' || session.mode === 'if')
       ? _getIfLineSystemPrompt(p, session)
       : isShort
@@ -49051,6 +50870,7 @@ async function _generateOfflineResponse(session) {
           locationNote,
           offlineWbInjection,
           bgmNote,
+          offlineHeartVoiceRule,
           '文风要求：' + styleNote + '。这条要求优先级很高，措辞、句式、节奏、情绪推进都必须明显体现这个文风。',
           wordRule,
           '完整性要求：这一轮内容必须停在完整句子、完整动作或完整场景节点上，绝对不能半句话、半个动作、半段对话突然断掉。',
@@ -49076,6 +50896,7 @@ async function _generateOfflineResponse(session) {
           
           offlineWbInjection,
           bgmNote,
+          offlineHeartVoiceRule,
           '根据角色的人设和最近的聊天脉络，自然发展剧情。剧情要合乎邏輯，场景变换要自然。',
           '用「──」分隔场景，用斜体（*文字*）标示环境描写。',
           autoSummaryEvery > 0 ? '系统会按剧情互动自动总结，你必须保持剧情连贯，让后续总结能准确承接之前发生的事。' : '',
@@ -49187,6 +51008,22 @@ async function _generateOfflineResponse(session) {
       ]);
     }
     reply = reply.trim();
+    if (_offlineState.settings.heartVoicePopup) {
+      var offlineHvMatch = reply.match(/\[heart_voice\]\s*(\{[\s\S]*?\})\s*(?:\[\/heart_voice\]|$)/);
+      if (offlineHvMatch && offlineHvMatch[1]) {
+        try {
+          var offlineHvData = _normalizeHeartVoicePayload(JSON.parse(offlineHvMatch[1].trim()));
+          p.lastHeartVoice = offlineHvData;
+          if (String(currentId || '') === String(p.id || '')) updateHeadHeartVoice(p);
+          if (offlineHvData.notificationLines && offlineHvData.notificationLines.length) {
+            _queueHeartVoicePopupLines(p, offlineHvData.notificationLines, { type: 'reply', offline: true, allowWhenOffline: true, forcePopup: true });
+          } else if (offlineHvData.thoughts) {
+            _queueHeartVoicePopupLines(p, [offlineHvData.thoughts], { type: 'reply', offline: true, allowWhenOffline: true, forcePopup: true });
+          }
+        } catch(e) {}
+        reply = reply.replace(offlineHvMatch[0], '').trim();
+      }
+    }
     if (!reply) throw new Error('线下剧情生成为空');
     session.entries.push({ role: 'char', content: reply, ts: Date.now(), mode: _offlineState.tab });
     session.updatedAt = Date.now();
@@ -49354,8 +51191,8 @@ function updateOfflineModeSetting(mode, key, value) {
   _syncOfflineSettingsUI();
 }
 function _syncOfflineSettingsUI() {
-  var keys = ['saveToMemory','locationShare','bgmMode'];
-  var ids = ['offlineToggleSaveMemory','offlineToggleLocation','offlineToggleBgm'];
+  var keys = ['saveToMemory','locationShare','bgmMode','heartVoicePopup'];
+  var ids = ['offlineToggleSaveMemory','offlineToggleLocation','offlineToggleBgm','offlineToggleHeartVoice'];
   keys.forEach(function(k, i) {
     var el = document.getElementById(ids[i]);
     if (el) el.classList.toggle('on', !!_offlineState.settings[k]);
@@ -50017,6 +51854,13 @@ window.addEventListener('beforeunload', function() {
           <div class="offline-setting-value">在音樂軟件里建議 BGM</div>
         </div>
         <div class="offline-toggle" id="offlineToggleBgm"></div>
+      </div>
+      <div class="offline-setting-row" onclick="toggleOfflineSetting('heartVoicePopup')">
+        <div>
+          <div class="offline-setting-label">线下弹出心声</div>
+          <div class="offline-setting-value">离线剧情回复后，也像线上聊天一样弹出心声通知</div>
+        </div>
+        <div class="offline-toggle" id="offlineToggleHeartVoice"></div>
       </div>
       <div style="padding:16px 18px 8px;font-size:9px;color:var(--off-text3);letter-spacing:2px;text-transform:uppercase;font-family:'DM Mono',monospace;">世界书</div>
       <div style="padding:0 18px 12px;">
@@ -66980,7 +68824,7 @@ function rpcSendSystemMessage(text) {
     var msgs = p.history || [];
     msgs.push({role:'char', content:text});
     p.history = msgs;
-    if (typeof savePersona === 'function') savePersona(p);
+    if (typeof saveData === 'function') saveData();
     if (typeof renderMessages === 'function') renderMessages();
     var box = document.getElementById('chatBox');
     if (box) box.scrollTop = box.scrollHeight;
@@ -68313,8 +70157,8 @@ function rpc2SaveInspectionMemory(forced) {
       auto: true,
       source: '反向查岗'
     });
-    // 保存
-    if (typeof savePersona === 'function') savePersona(p);
+    // 保存（直接持久化 personas 数组，避免触发 UI 表单覆盖其他角色数据）
+    if (typeof saveData === 'function') saveData();
   } catch(e) { console.error('[RPC2] saveInspectionMemory error:', e); }
 }
 // 生成查岗总结
@@ -68434,7 +70278,7 @@ function rpc2SendMessagesSequentially(p, msgs, idx) {
   try {
     if (!p.history) p.history = [];
     p.history.push({ role: 'char', content: msgs[idx] });
-    if (typeof savePersona === 'function') savePersona(p);
+    if (typeof saveData === 'function') saveData();
     if (typeof currentId !== 'undefined' && String(currentId) === String(p.id) && typeof renderMessages === 'function') renderMessages();
     var box = document.getElementById('chatBox');
     if (box && typeof currentId !== 'undefined' && String(currentId) === String(p.id)) box.scrollTop = box.scrollHeight;
@@ -68450,7 +70294,7 @@ function rpc2SendMessage(text) {
     var msgs = p.history || [];
     msgs.push({ role: 'char', content: text });
     p.history = msgs;
-    if (typeof savePersona === 'function') savePersona(p);
+    if (typeof saveData === 'function') saveData();
     if (typeof renderMessages === 'function') renderMessages();
     var box = document.getElementById('chatBox');
     if (box) box.scrollTop = box.scrollHeight;
@@ -70095,14 +71939,14 @@ function iccSaveToMemory() {
   try {
     if (!inspector.memoryCore) inspector.memoryCore = [];
     inspector.memoryCore.push(memEntry);
-    if (typeof savePersona === 'function') savePersona(inspector);
   } catch(e) {}
   /* 写入 target */
   try {
     if (!target.memoryCore) target.memoryCore = [];
     target.memoryCore.push(memEntry);
-    if (typeof savePersona === 'function') savePersona(target);
   } catch(e) {}
+  /* 统一持久化（避免触发 UI 表单覆盖其他角色数据） */
+  try { if (typeof saveData === 'function') saveData(); } catch(e) {}
   iccState.saved = true;
   if (btn) {
     btn.innerHTML = '<i class="fas fa-check"></i> 已加入记忆';
@@ -70194,13 +72038,114 @@ window.addEventListener('load', function() {
           </div>
         </div>
       </div>
-      <!-- 底部提示栏（无输入框，纯观察视角） -->
-      <div style="background:#f5f5f5;border-top:0.5px solid #c8c8c8;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-        <span style="font-size:11px;color:#aaa;">👁 观察模式 · 用户不在此聊天室中</span>
-        <button onclick="ccGenerateConversation()" id="ccGenerateBtnBottom" style="font-size:11px;font-weight:700;background:#1a1a1a;color:#fff;border:none;padding:7px 14px;border-radius:18px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;">
-          <i class="fas fa-play" style="font-size:10px;"></i> 手动生成（无限次）
-          <span id="ccTodayTurnsLabel" class="cc-turns-badge" style="display:none;"></span>
-        </button>
+      <!-- 底部发送区 -->
+      <div class="cc-composer-shell">
+        <div class="cc-composer-topline">
+          <span class="cc-mode-hint" id="ccModeHint">可观察，也可手动让用户或角色参与聊天</span>
+          <div class="cc-inline-actions">
+            <button onclick="ccGenerateConversation()" id="ccGenerateBtnBottom" style="font-size:11px;font-weight:700;background:#1a1a1a;color:#fff;border:none;padding:7px 14px;border-radius:18px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;">
+              <i class="fas fa-play" style="font-size:10px;"></i> 手动生成
+              <span id="ccTodayTurnsLabel" class="cc-turns-badge" style="display:none;"></span>
+            </button>
+          </div>
+        </div>
+        <div class="cc-plus-panel open" id="ccPlusPanel">
+          <div class="cc-plus-grid">
+            <button class="cc-plus-action" onclick="triggerCcImagePicker()">
+              <i class="fas fa-image"></i>
+              <span>图片</span>
+            </button>
+            <button class="cc-plus-action" onclick="openCcVoiceModal()">
+              <i class="fas fa-microphone-lines"></i>
+              <span>模拟语音</span>
+            </button>
+            <button class="cc-plus-action" onclick="openCcTakeoutModal()">
+              <i class="fas fa-bag-shopping"></i>
+              <span>外卖卡</span>
+            </button>
+            <button class="cc-plus-action" onclick="ccGenerateConversation()">
+              <i class="fas fa-wand-magic-sparkles"></i>
+              <span>继续聊天</span>
+            </button>
+          </div>
+        </div>
+        <div class="cc-composer-row">
+          <div class="cc-composer-tools">
+            <button class="cc-icon-btn" id="ccPlusBtn" onclick="toggleCcPlusPanel()" title="更多功能">
+              <i class="fas fa-plus"></i>
+            </button>
+            <select id="ccSenderSelect" class="cc-sender-select" onchange="ccHandleSenderChange()"></select>
+          </div>
+          <textarea id="ccComposerInput" class="cc-textarea" placeholder="输入消息，也可以切换成角色口吻来发…" rows="1" oninput="ccAutoResizeComposer(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendCcManualText();}"></textarea>
+          <button class="cc-send-btn" onclick="sendCcManualText()">发送</button>
+        </div>
+        <input type="file" id="ccImageInput" accept="image/*" style="display:none;" onchange="handleCcImagePicked(this)">
+      </div>
+    </div>
+    <div id="ccVoiceModal" class="cc-sheet-modal">
+      <div class="cc-sheet-card">
+        <div class="cc-sheet-head">
+          <div class="cc-sheet-title">发送模拟语音</div>
+          <button class="cc-sheet-close" onclick="closeCcVoiceModal()">✕</button>
+        </div>
+        <div class="cc-sheet-body">
+          <div>
+            <div class="cc-field-label">发送者</div>
+            <div class="cc-media-pill" id="ccVoiceSenderHint">用户</div>
+          </div>
+          <div>
+            <div class="cc-field-label">语音文字</div>
+            <textarea id="ccVoiceTextInput" class="cc-field-textarea" placeholder="输入会显示在模拟语音条里的文字内容…"></textarea>
+          </div>
+          <div>
+            <div class="cc-field-label">时长（可选）</div>
+            <input id="ccVoiceDurationInput" class="cc-field-input" type="text" placeholder="留空将按文字自动估算，如 0:12">
+          </div>
+          <div class="cc-media-hint">这是模拟语音气泡，不需要真实录音。适合 user 发送“羞于开口”的内容，也适合角色发文字语音。</div>
+          <div class="cc-sheet-actions">
+            <button class="cc-sheet-secondary" onclick="closeCcVoiceModal()">取消</button>
+            <button class="cc-sheet-primary" onclick="sendCcVoiceMessage()">发送语音</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="ccTakeoutModal" class="cc-sheet-modal">
+      <div class="cc-sheet-card">
+        <div class="cc-sheet-head">
+          <div class="cc-sheet-title">发送外卖卡</div>
+          <button class="cc-sheet-close" onclick="closeCcTakeoutModal()">✕</button>
+        </div>
+        <div class="cc-sheet-body">
+          <div>
+            <div class="cc-field-label">发送者</div>
+            <div class="cc-media-pill" id="ccTakeoutSenderHint">用户</div>
+          </div>
+          <div>
+            <div class="cc-field-label">送给谁</div>
+            <select id="ccTakeoutRecipient" class="cc-field-select"></select>
+          </div>
+          <div>
+            <div class="cc-field-label">外卖名称</div>
+            <input id="ccTakeoutName" class="cc-field-input" type="text" placeholder="例：草莓奶油蛋糕 / 韩式炸鸡套餐">
+          </div>
+          <div>
+            <div class="cc-field-label">店铺 / 平台</div>
+            <input id="ccTakeoutShop" class="cc-field-input" type="text" placeholder="例：春日厨房 / 心动外卖">
+          </div>
+          <div>
+            <div class="cc-field-label">价格</div>
+            <input id="ccTakeoutPrice" class="cc-field-input" type="number" min="0" step="0.01" placeholder="例：68.00">
+          </div>
+          <div>
+            <div class="cc-field-label">卡片留言</div>
+            <textarea id="ccTakeoutNote" class="cc-field-textarea" placeholder="写一句附在外卖卡上的备注，角色之后也能读到…"></textarea>
+          </div>
+          <div class="cc-media-hint">发送者和收件人都可以是聊天室里的角色，用户也可以直接买给角色。卡片会按聊天记录保存，角色后续会记住这次外卖。</div>
+          <div class="cc-sheet-actions">
+            <button class="cc-sheet-secondary" onclick="closeCcTakeoutModal()">取消</button>
+            <button class="cc-sheet-primary" onclick="sendCcTakeoutCard()">发送外卖卡</button>
+          </div>
+        </div>
       </div>
     </div>
     <!-- ═══ 角色聊天室设置面板 ═══ -->

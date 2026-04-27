@@ -28253,9 +28253,44 @@ function _hideMomentsLoadingCard() {
   const card = document.getElementById('momentsGenLoadingCard');
   if (card) card.remove();
 }
-async function updateMoments() {
-  if (!currentId || !apiConfig.url || !apiConfig.key) { alert("请先设置API并选择一个角色！"); return; }
-  const p = personas.find(x => x.id == currentId);
+function updateMoments() {
+  if (!apiConfig.url || !apiConfig.key) { alert("请先设置API！"); return; }
+  if (!personas || personas.length === 0) { alert("请先添加角色！"); return; }
+  // Show character selection modal
+  _showMomentsPersonaPickerModal();
+}
+function _showMomentsPersonaPickerModal() {
+  // Remove existing if any
+  const existing = document.getElementById('_momentsPicker');
+  if (existing) existing.remove();
+  const overlay = document.createElement('div');
+  overlay.id = '_momentsPicker';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;display:flex;align-items:flex-end;justify-content:center;';
+  const sheet = document.createElement('div');
+  sheet.style.cssText = 'background:#fff;border-radius:18px 18px 0 0;width:100%;max-width:480px;padding:20px 16px 32px;box-sizing:border-box;max-height:70vh;display:flex;flex-direction:column;';
+  let listHtml = personas.map(p => {
+    const av = p.avatar ? `<img src="${p.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : `<i class="fas fa-user" style="font-size:18px;color:#bbb;"></i>`;
+    return `<div onclick="_confirmMomentsPersona(${p.id})" style="display:flex;align-items:center;gap:12px;padding:10px 8px;border-radius:10px;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background=''">`
+      + `<div style="width:40px;height:40px;border-radius:50%;overflow:hidden;background:#eee;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${av}</div>`
+      + `<div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:600;color:#1a1a1a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.momentsNickname || p.name}</div>`
+      + `<div style="font-size:11px;color:#999;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(p.persona||'').substring(0,40)}${(p.persona||'').length>40?'…':''}</div></div>`
+      + `<i class="fas fa-chevron-right" style="color:#ccc;font-size:12px;"></i></div>`;
+  }).join('');
+  sheet.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div style="font-size:15px;font-weight:700;color:#1a1a1a;">选择发朋友圈的角色</div>
+      <button onclick="document.getElementById('_momentsPicker').remove()" style="background:none;border:none;font-size:20px;color:#aaa;cursor:pointer;line-height:1;">×</button>
+    </div>
+    <div style="overflow-y:auto;flex:1;">${listHtml}</div>`;
+  overlay.appendChild(sheet);
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+async function _confirmMomentsPersona(pid) {
+  const overlay = document.getElementById('_momentsPicker');
+  if (overlay) overlay.remove();
+  const p = personas.find(x => x.id == pid);
+  if (!p) return;
   // Show loading card and disable button
   const _umBtn = document.querySelector('#momentsPage .moments-pill-btn[onclick="updateMoments()"]');
   if (_umBtn) { _umBtn.disabled = true; _umBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 生成中…'; }
@@ -28283,6 +28318,9 @@ async function updateMoments() {
     localStorage.setItem('mono_moments', JSON.stringify(momentsData));
     _hideMomentsLoadingCard();
     renderMoments();
+    if (typeof dispatchNotification === 'function') {
+      dispatchNotification(p.id, p.name, '发布了朋友圈：' + content.substring(0, 40), p.avatar);
+    }
     alert("朋友圈已根据最近对话更新！");
   } catch(e) {
     _hideMomentsLoadingCard();
@@ -28385,8 +28423,11 @@ function editDiaryEntry(entryId) {
   renderDiary();
 }
 async function updateDiary() {
-  if (!currentId || !apiConfig.url || !apiConfig.key) { alert("请先设置API并选择一个角色！"); return; }
-  const p = personas.find(x => x.id == currentId);
+  if (!apiConfig.url || !apiConfig.key) { alert("请先设置API！"); return; }
+  // Use the currently active diary tab to determine which persona generates
+  if (currentDiaryTab === 'user') { alert("请先切换到某个角色的日记标签，再点击 AI日记！"); return; }
+  const p = personas.find(x => x.id == currentDiaryTab);
+  if (!p) { alert("未找到该角色，请重新选择日记标签！"); return; }
   const recentChat = p.history.slice(-(p.memoryCount||100)).map(m => `${m.role==='user'?userProfile.name:p.name}：${m.content}`).join('\n');
   const _relCtxDiary = (typeof _mwBuildRelInjectForChar === 'function') ? _mwBuildRelInjectForChar(p.name, null, false) : '';
   const prompt = `${LANG_SYSTEM_PREFIX}你是${p.name}，根据你的人设「${p.persona}」，以及你最近和${userProfile.name}的聊天记录：\n${recentChat}${_relCtxDiary}\n\n以第一人称用简体中文写一篇私人日记，约100-200字。如日记中提及有关系设定的角色，措辞和情感必须符合该关系。不要使用标题，只返回日记正文。`;
@@ -40977,21 +41018,7 @@ saveData = function() {
   }, 2000);
 };
 // Hook into moments/diary posting to also dispatch notifications
-// Patch updateMoments to dispatch notification
-var _origUpdateMoments = updateMoments;
-updateMoments = async function() {
-  var prevLen = momentsData.length;
-  await _origUpdateMoments.call(this);
-  if (momentsData.length > prevLen) {
-    const newPost = momentsData[0];
-    if (newPost) {
-      const p = personas.find(x => x.name === newPost.author);
-      if (p) {
-        dispatchNotification(p.id, p.name, '发布了朋友圈：' + (newPost.content || '').substring(0, 40), p.avatar);
-      }
-    }
-  }
-};
+// Note: updateMoments notification is now dispatched inside _confirmMomentsPersona after generation.
 // Patch updateDiary to dispatch notification
 var _origUpdateDiary = updateDiary;
 updateDiary = async function() {
@@ -44284,17 +44311,30 @@ const NETEASE_API_HOSTS = [
 ];
 async function neteaseApiFetch(path, hosts) {
   hosts = hosts || NETEASE_API_HOSTS;
-  for (const host of hosts) {
-    try {
-      const url = host + path;
-      const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
-      if (res.ok) {
-        const data = await res.json();
-        if (data && (data.code === 200 || data.result || data.songs || data.lrc || data.data)) return data;
-      }
-    } catch(e) { /* try next */ }
-  }
-  return null;
+  // Race all hosts in parallel — first valid response wins
+  return new Promise(resolve => {
+    let settled = false;
+    let pending = hosts.length;
+    hosts.forEach(host => {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 8000);
+      fetch(host + path, { signal: ctrl.signal })
+        .then(res => res.ok ? res.json() : Promise.reject())
+        .then(data => {
+          clearTimeout(timer);
+          if (!settled && data && (data.code === 200 || data.result || data.songs || data.lrc || data.data)) {
+            settled = true;
+            resolve(data);
+          } else {
+            if (--pending === 0 && !settled) resolve(null);
+          }
+        })
+        .catch(() => {
+          clearTimeout(timer);
+          if (--pending === 0 && !settled) resolve(null);
+        });
+    });
+  });
 }
 async function searchNetease(keyword) {
   const q = encodeURIComponent(keyword);
@@ -44317,13 +44357,7 @@ async function getMusicUrl(songId) {
     return musicState.currentTrack.audioRef || null;
   }
   const cookieQuery = getMusicAccountCookieQuery();
-  if (cookieQuery) {
-    const vipData = await neteaseApiFetch(`/song/url/v1?id=${songId}&level=lossless${cookieQuery}`);
-    if (vipData && vipData.data && Array.isArray(vipData.data) && vipData.data[0] && vipData.data[0].url) {
-      return vipData.data[0].url;
-    }
-  }
-  // Try NeteaseCloudMusicApi /song/url endpoint first
+  // Single request — parallel host racing handles speed; skip redundant lossless pre-fetch
   const data = await neteaseApiFetch(`/song/url?id=${songId}&br=128000${cookieQuery}`);
   if (data && data.data && Array.isArray(data.data) && data.data[0] && data.data[0].url) {
     return data.data[0].url;

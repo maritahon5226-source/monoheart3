@@ -3017,7 +3017,56 @@ body {
 .moments-topbar-actions { display:flex; gap:8px; flex-shrink:0; }
 .moments-pill-btn { border:none; border-radius:999px; padding:8px 13px; background:#ffffff; color:#4d4d4d; font-size:calc(11px * var(--fs,1)); font-weight:700; box-shadow:0 6px 16px rgba(0,0,0,0.06); cursor:pointer; font-family:inherit; }
 .moments-pill-btn.dark { background:#1f1f1f; color:#fff; }
+.moments-pill-btn:disabled { opacity:0.5; cursor:not-allowed; }
 .moments-main-scroll { flex:1; overflow-y:auto; padding:14px 14px 24px; }
+/* ── Moments generation loading card ── */
+.moments-gen-loading-card {
+  background: linear-gradient(135deg,rgba(255,255,255,0.97),rgba(248,248,248,0.97));
+  border-radius: 20px;
+  padding: 16px 18px;
+  margin-bottom: 12px;
+  border: 1.5px solid rgba(0,0,0,0.07);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.07);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: momentsCardIn 0.28s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes momentsCardIn {
+  from { opacity:0; transform:translateY(-14px) scale(0.97); }
+  to   { opacity:1; transform:translateY(0) scale(1); }
+}
+.moments-gen-loading-avatar {
+  width: 42px; height: 42px; border-radius: 50%;
+  object-fit: cover; flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  background: #e8e8e8;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; color: #aaa;
+  overflow: hidden;
+}
+.moments-gen-loading-avatar img { width:100%; height:100%; object-fit:cover; border-radius:50%; }
+.moments-gen-loading-body { flex: 1; min-width: 0; }
+.moments-gen-loading-name { font-size: 13px; font-weight: 800; color: #222; margin-bottom: 6px; }
+.moments-gen-loading-dots {
+  display: flex; flex-direction: row; align-items: center; gap: 5px; flex-wrap: nowrap;
+}
+.moments-gen-loading-label {
+  font-size: 11px; color: #888; font-weight: 500; margin-right: 4px;
+  writing-mode: horizontal-tb; white-space: nowrap; display: inline;
+}
+.moments-gen-loading-dots span {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #bbb;
+  display: inline-block;
+  animation: momentsGenDot 1.2s ease-in-out infinite;
+}
+.moments-gen-loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+.moments-gen-loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes momentsGenDot {
+  0%,80%,100% { transform: scale(0.7); background: #ccc; }
+  40% { transform: scale(1.15); background: #888; }
+}
 .moments-home-hero { background:linear-gradient(145deg, rgba(255,255,255,0.98), rgba(238,238,238,0.96)); border:1px solid rgba(255,255,255,0.8); border-radius:24px; padding:14px; box-shadow:0 12px 40px rgba(0,0,0,0.05); margin-bottom:14px; }
 .moments-home-profile-card { display:flex; align-items:center; gap:12px; padding:12px; border-radius:18px; background:linear-gradient(180deg,#fbfbfb,#f0f0f0); cursor:pointer; }
 .moments-home-profile-card img { width:54px; height:54px; border-radius:50%; object-fit:cover; border:2px solid rgba(255,255,255,0.9); box-shadow:0 6px 12px rgba(0,0,0,0.08); }
@@ -19768,39 +19817,74 @@ async function generateAutoSummary(p, isManual) {
   const btn = document.getElementById('manualSummaryBtn');
   if (btn) { btn.disabled = true; btn.textContent = '生成中…'; }
   try {
-    // 取用于总结的对话范围：手动触发取全部，自动触发取最近 interval*2 条
-    const rangeCount = isManual
-      ? p.history.length
-      : Math.min((p.autoSummaryInterval || 20) * 2, p.history.length);
-    const targetMsgs = p.history.slice(-rangeCount);
+    // 取对话范围：
+    // - 自动触发：只取上次总结之后的新对话（避免重复总结旧内容）
+    // - 手动触发：取全部对话
+    let targetMsgs;
+    if (isManual) {
+      targetMsgs = p.history.slice();
+    } else {
+      // 找到上次自动/手动总结时对应的对话条数起点，只总结新增部分
+      const lastSummary = p.memoryCore && p.memoryCore.length
+        ? p.memoryCore[p.memoryCore.length - 1]
+        : null;
+      const interval = p.autoSummaryInterval || 20;
+      const sinceCount = lastSummary ? interval : Math.min(interval * 2, p.history.length);
+      targetMsgs = p.history.slice(-sinceCount);
+    }
+    const userName = (typeof userProfile !== 'undefined' && userProfile.name) ? userProfile.name : '用户';
     const chatLines = targetMsgs.map(m => {
-      const speaker = m.role === 'user'
-        ? (typeof userProfile !== 'undefined' ? userProfile.name : '用户')
-        : p.name;
-      return `${speaker}：${m.content || ''}`;
+      const speaker = m.role === 'user' ? userName : p.name;
+      // 截断过长单条消息，避免把原文整段带入
+      const content = (m.content || '').substring(0, 300);
+      return `${speaker}：${content}`;
     }).join('\n');
     if (!chatLines.trim()) {
       if (isManual) alert('没有对话内容可以总结。');
       return;
     }
+    const msgCount = targetMsgs.length;
     const now = new Date();
     const dateStr = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')}`;
-    const summaryPrompt = `你是「${p.name}」这个角色的记忆整理助手。请根据以下对话内容，生成一段角色视角的综合记忆总结。
-要求：
-1. 以第一人称（"我"）写，像角色自己在回忆
-2. 涵盖这段对话里所有重要的事件、情感变化、约定、转折点
-3. 长度不限，写尽重要内容，不要遗漏关键细节
-4. 语气自然，像在写私密日记或心里话
-5. 只输出记忆内容本身，不要标题，不要说明文字
-对话内容：
-${chatLines}`;
+    // 把已有的历史总结内容传给 AI，让它知道哪些内容已经总结过、不要重复
+    const existingSummaries = (p.memoryCore || []).slice(-5).map((item, i) => {
+      const c = typeof item === 'string' ? item : (item.content || '');
+      return `第${i+1}段已有总结：${c.substring(0, 150)}`;
+    }).join('\n');
+    const alreadySummarizedNote = existingSummaries
+      ? `\n\n【以下是已有的历史总结，请勿重复这些内容，只总结新增的对话】：\n${existingSummaries}`
+      : '';
+    // 根据对话条数动态指定总结长度
+    let lengthGuide;
+    if (msgCount <= 10) {
+      lengthGuide = '2-3句话即可，简明扼要';
+    } else if (msgCount <= 30) {
+      lengthGuide = '1-2个自然段，约100-200字';
+    } else if (msgCount <= 60) {
+      lengthGuide = '2-3个自然段，约200-350字，涵盖主要情节和情感变化';
+    } else {
+      lengthGuide = '3-4个自然段，约350-500字，完整覆盖重要事件、情感转折、约定承诺';
+    }
+    const summaryPrompt = `你是「${p.name}」这个角色的记忆整理助手。请将以下对话内容真正总结成角色视角的记忆，以自然段落书写。${alreadySummarizedNote}
+
+【对话内容（共${msgCount}条）】：
+${chatLines}
+
+【总结要求】：
+1. 用第一人称（"我"）写，像角色在回忆自己经历的事
+2. 必须是真正的总结概述，绝对不能照抄或改写对话原句——用自己的语言提炼发生了什么
+3. 以自然段落组织，不要用列表或编号
+4. 长度参考：${lengthGuide}
+5. 重点保留：重要事件、情感变化、达成的约定、关键转折点
+6. 已有历史总结里涉及的内容一律不重复，只聚焦这批新对话带来的新内容
+7. 只输出总结正文，不要任何标题、说明或解释文字`;
     const resp = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${apiConfig.key}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(_applyApiModel({
         messages: [{ role: 'user', content: summaryPrompt }],
-        max_tokens: 800,
-        temperature: 0.7
+        max_tokens: msgCount > 60 ? 1000 : msgCount > 30 ? 700 : 400,
+        temperature: 0.6
       }, apiConfig.model))
     });
     if (!resp.ok) throw new Error(`API Error ${resp.status}`);
@@ -28140,9 +28224,42 @@ async function generatePersonaCommentWithImage(postContent, postAuthor, imageDes
     return comment;
   } catch(e) { return null; }
 }
+// ===================== 朋友圈生成中状态卡片 =====================
+function _showMomentsLoadingCard(persona) {
+  const list = document.getElementById('momentsList');
+  if (!list) return;
+  // Remove any existing loading card first
+  _hideMomentsLoadingCard();
+  const card = document.createElement('div');
+  card.className = 'moments-gen-loading-card';
+  card.id = 'momentsGenLoadingCard';
+  const avatarHtml = (persona && persona.avatar)
+    ? `<img src="${persona.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`
+    : `<i class="fas fa-user"></i>`;
+  const name = (persona && (persona.momentsNickname || persona.name)) || '角色';
+  card.innerHTML = `
+    <div class="moments-gen-loading-avatar">${avatarHtml}</div>
+    <div class="moments-gen-loading-body">
+      <div class="moments-gen-loading-name">${name}</div>
+      <div class="moments-gen-loading-dots">
+        <div class="moments-gen-loading-label">正在生成朋友圈</div>
+        <span></span><span></span><span></span>
+      </div>
+    </div>`;
+  list.insertBefore(card, list.firstChild);
+  list.scrollTop = 0;
+}
+function _hideMomentsLoadingCard() {
+  const card = document.getElementById('momentsGenLoadingCard');
+  if (card) card.remove();
+}
 async function updateMoments() {
   if (!currentId || !apiConfig.url || !apiConfig.key) { alert("请先设置API并选择一个角色！"); return; }
   const p = personas.find(x => x.id == currentId);
+  // Show loading card and disable button
+  const _umBtn = document.querySelector('#momentsPage .moments-pill-btn[onclick="updateMoments()"]');
+  if (_umBtn) { _umBtn.disabled = true; _umBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 生成中…'; }
+  _showMomentsLoadingCard(p);
   const recentChat = p.history.slice(-(p.memoryCount||100)).map(m => `${m.role==='user'?userProfile.name:p.name}：${m.content}`).join('\n');
   const _mLang = _detectPersonaLang(p);
   const _mLangOv = _langOverridePrompt(_mLang);
@@ -28164,9 +28281,16 @@ async function updateMoments() {
     maybeEvolvePersonaMomentsIdentity(p);
     momentsData.unshift({ id: Date.now(), author: p.name, avatar: p.avatar, authorType: 'persona', personaId: p.id, authorProfileName: p.momentsNickname || p.name, content, translation, time: new Date().getTime(), comments: [], likes });
     localStorage.setItem('mono_moments', JSON.stringify(momentsData));
+    _hideMomentsLoadingCard();
     renderMoments();
     alert("朋友圈已根据最近对话更新！");
-  } catch(e) { alert("更新朋友圈失败: " + e.message); }
+  } catch(e) {
+    _hideMomentsLoadingCard();
+    alert("更新朋友圈失败: " + e.message);
+  } finally {
+    const _umBtn2 = document.querySelector('#momentsPage .moments-pill-btn[onclick="updateMoments()"]');
+    if (_umBtn2) { _umBtn2.disabled = false; _umBtn2.innerHTML = '<i class="fas fa-sparkles"></i> AI动态'; }
+  }
 }
 // ===================== 日记 =====================
 let currentDiaryTab = 'user';
@@ -40779,6 +40903,7 @@ async function generateAutoMomentsPost(personaId) {
   if (!apiConfig.url || !apiConfig.key || !apiConfig.model) return;
   const p = personas.find(x => x.id == personaId);
   if (!p) return;
+  _showMomentsLoadingCard(p);
   const memCount = p.memoryCount || 100;
   const recentChat = p.history.slice(-memCount).map(m => `${m.role==='user'?userProfile.name:p.name}：${m.content}`).join('\n');
   const _mLang = _detectPersonaLang(p);
@@ -40803,11 +40928,12 @@ async function generateAutoMomentsPost(personaId) {
         editedRepost = true;
       }
     }
+    _hideMomentsLoadingCard();
     momentsData.unshift({ id: Date.now(), author: p.name, avatar: p.avatar, authorType: 'persona', personaId: p.id, authorProfileName: p.momentsNickname || p.name, content: momentsContent, time: new Date().getTime(), comments: [], likes: [], editedRepost: editedRepost });
     localStorage.setItem('mono_moments', JSON.stringify(momentsData));
     renderMoments();
     dispatchNotification(p.id, p.name, '发布了新的朋友圈动态', p.avatar);
-  } catch(e) { console.warn('Auto-moments failed:', e.message); _showApiErrorToast('自动朋友圈发布失败', e); }
+  } catch(e) { _hideMomentsLoadingCard(); console.warn('Auto-moments failed:', e.message); _showApiErrorToast('自动朋友圈发布失败', e); }
 }
 // ---- Initialize all auto systems on load ----
 // Use DOMContentLoaded + delayed init for robustness
@@ -54689,6 +54815,8 @@ async function chGenerateContent() {
   }
 
   var chatEndpoint = apiUrl + '/chat/completions';
+  // Crosstalk (相声) and standup (脱口秀) require many segments — use higher token limit
+  var needsLargeOutput = (chState.channelId === 'crosstalk' || chState.channelId === 'standup');
   var reqBody = {
     model: apiModel,
     messages: [
@@ -54696,7 +54824,7 @@ async function chGenerateContent() {
       { role: 'user', content: prompt.user }
     ],
     temperature: 0.9,
-    max_tokens: 3000
+    max_tokens: needsLargeOutput ? 7000 : 3000
   };
 
   var resp, data;
@@ -55005,13 +55133,13 @@ var _topicCats = [
   var maxSegments = 0;
 
   if (channelId === 'crosstalk') {
-    maxSegments = 50 + Math.floor(Math.random() * 10); // 50-60
+    maxSegments = 30 + Math.floor(Math.random() * 10); // 30-40 (was 50-60, reduced to fit token limits)
     var mainSpeaker = names[0];
     var sideSpeaker = names[1] || names[0];
     userPrompt = '请生成一段相声大段内容。\n' +
       '要求:\n' +
       '- 主要说话者: ' + mainSpeaker + '（说的内容要多一点）\n' +
-      '- 捕诞/配角: ' + sideSpeaker + '\n' +
+      '- 搭档/配角: ' + sideSpeaker + '\n' +
       '- 风格: 传统相声，搞笑轻松，段子式\n' +
       '- 话题要广泛多元，不限于角色人设\n' +
       '- 每个角色每次说多句话，不要只说一句\n' +
@@ -55027,15 +55155,15 @@ var _topicCats = [
       '}';
   }
   else if (channelId === 'standup') {
-    maxSegments = 50 + Math.floor(Math.random() * 15);
+    maxSegments = 30 + Math.floor(Math.random() * 10); // 30-40 (was 50+, reduced to fit token limits)
     userPrompt = '请生成一段脱口秀内容，单人表演。\n' +
       '角色: ' + names[0] + '\n' +
       '要求:\n' +
-      '- 单人呔槽、生活段子\n' +
-      '- 幽默犊利、接地气\n' +
+      '- 单人吐槽、生活段子\n' +
+      '- 幽默犀利、接地气\n' +
       '- 话题要广泛，不限于角色人设\n' +
-      '- 每条内容要多少句话而非一句\n' +
-      '- 总条数不少于 ' + maxSegments + ' 条\n' +
+      '- 每条内容要多几句话而非一句\n' +
+      '- 总条数: ' + maxSegments + ' 条左右\n' +
       '- 首尾呼应\n' +
       '- 不要提及用户\n\n' +
       '返回格式 (JSON):\n' +
@@ -55047,24 +55175,44 @@ var _topicCats = [
     // Get non-hosting personas for submissions
     var allPs = [];
     try { allPs = JSON.parse(localStorage.getItem('mono_personas') || '[]'); } catch(e) {}
-    var nonHostIds = allPs.filter(function(p) {
+    var nonHostPersonas = allPs.filter(function(p) {
       return chState.selectedRoles.indexOf(String(p.id)) < 0;
     });
     var npcNames = ['匿名听众A','匿名听众B','匿名粉丝','路过听众','小沙鸡','易烁鸡'];
     var subSenders = [];
-    for (var i = 0; i < Math.min(3, nonHostIds.length); i++) {
-      subSenders.push(nonHostIds[i].name || nonHostIds[i].nickname);
+    // Build sender list with persona descriptions for character-accurate submissions
+    var subPersonaDescs = [];
+    for (var i = 0; i < Math.min(3, nonHostPersonas.length); i++) {
+      var sp = nonHostPersonas[i];
+      subSenders.push(sp.name || sp.nickname);
+      // Collect recent chat messages from this persona for context
+      var spHistory = [];
+      if (sp.history && Array.isArray(sp.history)) {
+        sp.history.slice(-4).forEach(function(m) {
+          if (m && m.content) spHistory.push((m.role === 'assistant' ? (sp.name||sp.nickname) : '用户') + ': ' + String(m.content).substring(0, 60));
+        });
+      }
+      subPersonaDescs.push(
+        '[投稿角色' + (i+1) + '] ' + (sp.name || sp.nickname) + ':\n' +
+        '  人设: ' + (sp.persona || '无特定设定').substring(0, 200) + '\n' +
+        (spHistory.length ? '  近期对话: ' + spHistory.join(' | ').substring(0, 150) : '')
+      );
     }
     for (var j = subSenders.length; j < 5; j++) {
       subSenders.push(npcNames[j % npcNames.length]);
     }
+    var subPersonaNote = subPersonaDescs.length
+      ? '\n\n【投稿角色的人设信息 — 请根据各角色的性格、背景和对话习惯来生成符合其人设的匿名投稿内容】:\n' + subPersonaDescs.join('\n')
+      : '';
     userPrompt = (
       isConf ? '请生成一期「告白频道」内容。主持人阅读4-5条匿名告白信，进行讨论解答。\n'
                : '请生成一期「匿名投稿频道」内容。主持人阅读4-5条听众匿名投稿，进行讨论解答。\n'
     ) +
     '主持角色: ' + names.join('、') + '\n' +
     '投稿发送者(匿名): ' + subSenders.join('、') + '\n' +
+    subPersonaNote + '\n' +
     '要求:\n' +
+    '- 有人设的投稿角色，其投稿内容必须完全符合该角色的性格、口吻、背景和近期对话，不能违背人设\n' +
     '- 每条投稿内容要独特有趣不重复\n' +
     '- 每条投稿后角色們要多说几句更多进行讨论\n' +
     '- 话题广泛多元\n' +
@@ -66219,6 +66367,24 @@ function loadPositions() {
       localStorage.setItem('mono_couple_widget_page3_migrated_v1', '1');
     }
   } catch(e2) {}
+  // Migrate channel icon to default position: right of coupleSpaceWidget, tops aligned
+  try {
+    var chIconMigrated = localStorage.getItem('mono_channel_icon_page3_migrated_v1') === '1';
+    if (!chIconMigrated) {
+      // coupleSpaceWidget default: x=16, y=16, w=152 → channel icon at x=16+152+12=180, y=16
+      if (!positions['app-channel']) {
+        positions['app-channel'] = {
+          x: 180,
+          y: 16,
+          w: 72,
+          h: 90,
+          parentId: 'homePage3'
+        };
+        localStorage.setItem(STORE_KEY, JSON.stringify(positions));
+      }
+      localStorage.setItem('mono_channel_icon_page3_migrated_v1', '1');
+    }
+  } catch(e3) {}
 }
 function savePositions() {
   // Scan ALL currently placed elements and capture their live positions

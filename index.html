@@ -54848,7 +54848,6 @@ async function chGenerateContent() {
     return;
   }
 
-  var chatEndpoint = apiUrl + '/chat/completions';
   // Crosstalk (相声) and standup (脱口秀) require many segments — use higher token limit
   var needsLargeOutput = (chState.channelId === 'crosstalk' || chState.channelId === 'standup');
   var reqBody = {
@@ -54863,11 +54862,16 @@ async function chGenerateContent() {
 
   var resp, data;
   try {
-    resp = await fetch(chatEndpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-      body: JSON.stringify(reqBody)
-    });
+    // 使用兼容层发送请求，支持 Anthropic / Gemini / Azure / OpenAI 等所有 API 提供商
+    if (typeof _compatibleChatCompletion === 'function') {
+      resp = await _compatibleChatCompletion(apiUrl, apiKey, reqBody);
+    } else {
+      resp = await fetch(apiUrl + '/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+        body: JSON.stringify(reqBody)
+      });
+    }
     data = await resp.json();
   } catch(e) {
     _chShowError('网络错误: ' + (e.message || e));

@@ -22,6 +22,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head><base href="https://d16ilfvy4mv02r.cloudfront.net/workspaces/sh0bDVYUIEw8H1dpwjAJvINuiJ6ETxg0/6c9a375e-adcc-44e2-9ec5-2d1ce63bc50b/files/">
@@ -11280,11 +11281,15 @@ body.editor-modal-open #chatPage .app-back-bar {
   background: rgba(0,0,0,0.55); z-index: 99999;
   display: flex; align-items: center; justify-content: center;
   padding: 20px; animation: fadeIn 0.15s ease;
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
 }
 .confirm-box {
   background: #fff; border-radius: 16px; padding: 24px;
   max-width: 320px; width: 100%; text-align: center;
   box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .confirm-box h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; color: #1a1a1a; }
 .confirm-box p { font-size: 12px; color: #666; margin-bottom: 16px; line-height: 1.6; }
@@ -17100,7 +17105,7 @@ body.editor-modal-open #chatPage .app-back-bar {
     </div>
     <!-- 正常底部按钮栏 -->
     <div id="drawerNormalActions" class="p-4 border-t border-black space-y-2" style="flex-shrink:0;">
-      <button onclick="openEditor(false)" class="w-full py-2 border border-black text-xs font-bold uppercase tracking-widest hover:bg-black hover:text-white transition">
+      <button onclick="window.monoOpenAddPersonaMenu && window.monoOpenAddPersonaMenu()" class="w-full py-2 border border-black text-xs font-bold uppercase tracking-widest hover:bg-black hover:text-white transition">
         <i class="fas fa-plus mr-2"></i>新增角色
       </button>
       <button onclick="openGcCreateModal()" class="w-full py-2 border border-black text-xs font-bold uppercase tracking-widest hover:bg-black hover:text-white transition">
@@ -17222,6 +17227,14 @@ body.editor-modal-open #chatPage .app-back-bar {
         <div class="plus-panel-btn" id="blockPanelBtn" onclick="closePlusPanel(); toggleBlockPersona();" style="display:none;">
           <i class="fas fa-ban"></i>
           <span>拉黑</span>
+        </div>
+        <div class="plus-panel-btn" onclick="closePlusPanel(); window._monoInitUiFixes && window._monoInitUiFixes(); window.monoOpenChatHistoryManager && window.monoOpenChatHistoryManager();">
+          <i class="fas fa-calendar-check"></i>
+          <span>聊天管理</span>
+        </div>
+        <div class="plus-panel-btn" onclick="closePlusPanel(); window._monoInitUiFixes && window._monoInitUiFixes(); window.monoOpenHeartVoiceHistory && window.monoOpenHeartVoiceHistory();">
+          <i class="fas fa-heart-circle-bolt"></i>
+          <span>心声历史</span>
         </div>
         <div class="plus-panel-btn" onclick="closePlusPanel(); openIntimatePayFromChat('chat');">
           <i class="fas fa-hand-holding-heart"></i>
@@ -20479,8 +20492,8 @@ body.editor-modal-open #chatPage .app-back-bar {
           <input type="number" id="pAutoSummaryInterval" min="5" max="200" value="20" style="width:60px;border-bottom:1px solid #aaa;padding:4px;outline:none;font-size:12px;text-align:center;">
           <label style="font-size:10px;color:#666;white-space:nowrap;">轮对话自动总结一次</label>
         </div>
-        <button type="button" id="manualSummaryBtn" onclick="manualGenerateSummary()" style="margin-top:10px;width:100%;background:#1a1a1a;color:#fff;border:none;border-radius:8px;padding:10px;font-size:12px;cursor:pointer;font-weight:600;">
-          立即生成总结
+        <button type="button" id="manualSummaryBtn" onclick="window.manualGenerateSummary && window.manualGenerateSummary()" style="margin-top:10px;width:100%;background:#1a1a1a;color:#fff;border:none;border-radius:8px;padding:10px;font-size:12px;cursor:pointer;font-weight:600;">
+          按最近条数生成总结
         </button>
         <p style="font-size:10px;color:#999;margin-top:4px;">点击后 AI 会读取所有对话内容，生成一条综合记忆并永久保存。</p>
       </div>
@@ -22337,16 +22350,12 @@ async function regenerateMsg(idx) {
         };
       }
       if (m.msgType === 'sticker') {
-        const caption = m.caption || '';
-        const prevMsg = arr[idx - 1];
-        const prevText = (prevMsg && prevMsg.role === 'user' && !prevMsg.msgType && prevMsg.content) ? prevMsg.content : '';
-        const nextMsg = arr[idx + 1];
-        const nextText = (nextMsg && nextMsg.role === 'user' && !nextMsg.msgType && nextMsg.content) ? nextMsg.content : '';
-        let sc = caption ? `[用户发送了表情包，情绪/含义：${caption}]` : `[用户发送了一个表情包]`;
-        if (prevText) sc += `（结合前文"${prevText}"，表情包是对此的情绪补充）`;
-        if (nextText) sc += `（用户接着说了："${nextText}"）`;
-        sc += '（请综合上下文自然回应，无需刻意提及表情包本身）';
-        return { role: m.role === 'user' ? 'user' : 'assistant', content: sc };
+        return {
+          role: m.role === 'user' ? 'user' : 'assistant',
+          content: (typeof _monoBuildStickerHistoryText === 'function')
+            ? _monoBuildStickerHistoryText(m, idx, arr, p, userProfile.name || '用户')
+            : '[表情包消息]'
+        };
       }
       if (m.msgType === 'takeout_card') {
         return {
@@ -24816,7 +24825,7 @@ function showAvatarEditPopup() {
       <button onclick="closeAvatarEditPopup();saveCurrentPersona();" style="background:#2d2d4e;color:#fff;border:1px solid #444;padding:12px;border-radius:10px;font-size:14px;cursor:pointer;text-align:left;">
         <i class="fas fa-save" style="margin-right:8px;color:#5cb85c;"></i>保存角色
       </button>
-      <button onclick="closeAvatarEditPopup();openEditor(false);" style="background:#2d2d4e;color:#fff;border:1px solid #444;padding:12px;border-radius:10px;font-size:14px;cursor:pointer;text-align:left;">
+      <button onclick="closeAvatarEditPopup();window.monoOpenAddPersonaMenu && window.monoOpenAddPersonaMenu();" style="background:#2d2d4e;color:#fff;border:1px solid #444;padding:12px;border-radius:10px;font-size:14px;cursor:pointer;text-align:left;">
         <i class="fas fa-plus" style="margin-right:8px;color:#f0ad4e;"></i>新增角色
       </button>
       <button onclick="closeAvatarEditPopup();confirmClearChatHistory();" style="background:#2d2d4e;color:#fff;border:1px solid #e74c3c;padding:12px;border-radius:10px;font-size:14px;cursor:pointer;text-align:left;">
@@ -31821,10 +31830,10 @@ function confirmClearChatHistory() {
   overlay.innerHTML = `
     <div class="confirm-box">
       <h3><i class="fas fa-exclamation-triangle" style="color:#e74c3c;margin-right:6px;"></i>\u78ba\u8a8d\u6e05\u9664</h3>
-      <p>\u78ba\u5b9a\u8981\u6e05\u9664 <b>${p.name}</b> \u7684\u6240\u6709\u804a\u5929\u8a18\u9304\u55ce\uff1f<br>\u6b64\u64cd\u4f5c\u4e0d\u53ef\u64a4\u92b7\uff0c\u8a18\u9304\u5c07\u5f9e\u5132\u5b58\u4e2d\u5fb9\u5e95\u522a\u9664\u3002</p>
+      <p>\u78ba\u5b9a\u8981\u6e05\u9664 <b>${p.name}</b> \u7684\u7dda\u4e0a\u804a\u5929\u5ba4\u8a18\u9304\u55ce\uff1f<br>\u53ea\u6703\u6e05\u7a7a\u7576\u524d\u89d2\u8272\u7684\u7dda\u4e0a\u804a\u5929\u5167\u5bb9\uff0c\u4e0d\u6703\u5f71\u97ff\u9ed1\u76d2\u3001\u65e5\u8a18\u3001\u7dda\u4e0b\u5287\u60c5\u3001\u89d2\u8272\u8a2d\u5b9a\u6216\u89d2\u8272\u672c\u8eab\u3002</p>
       <div class="confirm-btns">
         <button class="btn-cancel" onclick="document.getElementById('clearChatConfirm').remove()">\u53d6\u6d88</button>
-        <button class="btn-danger" onclick="executeClearChatHistory()">\u78ba\u8a8d\u6e05\u9664</button>
+        <button class="btn-danger" onclick="window.executeClearChatHistory && window.executeClearChatHistory()">\u78ba\u8a8d\u6e05\u9664</button>
       </div>
     </div>
   `;
@@ -31835,43 +31844,19 @@ function executeClearChatHistory() {
   if (overlay) overlay.remove();
   const p = personas.find(x => x.id == currentId);
   if (!p) return;
-  // 1. 清空聊天记录
+  // 只清空当前角色的线上聊天室记录；不碰黑盒、日记、通知历史、线下数据或角色设定
   p.history = [];
-  // 2. 清除黑盒子里此角色的所有思想记录
-  try {
-    const bbRecords = JSON.parse(localStorage.getItem('mono_blackbox_records') || '{}');
-    if (bbRecords[p.id]) {
-      delete bbRecords[p.id];
-      localStorage.setItem('mono_blackbox_records', JSON.stringify(bbRecords));
-    }
-  } catch(e) {}
-  // 3. 秘密记录保留（不随聊天记录清除）
-  // 4. 清除此角色的日记记录（日记包含角色对过去聊天的记忆摘要）
-  try {
-    diaryData = diaryData.filter(d => d.personaId !== p.id);
-    localStorage.setItem('mono_diary', JSON.stringify(diaryData));
-  } catch(e) {}
-  // 5. 清除此角色的 notif 历史记录
-  try {
-    let nh = JSON.parse(localStorage.getItem('mono_notif_history') || '[]');
-    nh = nh.filter(n => n.personaId !== p.id);
-    localStorage.setItem('mono_notif_history', JSON.stringify(nh));
-  } catch(e) {}
-  // 6. 重置通知追踪計数（避免下次 saveData 误判为新消息）
+  try { localStorage.removeItem('mono_hist_' + p.id); } catch(e) {}
   if (typeof _lastHistoryLengths !== 'undefined') {
     _lastHistoryLengths[p.id] = 0;
   }
-  // 7. 取消任何排程中的自动回覆（避免清除后仍有旧回覆写入）
   if (typeof _autoReplyLocks !== 'undefined') {
     delete _autoReplyLocks[p.id];
   }
-  // 8. 保存並刷新
   saveData();
   renderMessages();
   renderContactList();
-  // 6. 如果黑盒子页面正在显示，刷新它
-  try { if (typeof renderBbRecords === 'function') renderBbRecords(); } catch(e) {}
-  alert(p.name + ' \u7684\u804a\u5929\u8a18\u9304\u5df2\u5168\u90e8\u6e05\u9664\uff01');
+  alert(p.name + ' \u7684\u7dda\u4e0a\u804a\u5929\u5ba4\u8a18\u9304\u5df2\u6e05\u7a7a\uff0c\u5176\u4ed6\u6578\u64da\u5747\u5df2\u4fdd\u7559\u3002');
 }
 // ===================== NEW: Custom Bubble CSS =====================
 function openBubbleCssEditor() {
@@ -32522,9 +32507,12 @@ function saveData() {
       try { localStorage.setItem('mono_bg_' + p.id, slim.chatBgImage); } catch(e) {}
       slim.chatBgImage = '__ref__';
     }
-    // 分离 history -> 单独存入 IndexedDB（无大小限制）
-    if (Array.isArray(slim.history) && slim.history.length > 0) {
-      try { localStorage.setItem('mono_hist_' + p.id, JSON.stringify(slim.history)); } catch(e) {}
+    // 分离 history -> 单独存储；空数组则直接物理删除该缓存 key，避免残留旧聊天或重新生成空壳缓存
+    if (Array.isArray(slim.history)) {
+      try {
+        if (slim.history.length > 0) localStorage.setItem('mono_hist_' + p.id, JSON.stringify(slim.history));
+        else localStorage.removeItem('mono_hist_' + p.id);
+      } catch(e) {}
     }
     slim.history = '__hist_ref__'; // 主blob只存占位符
     return slim;
@@ -35794,12 +35782,16 @@ ${followUps ? `\n${userProfile.name} 转发后还补充说了：${followUps}` : 
     // ── 找出上一条用户消息 和 本次用户消息，计算真实间隔 ──
     const _userMsgs = p.history.filter(m => m.role === 'user' && m.timestamp);
     const _assistMsgs = p.history.filter(m => m.role === 'assistant' && m.timestamp);
+    const _offlineInteraction = (typeof _monoGetLastMeaningfulInteraction === 'function') ? _monoGetLastMeaningfulInteraction(p) : null;
     let _silenceMin = 0;
     let _lastChatTimeStr = '';   // 上次有聊天记录的时间，用于 AI 感知
+    let _prevInteractionTs = 0;
+    const _currentUserMsg = _userMsgs.length ? _userMsgs[_userMsgs.length - 1] : null;
     if (_userMsgs.length >= 2) {
       const _prev = _userMsgs[_userMsgs.length - 2];
       const _last = _userMsgs[_userMsgs.length - 1];
       _silenceMin = Math.floor((_last.timestamp - _prev.timestamp) / 60000);
+      _prevInteractionTs = _prev.timestamp || 0;
       // 上次聊天的时间点
       const _pd = new Date(_prev.timestamp);
       const _pdDate = `${_pd.getFullYear()}年${_pd.getMonth()+1}月${_pd.getDate()}日`;
@@ -35814,6 +35806,7 @@ ${followUps ? `\n${userProfile.name} 转发后还补充说了：${followUps}` : 
       const _lastUserTs   = _userMsgs[_userMsgs.length - 1].timestamp;
       if (_lastUserTs > _lastAssistTs) {
         _silenceMin = Math.floor((_lastUserTs - _lastAssistTs) / 60000);
+        _prevInteractionTs = _lastAssistTs || 0;
         const _ad = new Date(_lastAssistTs);
         const _adDate = `${_ad.getFullYear()}年${_ad.getMonth()+1}月${_ad.getDate()}日`;
         const _adTime = _ad.getHours().toString().padStart(2,'0') + ':' + _ad.getMinutes().toString().padStart(2,'0');
@@ -35821,6 +35814,11 @@ ${followUps ? `\n${userProfile.name} 转发后还补充说了：${followUps}` : 
         const _isToday = (_ad.toDateString() === _now.toDateString());
         _lastChatTimeStr = _isToday ? `今天 ${_adTime}` : `${_adDate}（${_adDay}）${_adTime}`;
       }
+    }
+    if (_offlineInteraction && _currentUserMsg && _offlineInteraction.lastTs && _offlineInteraction.lastTs < _currentUserMsg.timestamp && _offlineInteraction.lastTs > _prevInteractionTs) {
+      _silenceMin = Math.floor((_currentUserMsg.timestamp - _offlineInteraction.lastTs) / 60000);
+      _prevInteractionTs = _offlineInteraction.lastTs;
+      _lastChatTimeStr = _offlineInteraction.label || _lastChatTimeStr;
     }
     // 间隔转可读字符串
     function _minToReadable(m) {
@@ -36014,19 +36012,12 @@ ${modePrompt}${quoteTip}${fwdContext}${timeContext}${transferContext}${wbInjecti
           };
         }
         if (m.msgType === 'sticker') {
-          const caption = m.caption || '';
-          // 查找相邻的用户文字消息（前一条或后一条），作为上下文
-          const prevMsg = arr[idx - 1];
-          const prevText = (prevMsg && prevMsg.role === 'user' && !prevMsg.msgType && prevMsg.content) ? prevMsg.content : '';
-          const nextMsg = arr[idx + 1];
-          const nextText = (nextMsg && nextMsg.role === 'user' && !nextMsg.msgType && nextMsg.content) ? nextMsg.content : '';
-          let stickerContext = caption
-            ? `[用户发送了表情包，情绪/含义：${caption}]`
-            : `[用户发送了一个表情包]`;
-          if (prevText) stickerContext += `（结合前文"${prevText}"，表情包是对此的情绪补充）`;
-          if (nextText) stickerContext += `（用户接着说了："${nextText}"）`;
-          stickerContext += '（请综合上下文自然回应，无需刻意提及表情包本身）';
-          return { role: m.role === 'user' ? 'user' : 'assistant', content: stickerContext };
+          return {
+            role: m.role === 'user' ? 'user' : 'assistant',
+            content: (typeof _monoBuildStickerHistoryText === 'function')
+              ? _monoBuildStickerHistoryText(m, idx, arr, p, userProfile.name || '用户')
+              : '[表情包消息]'
+          };
         }
         if (m.msgType === 'takeout_card') {
           return {
@@ -37415,9 +37406,12 @@ async function confirmImport() {
           try { localStorage.setItem('mono_bg_' + p.id, slim.chatBgImage); } catch(e) {}
           slim.chatBgImage = '__ref__';
         }
-        // BUGFIX: save history to separate key so it survives page reload
-        if (Array.isArray(slim.history) && slim.history.length > 0) {
-          try { localStorage.setItem('mono_hist_' + p.id, JSON.stringify(slim.history)); } catch(e) {}
+        // BUGFIX: save history to separate key so it survives page reload；空记录则不保留该 key
+        if (Array.isArray(slim.history)) {
+          try {
+            if (slim.history.length > 0) localStorage.setItem('mono_hist_' + p.id, JSON.stringify(slim.history));
+            else localStorage.removeItem('mono_hist_' + p.id);
+          } catch(e) {}
         }
         slim.history = '__hist_ref__';
         return slim;
@@ -53124,9 +53118,11 @@ function _getIfLineSystemPrompt(p, session) {
       '· 环境与细节描写增强代入感，让场景可感可触。'
     ].join('\n');
   }
-  var narrativeRule = isShort
-    ? '用简短自然的对话、动作和临场反应推进剧情。句数按内容需要自然决定，不要为了凑字数变空，也不要突然写很短。' + wordRule
-    : '用第三人称或混合视角细腻叙事，描写场景、动作、情绪与心理。不要硬凑，也不要在情绪或情节正要展开时突然收断。' + wordRule;
+  var narrativeRule = (typeof _monoGetOfflineWorldNarrativeRule === 'function')
+    ? _monoGetOfflineWorldNarrativeRule(isShort, wordRule)
+    : (isShort
+      ? '用简短自然的对话、动作和临场反应推进剧情。句数按内容需要自然决定，不要为了凑字数变空，也不要突然写很短。' + wordRule
+      : '用第三人称或混合视角细腻叙事，描写场景、动作、情绪与心理。不要硬凑，也不要在情绪或情节正要展开时突然收断。' + wordRule);
   return [
     '你是「' + charName + '」，正在与「' + uName + '」共同创作一段完全沉浸式的互动故事。',
     '你的存在、思维、语言、行动，全部根植于以下设定的世界之中。',
@@ -53293,7 +53289,9 @@ async function _generateOfflineResponse(session) {
           wordRule,
           '完整性要求：这一轮内容必须停在完整句子、完整动作或完整场景节点上，绝对不能半句话、半个动作、半段对话突然断掉。',
           '如果当前事件已经表达完整，就在目标字数附近自然结束，不要自行续写到下一大段剧情。',
-          '根据以下线下剧情继续发展：用第三人称或直接对话自然推进。句数按情节需要决定，不要被固定句数束缚，但也不要拖沓。',
+          (typeof _monoGetOfflineShortPromptRule === 'function')
+            ? _monoGetOfflineShortPromptRule()
+            : '根据以下线下剧情继续发展：用第三人称或直接对话自然推进。句数按情节需要决定，不要被固定句数束缚，但也不要拖沓。',
           '严格按照你的人设和性格，不要背离角色。',
           '你的回应要融入场景、动作、对话。',
           autoSummaryEvery > 0 ? '系统会按剧情互动自动总结，所以你的每次回应都要有明确推进，方便后续记忆承接。' : '',
@@ -53305,7 +53303,9 @@ async function _generateOfflineResponse(session) {
       : [
           '你是「' + p.name + '」，人设：' + (p.persona || '').slice(0, 200) + '。',
           '你和「' + uName + '」正在进行一段线下沉浸式敘事剧情，像小说一样细膩描写。',
-          '模式：长篇敘事——用第三人称或混合视角，详细描写场景、氛围、角色的动作、表情、心理感受。',
+          (typeof _monoGetOfflineLongPromptRule === 'function')
+            ? _monoGetOfflineLongPromptRule()
+            : '模式：长篇敘事——用第三人称或混合视角，详细描写场景、氛围、角色的动作、表情、心理感受。',
           '文风要求：' + styleNote + '。这条要求优先级很高，措辞、句式密度、镜头感、情绪纹理都必须尽量贴近这个文风。',
           wordRule,
           '完整性要求：这一轮必须收束在完整句子、完整动作或完整场景节点上，宁可略短一点，也不能在情绪或动作正展开时突然截停。',
@@ -83396,8 +83396,1957 @@ if (document.readyState === 'loading') {
   setTimeout(_diaryModuleInit, 100);
 }
 
+function _monoSafeJsonParse(raw, fallback) {
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed == null ? fallback : parsed;
+  } catch(e) {
+    return fallback;
+  }
+}
+const MONO_HEART_VOICE_HISTORY_KEY = 'mono_heart_voice_history_v1';
+const MONO_SPY_PERSIST_KEY = 'mono_spy_persist_v1';
+function _monoPruneHeartVoiceHistory(list) {
+  const now = Date.now();
+  const maxAge = 3 * 24 * 60 * 60 * 1000;
+  return (Array.isArray(list) ? list : []).filter(function(item) {
+    return item && item.ts && (now - item.ts) <= maxAge;
+  }).slice(-300);
+}
+function _monoGetHeartVoiceHistory() {
+  return _monoPruneHeartVoiceHistory(_monoSafeJsonParse(localStorage.getItem(MONO_HEART_VOICE_HISTORY_KEY) || '[]', []));
+}
+function _monoSetHeartVoiceHistory(list) {
+  localStorage.setItem(MONO_HEART_VOICE_HISTORY_KEY, JSON.stringify(_monoPruneHeartVoiceHistory(list)));
+}
+function _monoRecordHeartVoiceHistory(p, line, opts) {
+  if (!p || !line) return;
+  const list = _monoGetHeartVoiceHistory();
+  list.push({
+    id: 'hv_hist_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+    personaId: p.id,
+    personaName: p.name || '角色',
+    avatar: p.avatar || '',
+    line: String(line || '').trim(),
+    ts: Date.now(),
+    sourceType: (opts && opts.type === 'reply') ? 'reply' : 'read',
+    offline: !!(opts && opts.offline)
+  });
+  _monoSetHeartVoiceHistory(list);
+}
+function _monoFmtTs(ts) {
+  const d = new Date(ts || Date.now());
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  const hm = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  return sameDay ? ('今天 ' + hm) : ((d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm);
+}
+function _monoEnsureHeartVoiceHistoryUi() {
+  if (!document.getElementById('monoHeartHistoryModal')) {
+    const wrap = document.createElement('div');
+    wrap.id = 'monoHeartHistoryModal';
+    wrap.style.cssText = 'display:none;position:fixed;inset:0;z-index:10003;background:rgba(0,0,0,0.45);align-items:flex-end;';
+    wrap.onclick = function(e) { if (e.target === wrap && window.monoCloseHeartVoiceHistory) window.monoCloseHeartVoiceHistory(); };
+    wrap.innerHTML = ''
+      + '<div style="background:#fff;width:100%;max-width:460px;margin:0 auto;border-radius:22px 22px 0 0;max-height:78vh;display:flex;flex-direction:column;">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;padding:18px 18px 12px;border-bottom:1px solid #eee;">'
+      + '<div><div style="font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;">心声历史</div><div style="font-size:10px;color:#888;margin-top:4px;">只保留近 3 天，可随时回看</div></div>'
+      + '<button onclick="window.monoCloseHeartVoiceHistory && window.monoCloseHeartVoiceHistory()" style="background:none;border:none;font-size:20px;color:#999;cursor:pointer;">&times;</button>'
+      + '</div>'
+      + '<div id="monoHeartHistoryBody" style="overflow:auto;padding:14px 16px 20px;"></div>'
+      + '</div>';
+    document.body.appendChild(wrap);
+  }
+}
+function monoOpenHeartVoiceHistory() {
+  _monoEnsureHeartVoiceHistoryUi();
+  const modal = document.getElementById('monoHeartHistoryModal');
+  const body = document.getElementById('monoHeartHistoryBody');
+  const currentPid = currentId != null ? String(currentId) : '';
+  const items = _monoGetHeartVoiceHistory().filter(function(item) {
+    return !currentPid || String(item.personaId) === currentPid;
+  }).sort(function(a, b) { return (b.ts || 0) - (a.ts || 0); });
+  if (!items.length) {
+    body.innerHTML = '<div style="padding:24px 10px;text-align:center;color:#999;font-size:12px;">近 3 天还没有可查看的心声记录。</div>';
+  } else {
+    body.innerHTML = items.map(function(item) {
+      const source = item.offline ? '线下' : '线上';
+      const type = item.sourceType === 'reply' ? '回完你后' : '读到你消息时';
+      const avatar = item.avatar || makeAvatar((item.personaName || '?').charAt(0), '#f2f2f2', '#1a1a1a');
+      return ''
+        + '<div style="display:flex;gap:10px;padding:12px 0;border-bottom:1px solid #f2f2f2;">'
+        + '<img src="' + avatar + '" style="width:34px;height:34px;border-radius:50%;object-fit:cover;flex-shrink:0;">'
+        + '<div style="flex:1;min-width:0;">'
+        + '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;">'
+        + '<div style="font-size:12px;font-weight:700;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + _escHtml(item.personaName || '角色') + '</div>'
+        + '<div style="font-size:10px;color:#999;flex-shrink:0;">' + _escHtml(_monoFmtTs(item.ts)) + '</div>'
+        + '</div>'
+        + '<div style="font-size:10px;color:#999;margin:4px 0 6px;">' + source + ' · ' + type + '</div>'
+        + '<div style="font-size:12px;line-height:1.7;color:#333;white-space:pre-wrap;">' + _escHtml(item.line || '') + '</div>'
+        + '</div></div>';
+    }).join('');
+  }
+  modal.style.display = 'flex';
+}
+function monoCloseHeartVoiceHistory() {
+  const modal = document.getElementById('monoHeartHistoryModal');
+  if (modal) modal.style.display = 'none';
+}
+const _monoOrigShowHeartVoicePopupCard = _showHeartVoicePopupCard;
+_showHeartVoicePopupCard = function(p, line, opts) {
+  _monoRecordHeartVoiceHistory(p, line, opts || {});
+  return _monoOrigShowHeartVoicePopupCard.apply(this, arguments);
+};
+
+function _monoGetOfflineSessionsEnabled(personaId) {
+  const settings = _getOfflineMergedSettings();
+  return _getOfflineSessionsForPersona(personaId).filter(function(session) {
+    if (!session || session.mode === 'if' || !Array.isArray(session.entries) || !session.entries.length) return false;
+    return session.saveToMemory !== undefined ? session.saveToMemory : (settings && settings.saveToMemory !== false);
+  });
+}
+function _monoFormatInteractionLabel(ts, labelPrefix) {
+  if (!ts) return labelPrefix || '';
+  const d = new Date(ts);
+  const now = new Date();
+  const hm = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  const sameDay = d.toDateString() === now.toDateString();
+  return sameDay
+    ? ('今天 ' + hm)
+    : ((d.getFullYear()) + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + hm);
+}
+function _monoGetLastMeaningfulInteraction(p) {
+  if (!p) return null;
+  const sessions = _monoGetOfflineSessionsEnabled(p.id);
+  if (!sessions.length) return null;
+  const latest = sessions.slice().sort(function(a, b) {
+    return (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0);
+  })[0];
+  const ts = latest && (latest.updatedAt || latest.createdAt || 0);
+  if (!ts) return null;
+  return { lastTs: ts, label: _monoFormatInteractionLabel(ts, '上次线下互动') };
+}
+function _monoBuildStickerHistoryText(m, idx, arr, persona, userName) {
+  const isUserSticker = m && m.role === 'user';
+  const sender = isUserSticker ? (userName || '用户') : ((persona && persona.name) || '角色');
+  const caption = String((m && m.caption) || '').trim();
+  const prevMsg = arr[idx - 1];
+  const nextMsg = arr[idx + 1];
+  const prevText = (prevMsg && !prevMsg.msgType && prevMsg.content) ? String(prevMsg.content) : '';
+  const nextText = (nextMsg && !nextMsg.msgType && nextMsg.content) ? String(nextMsg.content) : '';
+  let text = caption ? '[' + sender + '发送了表情包，情绪/含义：' + caption + ']' : '[' + sender + '发送了一个表情包]';
+  if (prevText) text += '（前文："' + prevText.slice(0, 60) + '"）';
+  if (nextText) text += '（后续："' + nextText.slice(0, 60) + '"）';
+  text += isUserSticker ? '（请自然回应，不要误认成自己发的）' : '（这是你自己刚才发的表情包，不要误认成用户发的）';
+  return text;
+}
+function _monoMessageDisplayText(m, p, userName) {
+  if (!m) return '';
+  if (m.msgType === 'sticker') return _monoBuildStickerHistoryText(m, 0, [], p, userName);
+  if (m.msgType === 'image') return '[图片消息] ' + String(m.imageCaption || m.content || '').trim();
+  if (m.msgType === 'voice') return '[语音消息] ' + String(m.transcript || m.content || '').trim();
+  if (m.msgType === 'takeout_card') return _buildTakeoutHistoryText ? _buildTakeoutHistoryText(m.takeoutData || {}) : '[外卖卡片]';
+  if (m.msgType === 'forwarded_post') return '[转发内容] ' + String((m.fwdData && m.fwdData.content) || m.content || '').trim();
+  return String(m.content || '').trim();
+}
+function _monoRecentChatLines(p, count) {
+  if (!p) return [];
+  const userName = (typeof userProfile !== 'undefined' && userProfile.name) ? userProfile.name : '用户';
+  return (Array.isArray(p.history) ? p.history : []).slice(-(count || (p.memoryCount || 100))).map(function(m, idx, arr) {
+    const speaker = m.role === 'user' ? userName : (p.name || '角色');
+    const text = m.msgType === 'sticker'
+      ? _monoBuildStickerHistoryText(m, idx, arr, p, userName)
+      : _monoMessageDisplayText(m, p, userName);
+    return speaker + '：' + text;
+  }).filter(Boolean);
+}
+function _monoCollectOfflineSummaryLines(personaId, maxLines) {
+  const sessions = _monoGetOfflineSessionsEnabled(personaId);
+  const lines = [];
+  sessions.slice(0, 4).forEach(function(session) {
+    (session.memorySummaries || []).slice(-2).forEach(function(item) {
+      if (lines.length < (maxLines || 6) && item && item.content) lines.push('线下剧情《' + (session.title || '线下互动') + '》：' + String(item.content).slice(0, 180));
+    });
+    if (lines.length < (maxLines || 6) && session.entries && session.entries.length) {
+      const lastEntry = session.entries[session.entries.length - 1];
+      if (lastEntry && lastEntry.content) lines.push('最近线下收尾：' + String(lastEntry.content).slice(0, 180));
+    }
+  });
+  return lines.slice(0, maxLines || 6);
+}
+function _monoBuildDiaryContext(p) {
+  const chatLines = _monoRecentChatLines(p, p.memoryCount || 100);
+  let context = chatLines.join('\n');
+  if (p && p.diaryIncludeOfflineMemory !== false) {
+    const offlineLines = _monoCollectOfflineSummaryLines(p.id, 6);
+    if (offlineLines.length) context += '\n\n【近期线下剧情记忆（这些是真实发生过的线下互动，不是线上私聊）】\n' + offlineLines.join('\n');
+  }
+  return context.trim();
+}
+function _monoBuildChatExportText(p, history) {
+  const userName = (typeof userProfile !== 'undefined' && userProfile.name) ? userProfile.name : '用户';
+  return (history || []).map(function(m, idx) {
+    const speaker = m.role === 'user' ? userName : (p.name || '角色');
+    const time = m.timestamp ? ('[' + _fmtMsgTime(m.timestamp) + '] ') : '';
+    const text = _monoMessageDisplayText(m, p, userName) || '(空消息)';
+    return (idx + 1) + '. ' + time + speaker + '：' + text;
+  }).join('\n');
+}
+function _monoDownloadText(filename, text) {
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+function _monoEnsureMultiSelectTools() {
+  const bar = document.getElementById('multiDeleteBar');
+  if (!bar || document.getElementById('multiCopyBtn')) return;
+  const actions = bar.querySelector('div');
+  if (!actions) return;
+  actions.insertAdjacentHTML('afterbegin', '<button id="multiExportBtn" onclick="exportSelectedMessages()">导出</button><button id="multiCopyBtn" onclick="copySelectedMessages()">复制</button>');
+}
+async function copySelectedMessages() {
+  if (!selectedMsgIndices.size) return;
+  const p = personas.find(function(x) { return x.id == currentId; });
+  if (!p) return;
+  const indices = Array.from(selectedMsgIndices).sort(function(a, b) { return a - b; });
+  const lines = indices.map(function(i) { return p.history[i]; }).filter(Boolean);
+  const text = _monoBuildChatExportText(p, lines);
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(text);
+    else {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+    }
+    alert('已复制选中的聊天内容。');
+  } catch(e) {
+    alert('复制失败：' + e.message);
+  }
+}
+function exportSelectedMessages() {
+  if (!selectedMsgIndices.size) return;
+  const p = personas.find(function(x) { return x.id == currentId; });
+  if (!p) return;
+  const indices = Array.from(selectedMsgIndices).sort(function(a, b) { return a - b; });
+  const lines = indices.map(function(i) { return p.history[i]; }).filter(Boolean);
+  _monoDownloadText((p.name || '角色') + '_selected_chat.txt', _monoBuildChatExportText(p, lines));
+}
+function _monoCloseChatCleanupModal() {
+  const el = document.getElementById('monoChatCleanupModal');
+  if (el) el.remove();
+}
+function _monoMsgDateKey(ts) {
+  if (!ts) return 'undated';
+  const d = new Date(ts);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function _monoMsgDateLabel(key) {
+  if (!key || key === 'undated') return '无日期消息';
+  const parts = String(key).split('-');
+  if (parts.length !== 3) return key;
+  return parts[0] + '年' + parts[1] + '月' + parts[2] + '日';
+}
+function _monoCollectChatDateOptions(p) {
+  const seen = new Set();
+  return (Array.isArray(p.history) ? p.history : []).map(function(m) {
+    return _monoMsgDateKey(m && m.timestamp);
+  }).filter(function(key) {
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).sort();
+}
+function _monoGetChatRangeSelection() {
+  const startEl = document.getElementById('monoChatDateStart');
+  const endEl = document.getElementById('monoChatDateEnd');
+  const includeUndatedEl = document.getElementById('monoChatIncludeUndated');
+  return {
+    start: startEl ? String(startEl.value || '').trim() : '',
+    end: endEl ? String(endEl.value || '').trim() : '',
+    includeUndated: !!(includeUndatedEl && includeUndatedEl.checked)
+  };
+}
+function _monoGetChatMessagesByDateRange(p, range) {
+  if (!p || !Array.isArray(p.history)) return [];
+  const start = range && range.start ? range.start : '';
+  const end = range && range.end ? range.end : '';
+  const includeUndated = !!(range && range.includeUndated);
+  return p.history.filter(function(m) {
+    const key = _monoMsgDateKey(m && m.timestamp);
+    if (key === 'undated') return includeUndated;
+    if (start && key < start) return false;
+    if (end && key > end) return false;
+    return !!key;
+  });
+}
+function _monoGetChatRangeSummaryText(p, range) {
+  const list = _monoGetChatMessagesByDateRange(p, range);
+  const labelEl = document.getElementById('monoChatRangeSummary');
+  if (!labelEl) return list;
+  if (!list.length) {
+    labelEl.textContent = '当前日期范围内没有可处理的聊天记录。';
+  } else {
+    const first = list[0];
+    const last = list[list.length - 1];
+    const firstLabel = _monoMsgDateLabel(_monoMsgDateKey(first.timestamp));
+    const lastLabel = _monoMsgDateLabel(_monoMsgDateKey(last.timestamp));
+    labelEl.textContent = '将处理 ' + list.length + ' 条消息 · ' + firstLabel + ' 至 ' + lastLabel;
+  }
+  return list;
+}
+function _monoUpdateChatRangeSummary() {
+  const p = personas.find(function(x) { return x.id == currentId; });
+  if (!p) return [];
+  return _monoGetChatRangeSummaryText(p, _monoGetChatRangeSelection());
+}
+function monoApplyChatDatePreset(dateKey) {
+  const startEl = document.getElementById('monoChatDateStart');
+  const endEl = document.getElementById('monoChatDateEnd');
+  const includeUndatedEl = document.getElementById('monoChatIncludeUndated');
+  if (dateKey === 'undated') {
+    if (startEl) startEl.value = '';
+    if (endEl) endEl.value = '';
+    if (includeUndatedEl) includeUndatedEl.checked = true;
+  } else {
+    if (startEl) startEl.value = dateKey;
+    if (endEl) endEl.value = dateKey;
+    if (includeUndatedEl) includeUndatedEl.checked = false;
+  }
+  _monoUpdateChatRangeSummary();
+}
+monoOpenChatHistoryManager = function() {
+  confirmClearChatHistory();
+};
+confirmClearChatHistory = function() {
+  if (!currentId) { alert('请先选择一个角色'); return; }
+  const p = personas.find(function(x) { return x.id == currentId; });
+  if (!p) return;
+  _monoCloseChatCleanupModal();
+  const dateOptions = _monoCollectChatDateOptions(p);
+  const firstDated = dateOptions.find(function(key) { return key !== 'undated'; }) || '';
+  const lastDated = dateOptions.filter(function(key) { return key !== 'undated'; }).slice(-1)[0] || firstDated;
+  const chipsHtml = dateOptions.length
+    ? dateOptions.map(function(key) {
+        return '<button type="button" onclick="window.monoApplyChatDatePreset && window.monoApplyChatDatePreset(\'' + key + '\')" style="border:none;background:#f4f4f4;color:#333;padding:7px 10px;border-radius:999px;font-size:10px;cursor:pointer;font-family:inherit;">' + _escHtml(_monoMsgDateLabel(key)) + '</button>';
+      }).join('')
+    : '<div style="font-size:10px;color:#999;">当前还没有带日期的聊天室记录。</div>';
+  const overlay = document.createElement('div');
+  overlay.id = 'monoChatCleanupModal';
+  overlay.className = 'confirm-overlay';
+  overlay.innerHTML = ''
+    + '<div class="confirm-box" style="max-width:430px;width:min(430px,100%);max-height:calc(100vh - 32px);overflow-y:auto;padding:18px 18px 16px;border-radius:18px;">'
+    + '<h3 style="display:flex;align-items:center;gap:7px;margin-bottom:10px;"><i class="fas fa-calendar-check" style="color:#1a1a1a;"></i>聊天室记录管理</h3>'
+    + '<p style="line-height:1.7;margin-bottom:12px;">这里只会处理 <b>' + _escHtml(p.name) + '</b> 的线上聊天室消息，只会清空聊天内容本身，不会影响黑盒、日记、线下剧情、角色设定或角色本身。</p>'
+    + '<div style="background:linear-gradient(180deg,#fafafa 0%,#f6f6f6 100%);border:1px solid #ececec;border-radius:14px;padding:12px 12px 10px;margin:10px 0 14px;text-align:left;">'
+    + '<div style="font-size:10px;color:#999;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">按日期范围处理</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
+    + '<label style="display:flex;flex-direction:column;gap:5px;font-size:10px;color:#888;">开始日期<input id="monoChatDateStart" type="date" value="' + firstDated + '" onchange="window._monoUpdateChatRangeSummary && window._monoUpdateChatRangeSummary()" style="width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:10px;padding:9px 10px;font-size:12px;font-family:inherit;background:#fff;"></label>'
+    + '<label style="display:flex;flex-direction:column;gap:5px;font-size:10px;color:#888;">结束日期<input id="monoChatDateEnd" type="date" value="' + lastDated + '" onchange="window._monoUpdateChatRangeSummary && window._monoUpdateChatRangeSummary()" style="width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:10px;padding:9px 10px;font-size:12px;font-family:inherit;background:#fff;"></label>'
+    + '</div>'
+    + '<label style="display:flex;align-items:center;gap:7px;font-size:11px;color:#666;margin-top:10px;cursor:pointer;"><input id="monoChatIncludeUndated" type="checkbox" onchange="window._monoUpdateChatRangeSummary && window._monoUpdateChatRangeSummary()" style="accent-color:#1a1a1a;">包含无日期消息</label>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;">' + chipsHtml + '</div>'
+    + '<div id="monoChatRangeSummary" style="font-size:10px;color:#888;line-height:1.6;margin-top:10px;padding-top:10px;border-top:1px dashed #ddd;"></div>'
+    + '</div>'
+    + '<div class="confirm-btns" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
+    + '<button class="btn-cancel" onclick="window.monoDeleteChatByDateRange && window.monoDeleteChatByDateRange(false)" style="width:100%;border-radius:12px;padding:11px 10px;background:#fff;border:1px solid #ddd;color:#1a1a1a;font-weight:700;">按日期删除</button>'
+    + '<button class="btn-cancel" onclick="window.monoDeleteChatByDateRange && window.monoDeleteChatByDateRange(true)" style="width:100%;border-radius:12px;padding:11px 10px;background:#fff;border:1px solid #ddd;color:#1a1a1a;font-weight:700;">导出并删除</button>'
+    + '<button class="btn-danger" onclick="window.executeClearChatHistory && window.executeClearChatHistory()" style="width:100%;grid-column:1 / -1;border-radius:12px;padding:11px 10px;">只清空线上聊天室内容</button>'
+    + '<button class="btn-cancel" onclick="window._monoCloseChatCleanupModal && window._monoCloseChatCleanupModal()" style="width:100%;grid-column:1 / -1;border-radius:12px;padding:11px 10px;background:#f5f5f5;border:1px solid #e5e5e5;color:#666;font-weight:700;">取消</button>'
+    + '</div></div>';
+  document.body.appendChild(overlay);
+  _monoUpdateChatRangeSummary();
+};
+function monoDeleteChatByDateRange(exportFirst) {
+  const p = personas.find(function(x) { return x.id == currentId; });
+  if (!p || !Array.isArray(p.history) || !p.history.length) return;
+  const range = _monoGetChatRangeSelection();
+  if (range.start && range.end && range.start > range.end) {
+    alert('开始日期不能晚于结束日期。');
+    return;
+  }
+  const targets = _monoGetChatMessagesByDateRange(p, range);
+  if (!targets.length) {
+    alert('当前日期范围内没有可处理的聊天记录。');
+    return;
+  }
+  if (exportFirst) {
+    const startLabel = range.start ? range.start : 'undated';
+    const endLabel = range.end ? range.end : startLabel;
+    _monoDownloadText((p.name || '角色') + '_chat_' + startLabel + '_to_' + endLabel + '.txt', _monoBuildChatExportText(p, targets));
+  }
+  if (!confirm('确定要处理这个日期范围内的 ' + targets.length + ' 条聊天记录吗？')) return;
+  const targetSet = new Set(targets);
+  p.history = p.history.filter(function(m) { return !targetSet.has(m); });
+  saveData();
+  spyDataCache = {};
+  _monoCloseChatCleanupModal();
+  renderMessages();
+  renderContactList();
+  alert((exportFirst ? '已导出并删除' : '已删除') + '该日期范围内的 ' + targets.length + ' 条聊天记录。');
+}
+executeClearChatHistory = function() {
+  _monoCloseChatCleanupModal();
+  const p = personas.find(function(x) { return x.id == currentId; });
+  if (!p) return;
+  // 只清空当前角色的线上聊天室记录；不删除黑盒、日记、线下剧情、设定或角色本身
+  p.history = [];
+  try { localStorage.removeItem('mono_hist_' + p.id); } catch(e) {}
+  if (typeof _lastHistoryLengths !== 'undefined') _lastHistoryLengths[p.id] = 0;
+  if (typeof _autoReplyLocks !== 'undefined') delete _autoReplyLocks[p.id];
+  selectedMsgIndices = new Set();
+  isMultiSelectMode = false;
+  spyDataCache = {};
+  saveData();
+  renderMessages();
+  renderContactList();
+  alert(p.name + ' 的线上聊天室记录已清空。黑盒、日记、线下剧情、角色设定与角色本身均已保留。');
+};
+
+generateAutoSummary = async function(p, isManual, opts) {
+  opts = opts || {};
+  if (!p || !_hasUsableApiConfig(apiConfig)) {
+    if (isManual) alert('请先配置 API 才能生成总结。');
+    return;
+  }
+  const btn = document.getElementById('manualSummaryBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '生成中…'; }
+  try {
+    let targetMsgs;
+    const recentCount = parseInt(opts.recentCount || '0', 10) || 0;
+    if (isManual) {
+      targetMsgs = recentCount > 0 ? p.history.slice(-recentCount) : p.history.slice();
+    } else {
+      const lastSummary = p.memoryCore && p.memoryCore.length ? p.memoryCore[p.memoryCore.length - 1] : null;
+      const interval = p.autoSummaryInterval || 20;
+      const sinceCount = lastSummary ? interval : Math.min(interval * 2, p.history.length);
+      targetMsgs = p.history.slice(-sinceCount);
+    }
+    const userName = (typeof userProfile !== 'undefined' && userProfile.name) ? userProfile.name : '用户';
+    const chatLines = (targetMsgs || []).map(function(m, idx, arr) {
+      const speaker = m.role === 'user' ? userName : p.name;
+      const content = m.msgType === 'sticker' ? _monoBuildStickerHistoryText(m, idx, arr, p, userName) : _monoMessageDisplayText(m, p, userName);
+      return speaker + '：' + String(content || '').substring(0, 300);
+    }).filter(Boolean).join('\n');
+    const offlineLines = _monoCollectOfflineSummaryLines(p.id, 6);
+    if (!chatLines.trim() && !offlineLines.length) {
+      if (isManual) alert('没有可总结的内容。');
+      return;
+    }
+    const msgCount = targetMsgs.length;
+    const now = new Date();
+    const dateStr = now.getFullYear() + '/' + String(now.getMonth() + 1).padStart(2, '0') + '/' + String(now.getDate()).padStart(2, '0');
+    const existingSummaries = (p.memoryCore || []).slice(-5).map(function(item, i) {
+      const c = typeof item === 'string' ? item : (item.content || '');
+      return '第' + (i + 1) + '段已有总结：' + c.substring(0, 150);
+    }).join('\n');
+    const alreadySummarizedNote = existingSummaries ? '\n\n【以下是已有的历史总结，请勿重复这些内容，只总结新增的内容】：\n' + existingSummaries : '';
+    let lengthGuide;
+    if (msgCount <= 10) lengthGuide = '2-3句话即可，简明扼要';
+    else if (msgCount <= 30) lengthGuide = '1-2个自然段，约100-200字';
+    else if (msgCount <= 60) lengthGuide = '2-3个自然段，约200-350字，涵盖主要情节和情感变化';
+    else lengthGuide = '3-4个自然段，约350-500字，完整覆盖重要事件、情感转折、约定承诺';
+    const offlineBlock = offlineLines.length ? '\n\n【补充的近期线下剧情记忆（也属于真实经历，若与线上内容连续请一起归纳）】\n' + offlineLines.join('\n') : '';
+    const summaryPrompt = '你是「' + p.name + '」这个角色的记忆整理助手。请将以下内容真正总结成角色视角的记忆，以自然段落书写。'
+      + alreadySummarizedNote
+      + '\n\n【线上聊天内容（共' + msgCount + '条）】\n' + (chatLines || '（暂无）')
+      + offlineBlock
+      + '\n\n【总结要求】\n'
+      + '1. 用第一人称（"我"）写，像角色在回忆自己经历的事\n'
+      + '2. 如果内容里涉及线下互动，必须清楚区分那是真实发生的线下经历，不要误写成线上私聊\n'
+      + '3. 必须是真正的总结概述，绝对不能照抄原句——用自己的语言提炼发生了什么\n'
+      + '4. 以自然段落组织，不要用列表或编号\n'
+      + '5. 长度参考：' + lengthGuide + '\n'
+      + '6. 重点保留：重要事件、情感变化、达成的约定、关键转折点\n'
+      + '7. 已有历史总结里涉及的内容一律不重复，只聚焦这批新增内容\n'
+      + '8. 只输出总结正文，不要任何标题、说明或解释文字';
+    const resp = await fetch(apiConfig.url.replace(/\/$/, '') + '/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + apiConfig.key, 'Content-Type': 'application/json' },
+      body: JSON.stringify(_applyApiModel({ messages: [{ role: 'user', content: summaryPrompt }], max_tokens: msgCount > 60 ? 1000 : msgCount > 30 ? 700 : 500, temperature: 0.55 }, apiConfig.model))
+    });
+    if (!resp.ok) throw new Error('API Error ' + resp.status);
+    const data = await resp.json();
+    const summaryText = _extractAssistantMessageContent(data).trim();
+    if (!summaryText) throw new Error('AI 返回内容为空');
+    if (!p.memoryCore) p.memoryCore = [];
+    p.memoryCore.push({ content: summaryText, date: dateStr, auto: !isManual, source: isManual ? ('手动总结' + (recentCount > 0 ? '（最近' + recentCount + '条）' : '')) : ('每' + (p.autoSummaryInterval || 20) + '轮自动总结') });
+    saveData();
+    if (currentId == p.id && typeof renderMemoryCoreList === 'function') renderMemoryCoreList(p.memoryCore);
+    if (isManual) alert('总结完成，已写入角色记忆。');
+  } catch(e) {
+    if (isManual) alert('生成失败：' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '立即生成总结'; }
+  }
+};
+manualGenerateSummary = async function() {
+  if (!currentId) { alert('请先选择一个角色'); return; }
+  const p = personas.find(function(x) { return x.id == currentId; });
+  if (!p) return;
+  if (!p.history || p.history.length === 0) { alert('该角色还没有任何对话记录。'); return; }
+  const input = prompt('想从最近多少条聊天室消息开始总结？\n输入 0 或留空 = 总结全部聊天室记录。', String(p.autoSummaryInterval || 20));
+  if (input === null) return;
+  const recentCount = Math.max(0, parseInt(String(input).trim() || '0', 10) || 0);
+  await generateAutoSummary(p, true, { recentCount: recentCount });
+};
+
+function _monoBuildDiaryPrompt(p, upName, relCtx) {
+  const context = _monoBuildDiaryContext(p);
+  let prompt = (typeof LANG_SYSTEM_PREFIX !== 'undefined' ? LANG_SYSTEM_PREFIX : '')
+    + '你是' + p.name + '，根据你的人设「' + p.persona + '」，以及你最近和' + upName + '的互动记录：\n'
+    + (context || '(暂无互动记录)')
+    + (relCtx || '')
+    + '\n\n以第一人称用简体中文写一篇私人日记，约100-200字。';
+  if (p.diaryIncludeOfflineMemory !== false) prompt += '如果内容里提到线下剧情，请明确知道那是真实发生过的线下互动，不要误写成线上私聊。';
+  prompt += '如日记中提及有关系设定的角色，措辞和情感必须符合该关系。不要使用标题，只返回日记正文。';
+  return prompt;
+}
+async function _monoFetchDiaryContent(p, relCtx) {
+  const up = (typeof userProfile !== 'undefined') ? userProfile : { name: '用户' };
+  const prompt = _monoBuildDiaryPrompt(p, up.name || '用户', relCtx || '');
+  const r = await fetch(apiConfig.url.replace(/\/$/, '') + '/chat/completions', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + apiConfig.key, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: apiConfig.model, messages: [{ role: 'user', content: prompt }], temperature: 0.85 })
+  });
+  if (!r.ok) throw new Error('API 错误：' + r.status);
+  const data = await r.json();
+  return (((data || {}).choices || [])[0] || {}).message.content.trim();
+}
+updateDiary = async function() {
+  if (!apiConfig.url || !apiConfig.key) { alert('请先设置API！'); return; }
+  if (currentDiaryTab === 'user') { alert('请先切换到某个角色的日记标签，再点击 AI日记！'); return; }
+  const p = personas.find(function(x) { return x.id == currentDiaryTab; });
+  if (!p) { alert('未找到该角色，请重新选择日记标签！'); return; }
+  try {
+    const relCtx = (typeof _mwBuildRelInjectForChar === 'function') ? _mwBuildRelInjectForChar(p.name, null, false) : '';
+    const content = await _monoFetchDiaryContent(p, relCtx);
+    diaryData.unshift({ id: Date.now(), author: p.name + ' 的日记', authorType: 'persona', personaId: p.id, content: content, date: Date.now() });
+    localStorage.setItem('mono_diary', JSON.stringify(diaryData));
+    currentDiaryTab = p.id;
+    renderDiaryTabs();
+    renderDiary();
+    alert('日记已根据最近互动更新。');
+  } catch(e) {
+    alert('更新日记失败: ' + e.message);
+  }
+};
+diaryRunAiGenerate = async function() {
+  if (!_dai_selectedCharId) { alert('请先选择一个角色。'); return; }
+  const p = (typeof personas !== 'undefined') ? personas.find(function(x) { return x.id == _dai_selectedCharId; }) : null;
+  if (!p) { alert('未找到该角色。'); return; }
+  const statusEl = document.getElementById('diaryAiStatus');
+  statusEl.textContent = '正在生成日记...';
+  try {
+    if (!apiConfig.url || !apiConfig.key) throw new Error('请先在设置中配置 API。');
+    const relCtx = (typeof _mwBuildRelInjectForChar === 'function') ? _mwBuildRelInjectForChar(p.name, null, false) : '';
+    const content = await _monoFetchDiaryContent(p, relCtx);
+    const entry = { id: Date.now(), author: p.name + ' 的日记', authorType: 'persona', personaId: p.id, content: content, date: Date.now() };
+    diaryData.unshift(entry);
+    localStorage.setItem(KEY_DIARY, JSON.stringify(diaryData));
+    await _generateCalMemos(p.id, entry);
+    statusEl.textContent = '生成成功！';
+    setTimeout(function() {
+      diaryCloseAiModal();
+      renderDiaryShelf();
+      if (_dbv_ownerId == p.id) { _buildDiaryPages(); _renderCurrentPage(false); }
+    }, 600);
+    if (typeof dispatchNotification === 'function') dispatchNotification(p.id, p.name, '写了新日记', p.avatar);
+  } catch(e) {
+    statusEl.textContent = '错误：' + e.message;
+  }
+};
+diaryRegenEntry = async function(entryId) {
+  const entry = (typeof diaryData !== 'undefined') ? diaryData.find(function(d) { return d.id === entryId; }) : null;
+  if (!entry) return;
+  const p = (typeof personas !== 'undefined') ? personas.find(function(x) { return x.id == entry.personaId; }) : null;
+  if (!p) return;
+  const contentEl = document.getElementById('diaryPageContent');
+  const origHTML = contentEl.innerHTML;
+  contentEl.innerHTML = '<div class="diary-regen-overlay"><div class="diary-loading"><div class="diary-loading-dot"><span></span><span></span><span></span></div><div>正在重新生成...</div></div></div>';
+  try {
+    const content = await _monoFetchDiaryContent(p, '');
+    entry.content = content;
+    localStorage.setItem(KEY_DIARY, JSON.stringify(diaryData));
+    await _generateCalMemos(p.id, entry);
+    _buildDiaryPages();
+    _renderCurrentPage(false);
+  } catch(e) {
+    contentEl.innerHTML = origHTML;
+    alert('重新生成失败：' + e.message);
+  }
+};
+generateAutoDiaryOnly = async function(personaId) {
+  if (!apiConfig.url || !apiConfig.key || !apiConfig.model) return;
+  const p = personas.find(function(x) { return x.id == personaId; });
+  if (!p) return;
+  const _dLang = _detectPersonaLang(p);
+  const _dLangOverride = _langOverridePrompt(_dLang);
+  const _relCtxAutoDiary = (typeof _mwBuildRelInjectForChar === 'function') ? _mwBuildRelInjectForChar(p.name, null, false) : '';
+  try {
+    const content = await _monoFetchDiaryContent(p, _dLangOverride + _relCtxAutoDiary);
+    let diaryTranslation = '';
+    if (_dLang && content && p.enableTranslation !== false) {
+      try {
+        const _tr = await fetch(apiConfig.url.replace(/\/$/, '') + '/chat/completions', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + apiConfig.key, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: apiConfig.model, messages: [{ role: 'user', content: '將以下文字翻譯成简体中文，只返回翻譯结果：\n' + content }], max_tokens: 400, temperature: 0.2 })
+        });
+        if (_tr.ok) {
+          const _td = await _tr.json();
+          diaryTranslation = (((_td || {}).choices || [])[0] || {}).message.content.trim();
+        }
+      } catch(e) {}
+    }
+    diaryData.unshift({ id: Date.now(), author: p.name + ' 的日记', authorType: 'persona', personaId: p.id, content: content, translation: diaryTranslation, date: Date.now() });
+    localStorage.setItem('mono_diary', JSON.stringify(diaryData));
+    renderDiaryTabs();
+    renderDiary();
+    dispatchNotification(p.id, p.name, '写了新日记', p.avatar);
+  } catch(e) {
+    console.warn('Auto-diary failed:', e.message);
+    _showApiErrorToast('自动日记生成失败', e);
+  }
+};
+const _monoOrigOpenMusicImportModal = openMusicImportModal;
+openMusicImportModal = function() {
+  _monoEnsureMusicImportExtras();
+  return _monoOrigOpenMusicImportModal.apply(this, arguments);
+};
+function _monoEnsureMusicImportExtras() {
+  const modal = document.getElementById('musicImportModal');
+  if (!modal || document.getElementById('musicImportUrlTextarea')) return;
+  const lyricsBlock = document.getElementById('musicImportLyricsTextarea');
+  if (!lyricsBlock || !lyricsBlock.parentNode) return;
+  const block = document.createElement('div');
+  block.innerHTML = ''
+    + '<div style="font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#999;margin-bottom:6px;">音频链接 / 批量歌单</div>'
+    + '<textarea id="musicImportUrlTextarea" placeholder="可直接粘贴 mp3 / mp4 / m4a 等链接。支持批量：每行一个链接，或用 竖线 分隔：链接 | 歌曲名 | 歌手名" style="width:100%;min-height:110px;box-sizing:border-box;border:1px solid #e0e0e0;border-radius:14px;padding:12px 14px;font-size:12px;line-height:1.6;resize:vertical;font-family:inherit;outline:none;background:#fafafa;color:#1a1a1a;"></textarea>'
+    + '<div style="font-size:10px;color:#999;line-height:1.6;margin-top:6px;">如果你拿到的是一串可直接播放的音频地址，可以不用先下载，粘贴后会直接导入。批量粘贴时会一行导入一首。</div>';
+  lyricsBlock.parentNode.parentNode.insertBefore(block, lyricsBlock.parentNode);
+}
+function _monoTitleFromUrl(url) {
+  try {
+    const clean = String(url || '').split('?')[0];
+    const last = decodeURIComponent(clean.split('/').pop() || '链接导入');
+    return last.replace(/\.[^.]+$/, '') || '链接导入';
+  } catch(e) {
+    return '链接导入';
+  }
+}
+const _monoOrigImportMusicTrack = importMusicTrack;
+importMusicTrack = async function() {
+  _monoEnsureMusicImportExtras();
+  const audioInput = document.getElementById('musicImportAudioInput');
+  const audioFile = audioInput && audioInput.files && audioInput.files[0];
+  const urlTextarea = document.getElementById('musicImportUrlTextarea');
+  const rawUrls = String((urlTextarea && urlTextarea.value) || '').trim();
+  if (audioFile || !rawUrls) return _monoOrigImportMusicTrack.apply(this, arguments);
+  const titleInput = document.getElementById('musicImportTitleInput');
+  const artistInput = document.getElementById('musicImportArtistInput');
+  const lyricsTextarea = document.getElementById('musicImportLyricsTextarea');
+  const lines = rawUrls.split(/\n+/).map(function(line) { return String(line || '').trim(); }).filter(Boolean);
+  if (!lines.length) return alert('请先输入音频链接。');
+  loadMusicImportedTracks();
+  const created = [];
+  lines.forEach(function(line, idx) {
+    const parts = line.split('|').map(function(part) { return String(part || '').trim(); });
+    const url = parts[0];
+    if (!/^https?:\/\//i.test(url)) return;
+    created.push({
+      id: 'imported_url_' + Date.now() + '_' + idx + '_' + Math.random().toString(36).slice(2, 6),
+      source: 'imported',
+      name: parts[1] || (idx === 0 ? (String((titleInput && titleInput.value) || '').trim() || _monoTitleFromUrl(url)) : _monoTitleFromUrl(url)),
+      artist: parts[2] || (String((artistInput && artistInput.value) || '').trim() || '链接导入'),
+      album: '链接导入',
+      cover: '',
+      duration: 0,
+      fee: 0,
+      audioRef: url,
+      lyricsRaw: idx === 0 ? String((lyricsTextarea && lyricsTextarea.value) || '').trim() : '',
+      importedAt: Date.now()
+    });
+  });
+  if (!created.length) return alert('没有识别到可导入的 http/https 音频链接。');
+  musicState.importedTracks = created.concat(musicState.importedTracks || []);
+  saveMusicImportedTracks();
+  if (urlTextarea) urlTextarea.value = '';
+  if (titleInput) titleInput.value = '';
+  if (artistInput) artistInput.value = '';
+  if (lyricsTextarea) lyricsTextarea.value = '';
+  closeMusicImportModal();
+  renderMusicLibrary();
+  alert('已导入 ' + created.length + ' 首链接歌曲。');
+};
+
+function _monoGetSpyStore() {
+  return _monoSafeJsonParse(localStorage.getItem(MONO_SPY_PERSIST_KEY) || '{}', {});
+}
+function _monoSetSpyStore(store) {
+  localStorage.setItem(MONO_SPY_PERSIST_KEY, JSON.stringify(store || {}));
+}
+function _monoSpyPersistKey(personaId, appId) {
+  return String(personaId) + '::' + String(appId);
+}
+function _monoLoadSpyPersisted(personaId, appId) {
+  const store = _monoGetSpyStore();
+  return store[_monoSpyPersistKey(personaId, appId)] || null;
+}
+function _monoSaveSpyPersisted(personaId, appId, data) {
+  const store = _monoGetSpyStore();
+  store[_monoSpyPersistKey(personaId, appId)] = { ts: Date.now(), data: data };
+  _monoSetSpyStore(store);
+}
+openSpyApp = async function(appId, personaId) {
+  const p = personas.find(function(x) { return x.id == personaId; });
+  if (!p) return;
+  document.querySelectorAll('.spy-app-page').forEach(function(pg) { pg.classList.remove('open'); });
+  document.getElementById(appId).classList.add('open');
+  const liveApiConfig = _getCurrentActiveApiConfig();
+  const cacheKey = String(personaId) + '_' + appId + '_' + _getApiConfigSignature(liveApiConfig);
+  if (spyDataCache[cacheKey]) { renderSpyApp(appId, spyDataCache[cacheKey], p); return; }
+  const persisted = _monoLoadSpyPersisted(personaId, appId);
+  if (persisted && persisted.data) {
+    spyDataCache[cacheKey] = persisted.data;
+    renderSpyApp(appId, persisted.data, p);
+    return;
+  }
+  const bodyId = appId + 'Body';
+  const bodyEl = document.getElementById(bodyId);
+  if (bodyEl) bodyEl.innerHTML = '<div class="spy-loading"><div class="spy-spinner"></div>正在读取数据...</div>';
+  try {
+    const data = await generateSpyAppData(appId, p);
+    spyDataCache[cacheKey] = data;
+    _monoSaveSpyPersisted(personaId, appId, data);
+    renderSpyApp(appId, data, p);
+  } catch(e) {
+    if (bodyEl) bodyEl.innerHTML = '<div class="spy-loading" style="color:#ff3b30;">载入失败<br><span style="font-size:10px;">' + e.message + '</span></div>';
+  }
+};
+refreshSpyApp = async function(appId) {
+  const p = personas.find(function(x) { return x.id == currentSpyPersonaId; });
+  if (!p) return;
+  const liveApiConfig = _getCurrentActiveApiConfig();
+  const cacheKey = String(currentSpyPersonaId) + '_' + appId + '_' + _getApiConfigSignature(liveApiConfig);
+  delete spyDataCache[cacheKey];
+  const btn = document.getElementById('refreshBtn' + appId);
+  if (btn) btn.classList.add('spinning');
+  const bodyId = appId + 'Body';
+  const bodyEl = document.getElementById(bodyId);
+  if (bodyEl) bodyEl.innerHTML = '<div class="spy-loading"><div class="spy-spinner"></div>重新生成中...</div>';
+  try {
+    const data = await generateSpyAppData(appId, p);
+    spyDataCache[cacheKey] = data;
+    _monoSaveSpyPersisted(currentSpyPersonaId, appId, data);
+    renderSpyApp(appId, data, p);
+  } catch(e) {
+    if (bodyEl) bodyEl.innerHTML = '<div class="spy-loading" style="color:#ff3b30;">生成失败<br><span style="font-size:10px;">' + e.message + '</span></div>';
+  } finally {
+    if (btn) btn.classList.remove('spinning');
+  }
+};
+
+closeTaskRewardPopup = function() {
+  if (_currentGeneratedReward) {
+    const ro = _currentGeneratedReward.rewardObj;
+    const pendingIdx = _currentGeneratedReward.pendingIdx;
+    if (!taskData.pendingRewards) taskData.pendingRewards = [];
+    if (pendingIdx >= 0 && taskData.pendingRewards[pendingIdx]) {
+      taskData.pendingRewards[pendingIdx].generatedContent = ro.content;
+      taskData.pendingRewards[pendingIdx].title = ro.title;
+      taskData.pendingRewards[pendingIdx].date = ro.date;
+    } else {
+      const exists = taskData.pendingRewards.some(function(item) {
+        return item && item.personaId == ro.personaId && item.category === ro.category && item.subcategory === ro.subcategory && item.title === ro.title && item.generatedContent === ro.content;
+      });
+      if (!exists) taskData.pendingRewards.push({ date: ro.date, personaId: ro.personaId, charName: ro.charName, category: ro.category, subcategory: ro.subcategory, title: ro.title, generatedContent: ro.content });
+    }
+    saveTaskData();
+    _currentGeneratedReward = null;
+    renderTaskContent();
+  }
+  document.getElementById('taskRewardOverlay').classList.remove('open');
+};
+
+function _monoPersonaExportBase(p) {
+  return {
+    exportedAt: new Date().toISOString(),
+    version: 'mono-persona-v2',
+    meta: { name: p.name, avatar: p.avatar || '', nickname: p.nickname || '', personaId: p.id },
+    settings: {
+      name: p.name, persona: p.persona, nickname: p.nickname, avatar: p.avatar, avatarBg: p.avatarBg, avatarColor: p.avatarColor,
+      minReplyCount: p.minReplyCount, maxReplyCount: p.maxReplyCount, temperature: p.temperature, timeAwareness: p.timeAwareness,
+      allowSticker: p.allowSticker, stickerLibraryIds: Array.isArray(p.stickerLibraryIds) ? p.stickerLibraryIds : [],
+      allowVoice: p.allowVoice, voiceId: p.voiceId, voiceSpeed: p.voiceSpeed, voiceLang: p.voiceLang, outputLang: p.outputLang,
+      enableTranslation: p.enableTranslation, translateLang: p.translateLang, voiceFreq: p.voiceFreq, memoryCount: p.memoryCount,
+      memoryCore: p.memoryCore || [], lastHeartVoice: p.lastHeartVoice || null, heartVoiceEnabled: !!(p.heartVoiceEnabled != null ? p.heartVoiceEnabled : p.showHeartVoiceInHeader),
+      heartVoiceMode: p.heartVoiceMode || 'header', autoSummary: !!p.autoSummary, autoSummaryInterval: p.autoSummaryInterval || 20,
+      autoMsg: !!p.autoMsg, autoMsgMinInterval: p.autoMsgMinInterval || 60, autoMsgMaxInterval: p.autoMsgMaxInterval || 120,
+      autoDiary: !!p.autoDiary, autoDiaryTime: p.autoDiaryTime || '21:00', autoMoments: !!p.autoMoments, autoMomentsTime: p.autoMomentsTime || '20:00',
+      diaryIncludeOfflineMemory: p.diaryIncludeOfflineMemory !== false, bubbleAiCss: p.bubbleAiCss || '', bubbleUserCss: p.bubbleUserCss || '',
+      bubbleAiFontColor: p.bubbleAiFontColor || '', bubbleUserFontColor: p.bubbleUserFontColor || '', bubblePreset: p.bubblePreset || 'none',
+      chatRoomCustomCss: p.chatRoomCustomCss || '', chatBgImage: p.chatBgImage || '', replyMode: p.replyMode || 'normal', replySpeed: p.replySpeed || 'fast',
+      replySpeedCustomMin: p.replySpeedCustomMin || 0, replySpeedCustomMax: p.replySpeedCustomMax || 10, allowCallTts: !!p.allowCallTts,
+      oshiGlowBlue: p.oshiGlowBlue || '', oshiGlowPink: p.oshiGlowPink || '', oshiGlowShowHeart: !!p.oshiGlowShowHeart,
+      metaTimeColor: p.metaTimeColor || '', metaNameColor: p.metaNameColor || '', metaReadColor: p.metaReadColor || '', metaUnreadColor: p.metaUnreadColor || '',
+      momentsNickname: p.momentsNickname || p.name, momentsSignature: p.momentsSignature || '', momentsBanner: p.momentsBanner || ''
+    },
+    history: Array.isArray(p.history) ? p.history : [],
+    offlineSessions: _monoGetOfflineSessionsEnabled(p.id)
+  };
+}
+function _monoDownloadJson(filename, obj) {
+  const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+function monoOpenPersonaTransferMenu() {
+  if (!currentId) return;
+  let modal = document.getElementById('monoPersonaTransferModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'monoPersonaTransferModal';
+    modal.style.cssText = 'display:none;position:fixed;inset:0;z-index:10005;background:rgba(0,0,0,0.45);align-items:flex-end;';
+    modal.onclick = function(e) { if (e.target === modal) modal.style.display = 'none'; };
+    modal.innerHTML = '<div style="background:#fff;width:100%;max-width:420px;margin:0 auto;border-radius:22px 22px 0 0;padding:20px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;"><div style="font-size:12px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;">角色导入 / 导出</div><button onclick="document.getElementById(\'monoPersonaTransferModal\').style.display=\'none\'" style="background:none;border:none;font-size:20px;color:#999;cursor:pointer;">&times;</button></div><div style="display:flex;flex-direction:column;gap:8px;"><button class="music-library-pill-btn" onclick="monoExportPersonaPackage(\'settings\')" style="width:100%;">导出角色设定（含头像与设置）</button><button class="music-library-pill-btn" onclick="monoExportPersonaPackage(\'chat\')" style="width:100%;">导出角色聊天室内容</button><button class="music-library-pill-btn" onclick="monoExportPersonaPackage(\'bundle\')" style="width:100%;">导出角色设定 + 聊天内容</button><button class="music-library-pill-btn ghost" onclick="document.getElementById(\'monoPersonaImportInput\').click()" style="width:100%;">导入之前导出的角色文件</button><input id="monoPersonaImportInput" type="file" accept=".json,application/json" style="display:none;"></div><div style="font-size:10px;color:#999;line-height:1.7;margin-top:12px;">聊天和设定会按角色单独打包；导入时会作为一个新角色加入，不会覆盖你现有角色。</div></div>';
+    document.body.appendChild(modal);
+    modal.querySelector('#monoPersonaImportInput').addEventListener('change', monoImportPersonaPackage);
+  }
+  modal.style.display = 'flex';
+}
+function monoExportPersonaPackage(mode) {
+  const p = personas.find(function(x) { return x.id == currentId; });
+  if (!p) return;
+  const base = _monoPersonaExportBase(p);
+  let out;
+  if (mode === 'settings') out = { type: 'mono_persona_settings', version: base.version, meta: base.meta, settings: base.settings };
+  else if (mode === 'chat') out = { type: 'mono_persona_chat', version: base.version, meta: base.meta, history: base.history, offlineSessions: base.offlineSessions };
+  else out = { type: 'mono_persona_bundle', version: base.version, meta: base.meta, settings: base.settings, history: base.history, offlineSessions: base.offlineSessions };
+  _monoDownloadJson((p.name || '角色') + '_' + mode + '.json', out);
+}
+function monoImportPersonaPackage(event) {
+  const file = event && event.target && event.target.files && event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = _monoSafeJsonParse(String(e.target.result || ''), null);
+      if (!data) throw new Error('文件内容为空或格式无效');
+      const settings = data.settings || {};
+      const meta = data.meta || {};
+      const newId = Date.now();
+      const newPersona = Object.assign({
+        id: newId,
+        name: settings.name || meta.name || '导入角色',
+        nickname: settings.nickname || meta.name || '导入角色',
+        persona: settings.persona || '一个简单的角色设定',
+        avatar: settings.avatar || meta.avatar || makeAvatar((settings.name || meta.name || '导').charAt(0), '#f2f2f2', '#1a1a1a'),
+        history: Array.isArray(data.history) ? data.history : [],
+        memoryCore: settings.memoryCore || [],
+        diaryIncludeOfflineMemory: settings.diaryIncludeOfflineMemory !== false,
+        lastHeartVoice: settings.lastHeartVoice || null
+      }, settings);
+      newPersona.id = newId;
+      if (!Array.isArray(newPersona.history)) newPersona.history = [];
+      personas.push(newPersona);
+      if (Array.isArray(data.offlineSessions) && data.offlineSessions.length) {
+        try {
+          if (typeof _offlineState !== 'undefined') {
+            if (!_offlineState.sessions) _offlineState.sessions = {};
+            _offlineState.sessions[String(newId)] = data.offlineSessions.map(function(session, idx) {
+              return Object.assign({}, session, { id: 'imported_offline_' + newId + '_' + idx });
+            });
+            _saveOfflineSessions();
+          }
+        } catch(err) {}
+      }
+      currentId = newId;
+      saveData();
+      renderContactList();
+      selectPersona(newId);
+      document.getElementById('monoPersonaTransferModal').style.display = 'none';
+      alert('角色文件已导入为新角色。');
+    } catch(err) {
+      alert('导入失败：' + err.message);
+    } finally {
+      event.target.value = '';
+    }
+  };
+  reader.readAsText(file);
+}
+const _monoOrigShowAvatarEditPopup = showAvatarEditPopup;
+showAvatarEditPopup = function() {
+  _monoOrigShowAvatarEditPopup.apply(this, arguments);
+  const content = document.getElementById('avatarPopupContent');
+  if (content && !content.querySelector('[data-mono-transfer-btn]')) {
+    const btn = document.createElement('button');
+    btn.setAttribute('data-mono-transfer-btn', '1');
+    btn.onclick = function() { closeAvatarEditPopup(); monoOpenPersonaTransferMenu(); };
+    btn.style.cssText = 'background:#2d2d4e;color:#fff;border:1px solid #444;padding:12px;border-radius:10px;font-size:14px;cursor:pointer;text-align:left;';
+    btn.innerHTML = '<i class="fas fa-file-export" style="margin-right:8px;color:#67b26f;"></i>角色导入 / 导出';
+    content.appendChild(btn);
+  }
+};
+function _monoEnsurePersonaEditorExtras() {
+  if (document.getElementById('monoDiaryOfflineSetting')) return;
+  const autoDiaryBlock = document.getElementById('pAutoDiary');
+  if (!autoDiaryBlock) return;
+  const section = autoDiaryBlock.closest('.space-y-2');
+  if (!section || !section.parentNode) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'space-y-2';
+  wrap.style.cssText = 'border-top:1px solid #eee;padding-top:20px;';
+  wrap.innerHTML = '<label class="text-[10px] font-bold uppercase tracking-widest">日记记忆 Diary Memory</label><label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:12px;line-height:1.6;"><input type="checkbox" id="monoDiaryOfflineSetting" style="width:16px;height:16px;accent-color:#1a1a1a;margin-top:1px;"><span>日记生成时包含已开启记忆的线下剧情，并明确知道那是线下互动，不是线上私聊</span></label>';
+  section.parentNode.insertBefore(wrap, section.nextSibling);
+}
+function _monoEnsurePersonaEditorTransferEntry() {
+  const root = document.querySelector('#editorModal .max-w-xl');
+  if (!root || document.getElementById('monoPersonaEditorImportWrap')) return;
+  const title = root.querySelector('h3');
+  if (!title || !title.parentNode) return;
+  const wrap = document.createElement('div');
+  wrap.id = 'monoPersonaEditorImportWrap';
+  wrap.className = 'space-y-2';
+  wrap.style.cssText = 'padding:14px 16px;border:1px solid #e9e9e9;border-radius:16px;background:linear-gradient(180deg,#fafafa 0%,#f5f5f5 100%);';
+  wrap.innerHTML = ''
+    + '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">'
+    + '<div>'
+    + '<div class="text-[10px] font-bold uppercase tracking-widest" style="margin-bottom:6px;">快速导入 Existing Package</div>'
+    + '<div style="font-size:12px;line-height:1.7;color:#555;">如果你之前导出过角色设定，或导出过“角色设定 + 聊天内容”，可以在这里直接导入成一个新角色。</div>'
+    + '</div>'
+    + '<button type="button" id="monoPersonaEditorImportBtn" style="border:none;background:#1a1a1a;color:#fff;padding:10px 14px;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">导入角色文件</button>'
+    + '</div>'
+    + '<input id="monoPersonaEditorImportInput" type="file" accept=".json,application/json" style="display:none;">'
+    + '<div style="font-size:10px;color:#888;line-height:1.7;">支持导入角色设定、角色聊天内容，或角色设定 + 聊天内容；导入后会作为新角色加入，不覆盖现有角色。</div>';
+  title.parentNode.insertBefore(wrap, title.nextSibling);
+  const btn = wrap.querySelector('#monoPersonaEditorImportBtn');
+  const input = wrap.querySelector('#monoPersonaEditorImportInput');
+  if (btn && input) {
+    btn.addEventListener('click', function() { input.click(); });
+    input.addEventListener('change', monoImportPersonaPackage);
+  }
+}
+const _monoOrigOpenEditor = openEditor;
+openEditor = function(isEdit) {
+  _monoOrigOpenEditor.apply(this, arguments);
+  _monoEnsurePersonaEditorExtras();
+  _monoEnsurePersonaEditorTransferEntry();
+  const transferWrap = document.getElementById('monoPersonaEditorImportWrap');
+  if (transferWrap) transferWrap.style.display = isEdit ? 'none' : '';
+  const p = isEdit ? personas.find(function(x) { return x.id == currentId; }) : null;
+  const cb = document.getElementById('monoDiaryOfflineSetting');
+  if (cb) cb.checked = !p || p.diaryIncludeOfflineMemory !== false;
+};
+const _monoOrigSavePersona = savePersona;
+savePersona = function() {
+  const diaryIncludeOfflineMemory = document.getElementById('monoDiaryOfflineSetting') ? document.getElementById('monoDiaryOfflineSetting').checked : true;
+  _monoOrigSavePersona.apply(this, arguments);
+  const p = personas.find(function(x) { return x.id == currentId; });
+  if (p) {
+    p.diaryIncludeOfflineMemory = diaryIncludeOfflineMemory;
+    saveData();
+  }
+};
+function _monoGetOfflinePovMode() {
+  return (_offlineState && _offlineState.settings && _offlineState.settings.narrativePov) || 'mixed';
+}
+function _monoGetOfflineWorldNarrativeRule(isShort, wordRule) {
+  const mode = _monoGetOfflinePovMode();
+  const baseShort = '用简短自然的对话、动作和临场反应推进剧情。句数按内容需要自然决定，不要为了凑字数变空，也不要突然写很短。';
+  let longRule = '用第三人称或混合视角细腻叙事，描写场景、动作、情绪与心理。不要硬凑，也不要在情绪或情节正要展开时突然收断。';
+  if (mode === 'first') longRule = '用第一人称细腻叙事，直接从角色“我”的视角描写场景、动作、情绪与心理。不要硬凑，也不要在情绪或情节正要展开时突然收断。';
+  if (mode === 'third') longRule = '用第三人称细腻叙事，描写场景、动作、情绪与心理。不要硬凑，也不要在情绪或情节正要展开时突然收断。';
+  return (isShort ? baseShort : longRule) + wordRule;
+}
+function _monoGetOfflineShortPromptRule() {
+  const mode = _monoGetOfflinePovMode();
+  if (mode === 'first') return '根据以下线下剧情继续发展：以第一人称或直接对话自然推进。句数按情节需要决定，不要被固定句数束缚，但也不要拖沓。';
+  if (mode === 'third') return '根据以下线下剧情继续发展：用第三人称或直接对话自然推进。句数按情节需要决定，不要被固定句数束缚，但也不要拖沓。';
+  return '根据以下线下剧情继续发展：用第三人称或直接对话自然推进。句数按情节需要决定，不要被固定句数束缚，但也不要拖沓。';
+}
+function _monoGetOfflineLongPromptRule() {
+  const mode = _monoGetOfflinePovMode();
+  if (mode === 'first') return '模式：长篇敘事——用第一人称视角，详细描写场景、氛围、角色的动作、表情、心理感受。';
+  if (mode === 'third') return '模式：长篇敘事——用第三人称视角，详细描写场景、氛围、角色的动作、表情、心理感受。';
+  return '模式：长篇敘事——用第三人称或混合视角，详细描写场景、氛围、角色的动作、表情、心理感受。';
+}
+function _monoEnsureOfflineExtras() {
+  if (document.getElementById('monoOfflineNarrativePov')) return;
+  const heartToggle = document.getElementById('offlineToggleHeartVoice');
+  const row = heartToggle ? heartToggle.closest('.offline-setting-row') : null;
+  if (!row || !row.parentNode) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'offline-setting-row';
+  wrap.onclick = function(e) { e.stopPropagation(); };
+  wrap.innerHTML = '<div><div class="offline-setting-label">线下叙事人称</div><div class="offline-setting-value">可选第一人称 / 第三人称 / 混合视角</div></div><select id="monoOfflineNarrativePov" style="background:var(--off-input-bg);border:1px solid var(--off-border2);border-radius:8px;color:var(--off-text);font-size:11px;padding:8px 10px;font-family:inherit;"><option value="mixed">混合</option><option value="third">第三人称</option><option value="first">第一人称</option></select>';
+  row.parentNode.insertBefore(wrap, row.nextSibling);
+  const select = wrap.querySelector('#monoOfflineNarrativePov');
+  select.addEventListener('change', function() {
+    _offlineState.settings.narrativePov = select.value;
+    _persistOfflineSettings();
+  });
+}
+const _monoOrigSyncOfflineSettingsUI = _syncOfflineSettingsUI;
+_syncOfflineSettingsUI = function() {
+  _monoOrigSyncOfflineSettingsUI.apply(this, arguments);
+  _monoEnsureOfflineExtras();
+  const select = document.getElementById('monoOfflineNarrativePov');
+  if (select) select.value = _monoGetOfflinePovMode();
+};
+function _monoInitUiFixes() {
+  _monoEnsureHeartVoiceHistoryUi();
+  _monoEnsureMultiSelectTools();
+  _monoEnsureMusicImportExtras();
+  _monoEnsurePersonaEditorExtras();
+  _monoEnsureOfflineExtras();
+}
+window.copySelectedMessages = copySelectedMessages;
+window.exportSelectedMessages = exportSelectedMessages;
+window.confirmClearChatHistory = confirmClearChatHistory;
+window.executeClearChatHistory = executeClearChatHistory;
+window.monoOpenChatHistoryManager = monoOpenChatHistoryManager;
+window.monoApplyChatDatePreset = monoApplyChatDatePreset;
+window._monoUpdateChatRangeSummary = _monoUpdateChatRangeSummary;
+window.generateAutoSummary = generateAutoSummary;
+window.manualGenerateSummary = manualGenerateSummary;
+window.updateDiary = updateDiary;
+window.diaryRunAiGenerate = diaryRunAiGenerate;
+window.diaryRegenEntry = diaryRegenEntry;
+window.generateAutoDiaryOnly = generateAutoDiaryOnly;
+window.openSpyApp = openSpyApp;
+window.refreshSpyApp = refreshSpyApp;
+window.closeTaskRewardPopup = closeTaskRewardPopup;
+window.showAvatarEditPopup = showAvatarEditPopup;
+window.openEditor = openEditor;
+window.savePersona = savePersona;
+window.monoDeleteChatByDateRange = monoDeleteChatByDateRange;
+window._monoCloseChatCleanupModal = _monoCloseChatCleanupModal;
+window.monoOpenHeartVoiceHistory = monoOpenHeartVoiceHistory;
+window.monoCloseHeartVoiceHistory = monoCloseHeartVoiceHistory;
+window.monoOpenPersonaTransferMenu = monoOpenPersonaTransferMenu;
+window.monoExportPersonaPackage = monoExportPersonaPackage;
+window.monoImportPersonaPackage = monoImportPersonaPackage;
+window._monoInitUiFixes = _monoInitUiFixes;
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function() { setTimeout(_monoInitUiFixes, 120); });
+} else {
+  setTimeout(_monoInitUiFixes, 120);
+}
+
+
+
 })();
 </script>
 
+<script>
+(function() {
+  'use strict';
+
+  const HEART_HISTORY_KEY_FALLBACK = 'mono_heart_voice_history_v1';
+
+  function monoEscHtml(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function monoSafeJson(raw, fallback) {
+    try {
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (err) {
+      return fallback;
+    }
+  }
+
+  function monoGetPersonas() {
+    try {
+      if (typeof personas !== 'undefined' && Array.isArray(personas)) return personas;
+    } catch (err) {}
+    return Array.isArray(window.personas) ? window.personas : [];
+  }
+
+  function monoGetCurrentPersonaId() {
+    try {
+      if (typeof currentId !== 'undefined' && currentId != null) return currentId;
+    } catch (err) {}
+    return window.currentId != null ? window.currentId : null;
+  }
+
+  function monoGetUserName() {
+    try {
+      if (typeof userProfile !== 'undefined' && userProfile && userProfile.name) return userProfile.name;
+    } catch (err) {}
+    return (window.userProfile && window.userProfile.name) || '用户';
+  }
+
+  function monoSaveAll() {
+    try {
+      if (typeof saveData === 'function') {
+        saveData();
+        return;
+      }
+    } catch (err) {}
+    if (typeof window.saveData === 'function') window.saveData();
+  }
+
+  function monoRenderAll() {
+    try {
+      if (typeof renderMessages === 'function') renderMessages();
+    } catch (err) {
+      if (typeof window.renderMessages === 'function') window.renderMessages();
+    }
+    try {
+      if (typeof renderContactList === 'function') renderContactList();
+    } catch (err) {
+      if (typeof window.renderContactList === 'function') window.renderContactList();
+    }
+  }
+
+  function monoResetSpyCache() {
+    try {
+      if (typeof spyDataCache !== 'undefined') {
+        spyDataCache = {};
+        return;
+      }
+    } catch (err) {}
+    window.spyDataCache = {};
+  }
+
+  function monoSelectPersonaById(id) {
+    try {
+      if (typeof selectPersona === 'function') {
+        selectPersona(id);
+        return;
+      }
+    } catch (err) {}
+    if (typeof window.selectPersona === 'function') window.selectPersona(id);
+  }
+
+  function monoMakeAvatarFallback(name) {
+    try {
+      if (typeof makeAvatar === 'function') return makeAvatar(String(name || '?').charAt(0), '#f2f2f2', '#1a1a1a');
+    } catch (err) {}
+    return '';
+  }
+
+  function monoGetCurrentPersona() {
+    const list = monoGetPersonas();
+    const activeId = monoGetCurrentPersonaId();
+    return list.find(function(item) { return String(item && item.id) === String(activeId); }) || null;
+  }
+
+  function monoHeartHistoryKey() {
+    return window.MONO_HEART_VOICE_HISTORY_KEY || HEART_HISTORY_KEY_FALLBACK;
+  }
+
+  function monoGetHeartItems() {
+    const all = monoSafeJson(localStorage.getItem(monoHeartHistoryKey()), []);
+    const cutoff = Date.now() - 3 * 24 * 60 * 60 * 1000;
+    return (Array.isArray(all) ? all : []).filter(function(item) {
+      return item && (!item.ts || item.ts >= cutoff);
+    });
+  }
+
+  function monoFmtTs(ts) {
+    const d = new Date(ts || Date.now());
+    if (Number.isNaN(d.getTime())) return '';
+    const now = new Date();
+    const sameDay = d.toDateString() === now.toDateString();
+    const hm = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    return sameDay ? ('今天 ' + hm) : ((d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm);
+  }
+
+  function monoDateKey(ts) {
+    if (!ts) return 'undated';
+    const d = new Date(ts);
+    if (Number.isNaN(d.getTime())) return 'undated';
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return y + '-' + m + '-' + day;
+  }
+
+  function monoDateLabel(key) {
+    if (!key || key === 'undated') return '无日期消息';
+    return key;
+  }
+
+  function monoMessageText(message, persona) {
+    if (!message) return '';
+    if (message.msgType === 'sticker') {
+      const sender = message.role === 'user' ? monoGetUserName() : ((persona && persona.name) || '角色');
+      const caption = String(message.caption || '').trim();
+      return caption ? ('[' + sender + '发送了表情包：' + caption + ']') : ('[' + sender + '发送了表情包]');
+    }
+    if (message.msgType === 'image') return '[图片] ' + String(message.imageCaption || message.content || '').trim();
+    if (message.msgType === 'voice') return '[语音] ' + String(message.transcript || message.content || '').trim();
+    if (message.msgType === 'forwarded_post') return '[转发] ' + String((message.fwdData && message.fwdData.content) || message.content || '').trim();
+    if (message.msgType === 'takeout_card') return '[外卖卡片]';
+    return String(message.content || '').trim();
+  }
+
+  function monoDownloadText(filename, text) {
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  function monoDownloadJson(filename, data) {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  function monoGetOfflineSessionsExport(personaId) {
+    try {
+      if (typeof _offlineState !== 'undefined' && _offlineState && _offlineState.sessions) {
+        const sessions = _offlineState.sessions[String(personaId)];
+        return Array.isArray(sessions) ? sessions : [];
+      }
+    } catch (err) {}
+    return [];
+  }
+
+  function monoBuildPersonaExportBase(persona) {
+    return {
+      exportedAt: new Date().toISOString(),
+      version: 'mono-persona-v2',
+      meta: {
+        name: persona.name || '角色',
+        avatar: persona.avatar || '',
+        nickname: persona.nickname || '',
+        personaId: persona.id
+      },
+      settings: {
+        name: persona.name || '角色',
+        persona: persona.persona || '一个简单的角色设定',
+        nickname: persona.nickname || persona.name || '角色',
+        avatar: persona.avatar || '',
+        avatarBg: persona.avatarBg || '',
+        avatarColor: persona.avatarColor || '',
+        minReplyCount: persona.minReplyCount || 1,
+        maxReplyCount: persona.maxReplyCount || 5,
+        temperature: persona.temperature == null ? 1 : persona.temperature,
+        timeAwareness: !!persona.timeAwareness,
+        allowSticker: !!persona.allowSticker,
+        stickerLibraryIds: Array.isArray(persona.stickerLibraryIds) ? persona.stickerLibraryIds : [],
+        allowVoice: !!persona.allowVoice,
+        voiceId: persona.voiceId || '',
+        voiceSpeed: persona.voiceSpeed || 1,
+        voiceLang: persona.voiceLang || '',
+        outputLang: persona.outputLang || '',
+        enableTranslation: persona.enableTranslation !== false,
+        translateLang: persona.translateLang || 'zh',
+        voiceFreq: persona.voiceFreq || 'mid',
+        memoryCount: persona.memoryCount || 100,
+        memoryCore: Array.isArray(persona.memoryCore) ? persona.memoryCore : [],
+        lastHeartVoice: persona.lastHeartVoice || null,
+        heartVoiceEnabled: !!(persona.heartVoiceEnabled != null ? persona.heartVoiceEnabled : persona.showHeartVoiceInHeader),
+        heartVoiceMode: persona.heartVoiceMode || 'header',
+        autoSummary: !!persona.autoSummary,
+        autoSummaryInterval: persona.autoSummaryInterval || 20,
+        autoMsg: !!persona.autoMsg,
+        autoMsgMinInterval: persona.autoMsgMinInterval || 60,
+        autoMsgMaxInterval: persona.autoMsgMaxInterval || 120,
+        autoDiary: !!persona.autoDiary,
+        autoDiaryTime: persona.autoDiaryTime || '21:00',
+        autoMoments: !!persona.autoMoments,
+        autoMomentsTime: persona.autoMomentsTime || '20:00',
+        diaryIncludeOfflineMemory: persona.diaryIncludeOfflineMemory !== false,
+        bubbleAiCss: persona.bubbleAiCss || '',
+        bubbleUserCss: persona.bubbleUserCss || '',
+        bubbleAiFontColor: persona.bubbleAiFontColor || '',
+        bubbleUserFontColor: persona.bubbleUserFontColor || '',
+        bubblePreset: persona.bubblePreset || 'none',
+        chatRoomCustomCss: persona.chatRoomCustomCss || '',
+        chatBgImage: persona.chatBgImage || '',
+        replyMode: persona.replyMode || 'normal',
+        replySpeed: persona.replySpeed || 'fast',
+        replySpeedCustomMin: persona.replySpeedCustomMin || 0,
+        replySpeedCustomMax: persona.replySpeedCustomMax || 10,
+        allowCallTts: !!persona.allowCallTts,
+        oshiGlowBlue: persona.oshiGlowBlue || '',
+        oshiGlowPink: persona.oshiGlowPink || '',
+        oshiGlowShowHeart: !!persona.oshiGlowShowHeart,
+        metaTimeColor: persona.metaTimeColor || '',
+        metaNameColor: persona.metaNameColor || '',
+        metaReadColor: persona.metaReadColor || '',
+        metaUnreadColor: persona.metaUnreadColor || '',
+        momentsNickname: persona.momentsNickname || persona.name || '角色',
+        momentsSignature: persona.momentsSignature || '',
+        momentsBanner: persona.momentsBanner || ''
+      },
+      history: Array.isArray(persona.history) ? persona.history : [],
+      offlineSessions: monoGetOfflineSessionsExport(persona.id)
+    };
+  }
+
+  window.monoExportPersonaPackage = function(mode) {
+    const persona = monoGetCurrentPersona();
+    if (!persona) {
+      alert('请先打开一个角色聊天室。');
+      return;
+    }
+    const base = monoBuildPersonaExportBase(persona);
+    let out;
+    if (mode === 'settings') out = { type: 'mono_persona_settings', version: base.version, meta: base.meta, settings: base.settings };
+    else if (mode === 'chat') out = { type: 'mono_persona_chat', version: base.version, meta: base.meta, history: base.history, offlineSessions: base.offlineSessions };
+    else out = { type: 'mono_persona_bundle', version: base.version, meta: base.meta, settings: base.settings, history: base.history, offlineSessions: base.offlineSessions };
+    monoDownloadJson((persona.name || '角色') + '_' + mode + '.json', out);
+  };
+
+  function monoImportOfflineSessions(newId, sessions) {
+    if (!Array.isArray(sessions) || !sessions.length) return;
+    try {
+      if (typeof _offlineState !== 'undefined') {
+        if (!_offlineState.sessions) _offlineState.sessions = {};
+        _offlineState.sessions[String(newId)] = sessions.map(function(session, idx) {
+          return Object.assign({}, session, { id: 'imported_offline_' + newId + '_' + idx });
+        });
+        if (typeof _saveOfflineSessions === 'function') _saveOfflineSessions();
+      }
+    } catch (err) {}
+  }
+
+  function monoBuildImportedPersona(data) {
+    const settings = data.settings || {};
+    const meta = data.meta || {};
+    const newId = Date.now();
+    const name = settings.name || meta.name || '导入角色';
+    const persona = Object.assign({
+      id: newId,
+      name: name,
+      nickname: settings.nickname || meta.nickname || name,
+      persona: settings.persona || '一个简单的角色设定',
+      avatar: settings.avatar || meta.avatar || monoMakeAvatarFallback(name),
+      history: Array.isArray(data.history) ? data.history : [],
+      memoryCore: Array.isArray(settings.memoryCore) ? settings.memoryCore : [],
+      lastHeartVoice: settings.lastHeartVoice || null,
+      diaryIncludeOfflineMemory: settings.diaryIncludeOfflineMemory !== false,
+      minReplyCount: settings.minReplyCount || 1,
+      maxReplyCount: settings.maxReplyCount || 5,
+      temperature: settings.temperature == null ? 1 : settings.temperature,
+      timeAwareness: !!settings.timeAwareness,
+      allowSticker: !!settings.allowSticker,
+      stickerLibraryIds: Array.isArray(settings.stickerLibraryIds) ? settings.stickerLibraryIds : [],
+      allowVoice: !!settings.allowVoice,
+      voiceId: settings.voiceId || '',
+      voiceSpeed: settings.voiceSpeed || 1,
+      voiceLang: settings.voiceLang || '',
+      outputLang: settings.outputLang || '',
+      enableTranslation: settings.enableTranslation !== false,
+      translateLang: settings.translateLang || 'zh',
+      voiceFreq: settings.voiceFreq || 'mid',
+      memoryCount: settings.memoryCount || 100,
+      heartVoiceEnabled: !!settings.heartVoiceEnabled,
+      heartVoiceMode: settings.heartVoiceMode || 'header',
+      autoSummary: !!settings.autoSummary,
+      autoSummaryInterval: settings.autoSummaryInterval || 20,
+      autoMsg: !!settings.autoMsg,
+      autoMsgMinInterval: settings.autoMsgMinInterval || 60,
+      autoMsgMaxInterval: settings.autoMsgMaxInterval || 120,
+      autoDiary: !!settings.autoDiary,
+      autoDiaryTime: settings.autoDiaryTime || '21:00',
+      autoMoments: !!settings.autoMoments,
+      autoMomentsTime: settings.autoMomentsTime || '20:00',
+      bubbleAiCss: settings.bubbleAiCss || '',
+      bubbleUserCss: settings.bubbleUserCss || '',
+      bubbleAiFontColor: settings.bubbleAiFontColor || '',
+      bubbleUserFontColor: settings.bubbleUserFontColor || '',
+      bubblePreset: settings.bubblePreset || 'none',
+      chatRoomCustomCss: settings.chatRoomCustomCss || '',
+      chatBgImage: settings.chatBgImage || '',
+      replyMode: settings.replyMode || 'normal',
+      replySpeed: settings.replySpeed || 'fast',
+      replySpeedCustomMin: settings.replySpeedCustomMin || 0,
+      replySpeedCustomMax: settings.replySpeedCustomMax || 10,
+      allowCallTts: !!settings.allowCallTts,
+      oshiGlowBlue: settings.oshiGlowBlue || '',
+      oshiGlowPink: settings.oshiGlowPink || '',
+      oshiGlowShowHeart: !!settings.oshiGlowShowHeart,
+      metaTimeColor: settings.metaTimeColor || '',
+      metaNameColor: settings.metaNameColor || '',
+      metaReadColor: settings.metaReadColor || '',
+      metaUnreadColor: settings.metaUnreadColor || '',
+      momentsNickname: settings.momentsNickname || name,
+      momentsSignature: settings.momentsSignature || '',
+      momentsBanner: settings.momentsBanner || ''
+    }, settings);
+    persona.id = newId;
+    if (!Array.isArray(persona.history)) persona.history = [];
+    return persona;
+  }
+
+  window.monoImportPersonaPackage = function(event) {
+    const input = event && event.target;
+    const file = input && input.files && input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(loadEvent) {
+      try {
+        const data = monoSafeJson(String(loadEvent.target && loadEvent.target.result || ''), null);
+        if (!data) throw new Error('文件内容为空或格式无效');
+        const list = monoGetPersonas();
+        const persona = monoBuildImportedPersona(data);
+        list.push(persona);
+        monoImportOfflineSessions(persona.id, data.offlineSessions);
+        try {
+          if (typeof currentId !== 'undefined') currentId = persona.id;
+        } catch (err) {
+          window.currentId = persona.id;
+        }
+        monoSaveAll();
+        monoRenderAll();
+        monoSelectPersonaById(persona.id);
+        monoCloseChatModal();
+        const addModal = document.getElementById('monoAddPersonaModal');
+        if (addModal) addModal.style.display = 'none';
+        alert('已导入为新角色，并创建对应聊天室。');
+      } catch (err) {
+        alert('导入失败：' + err.message);
+      } finally {
+        if (input) input.value = '';
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  function monoEnsureAddPersonaMenu() {
+    let modal = document.getElementById('monoAddPersonaModal');
+    if (modal) return modal;
+    modal = document.createElement('div');
+    modal.id = 'monoAddPersonaModal';
+    modal.style.cssText = 'display:none;position:fixed;inset:0;z-index:10006;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;padding:20px;';
+    modal.innerHTML = ''
+      + '<div style="background:#fff;width:min(420px,100%);border-radius:20px;padding:20px 18px;box-shadow:0 18px 50px rgba(0,0,0,0.18);">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">'
+      + '<div style="font-size:12px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;">新增角色</div>'
+      + '<button type="button" id="monoAddPersonaCloseBtn" style="background:none;border:none;font-size:20px;color:#999;cursor:pointer;">&times;</button>'
+      + '</div>'
+      + '<div style="display:flex;flex-direction:column;gap:10px;">'
+      + '<button type="button" id="monoAddPersonaCreateBtn" style="width:100%;padding:14px 14px;border-radius:14px;border:1px solid #ddd;background:#fff;color:#1a1a1a;font-size:13px;font-weight:700;text-align:left;cursor:pointer;">'
+      + '<div style="font-size:13px;font-weight:700;">新建空白角色</div>'
+      + '<div style="font-size:10px;color:#888;font-weight:500;margin-top:4px;line-height:1.7;">从头填写角色设定，创建一个新的角色和新的空白聊天室。</div>'
+      + '</button>'
+      + '<button type="button" id="monoAddPersonaImportBtn" style="width:100%;padding:14px 14px;border-radius:14px;border:1px solid #1a1a1a;background:#1a1a1a;color:#fff;font-size:13px;font-weight:700;text-align:left;cursor:pointer;">'
+      + '<div style="font-size:13px;font-weight:700;">导入之前导出的角色文件</div>'
+      + '<div style="font-size:10px;color:rgba(255,255,255,0.75);font-weight:500;margin-top:4px;line-height:1.7;">如果文件包含角色设定 + 聊天内容，就会直接建立一个带完整聊天室的新角色。</div>'
+      + '</button>'
+      + '<input id="monoAddPersonaImportInput" type="file" accept=".json,application/json" style="display:none;">'
+      + '</div>'
+      + '</div>';
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal) modal.style.display = 'none';
+    });
+    document.body.appendChild(modal);
+    const closeBtn = document.getElementById('monoAddPersonaCloseBtn');
+    const createBtn = document.getElementById('monoAddPersonaCreateBtn');
+    const importBtn = document.getElementById('monoAddPersonaImportBtn');
+    const importInput = document.getElementById('monoAddPersonaImportInput');
+    if (closeBtn) closeBtn.addEventListener('click', function() { modal.style.display = 'none'; });
+    if (createBtn) createBtn.addEventListener('click', function() {
+      modal.style.display = 'none';
+      if (typeof window.openEditor === 'function') window.openEditor(false);
+    });
+    if (importBtn && importInput) {
+      importBtn.addEventListener('click', function() { importInput.click(); });
+      importInput.addEventListener('change', function(event) { window.monoImportPersonaPackage(event); });
+    }
+    return modal;
+  }
+
+  window.monoOpenAddPersonaMenu = function() {
+    const modal = monoEnsureAddPersonaMenu();
+    if (modal) modal.style.display = 'flex';
+  };
+
+  function monoEnsureHeartModal() {
+    let modal = document.getElementById('monoHeartHistoryModal');
+    if (modal) return modal;
+    modal = document.createElement('div');
+    modal.id = 'monoHeartHistoryModal';
+    modal.style.cssText = 'display:none;position:fixed;inset:0;z-index:10003;background:rgba(0,0,0,0.45);align-items:flex-end;';
+    modal.addEventListener('click', function(event) {
+      if (event.target === modal) window.monoCloseHeartVoiceHistory();
+    });
+    modal.innerHTML = ''
+      + '<div style="background:#fff;width:100%;max-width:460px;margin:0 auto;border-radius:22px 22px 0 0;max-height:78vh;display:flex;flex-direction:column;">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;padding:18px 18px 12px;border-bottom:1px solid #eee;">'
+      + '<div><div style="font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;">心声历史</div><div style="font-size:10px;color:#888;margin-top:4px;">只保留近 3 天，可随时回看</div></div>'
+      + '<button type="button" id="monoHeartHistoryCloseBtn" style="background:none;border:none;font-size:20px;color:#999;cursor:pointer;">&times;</button>'
+      + '</div>'
+      + '<div id="monoHeartHistoryBody" style="overflow:auto;padding:14px 16px 20px;"></div>'
+      + '</div>';
+    document.body.appendChild(modal);
+    const closeBtn = document.getElementById('monoHeartHistoryCloseBtn');
+    if (closeBtn) closeBtn.addEventListener('click', function() { window.monoCloseHeartVoiceHistory(); });
+    return modal;
+  }
+
+  window.monoCloseHeartVoiceHistory = function() {
+    const modal = document.getElementById('monoHeartHistoryModal');
+    if (modal) modal.style.display = 'none';
+  };
+
+  window.monoOpenHeartVoiceHistory = function() {
+    const modal = monoEnsureHeartModal();
+    const body = document.getElementById('monoHeartHistoryBody');
+    const currentPidRaw = monoGetCurrentPersonaId();
+    const currentPid = currentPidRaw != null ? String(currentPidRaw) : '';
+    const items = monoGetHeartItems().filter(function(item) {
+      return !currentPid || String(item.personaId) === currentPid;
+    }).sort(function(a, b) {
+      return (b.ts || 0) - (a.ts || 0);
+    });
+    if (!body) return;
+    if (!items.length) {
+      body.innerHTML = '<div style="padding:24px 10px;text-align:center;color:#999;font-size:12px;">近 3 天还没有可查看的心声记录。</div>';
+    } else {
+      body.innerHTML = items.map(function(item) {
+        const avatar = item.avatar || '';
+        const source = item.offline ? '线下' : '线上';
+        const type = item.sourceType === 'reply' ? '回完你后' : '读到你消息时';
+        return ''
+          + '<div style="display:flex;gap:10px;padding:12px 0;border-bottom:1px solid #f2f2f2;">'
+          + (avatar ? ('<img src="' + monoEscHtml(avatar) + '" style="width:34px;height:34px;border-radius:50%;object-fit:cover;flex-shrink:0;">') : '<div style="width:34px;height:34px;border-radius:50%;background:#f1f1f1;flex-shrink:0;"></div>')
+          + '<div style="flex:1;min-width:0;">'
+          + '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;">'
+          + '<div style="font-size:12px;font-weight:700;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + monoEscHtml(item.personaName || '角色') + '</div>'
+          + '<div style="font-size:10px;color:#999;flex-shrink:0;">' + monoEscHtml(monoFmtTs(item.ts)) + '</div>'
+          + '</div>'
+          + '<div style="font-size:10px;color:#999;margin:4px 0 6px;">' + monoEscHtml(source + ' · ' + type) + '</div>'
+          + '<div style="font-size:12px;line-height:1.7;color:#333;white-space:pre-wrap;">' + monoEscHtml(item.line || '') + '</div>'
+          + '</div></div>';
+      }).join('');
+    }
+    modal.style.display = 'flex';
+  };
+
+  function monoCloseChatModal() {
+    const modal = document.getElementById('monoChatCleanupModal');
+    if (modal) modal.remove();
+  }
+
+  function monoGetChatRangeSelection() {
+    const startEl = document.getElementById('monoChatDateStart');
+    const endEl = document.getElementById('monoChatDateEnd');
+    const includeUndatedEl = document.getElementById('monoChatIncludeUndated');
+    return {
+      start: startEl ? String(startEl.value || '').trim() : '',
+      end: endEl ? String(endEl.value || '').trim() : '',
+      includeUndated: !!(includeUndatedEl && includeUndatedEl.checked)
+    };
+  }
+
+  function monoGetMessagesByRange(persona, range) {
+    if (!persona || !Array.isArray(persona.history)) return [];
+    return persona.history.filter(function(message) {
+      const key = monoDateKey(message && message.timestamp);
+      if (key === 'undated') return !!range.includeUndated;
+      if (range.start && key < range.start) return false;
+      if (range.end && key > range.end) return false;
+      return true;
+    });
+  }
+
+  function monoUpdateChatRangeSummary() {
+    const persona = monoGetCurrentPersona();
+    const summaryEl = document.getElementById('monoChatRangeSummary');
+    if (!persona || !summaryEl) return [];
+    const range = monoGetChatRangeSelection();
+    const list = monoGetMessagesByRange(persona, range);
+    if (!list.length) {
+      summaryEl.textContent = '当前日期范围内没有可处理的聊天记录。';
+    } else {
+      summaryEl.textContent = '将处理 ' + list.length + ' 条消息';
+    }
+    return list;
+  }
+
+  function monoCollectDateOptions(persona) {
+    const keys = new Set();
+    (Array.isArray(persona && persona.history) ? persona.history : []).forEach(function(message) {
+      keys.add(monoDateKey(message && message.timestamp));
+    });
+    return Array.from(keys).sort();
+  }
+
+  window.monoApplyChatDatePreset = function(dateKey) {
+    const startEl = document.getElementById('monoChatDateStart');
+    const endEl = document.getElementById('monoChatDateEnd');
+    const includeUndatedEl = document.getElementById('monoChatIncludeUndated');
+    if (dateKey === 'undated') {
+      if (startEl) startEl.value = '';
+      if (endEl) endEl.value = '';
+      if (includeUndatedEl) includeUndatedEl.checked = true;
+    } else {
+      if (startEl) startEl.value = dateKey;
+      if (endEl) endEl.value = dateKey;
+      if (includeUndatedEl) includeUndatedEl.checked = false;
+    }
+    monoUpdateChatRangeSummary();
+  };
+
+  window._monoUpdateChatRangeSummary = monoUpdateChatRangeSummary;
+  window._monoCloseChatCleanupModal = monoCloseChatModal;
+
+  window.monoDeleteChatByDateRange = function(exportFirst) {
+    const persona = monoGetCurrentPersona();
+    if (!persona || !Array.isArray(persona.history) || !persona.history.length) return;
+    const range = monoGetChatRangeSelection();
+    if (range.start && range.end && range.start > range.end) {
+      alert('开始日期不能晚于结束日期。');
+      return;
+    }
+    const targets = monoGetMessagesByRange(persona, range);
+    if (!targets.length) {
+      alert('当前日期范围内没有可处理的聊天记录。');
+      return;
+    }
+    if (exportFirst) {
+      const lines = targets.map(function(message) {
+        const speaker = message.role === 'user' ? monoGetUserName() : (persona.name || '角色');
+        return speaker + '：' + monoMessageText(message, persona);
+      });
+      monoDownloadText((persona.name || '角色') + '_chat_export.txt', lines.join('\n'));
+    }
+    if (!confirm('确定要处理这个日期范围内的 ' + targets.length + ' 条聊天记录吗？')) return;
+    const set = new Set(targets);
+    persona.history = persona.history.filter(function(message) { return !set.has(message); });
+    monoSaveAll();
+    monoResetSpyCache();
+    monoCloseChatModal();
+    monoRenderAll();
+    alert((exportFirst ? '已导出并删除' : '已删除') + '该日期范围内的 ' + targets.length + ' 条聊天记录。');
+  };
+
+  window.executeClearChatHistory = function() {
+    monoCloseChatModal();
+    const persona = monoGetCurrentPersona();
+    if (!persona) return;
+    if (!confirm('确定只清空这个角色的线上聊天室内容吗？这不会影响黑盒、日记、线下剧情、角色设定或角色本身。')) return;
+    persona.history = [];
+    try { localStorage.removeItem('mono_hist_' + persona.id); } catch (err) {}
+    monoSaveAll();
+    monoResetSpyCache();
+    monoRenderAll();
+    alert('已清空当前角色的线上聊天室记录，其他数据均已保留。');
+  };
+
+  window.monoOpenChatHistoryManager = function() {
+    const persona = monoGetCurrentPersona();
+    if (!persona) {
+      alert('请先选择一个角色');
+      return;
+    }
+    monoCloseChatModal();
+    const dates = monoCollectDateOptions(persona);
+    const datedOnly = dates.filter(function(key) { return key !== 'undated'; });
+    const firstDated = datedOnly[0] || '';
+    const lastDated = datedOnly[datedOnly.length - 1] || firstDated;
+    const chipsHtml = dates.length
+      ? dates.map(function(key) {
+          return '<button type="button" class="mono-chat-date-chip" data-date-key="' + monoEscHtml(key) + '" style="border:none;background:#f4f4f4;color:#333;padding:7px 10px;border-radius:999px;font-size:10px;cursor:pointer;font-family:inherit;">' + monoEscHtml(monoDateLabel(key)) + '</button>';
+        }).join('')
+      : '<div style="font-size:10px;color:#999;">当前还没有带日期的聊天室记录。</div>';
+    const overlay = document.createElement('div');
+    overlay.id = 'monoChatCleanupModal';
+    overlay.className = 'confirm-overlay';
+    overlay.innerHTML = ''
+      + '<div class="confirm-box" style="max-width:430px;width:min(430px,100%);max-height:calc(100vh - 32px);overflow-y:auto;padding:18px 18px 16px;border-radius:18px;">'
+      + '<h3 style="display:flex;align-items:center;gap:7px;margin-bottom:10px;"><i class="fas fa-calendar-check" style="color:#1a1a1a;"></i>聊天室记录管理</h3>'
+      + '<p style="line-height:1.7;margin-bottom:12px;">这里只会处理 <b>' + monoEscHtml(persona.name || '当前角色') + '</b> 的线上聊天室消息，只会清空聊天内容本身，不会影响黑盒、日记、线下剧情、角色设定或角色本身。</p>'
+      + '<div style="background:linear-gradient(180deg,#fafafa 0%,#f6f6f6 100%);border:1px solid #ececec;border-radius:14px;padding:12px 12px 10px;margin:10px 0 14px;text-align:left;">'
+      + '<div style="font-size:10px;color:#999;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">按日期范围处理</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
+      + '<label style="display:flex;flex-direction:column;gap:5px;font-size:10px;color:#888;">开始日期<input id="monoChatDateStart" type="date" value="' + monoEscHtml(firstDated) + '" style="width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:10px;padding:9px 10px;font-size:12px;font-family:inherit;background:#fff;"></label>'
+      + '<label style="display:flex;flex-direction:column;gap:5px;font-size:10px;color:#888;">结束日期<input id="monoChatDateEnd" type="date" value="' + monoEscHtml(lastDated) + '" style="width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:10px;padding:9px 10px;font-size:12px;font-family:inherit;background:#fff;"></label>'
+      + '</div>'
+      + '<label style="display:flex;align-items:center;gap:7px;font-size:11px;color:#666;margin-top:10px;cursor:pointer;"><input id="monoChatIncludeUndated" type="checkbox" style="accent-color:#1a1a1a;">包含无日期消息</label>'
+      + '<div id="monoChatDateChipWrap" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;">' + chipsHtml + '</div>'
+      + '<div id="monoChatRangeSummary" style="font-size:10px;color:#888;line-height:1.6;margin-top:10px;padding-top:10px;border-top:1px dashed #ddd;"></div>'
+      + '</div>'
+      + '<div style="background:linear-gradient(180deg,#fafaf9 0%,#f4f1eb 100%);border:1px solid #ece6d9;border-radius:14px;padding:12px 12px 10px;margin:0 0 14px;text-align:left;">'
+      + '<div style="font-size:10px;color:#9a8666;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">角色导入 / 导出</div>'
+      + '<div style="font-size:11px;color:#666;line-height:1.7;margin-bottom:10px;">这里可以单独导出当前角色的聊天室内容、角色设定，或两者一起导出；导入时会新增为一个新角色。</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
+      + '<button type="button" id="monoExportPersonaSettingsBtn" class="btn-cancel" style="width:100%;border-radius:12px;padding:10px 10px;background:#fff;border:1px solid #ddd;color:#1a1a1a;font-weight:700;">导出角色设定</button>'
+      + '<button type="button" id="monoExportPersonaChatBtn" class="btn-cancel" style="width:100%;border-radius:12px;padding:10px 10px;background:#fff;border:1px solid #ddd;color:#1a1a1a;font-weight:700;">导出聊天室内容</button>'
+      + '<button type="button" id="monoExportPersonaBundleBtn" class="btn-cancel" style="width:100%;grid-column:1 / -1;border-radius:12px;padding:10px 10px;background:#fff;border:1px solid #ddd;color:#1a1a1a;font-weight:700;">导出角色设定 + 聊天内容</button>'
+      + '<button type="button" id="monoImportPersonaPackageBtn" class="btn-cancel" style="width:100%;grid-column:1 / -1;border-radius:12px;padding:10px 10px;background:#1a1a1a;border:1px solid #1a1a1a;color:#fff;font-weight:700;">导入之前导出的角色文件</button>'
+      + '<input id="monoImportPersonaPackageInput" type="file" accept=".json,application/json" style="display:none;">'
+      + '</div>'
+      + '</div>'
+      + '<div class="confirm-btns" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
+      + '<button type="button" id="monoDeleteByDateBtn" class="btn-cancel" style="width:100%;border-radius:12px;padding:11px 10px;background:#fff;border:1px solid #ddd;color:#1a1a1a;font-weight:700;">按日期删除</button>'
+      + '<button type="button" id="monoExportDeleteByDateBtn" class="btn-cancel" style="width:100%;border-radius:12px;padding:11px 10px;background:#fff;border:1px solid #ddd;color:#1a1a1a;font-weight:700;">导出并删除</button>'
+      + '<button type="button" id="monoClearChatAllBtn" class="btn-danger" style="width:100%;grid-column:1 / -1;border-radius:12px;padding:11px 10px;">只清空线上聊天室内容</button>'
+      + '<button type="button" id="monoCloseChatManagerBtn" class="btn-cancel" style="width:100%;grid-column:1 / -1;border-radius:12px;padding:11px 10px;background:#f5f5f5;border:1px solid #e5e5e5;color:#666;font-weight:700;">取消</button>'
+      + '</div></div>';
+    document.body.appendChild(overlay);
+
+    const startEl = document.getElementById('monoChatDateStart');
+    const endEl = document.getElementById('monoChatDateEnd');
+    const includeUndatedEl = document.getElementById('monoChatIncludeUndated');
+    if (startEl) startEl.addEventListener('change', monoUpdateChatRangeSummary);
+    if (endEl) endEl.addEventListener('change', monoUpdateChatRangeSummary);
+    if (includeUndatedEl) includeUndatedEl.addEventListener('change', monoUpdateChatRangeSummary);
+    overlay.querySelectorAll('.mono-chat-date-chip').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        window.monoApplyChatDatePreset(btn.getAttribute('data-date-key') || '');
+      });
+    });
+    const deleteBtn = document.getElementById('monoDeleteByDateBtn');
+    const exportDeleteBtn = document.getElementById('monoExportDeleteByDateBtn');
+    const clearAllBtn = document.getElementById('monoClearChatAllBtn');
+    const closeBtn = document.getElementById('monoCloseChatManagerBtn');
+    const exportSettingsBtn = document.getElementById('monoExportPersonaSettingsBtn');
+    const exportChatBtn = document.getElementById('monoExportPersonaChatBtn');
+    const exportBundleBtn = document.getElementById('monoExportPersonaBundleBtn');
+    const importPersonaBtn = document.getElementById('monoImportPersonaPackageBtn');
+    const importPersonaInput = document.getElementById('monoImportPersonaPackageInput');
+    if (deleteBtn) deleteBtn.addEventListener('click', function() { window.monoDeleteChatByDateRange(false); });
+    if (exportDeleteBtn) exportDeleteBtn.addEventListener('click', function() { window.monoDeleteChatByDateRange(true); });
+    if (clearAllBtn) clearAllBtn.addEventListener('click', function() { window.executeClearChatHistory(); });
+    if (closeBtn) closeBtn.addEventListener('click', monoCloseChatModal);
+    if (exportSettingsBtn) exportSettingsBtn.addEventListener('click', function() {
+      if (typeof window.monoExportPersonaPackage === 'function') window.monoExportPersonaPackage('settings');
+    });
+    if (exportChatBtn) exportChatBtn.addEventListener('click', function() {
+      if (typeof window.monoExportPersonaPackage === 'function') window.monoExportPersonaPackage('chat');
+    });
+    if (exportBundleBtn) exportBundleBtn.addEventListener('click', function() {
+      if (typeof window.monoExportPersonaPackage === 'function') window.monoExportPersonaPackage('bundle');
+    });
+    if (importPersonaBtn && importPersonaInput) {
+      importPersonaBtn.addEventListener('click', function() { importPersonaInput.click(); });
+      importPersonaInput.addEventListener('change', function(event) {
+        if (typeof window.monoImportPersonaPackage === 'function') window.monoImportPersonaPackage(event);
+      });
+    }
+    monoUpdateChatRangeSummary();
+  };
+
+  function monoBuildSelectedChatText(persona, indices) {
+    return indices.map(function(idx) {
+      const message = persona && Array.isArray(persona.history) ? persona.history[idx] : null;
+      if (!message) return '';
+      const speaker = message.role === 'user' ? monoGetUserName() : (persona.name || '角色');
+      const time = message.timestamp ? ('[' + monoFmtTs(message.timestamp) + '] ') : '';
+      return time + speaker + '：' + monoMessageText(message, persona);
+    }).filter(Boolean).join('\n');
+  }
+
+  window.copySelectedMessages = async function() {
+    let indices = [];
+    try { indices = Array.from(selectedMsgIndices || []).sort(function(a, b) { return a - b; }); } catch (err) {}
+    const persona = monoGetCurrentPersona();
+    if (!persona || !indices.length) return alert('请先多选聊天消息。');
+    const text = monoBuildSelectedChatText(persona, indices);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(text);
+      else {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        ta.remove();
+      }
+      alert('已复制选中的聊天内容。');
+    } catch (err) {
+      alert('复制失败：' + err.message);
+    }
+  };
+
+  window.exportSelectedMessages = function() {
+    let indices = [];
+    try { indices = Array.from(selectedMsgIndices || []).sort(function(a, b) { return a - b; }); } catch (err) {}
+    const persona = monoGetCurrentPersona();
+    if (!persona || !indices.length) return alert('请先多选聊天消息。');
+    monoDownloadText((persona.name || '角色') + '_selected_chat.txt', monoBuildSelectedChatText(persona, indices));
+  };
+
+  window.manualGenerateSummary = async function() {
+    const persona = monoGetCurrentPersona();
+    if (!persona) return alert('请先选择一个角色');
+    if (!Array.isArray(persona.history) || !persona.history.length) return alert('该角色还没有任何对话记录。');
+    const input = prompt('想从最近多少条聊天室消息开始总结？\n输入 0 或留空 = 总结全部聊天室记录。', String(persona.autoSummaryInterval || 20));
+    if (input === null) return;
+    const recentCount = Math.max(0, parseInt(String(input).trim() || '0', 10) || 0);
+    if (typeof window.generateAutoSummary === 'function') {
+      await window.generateAutoSummary(persona, true, { recentCount: recentCount });
+    }
+  };
+
+  const MONO_SPY_PERSIST_KEY_FALLBACK = 'mono_spy_persist_v1';
+  function monoGetSpyPersistStore() {
+    return monoSafeJson(localStorage.getItem(MONO_SPY_PERSIST_KEY_FALLBACK), {});
+  }
+  function monoSetSpyPersistStore(store) {
+    localStorage.setItem(MONO_SPY_PERSIST_KEY_FALLBACK, JSON.stringify(store || {}));
+  }
+  function monoSpyPersistId(personaId, appId) {
+    return String(personaId) + '::' + String(appId);
+  }
+  function monoSpyPersistRead(personaId, appId) {
+    const store = monoGetSpyPersistStore();
+    return store[monoSpyPersistId(personaId, appId)] || null;
+  }
+  function monoSpyPersistWrite(personaId, appId, data) {
+    const store = monoGetSpyPersistStore();
+    store[monoSpyPersistId(personaId, appId)] = { ts: Date.now(), data: data };
+    monoSetSpyPersistStore(store);
+  }
+
+  window.openSpyApp = async function(appId, personaId) {
+    const persona = monoGetPersonas().find(function(item) { return String(item.id) === String(personaId); });
+    if (!persona) return;
+    try { currentSpyPersonaId = personaId; } catch (err) { window.currentSpyPersonaId = personaId; }
+    document.querySelectorAll('.spy-app-page').forEach(function(pg) { pg.classList.remove('open'); });
+    const page = document.getElementById(appId);
+    if (page) page.classList.add('open');
+    const liveApiConfig = typeof _getCurrentActiveApiConfig === 'function' ? _getCurrentActiveApiConfig() : (typeof apiConfig !== 'undefined' ? apiConfig : {});
+    const apiSig = typeof _getApiConfigSignature === 'function' ? _getApiConfigSignature(liveApiConfig) : 'default';
+    const cacheKey = String(personaId) + '_' + appId + '_' + apiSig;
+    try {
+      if (typeof spyDataCache !== 'undefined' && spyDataCache[cacheKey]) {
+        renderSpyApp(appId, spyDataCache[cacheKey], persona);
+        return;
+      }
+    } catch (err) {}
+    const persisted = monoSpyPersistRead(personaId, appId);
+    if (persisted && persisted.data) {
+      try { if (typeof spyDataCache !== 'undefined') spyDataCache[cacheKey] = persisted.data; } catch (err) {}
+      renderSpyApp(appId, persisted.data, persona);
+      return;
+    }
+    const bodyEl = document.getElementById(appId + 'Body');
+    if (bodyEl) bodyEl.innerHTML = '<div class="spy-loading"><div class="spy-spinner"></div>正在读取数据...</div>';
+    try {
+      const data = await generateSpyAppData(appId, persona);
+      try { if (typeof spyDataCache !== 'undefined') spyDataCache[cacheKey] = data; } catch (err) {}
+      monoSpyPersistWrite(personaId, appId, data);
+      renderSpyApp(appId, data, persona);
+    } catch (err) {
+      if (bodyEl) bodyEl.innerHTML = '<div class="spy-loading" style="color:#ff3b30;">载入失败<br><span style="font-size:10px;">' + err.message + '</span></div>';
+    }
+  };
+
+  window.refreshSpyApp = async function(appId) {
+    let personaId = null;
+    try { if (typeof currentSpyPersonaId !== 'undefined') personaId = currentSpyPersonaId; } catch (err) {}
+    if (!personaId) personaId = monoGetCurrentPersonaId();
+    const persona = monoGetPersonas().find(function(item) { return String(item.id) === String(personaId); });
+    if (!persona) return;
+    const liveApiConfig = typeof _getCurrentActiveApiConfig === 'function' ? _getCurrentActiveApiConfig() : (typeof apiConfig !== 'undefined' ? apiConfig : {});
+    const apiSig = typeof _getApiConfigSignature === 'function' ? _getApiConfigSignature(liveApiConfig) : 'default';
+    const cacheKey = String(personaId) + '_' + appId + '_' + apiSig;
+    try { if (typeof spyDataCache !== 'undefined') delete spyDataCache[cacheKey]; } catch (err) {}
+    const btn = document.getElementById('refreshBtn' + appId);
+    if (btn) btn.classList.add('spinning');
+    const bodyEl = document.getElementById(appId + 'Body');
+    if (bodyEl) bodyEl.innerHTML = '<div class="spy-loading"><div class="spy-spinner"></div>重新生成中...</div>';
+    try {
+      const data = await generateSpyAppData(appId, persona);
+      try { if (typeof spyDataCache !== 'undefined') spyDataCache[cacheKey] = data; } catch (err) {}
+      monoSpyPersistWrite(personaId, appId, data);
+      renderSpyApp(appId, data, persona);
+    } catch (err) {
+      if (bodyEl) bodyEl.innerHTML = '<div class="spy-loading" style="color:#ff3b30;">生成失败<br><span style="font-size:10px;">' + err.message + '</span></div>';
+    } finally {
+      if (btn) btn.classList.remove('spinning');
+    }
+  };
+
+  window.closeTaskRewardPopup = function() {
+    if (typeof _currentGeneratedReward !== 'undefined' && _currentGeneratedReward) {
+      const ro = _currentGeneratedReward.rewardObj;
+      const pendingIdx = _currentGeneratedReward.pendingIdx;
+      if (!taskData.pendingRewards) taskData.pendingRewards = [];
+      if (pendingIdx >= 0 && taskData.pendingRewards[pendingIdx]) {
+        taskData.pendingRewards[pendingIdx].generatedContent = ro.content;
+        taskData.pendingRewards[pendingIdx].title = ro.title;
+        taskData.pendingRewards[pendingIdx].date = ro.date;
+      } else {
+        const existingIdx = taskData.pendingRewards.findIndex(function(item) {
+          return item && item.personaId == ro.personaId && item.category === ro.category && item.subcategory === ro.subcategory && item.title === ro.title;
+        });
+        if (existingIdx >= 0) {
+          taskData.pendingRewards[existingIdx].generatedContent = ro.content;
+          taskData.pendingRewards[existingIdx].date = ro.date;
+        } else {
+          taskData.pendingRewards.push({
+            date: ro.date,
+            personaId: ro.personaId,
+            charName: ro.charName,
+            category: ro.category,
+            subcategory: ro.subcategory,
+            title: ro.title,
+            generatedContent: ro.content
+          });
+        }
+      }
+      if (typeof saveTaskData === 'function') saveTaskData();
+      _currentGeneratedReward = null;
+      if (typeof renderTaskContent === 'function') renderTaskContent();
+    }
+    const overlay = document.getElementById('taskRewardOverlay');
+    if (overlay) overlay.classList.remove('open');
+  };
+
+  window.regenCurrentReward = async function() {
+    if (typeof _currentGeneratedReward === 'undefined' || !_currentGeneratedReward) return;
+    const pendingIdx = _currentGeneratedReward.pendingIdx;
+    if (pendingIdx >= 0 && typeof taskData !== 'undefined' && taskData.pendingRewards && taskData.pendingRewards[pendingIdx]) {
+      const pending = taskData.pendingRewards[pendingIdx];
+      const persona = monoGetPersonas().find(function(item) { return String(item.id) === String(pending.personaId); });
+      if (!persona) return;
+      const rewardCharId = pending.personaId;
+      const chosen = { category: pending.category, subcategory: pending.subcategory };
+      const dynamicTitle = pending.title || (pending.subcategory || '').replace(/^角色/, persona.name);
+      if (typeof _rerunRewardGeneration === 'function') {
+        await _rerunRewardGeneration({ rewardCharId: rewardCharId, chosen: chosen, dynamicTitle: dynamicTitle, isAutoGenerated: false, p: persona });
+        if (typeof _currentGeneratedReward !== 'undefined' && _currentGeneratedReward) _currentGeneratedReward.pendingIdx = pendingIdx;
+      }
+      return;
+    }
+    if (typeof _currentGeneratedReward !== 'undefined' && _currentGeneratedReward && _currentGeneratedReward.regenContext && typeof _rerunRewardGeneration === 'function') {
+      const ctx = _currentGeneratedReward.regenContext;
+      await _rerunRewardGeneration(ctx);
+    }
+  };
+
+  window.confirmClearChatHistory = window.monoOpenChatHistoryManager;
+  window._monoInitUiFixes = window._monoInitUiFixes || function() {};
+})();
+</script>
 </body>
 </html>

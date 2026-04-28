@@ -52095,6 +52095,10 @@ function _normalizeOfflineSettings(settings) {
   var next = Object.assign({}, _offlineState.settings, settings || {});
   next.worldBookEntries = next.worldBookEntries && typeof next.worldBookEntries === 'object' ? next.worldBookEntries : {};
   next.theme = next.theme || 'dark';
+  next.narrativePov = (function(raw) {
+    raw = String(raw || 'mixed').toLowerCase();
+    return (raw === 'first' || raw === 'third' || raw === 'mixed') ? raw : 'mixed';
+  })(next.narrativePov);
   next.modeConfigs = next.modeConfigs && typeof next.modeConfigs === 'object' ? next.modeConfigs : {};
   ['long', 'short'].forEach(function(mode) {
     var legacyStyle = (typeof next.style === 'number' && OFFLINE_STYLE_PROMPTS[next.style]) ? OFFLINE_STYLE_PROMPTS[next.style] : '';
@@ -53289,6 +53293,9 @@ async function _generateOfflineResponse(session) {
           wordRule,
           '完整性要求：这一轮内容必须停在完整句子、完整动作或完整场景节点上，绝对不能半句话、半个动作、半段对话突然断掉。',
           '如果当前事件已经表达完整，就在目标字数附近自然结束，不要自行续写到下一大段剧情。',
+          (typeof _monoGetOfflinePovHardRule === 'function')
+            ? _monoGetOfflinePovHardRule(true)
+            : '',
           (typeof _monoGetOfflineShortPromptRule === 'function')
             ? _monoGetOfflineShortPromptRule()
             : '根据以下线下剧情继续发展：用第三人称或直接对话自然推进。句数按情节需要决定，不要被固定句数束缚，但也不要拖沓。',
@@ -53310,6 +53317,9 @@ async function _generateOfflineResponse(session) {
           wordRule,
           '完整性要求：这一轮必须收束在完整句子、完整动作或完整场景节点上，宁可略短一点，也不能在情绪或动作正展开时突然截停。',
           '如果这一轮已经写到目标字数附近，就在当前场景内自然收束，不要继续扩写新的大段落。',
+          (typeof _monoGetOfflinePovHardRule === 'function')
+            ? _monoGetOfflinePovHardRule(false)
+            : '',
           '语言精緻，画面感强，像在写真实的故事。',
           
           offlineWbInjection,
@@ -53426,6 +53436,7 @@ async function _generateOfflineResponse(session) {
       ]);
     }
     reply = reply.trim();
+    reply = await _rewriteOfflineReplyToTargetPov(reply, p, api, isShort);
     if (_offlineState.settings.heartVoicePopup) {
       var offlineHvMatch = reply.match(/\[heart_voice\]\s*(\{[\s\S]*?\})\s*(?:\[\/heart_voice\]|$)/);
       if (offlineHvMatch && offlineHvMatch[1]) {
@@ -53588,6 +53599,58 @@ function toggleOfflineSetting(key) {
   _persistOfflineSettings();
   _syncOfflineSettingsUI();
 }
+function setOfflineNarrativePov(value) {
+  _offlineState.settings = _normalizeOfflineSettings(_offlineState.settings);
+  _offlineState.settings.narrativePov = String(value || 'mixed');
+  _persistOfflineSettings();
+  _syncOfflineSettingsUI();
+}
+async function _rewriteOfflineReplyToTargetPov(reply, p, api, isShort) {
+  var mode = (_offlineState && _offlineState.settings && _offlineState.settings.narrativePov) || 'mixed';
+  if (mode !== 'first' && mode !== 'third') return String(reply || '').trim();
+  var rawReply = String(reply || '').trim();
+  if (!rawReply) return rawReply;
+  var heartVoiceSuffix = '';
+  var heartVoiceMatch = rawReply.match(/\n?\s*(\[heart_voice\][\s\S]*?\[\/heart_voice\])\s*$/);
+  if (heartVoiceMatch) {
+    heartVoiceSuffix = heartVoiceMatch[1].trim();
+    rawReply = rawReply.slice(0, heartVoiceMatch.index).trim();
+  }
+  if (!rawReply) return heartVoiceSuffix ? heartVoiceSuffix : '';
+  var targetLabel = mode === 'first' ? '第一人称' : '第三人称';
+  var targetRule = mode === 'first'
+    ? '把叙事内容严格改写成角色“我”的第一人称视角。除直接引号对话外，不要再用角色名字、他或她来叙述角色自己的动作、心理和感受。'
+    : '把叙事内容严格改写成第三人称视角。除直接引号对话外，不要再用“我”来叙述角色自己的动作、心理和感受。';
+  var rewritePrompt = [
+    '你是线下剧情视角校对助手。',
+    '请把下面这段剧情在不改变剧情事实、情绪、对白、顺序、细节和文风的前提下，严格改写为' + targetLabel + '。',
+    targetRule,
+    '只改写叙事视角，不要补剧情，不要删细节，不要做总结，不要解释。',
+    '保留原本的分段、BGM 行、场景分隔符（如「──」）和整体长度。',
+    '只返回改写后的正文，不要加说明。',
+    '',
+    '角色名：' + ((p && p.name) || '角色'),
+    '模式：' + (isShort ? '短线下' : '长线下'),
+    '',
+    rawReply
+  ].join('\n');
+  var rr = await fetch(api.url.replace(/\/$/, '') + '/chat/completions', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + api.key, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: api.model,
+      messages: [{ role: 'user', content: rewritePrompt }],
+      temperature: 0.2,
+      max_tokens: Math.max(220, Math.min(2200, rawReply.length * 2))
+    })
+  });
+  if (!rr.ok) return String(reply || '').trim();
+  var rewriteData = await rr.json();
+  var rewritten = ((((rewriteData || {}).choices || [])[0] || {}).message || {}).content || '';
+  rewritten = String(rewritten || '').trim();
+  if (!rewritten) return String(reply || '').trim();
+  return heartVoiceSuffix ? (rewritten + '\n' + heartVoiceSuffix) : rewritten;
+}
 function cycleOfflineStyle() {
   _offlineState.settings.style = ((_offlineState.settings.style || 0) + 1) % OFFLINE_STYLES.length;
   _persistOfflineSettings();
@@ -53615,6 +53678,8 @@ function _syncOfflineSettingsUI() {
     var el = document.getElementById(ids[i]);
     if (el) el.classList.toggle('on', !!_offlineState.settings[k]);
   });
+  var narrativePovEl = document.getElementById('monoOfflineNarrativePov');
+  if (narrativePovEl) narrativePovEl.value = (_offlineState.settings && _offlineState.settings.narrativePov) || 'mixed';
   var styleEl = document.getElementById('offlineStyleValue');
   if (styleEl) styleEl.textContent = OFFLINE_STYLES[_offlineState.settings.style || 0];
   ['long','short'].forEach(function(mode) {
@@ -54279,6 +54344,17 @@ window.addEventListener('beforeunload', function() {
           <div class="offline-setting-value">离线剧情回复后，也像线上聊天一样弹出心声通知</div>
         </div>
         <div class="offline-toggle" id="offlineToggleHeartVoice"></div>
+      </div>
+      <div class="offline-setting-row" onclick="event.stopPropagation()">
+        <div>
+          <div class="offline-setting-label">线下叙事人称</div>
+          <div class="offline-setting-value">可选第一人称 / 第三人称 / 混合视角</div>
+        </div>
+        <select id="monoOfflineNarrativePov" onchange="setOfflineNarrativePov(this.value)" onclick="event.stopPropagation()" style="background:var(--off-input-bg);border:1px solid var(--off-border2);border-radius:8px;color:var(--off-text);font-size:11px;padding:8px 10px;font-family:inherit;">
+          <option value="mixed">混合</option>
+          <option value="third">第三人称</option>
+          <option value="first">第一人称</option>
+        </select>
       </div>
       <div style="padding:16px 18px 8px;font-size:9px;color:var(--off-text3);letter-spacing:2px;text-transform:uppercase;font-family:'DM Mono',monospace;">世界书</div>
       <div style="padding:0 18px 12px;">
@@ -84362,24 +84438,42 @@ savePersona = function() {
 function _monoGetOfflinePovMode() {
   return (_offlineState && _offlineState.settings && _offlineState.settings.narrativePov) || 'mixed';
 }
+function _monoGetOfflinePovHardRule(isShort) {
+  const mode = _monoGetOfflinePovMode();
+  if (mode === 'first') {
+    return isShort
+      ? '人称硬性要求：全文默认必须站在角色“我”的第一人称视角来写动作、感受和心理；除直接对话外，不要用角色名字或“他/她”来叙述角色自己。'
+      : '人称硬性要求：全文默认必须使用角色“我”的第一人称叙事，场景、动作、情绪、心理都从“我”的主观感受展开；除直接对话外，不要改写成第三人称，不要用角色名字代替“我”。';
+  }
+  if (mode === 'third') {
+    return isShort
+      ? '人称硬性要求：全文默认必须用第三人称描写角色，不要把角色自己的动作、心理、感受写成“我”。'
+      : '人称硬性要求：全文默认必须使用第三人称叙事，用角色名字、他/她来描写动作、情绪与心理；不要突然切到“我”的第一人称独白式叙事。';
+  }
+  return isShort
+    ? '人称要求：默认以第三人称或直接对话推进；只有在极少数非常自然的内心瞬间，才允许轻微贴近主观感受，但不要通篇切成第一人称。'
+    : '人称要求：默认以第三人称或混合镜头叙事，保持画面感与稳定视角；不要无铺垫地整段切成第一人称自述。';
+}
 function _monoGetOfflineWorldNarrativeRule(isShort, wordRule) {
   const mode = _monoGetOfflinePovMode();
-  const baseShort = '用简短自然的对话、动作和临场反应推进剧情。句数按内容需要自然决定，不要为了凑字数变空，也不要突然写很短。';
+  let baseShort = '用简短自然的对话、动作和临场反应推进剧情。句数按内容需要自然决定，不要为了凑字数变空，也不要突然写很短。';
+  if (mode === 'first') baseShort = '用第一人称推进短线下剧情，默认从角色“我”的当下感受、动作和反应出发，除直接对话外不要写成第三人称。句数按内容需要自然决定，不要为了凑字数变空，也不要突然写很短。';
+  if (mode === 'third') baseShort = '用第三人称推进短线下剧情，描写角色的动作、反应与情绪，除直接对话外不要切成第一人称。句数按内容需要自然决定，不要为了凑字数变空，也不要突然写很短。';
   let longRule = '用第三人称或混合视角细腻叙事，描写场景、动作、情绪与心理。不要硬凑，也不要在情绪或情节正要展开时突然收断。';
-  if (mode === 'first') longRule = '用第一人称细腻叙事，直接从角色“我”的视角描写场景、动作、情绪与心理。不要硬凑，也不要在情绪或情节正要展开时突然收断。';
-  if (mode === 'third') longRule = '用第三人称细腻叙事，描写场景、动作、情绪与心理。不要硬凑，也不要在情绪或情节正要展开时突然收断。';
+  if (mode === 'first') longRule = '用第一人称细腻叙事，直接从角色“我”的视角描写场景、动作、情绪与心理，除直接对话外不要写成第三人称。不要硬凑，也不要在情绪或情节正要展开时突然收断。';
+  if (mode === 'third') longRule = '用第三人称细腻叙事，描写场景、动作、情绪与心理，除直接引号对话外不要切成第一人称。不要硬凑，也不要在情绪或情节正要展开时突然收断。';
   return (isShort ? baseShort : longRule) + wordRule;
 }
 function _monoGetOfflineShortPromptRule() {
   const mode = _monoGetOfflinePovMode();
-  if (mode === 'first') return '根据以下线下剧情继续发展：以第一人称或直接对话自然推进。句数按情节需要决定，不要被固定句数束缚，但也不要拖沓。';
-  if (mode === 'third') return '根据以下线下剧情继续发展：用第三人称或直接对话自然推进。句数按情节需要决定，不要被固定句数束缚，但也不要拖沓。';
+  if (mode === 'first') return '根据以下线下剧情继续发展：除直接对话外，必须以第一人称“我”来叙述角色当下的动作、感受和心理，不要把角色自己写成“他/她”或角色名字。句数按情节需要决定，不要被固定句数束缚，但也不要拖沓。';
+  if (mode === 'third') return '根据以下线下剧情继续发展：除直接对话外，必须用第三人称来叙述角色，不要把角色自己的动作、感受和心理写成“我”。句数按情节需要决定，不要被固定句数束缚，但也不要拖沓。';
   return '根据以下线下剧情继续发展：用第三人称或直接对话自然推进。句数按情节需要决定，不要被固定句数束缚，但也不要拖沓。';
 }
 function _monoGetOfflineLongPromptRule() {
   const mode = _monoGetOfflinePovMode();
-  if (mode === 'first') return '模式：长篇敘事——用第一人称视角，详细描写场景、氛围、角色的动作、表情、心理感受。';
-  if (mode === 'third') return '模式：长篇敘事——用第三人称视角，详细描写场景、氛围、角色的动作、表情、心理感受。';
+  if (mode === 'first') return '模式：长篇敘事——必须用第一人称视角来写，详细描写场景、氛围、动作、表情与心理感受；除直接对话外，不要把角色自己写成角色名字、他或她。';
+  if (mode === 'third') return '模式：长篇敘事——必须用第三人称视角来写，详细描写场景、氛围、角色的动作、表情与心理感受；除直接引号对话外，不要切成“我”的第一人称叙事。';
   return '模式：长篇敘事——用第三人称或混合视角，详细描写场景、氛围、角色的动作、表情、心理感受。';
 }
 function _monoEnsureOfflineExtras() {
@@ -84438,6 +84532,7 @@ window.monoCloseHeartVoiceHistory = monoCloseHeartVoiceHistory;
 window.monoOpenPersonaTransferMenu = monoOpenPersonaTransferMenu;
 window.monoExportPersonaPackage = monoExportPersonaPackage;
 window.monoImportPersonaPackage = monoImportPersonaPackage;
+window.setOfflineNarrativePov = setOfflineNarrativePov;
 window._monoInitUiFixes = _monoInitUiFixes;
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', function() { setTimeout(_monoInitUiFixes, 120); });

@@ -84599,6 +84599,56 @@ if (document.readyState === 'loading') {
     if (typeof window.saveData === 'function') window.saveData();
   }
 
+  function monoBuildPersonasSlimSnapshot() {
+    return monoGetPersonas().map(function(item) {
+      const slim = Object.assign({}, item);
+      if (slim.chatBgImage && slim.chatBgImage !== '__ref__') slim.chatBgImage = '__ref__';
+      slim.history = '__hist_ref__';
+      return slim;
+    });
+  }
+
+  function monoSyncKvRecord(key, value) {
+    return new Promise(function(resolve) {
+      try {
+        if (!window._idb) return resolve();
+        const tx = window._idb.transaction('kv', 'readwrite');
+        const store = tx.objectStore('kv');
+        if (value == null) store.delete(key);
+        else store.put(value, key);
+        tx.oncomplete = function() { resolve(); };
+        tx.onerror = tx.onabort = function() { resolve(); };
+      } catch (err) {
+        resolve();
+      }
+    });
+  }
+
+  async function monoStrictPersistPersonaHistory(persona) {
+    if (!persona) return;
+    const histKey = 'mono_hist_' + persona.id;
+    const histPayload = (Array.isArray(persona.history) && persona.history.length)
+      ? JSON.stringify(persona.history)
+      : null;
+    const personasSlimJson = JSON.stringify(monoBuildPersonasSlimSnapshot());
+    try {
+      if (histPayload == null) localStorage.removeItem(histKey);
+      else localStorage.setItem(histKey, histPayload);
+    } catch (err) {}
+    try {
+      localStorage.setItem('mono_personas', personasSlimJson);
+    } catch (err) {}
+    try {
+      if (window._monoRawLocalStorage) {
+        if (histPayload == null) window._monoRawLocalStorage.removeItem(histKey);
+        else window._monoRawLocalStorage.setItem(histKey, histPayload);
+        window._monoRawLocalStorage.setItem('mono_personas', personasSlimJson);
+      }
+    } catch (err) {}
+    await monoSyncKvRecord(histKey, histPayload);
+    await monoSyncKvRecord('mono_personas', personasSlimJson);
+  }
+
   function monoRenderAll() {
     try {
       if (typeof renderMessages === 'function') renderMessages();
@@ -85112,7 +85162,7 @@ if (document.readyState === 'loading') {
   window._monoUpdateChatRangeSummary = monoUpdateChatRangeSummary;
   window._monoCloseChatCleanupModal = monoCloseChatModal;
 
-  window.monoDeleteChatByDateRange = function(exportFirst) {
+  window.monoDeleteChatByDateRange = async function(exportFirst) {
     const persona = monoGetCurrentPersona();
     if (!persona || !Array.isArray(persona.history) || !persona.history.length) return;
     const range = monoGetChatRangeSelection();
@@ -85136,6 +85186,7 @@ if (document.readyState === 'loading') {
     const set = new Set(targets);
     persona.history = persona.history.filter(function(message) { return !set.has(message); });
     monoSaveAll();
+    await monoStrictPersistPersonaHistory(persona);
     monoResetSpyCache();
     monoCloseChatModal();
     monoRenderAll();
@@ -85149,10 +85200,14 @@ if (document.readyState === 'loading') {
     if (!confirm('确定只清空这个角色的线上聊天室内容吗？这不会影响黑盒、日记、线下剧情、角色设定或角色本身。')) return;
     persona.history = [];
     try { localStorage.removeItem('mono_hist_' + persona.id); } catch (err) {}
-    monoSaveAll();
-    monoResetSpyCache();
-    monoRenderAll();
-    alert('已清空当前角色的线上聊天室记录，其他数据均已保留。');
+    Promise.resolve()
+      .then(function() { monoSaveAll(); })
+      .then(function() { return monoStrictPersistPersonaHistory(persona); })
+      .then(function() {
+        monoResetSpyCache();
+        monoRenderAll();
+        alert('已清空当前角色的线上聊天室记录，其他数据均已保留。');
+      });
   };
 
   window.monoOpenChatHistoryManager = function() {

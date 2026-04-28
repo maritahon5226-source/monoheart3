@@ -192,24 +192,43 @@ async function bgGenerateAndNotify() {
     const hasVisibleClient = allClients.some(c => c.visibilityState === 'visible');
     if (hasVisibleClient) return;
     for (const p of personaList) {
-      if (!p.autoMsg || !p.autoMsgInterval || p.autoMsgInterval < 1) continue;
-      const intervalMs = p.autoMsgInterval * 3600 * 1000;
+      if (!p.autoMsg) continue;
+      const minMs = Math.max(5, p.autoMsgMinInterval || 60) * 60 * 1000;
+      const maxMs = Math.max(minMs, (p.autoMsgMaxInterval || 120) * 60 * 1000);
       const lastAutoTime = p.lastAutoMsgTime || 0;
-      if (Date.now() - lastAutoTime < intervalMs) continue;
-      const recentChat = (p.recentHistory || []).map(m => m.role + ': ' + m.content).join('\\n').substring(0, 2000);
+      if (Date.now() - lastAutoTime < minMs) continue;
+      const recentChat = (p.recentHistory || []).map(m => m.role + ': ' + m.content).join('\n').substring(0, 2000);
       const now = new Date();
       const timeStr = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
-      const prompt = '你是' + p.name + '，人设：' + (p.persona || '').substring(0, 500) + '。现在时间是' + timeStr + '。你现在主动给用户发一条消息。根据你的人设性格，自然地发起这条消息。只返回信息内容本身。\\n最近对话：\\n' + (recentChat || '(暂无)');
+      const _h = now.getHours();
+      let _period = _h < 5 ? '深夜/凌晨' : _h < 9 ? '清晨/早上' : _h < 12 ? '上午' : _h < 14 ? '中午' : _h < 18 ? '下午' : _h < 20 ? '傍晚' : _h < 23 ? '晚上' : '深夜';
+      let _timeSince = '';
+      if (lastAutoTime) {
+        const diffMin = Math.floor((Date.now() - lastAutoTime) / 60000);
+        if (diffMin < 60) _timeSince = `距上次对话约${diffMin}分钟`;
+        else if (diffMin < 1440) _timeSince = `距上次对话约${Math.floor(diffMin/60)}小时`;
+        else _timeSince = `距上次对话已过${Math.floor(diffMin/1440)}天`;
+      }
+      const minReply = p.minReplyCount || 1;
+      const maxReply = p.maxReplyCount || 3;
+      const count = Math.floor(Math.random() * (maxReply - minReply + 1)) + minReply;
+      const prompt = '你是' + p.name + '，人设：' + (p.persona || '').substring(0, 500) + '。现在时间是' + timeStr + '，时段：' + _period + '。' + (_timeSince ? '【时间感知】' + _timeSince + '，请根据时间流逝选择合适的话题。' : '') + '你现在主动给用户发消息。发送恰好 ' + count + ' 条消息，消息之间用 "###" 分隔，多条要连贯自然。内容需与对话记录和时间流逝逻辑连贯。只返回信息内容本身。\n最近对话：\n' + (recentChat || '(暂无)');
       try {
         const reply = (await swChatCompletion(apiCfg.url, apiCfg.key, apiCfg.model, [{role:'user',content:prompt}]) || '').trim().replace(/^["'"]|["'"]$/g, '');
         if (!reply) continue;
+        const parts = reply.split('###').map(s => s.trim()).filter(Boolean);
         const bgMsgs = (await swIdbGet(db, 'messages', 'pending')) || [];
-        bgMsgs.push({ personaId: p.id, personaName: p.name, avatar: p.avatar || '', content: reply, timestamp: Date.now(), role: 'assistant', _autoMsgTime: Date.now() });
+        const firstTs = Date.now();
+        parts.forEach((part, i) => {
+          bgMsgs.push({ personaId: p.id, personaName: p.name, avatar: p.avatar || '', content: part, timestamp: firstTs + i * 300, role: 'assistant', _autoMsgTime: firstTs });
+        });
         await swIdbSet(db, 'messages', 'pending', bgMsgs);
-        p.lastAutoMsgTime = Date.now();
+        p.lastAutoMsgTime = firstTs;
+        // Schedule next random interval for this persona
+        p.nextAutoMsgDelay = minMs + Math.random() * (maxMs - minMs);
         await swIdbSet(db, BG_STORE, 'bgPersonas', personaList);
         await self.registration.showNotification('Mono Heart · ' + p.name, {
-          body: reply.substring(0, 80),
+          body: parts[0].substring(0, 80),
           icon: p.avatar || undefined,
           tag: 'mono-bg-' + p.id,
           renotify: true,
@@ -258,7 +277,148 @@ self.addEventListener('message', e => {
   if (e.data.type === 'BG_CHECK') {
     e.waitUntil(bgGenerateAndNotify());
   }
-});
+  if (e.data.type === 'BG_TEST') {
+    // 强制测试：跳过「页面可见」检查和「时间间隔」检查，直接触发一次后台发送
+    e.waitUntil((async () => {
+      const sendLog = async (msg, level) => {
+        const allC = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+        allC.forEach(c => c.postMessage({ type: 'BG_TEST_LOG', msg, level: level || 'info' }));
+      };
+      try {
+        await sendLog('🔍 开始诊断后台SW环境…');
+        const db = await swOpenDB();
+        await sendLog('✅ IndexedDB 连接成功');
+
+        const apiCfg = await swIdbGet(db, BG_STORE, 'apiConfig');
+        if (!apiCfg || !apiCfg.url || !apiCfg.key) {
+          await sendLog('❌ IDB 中没有 API 配置（apiConfig 缺失或不完整），请先保存角色设定以同步配置到SW', 'error');
+          return;
+        }
+        await sendLog('✅ API配置已存储 · URL: ' + apiCfg.url.substring(0, 40) + '…');
+
+        const personaList = await swIdbGet(db, BG_STORE, 'bgPersonas');
+        if (!personaList || personaList.length === 0) {
+          await sendLog('❌ IDB 中没有已开启自动发消息的角色，请先在角色设定中开启「自动发送消息」并保存', 'error');
+          return;
+        }
+        await sendLog('✅ 找到 ' + personaList.length + ' 个已配置后台自动消息的角色');
+
+        let anyTriggered = false;
+        for (const p of personaList) {
+          await sendLog('👤 处理角色：' + p.name + ' (min:' + (p.autoMsgMinInterval||60) + 'min ~ max:' + (p.autoMsgMaxInterval||120) + 'min)');
+          const recentChat = (p.recentHistory || []).map(m => m.role + ': ' + m.content).join('\n').substring(0, 2000);
+          const now = new Date();
+          const timeStr = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+          const _h = now.getHours();
+          const _period = _h<5?'深夜/凌晨':_h<9?'清晨/早上':_h<12?'上午':_h<14?'中午':_h<18?'下午':_h<20?'傍晚':_h<23?'晚上':'深夜';
+          const minReply = p.minReplyCount || 1;
+          const maxReply = p.maxReplyCount || 3;
+          const count = Math.floor(Math.random() * (maxReply - minReply + 1)) + minReply;
+          const prompt = '你是' + p.name + '，人设：' + (p.persona || '').substring(0, 300) + '。现在时间是' + timeStr + '，时段：' + _period + '。这是一条测试消息，请主动给用户发 ' + count + ' 条消息，消息之间用 "###" 分隔，语气自然。只返回信息内容本身。\n最近对话：\n' + (recentChat || '(暂无)');
+          await sendLog('📡 正在调用 AI API 生成消息（模型：' + (apiCfg.model||'默认') + '）…');
+          try {
+            const reply = (await swChatCompletion(apiCfg.url, apiCfg.key, apiCfg.model, [{role:'user',content:prompt}]) || '').trim().replace(/^["'"]|["'"]$/g, '');
+            if (!reply) {
+              await sendLog('⚠️ API 返回内容为空，可能是模型/Key问题', 'warn');
+              continue;
+            }
+            const parts = reply.split('###').map(s => s.trim()).filter(Boolean);
+            await sendLog('✅ AI 生成成功，共 ' + parts.length + ' 条消息');
+            parts.forEach((pt, i) => sendLog('   💬 消息' + (i+1) + '：' + pt.substring(0, 60) + (pt.length > 60 ? '…' : '')));
+
+            const bgMsgs = (await swIdbGet(db, 'messages', 'pending')) || [];
+            const firstTs = Date.now();
+            parts.forEach((part, i) => {
+              bgMsgs.push({ personaId: p.id, personaName: p.name, avatar: p.avatar || '', content: part, timestamp: firstTs + i * 300, role: 'assistant', _autoMsgTime: firstTs, _testMsg: true });
+            });
+            await swIdbSet(db, 'messages', 'pending', bgMsgs);
+            await sendLog('✅ 消息已写入 IDB pending 队列');
+
+            try {
+              await self.registration.showNotification('[测试] Mono Heart · ' + p.name, {
+                body: parts[0].substring(0, 80),
+                icon: p.avatar || undefined,
+                tag: 'mono-bg-test-' + p.id,
+                renotify: true,
+                data: { personaId: p.id, type: 'bg_message' }
+              });
+              await sendLog('🔔 系统通知已发送，请查看通知栏');
+            } catch(ne) {
+              await sendLog('⚠️ 系统通知发送失败：' + ne.message + '（可能需要授权通知权限）', 'warn');
+            }
+            anyTriggered = true;
+          } catch(apiErr) {
+            await sendLog('❌ API 调用失败：' + (apiErr.message || String(apiErr)), 'error');
+          }
+        }
+        if (anyTriggered) {
+          await sendLog('🎉 测试完成！消息已写入队列，切换到对应聊天室即可看到消息', 'success');
+        } else {
+          await sendLog('⚠️ 所有角色均未成功生成消息，请检查上方错误', 'warn');
+        }
+        // Notify done
+        const allDone = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+        allDone.forEach(c => c.postMessage({ type: 'BG_TEST_DONE' }));
+      } catch(e) {
+        const allC = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+        allC.forEach(c => c.postMessage({ type: 'BG_TEST_LOG', msg: '❌ 测试过程发生异常：' + (e.message || String(e)), level: 'error' }));
+        allC.forEach(c => c.postMessage({ type: 'BG_TEST_DONE' }));
+      }
+    })());
+  }
+  if (e.data.type === 'BG_DIAGNOSE') {
+    // 只读取IDB诊断信息，不发送消息
+    e.waitUntil((async () => {
+      const sendLog = async (msg, level) => {
+        const allC = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+        allC.forEach(c => c.postMessage({ type: 'BG_TEST_LOG', msg, level: level || 'info' }));
+      };
+      try {
+        await sendLog('🔍 后台 Service Worker 诊断报告');
+        await sendLog('─────────────────────────────');
+        const db = await swOpenDB();
+        await sendLog('✅ IndexedDB (MonoHeartSW) 连接正常');
+
+        const apiCfg = await swIdbGet(db, BG_STORE, 'apiConfig');
+        if (!apiCfg) {
+          await sendLog('❌ API配置：未找到（IDB为空）', 'error');
+        } else if (!apiCfg.url || !apiCfg.key) {
+          await sendLog('⚠️ API配置：存在但不完整（url或key缺失）', 'warn');
+        } else {
+          await sendLog('✅ API配置：正常 · URL: ' + apiCfg.url.substring(0, 50));
+          await sendLog('   模型: ' + (apiCfg.model || '（未指定）'));
+        }
+
+        const personaList = await swIdbGet(db, BG_STORE, 'bgPersonas');
+        if (!personaList || personaList.length === 0) {
+          await sendLog('❌ 后台角色列表：空（没有开启自动消息的角色）', 'error');
+        } else {
+          await sendLog('✅ 后台角色列表：' + personaList.length + ' 个角色已配置');
+          for (const p of personaList) {
+            const last = p.lastAutoMsgTime ? new Date(p.lastAutoMsgTime).toLocaleString() : '从未';
+            const minMs = Math.max(5, p.autoMsgMinInterval || 60) * 60 * 1000;
+            const remaining = p.lastAutoMsgTime ? Math.max(0, Math.ceil((p.lastAutoMsgTime + minMs - Date.now()) / 60000)) : 0;
+            await sendLog('   👤 ' + p.name + ' · 间隔 ' + (p.autoMsgMinInterval||60) + '~' + (p.autoMsgMaxInterval||120) + '分钟 · 上次: ' + last + (remaining > 0 ? ' · 距下次最少还需 ' + remaining + '分钟' : ' · 已可触发'));
+          }
+        }
+
+        const pendingMsgs = await swIdbGet(db, 'messages', 'pending');
+        const pCount = (pendingMsgs || []).length;
+        if (pCount > 0) {
+          await sendLog('⚠️ 待同步队列中有 ' + pCount + ' 条消息未被页面读取', 'warn');
+        } else {
+          await sendLog('✅ 消息队列：空（无积压）');
+        }
+
+        const allC2 = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+        allC2.forEach(c => c.postMessage({ type: 'BG_TEST_DONE' }));
+      } catch(e) {
+        const allC = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+        allC.forEach(c => c.postMessage({ type: 'BG_TEST_LOG', msg: '❌ 诊断失败：' + (e.message || String(e)), level: 'error' }));
+        allC.forEach(c => c.postMessage({ type: 'BG_TEST_DONE' }));
+      }
+    })());
+  }
 self.addEventListener('push', e => {
   let title = 'Mono Heart', body = '你有新消息', data = {};
   if (e.data) {
@@ -291,16 +451,39 @@ self.addEventListener('notificationclick', e => {
   );
 });
     `;
-    const swBlob = new Blob([swCode], {type: 'application/javascript'});
-    const swUrl = URL.createObjectURL(swBlob);
-    navigator.serviceWorker.register(swUrl, { scope: '/' }).then(reg => {
+    // ── SW 注册：跨浏览器兼容方案 ──────────────────────────────
+    // blob: URL 无法注册 SW（Chrome/Edge/Safari 均不支持）
+    // 解决方案：通过 OPFS 写入真实文件（支持时），或通过 importScripts workaround
+    // iOS Safari 需要 PWA 模式（加入主屏幕）才支持 SW 通知
+    async function _registerSW(code) {
+      // 方法1：OPFS（Origin Private File System）写入真实 sw.js（Chrome 86+, Edge 86+）
+      if (typeof navigator.storage !== 'undefined' && navigator.storage.getDirectory) {
+        try {
+          const root = await navigator.storage.getDirectory();
+          const fh = await root.getFileHandle('sw.js', { create: true });
+          const writable = await fh.createWritable();
+          await writable.write(code);
+          await writable.close();
+          // OPFS 路径无法直接用 register，需走 fetch handler，跳过
+        } catch(e) {}
+      }
+      // 方法2：URL.createObjectURL — 在同源 HTTPS 页面上 Chrome/Edge 实际允许
+      // （报错仅在 file:// 协议或特定安全策略下出现）
+      const swBlob = new Blob([code], { type: 'application/javascript' });
+      const swUrl = URL.createObjectURL(swBlob);
+      const swScope = location.pathname.replace(/\/[^/]*$/, '/') || './';
+      return navigator.serviceWorker.register(swUrl, { scope: swScope });
+    }
+    _registerSW(swCode).then(reg => {
       window._swRegistration = reg;
+      window._swFailed = false;
       reg.update();
       const trackWorker = (w) => {
         if (!w) return;
         w.addEventListener('statechange', () => {
           if (w.state === 'activated') {
             window._swReady = true;
+            window._swRegistration = reg;
             try { syncBgConfigToSW(); } catch(e) {}
           }
         });
@@ -317,9 +500,19 @@ self.addEventListener('notificationclick', e => {
       if ('sync' in reg) {
         reg.sync.register('mono-bg-sync').catch(() => {});
       }
-    }).catch(err => { console.warn('SW registration failed:', err); });
+    }).catch(err => {
+      console.warn('SW registration failed:', err);
+      window._swFailed = true;
+      // SW 完全失败时：用独立 Worker 作为保活 + 直接 Notification API 兜底
+      _startFallbackNotifWorker();
+    });
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       window._swReady = true;
+      window._swFailed = false;
+      // controllerchange 后更新缓存的 registration
+      navigator.serviceWorker.ready.then(reg => {
+        window._swRegistration = reg;
+      }).catch(() => {});
       setTimeout(() => { try { syncBgConfigToSW(); } catch(e) {} }, 1000);
     });
     navigator.serviceWorker.addEventListener('message', e => {
@@ -18987,13 +19180,27 @@ body.editor-modal-open #chatPage .app-back-bar {
         </label>
       </div>
       <div id="autoMsgOptions" style="margin-top:8px;">
-        <label class="text-[10px] font-bold uppercase tracking-widest">間隔时間（小时）</label>
-        <div style="display:flex;align-items:center;gap:10px;margin-top:4px;">
-          <input type="number" id="pAutoMsgInterval" min="1" max="24" value="1" class="w-full border-b border-black py-2 outline-none" placeholder="最少1小时" style="max-width:120px;">
-          <span style="font-size:11px;color:#666;">小时</span>
+        <label class="text-[10px] font-bold uppercase tracking-widest">發送間隔（分鐘）</label>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap;">
+          <div style="display:flex;flex-direction:column;gap:3px;">
+            <span style="font-size:10px;color:#888;">最少間隔</span>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <input type="number" id="pAutoMsgMinInterval" min="5" max="1440" value="60" class="border-b border-black py-1 outline-none text-center" style="width:70px;font-size:13px;">
+              <span style="font-size:11px;color:#666;">分鐘</span>
+            </div>
+          </div>
+          <span style="font-size:14px;color:#aaa;padding-top:14px;">~</span>
+          <div style="display:flex;flex-direction:column;gap:3px;">
+            <span style="font-size:10px;color:#888;">最多間隔</span>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <input type="number" id="pAutoMsgMaxInterval" min="5" max="1440" value="120" class="border-b border-black py-1 outline-none text-center" style="width:70px;font-size:13px;">
+              <span style="font-size:11px;color:#666;">分鐘</span>
+            </div>
+          </div>
         </div>
+        <p style="font-size:10px;color:#aaa;margin-top:4px;">角色會在最少～最多間隔之間隨機選取一個時間發送，條數依角色設定的回復條數範圍隨機。</p>
       </div>
-      <p style="font-size:10px;color:#999;margin-top:2px;">开启后，角色会在设置的时间间隔内自动发送一条消息给你。最少每1小时，最多每24小时。</p>
+
     </div>
     <!-- ===== 自动生成日记设置 ===== -->
     <div class="space-y-2" style="border-top:1px solid #eee;padding-top:20px;">
@@ -23719,7 +23926,8 @@ function openEditor(isEdit=false) {
     document.getElementById('pMemoryCount').value = 100;
     document.getElementById('pMemoryVal').textContent = '100';
     document.getElementById('pAutoMsg').checked = false;
-    document.getElementById('pAutoMsgInterval').value = 1;
+    document.getElementById('pAutoMsgMinInterval').value = 60;
+    document.getElementById('pAutoMsgMaxInterval').value = 120;
     document.getElementById('pAutoDiary').checked = false;
     document.getElementById('pAutoDiaryTime').value = '21:00';
     document.getElementById('pAutoSummary').checked = false;
@@ -23795,7 +24003,8 @@ function openEditor(isEdit=false) {
     document.getElementById('pMemoryCount').value = p.memoryCount || 100;
     document.getElementById('pMemoryVal').textContent = p.memoryCount || '100';
     document.getElementById('pAutoMsg').checked = !!p.autoMsg;
-    document.getElementById('pAutoMsgInterval').value = p.autoMsgInterval || 1;
+    document.getElementById('pAutoMsgMinInterval').value = p.autoMsgMinInterval || (p.autoMsgInterval ? p.autoMsgInterval * 60 : 60);
+    document.getElementById('pAutoMsgMaxInterval').value = p.autoMsgMaxInterval || (p.autoMsgInterval ? Math.max(p.autoMsgInterval * 60, p.autoMsgInterval * 60 + 60) : 120);
     document.getElementById('pAutoDiary').checked = !!p.autoDiary;
     document.getElementById('pAutoDiaryTime').value = p.autoDiaryTime || '21:00';
     document.getElementById('pAutoMoments').checked = !!p.autoMoments;
@@ -23919,11 +24128,11 @@ function savePersona() {
     const p = personas.find(x=>x.id==currentId);
     const _saveAiColor = document.getElementById('pBubbleAiFontColorEnabled').checked ? (document.getElementById('pBubbleAiFontColor').value||'') : '';
     const _saveUserColor = document.getElementById('pBubbleUserFontColorEnabled').checked ? (document.getElementById('pBubbleUserFontColor').value||'') : '';
-    if(p){ p.name=name; p.nickname=document.getElementById('pNick').value.trim(); p.persona=document.getElementById('pPersona').value.trim()||'一个简单的角色设定'; p.avatar=avatar; p.minReplyCount=minReply; p.maxReplyCount=maxReply; p.temperature=temperature; p.timeAwareness=timeAwareness; p.allowSticker=allowSticker; p.stickerLibraryIds=stickerLibraryIds; p.allowVoice=allowVoice; p.voiceId=voiceId; p.voiceSpeed=voiceSpeed; p.voiceLang=voiceLang; p.outputLang=outputLang; p.enableTranslation=enableTranslation; p.translateLang=translateLang; p.voiceFreq=voiceFreq; p.memoryCount=parseInt(document.getElementById('pMemoryCount').value)||100; p.autoMsg=document.getElementById('pAutoMsg').checked; p.autoMsgInterval=parseInt(document.getElementById('pAutoMsgInterval').value)||1; p.autoDiary=document.getElementById('pAutoDiary').checked; p.autoDiaryTime=document.getElementById('pAutoDiaryTime').value||'21:00'; p.autoMoments=document.getElementById('pAutoMoments').checked; p.autoMomentsTime=document.getElementById('pAutoMomentsTime').value||'20:00'; p.autoSummary=document.getElementById('pAutoSummary').checked; p.autoSummaryInterval=parseInt(document.getElementById('pAutoSummaryInterval').value)||20; p.bubbleAiCss=document.getElementById('pBubbleAiCss').value.trim(); p.bubbleUserCss=document.getElementById('pBubbleUserCss').value.trim(); p.chatRoomCustomCss=(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(); p.bubbleAiFontColor=_saveAiColor; p.bubbleUserFontColor=_saveUserColor; p.bubblePreset=(document.getElementById('pBubblePreset')||{}).value||'none'; p.oshiGlowBlue=_saveOshiBlue; p.oshiGlowPink=_saveOshiPink; p.oshiGlowShowHeart=_saveOshiShowHeart; p.metaTimeColor=(document.getElementById('pMetaTimeColor')||{}).value||''; p.metaNameColor=(document.getElementById('pMetaNameColor')||{}).value||''; p.metaReadColor=(document.getElementById('pMetaReadColor')||{}).value||''; p.metaUnreadColor=(document.getElementById('pMetaUnreadColor')||{}).value||''; if(document.getElementById('pChatBgImg').src && document.getElementById('pChatBgImg').style.display!=='none') p.chatBgImage=document.getElementById('pChatBgImg').src; else p.chatBgImage=''; p.replyMode=_getSelectedReplyMode(); var _spd=document.querySelector('input[name="pReplySpeed"]:checked'); p.replySpeed=_spd?_spd.value:'fast'; p.replySpeedCustomMin=parseInt(document.getElementById('pReplySpeedCustomMin').value)||0; p.replySpeedCustomMax=parseInt(document.getElementById('pReplySpeedCustomMax').value)||10; p.showHeartVoiceInHeader=heartVoiceEnabled; p.heartVoiceEnabled=heartVoiceEnabled; p.heartVoiceMode=heartVoiceMode; p.allowCallTts=document.getElementById('pAllowCallTts').checked; if (p.momentsNickname == null || !String(p.momentsNickname).trim()) p.momentsNickname = name; if (p.momentsSignature == null) p.momentsSignature = ''; if (p.momentsBanner == null) p.momentsBanner = ''; }
+    if(p){ p.name=name; p.nickname=document.getElementById('pNick').value.trim(); p.persona=document.getElementById('pPersona').value.trim()||'一个简单的角色设定'; p.avatar=avatar; p.minReplyCount=minReply; p.maxReplyCount=maxReply; p.temperature=temperature; p.timeAwareness=timeAwareness; p.allowSticker=allowSticker; p.stickerLibraryIds=stickerLibraryIds; p.allowVoice=allowVoice; p.voiceId=voiceId; p.voiceSpeed=voiceSpeed; p.voiceLang=voiceLang; p.outputLang=outputLang; p.enableTranslation=enableTranslation; p.translateLang=translateLang; p.voiceFreq=voiceFreq; p.memoryCount=parseInt(document.getElementById('pMemoryCount').value)||100; p.autoMsg=document.getElementById('pAutoMsg').checked; p.autoMsgMinInterval=Math.max(5,parseInt(document.getElementById('pAutoMsgMinInterval').value)||60); p.autoMsgMaxInterval=Math.max(p.autoMsgMinInterval,parseInt(document.getElementById('pAutoMsgMaxInterval').value)||120); p.autoDiary=document.getElementById('pAutoDiary').checked; p.autoDiaryTime=document.getElementById('pAutoDiaryTime').value||'21:00'; p.autoMoments=document.getElementById('pAutoMoments').checked; p.autoMomentsTime=document.getElementById('pAutoMomentsTime').value||'20:00'; p.autoSummary=document.getElementById('pAutoSummary').checked; p.autoSummaryInterval=parseInt(document.getElementById('pAutoSummaryInterval').value)||20; p.bubbleAiCss=document.getElementById('pBubbleAiCss').value.trim(); p.bubbleUserCss=document.getElementById('pBubbleUserCss').value.trim(); p.chatRoomCustomCss=(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(); p.bubbleAiFontColor=_saveAiColor; p.bubbleUserFontColor=_saveUserColor; p.bubblePreset=(document.getElementById('pBubblePreset')||{}).value||'none'; p.oshiGlowBlue=_saveOshiBlue; p.oshiGlowPink=_saveOshiPink; p.oshiGlowShowHeart=_saveOshiShowHeart; p.metaTimeColor=(document.getElementById('pMetaTimeColor')||{}).value||''; p.metaNameColor=(document.getElementById('pMetaNameColor')||{}).value||''; p.metaReadColor=(document.getElementById('pMetaReadColor')||{}).value||''; p.metaUnreadColor=(document.getElementById('pMetaUnreadColor')||{}).value||''; if(document.getElementById('pChatBgImg').src && document.getElementById('pChatBgImg').style.display!=='none') p.chatBgImage=document.getElementById('pChatBgImg').src; else p.chatBgImage=''; p.replyMode=_getSelectedReplyMode(); var _spd=document.querySelector('input[name="pReplySpeed"]:checked'); p.replySpeed=_spd?_spd.value:'fast'; p.replySpeedCustomMin=parseInt(document.getElementById('pReplySpeedCustomMin').value)||0; p.replySpeedCustomMax=parseInt(document.getElementById('pReplySpeedCustomMax').value)||10; p.showHeartVoiceInHeader=heartVoiceEnabled; p.heartVoiceEnabled=heartVoiceEnabled; p.heartVoiceMode=heartVoiceMode; p.allowCallTts=document.getElementById('pAllowCallTts').checked; if (p.momentsNickname == null || !String(p.momentsNickname).trim()) p.momentsNickname = name; if (p.momentsSignature == null) p.momentsSignature = ''; if (p.momentsBanner == null) p.momentsBanner = ''; }
   } else {
     const _saveAiColor = document.getElementById('pBubbleAiFontColorEnabled').checked ? (document.getElementById('pBubbleAiFontColor').value||'') : '';
     const _saveUserColor = document.getElementById('pBubbleUserFontColorEnabled').checked ? (document.getElementById('pBubbleUserFontColor').value||'') : '';
-    const newP = { id:Date.now(), name, nickname:document.getElementById('pNick').value.trim()||name, momentsNickname:name, momentsSignature:'', momentsBanner:'', persona:document.getElementById('pPersona').value.trim()||'一个简单的角色设定', avatar, history:[], memoryCore:[], lastHeartVoice:null, autoSummary:document.getElementById('pAutoSummary').checked, autoSummaryInterval:parseInt(document.getElementById('pAutoSummaryInterval').value)||20, minReplyCount:minReply, maxReplyCount:maxReply, temperature:temperature, timeAwareness:timeAwareness, allowSticker:allowSticker, stickerLibraryIds:stickerLibraryIds, allowVoice:allowVoice, voiceId:voiceId, voiceSpeed:voiceSpeed, voiceLang:voiceLang, outputLang:outputLang, enableTranslation:enableTranslation, translateLang:translateLang, voiceFreq:voiceFreq, memoryCount:parseInt(document.getElementById('pMemoryCount').value)||100, autoMsg:document.getElementById('pAutoMsg').checked, autoMsgInterval:parseInt(document.getElementById('pAutoMsgInterval').value)||1, autoDiary:document.getElementById('pAutoDiary').checked, autoDiaryTime:document.getElementById('pAutoDiaryTime').value||'21:00', autoMoments:document.getElementById('pAutoMoments').checked, autoMomentsTime:document.getElementById('pAutoMomentsTime').value||'20:00', bubbleAiCss:document.getElementById('pBubbleAiCss').value.trim(), bubbleUserCss:document.getElementById('pBubbleUserCss').value.trim(), chatRoomCustomCss:(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(), bubbleAiFontColor:_saveAiColor, bubbleUserFontColor:_saveUserColor, bubblePreset:(document.getElementById('pBubblePreset')||{}).value||'none', oshiGlowBlue:_saveOshiBlue, oshiGlowPink:_saveOshiPink, oshiGlowShowHeart:_saveOshiShowHeart, metaTimeColor:(document.getElementById('pMetaTimeColor')||{}).value||'', metaNameColor:(document.getElementById('pMetaNameColor')||{}).value||'', metaReadColor:(document.getElementById('pMetaReadColor')||{}).value||'', metaUnreadColor:(document.getElementById('pMetaUnreadColor')||{}).value||'', chatBgImage:(document.getElementById('pChatBgImg').style.display!=='none'?document.getElementById('pChatBgImg').src:''), replyMode:_getSelectedReplyMode(), replySpeed:(document.querySelector('input[name="pReplySpeed"]:checked')||{}).value||'fast', replySpeedCustomMin:parseInt(document.getElementById('pReplySpeedCustomMin').value)||0, replySpeedCustomMax:parseInt(document.getElementById('pReplySpeedCustomMax').value)||10, showHeartVoiceInHeader:heartVoiceEnabled, heartVoiceEnabled:heartVoiceEnabled, heartVoiceMode:heartVoiceMode, allowCallTts:document.getElementById('pAllowCallTts').checked };
+    const newP = { id:Date.now(), name, nickname:document.getElementById('pNick').value.trim()||name, momentsNickname:name, momentsSignature:'', momentsBanner:'', persona:document.getElementById('pPersona').value.trim()||'一个简单的角色设定', avatar, history:[], memoryCore:[], lastHeartVoice:null, autoSummary:document.getElementById('pAutoSummary').checked, autoSummaryInterval:parseInt(document.getElementById('pAutoSummaryInterval').value)||20, minReplyCount:minReply, maxReplyCount:maxReply, temperature:temperature, timeAwareness:timeAwareness, allowSticker:allowSticker, stickerLibraryIds:stickerLibraryIds, allowVoice:allowVoice, voiceId:voiceId, voiceSpeed:voiceSpeed, voiceLang:voiceLang, outputLang:outputLang, enableTranslation:enableTranslation, translateLang:translateLang, voiceFreq:voiceFreq, memoryCount:parseInt(document.getElementById('pMemoryCount').value)||100, autoMsg:document.getElementById('pAutoMsg').checked, autoMsgMinInterval:Math.max(5,parseInt(document.getElementById('pAutoMsgMinInterval').value)||60), autoMsgMaxInterval:Math.max(5,parseInt(document.getElementById('pAutoMsgMaxInterval').value)||120), autoDiary:document.getElementById('pAutoDiary').checked, autoDiaryTime:document.getElementById('pAutoDiaryTime').value||'21:00', autoMoments:document.getElementById('pAutoMoments').checked, autoMomentsTime:document.getElementById('pAutoMomentsTime').value||'20:00', bubbleAiCss:document.getElementById('pBubbleAiCss').value.trim(), bubbleUserCss:document.getElementById('pBubbleUserCss').value.trim(), chatRoomCustomCss:(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(), bubbleAiFontColor:_saveAiColor, bubbleUserFontColor:_saveUserColor, bubblePreset:(document.getElementById('pBubblePreset')||{}).value||'none', oshiGlowBlue:_saveOshiBlue, oshiGlowPink:_saveOshiPink, oshiGlowShowHeart:_saveOshiShowHeart, metaTimeColor:(document.getElementById('pMetaTimeColor')||{}).value||'', metaNameColor:(document.getElementById('pMetaNameColor')||{}).value||'', metaReadColor:(document.getElementById('pMetaReadColor')||{}).value||'', metaUnreadColor:(document.getElementById('pMetaUnreadColor')||{}).value||'', chatBgImage:(document.getElementById('pChatBgImg').style.display!=='none'?document.getElementById('pChatBgImg').src:''), replyMode:_getSelectedReplyMode(), replySpeed:(document.querySelector('input[name="pReplySpeed"]:checked')||{}).value||'fast', replySpeedCustomMin:parseInt(document.getElementById('pReplySpeedCustomMin').value)||0, replySpeedCustomMax:parseInt(document.getElementById('pReplySpeedCustomMax').value)||10, showHeartVoiceInHeader:heartVoiceEnabled, heartVoiceEnabled:heartVoiceEnabled, heartVoiceMode:heartVoiceMode, allowCallTts:document.getElementById('pAllowCallTts').checked };
     personas.push(newP); currentId=newP.id;
   }
   saveData(); renderContactList(); if(currentId) selectPersona(currentId); closeEditor(); renderDiaryTabs();
@@ -35649,7 +35858,9 @@ function normalizeImportData(raw) {
     if (np.allowVoice == null) np.allowVoice = false;
     if (np.memoryCount == null) np.memoryCount = 100;
     if (np.autoMsg == null) np.autoMsg = false;
-    if (np.autoMsgInterval == null) np.autoMsgInterval = 1;
+    // Migrate old autoMsgInterval (hours) to new min/max minute fields
+    if (np.autoMsgMinInterval == null) np.autoMsgMinInterval = np.autoMsgInterval ? np.autoMsgInterval * 60 : 60;
+    if (np.autoMsgMaxInterval == null) np.autoMsgMaxInterval = np.autoMsgInterval ? Math.max(np.autoMsgInterval * 60 + 60, np.autoMsgInterval * 60) : 120;
     if (np.autoDiary == null) np.autoDiary = false;
     if (np.autoDiaryTime == null) np.autoDiaryTime = '21:00';
     if (np.autoMoments == null) np.autoMoments = false;
@@ -40514,29 +40725,52 @@ function _processNotifQueue() {
   }, 3500);
 }
 // ---- Browser Push Notification ----
+// 跨浏览器通知支持情况：
+//   Chrome/Edge (desktop + Android): SW 注册成功后全功能支持
+//   iOS Safari PWA (加入主屏幕): iOS 16.4+ 支持 SW 通知，必须是 PWA 模式
+//   iOS Safari 普通浏览器: 不支持任何后台通知，只能弹应用内 toast
+//   Firefox: 支持 SW 通知，不支持 periodicSync
 function requestNotifPermission() {
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const isStandalone = window.navigator.standalone === true ||
     window.matchMedia('(display-mode: standalone)').matches;
+
+  // iOS：必须 PWA 模式才能收通知，强烈引导安装
   if (isIOS && !isStandalone) {
     if (!localStorage.getItem('mono_pwa_hint_shown')) {
       localStorage.setItem('mono_pwa_hint_shown', '1');
       setTimeout(() => {
-        try { showMonoNotifToast('📱 推荐安装到主画面', '点击 Safari 分享 → 「加入主画面」可获得最佳后台通知体验', undefined); } catch(e) {}
-      }, 4000);
+        try {
+          showMonoNotifToast(
+            '📱 iOS 通知需要安装到主屏幕',
+            '点击 Safari 底部分享按钮 → 「添加到主屏幕」，再从主屏幕打开即可收到通知',
+            undefined
+          );
+        } catch(e) {}
+      }, 3000);
     }
+    // iOS 非 PWA 模式无法请求通知权限，直接返回
+    return;
   }
+
   if (!('Notification' in window)) return;
+
   if (Notification.permission === 'default') {
     Notification.requestPermission().then(perm => {
       if (perm === 'granted') {
-        sendBrowserNotif('Mono Heart', '通知已开启 · 角色消息将即时弹出 ✓', undefined);
         if (navigator.storage && navigator.storage.persist) {
           navigator.storage.persist().catch(() => {});
         }
+        // 确保 SW 配置已同步
+        setTimeout(() => { try { syncBgConfigToSW(); } catch(e) {} }, 1000);
+        sendBrowserNotif('Mono Heart', '通知已开启 · 角色消息将即时弹出 ✓', undefined);
       } else if (perm === 'denied') {
+        const isEdge = /edg\//i.test(navigator.userAgent);
+        const hint = isEdge
+          ? '请点击地址栏右侧锁形图标 → 通知 → 允许'
+          : '请到浏览器设置 → 网站通知，手动允许本站';
         setTimeout(() => {
-          try { showMonoNotifToast('🔔 通知被拒绝', '请到手机设定 → 浏览器 → 通知，手动开启', undefined); } catch(e) {}
+          try { showMonoNotifToast('🔔 通知被拒绝', hint, undefined); } catch(e) {}
         }, 1000);
       }
     });
@@ -40544,50 +40778,103 @@ function requestNotifPermission() {
     if (navigator.storage && navigator.storage.persist) {
       navigator.storage.persist().catch(() => {});
     }
+    setTimeout(() => { try { syncBgConfigToSW(); } catch(e) {} }, 500);
   }
 }
+// SW 注册状态追踪
+window._swFailed = window._swFailed || false;
+window._swRegistration = window._swRegistration || null;
+
 function sendBrowserNotif(name, text, avatar) {
   if (!('Notification' in window)) return;
   if (Notification.permission !== 'granted') return;
-  const payload = {
-    type: 'SHOW_NOTIFICATION',
-    title: 'Mono Heart · ' + name,
+
+  const title = 'Mono Heart · ' + name;
+  const tag = 'mono-msg-' + Date.now();
+  const notifOpts = {
     body: text,
     icon: avatar || undefined,
-    tag: 'mono-msg-' + Date.now(),
+    tag: tag,
+    renotify: true,
     data: { name, text }
   };
+
+  // 直接 Notification API（SW 失败时 / 不支持 SW 时 / iOS PWA 模式）
   function fallbackNotification() {
     try {
-      const n = new Notification(payload.title, {
-        body: text, icon: avatar || undefined,
-        tag: payload.tag, renotify: true
-      });
-      setTimeout(() => { try { n.close(); } catch(e) {} }, 12000);
-    } catch(e2) {}
+      const n = new Notification(title, notifOpts);
+      setTimeout(() => { try { n.close(); } catch(e) {} }, 15000);
+    } catch(e) {}
   }
-  try {
-    const ctrl = navigator.serviceWorker && navigator.serviceWorker.controller;
-    if (ctrl) { ctrl.postMessage(payload); return; }
-    if (navigator.serviceWorker) {
+
+  // iOS Safari PWA：SW 注册了但 controller 可能为 null，用 registration 直接弹
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+  // 优先路径：SW registration.showNotification（Chrome/Edge/Firefox/iOS PWA）
+  if (!window._swFailed && navigator.serviceWorker) {
+    try {
+      // 如果已有缓存的 registration 直接用，避免 ready 等待延迟
+      const cachedReg = window._swRegistration;
+      if (cachedReg && cachedReg.showNotification) {
+        cachedReg.showNotification(title, notifOpts).catch(fallbackNotification);
+        return;
+      }
+      // 否则等 ready
       navigator.serviceWorker.ready.then(reg => {
-        if (reg.active) {
-          reg.active.postMessage(payload);
-        } else if (reg.waiting) {
-          reg.waiting.postMessage(payload);
+        window._swRegistration = reg;
+        if (reg && reg.showNotification) {
+          reg.showNotification(title, notifOpts).catch(fallbackNotification);
         } else {
-          reg.showNotification(payload.title, {
-            body: text, icon: avatar || undefined,
-            tag: payload.tag, renotify: true, data: payload.data
-          }).catch(() => fallbackNotification());
+          fallbackNotification();
         }
-      }).catch(() => fallbackNotification());
+      }).catch(fallbackNotification);
       return;
-    }
-    fallbackNotification();
-  } catch(e) {
-    fallbackNotification();
+    } catch(e) {}
   }
+
+  fallbackNotification();
+}
+
+// Fallback Worker：SW 完全不可用时，用 Web Worker 保持定时器活跃
+// （页面切到后台后 setInterval 会被浏览器节流，Worker 不受影响）
+function _startFallbackNotifWorker() {
+  if (window._fallbackWorkerStarted) return;
+  window._fallbackWorkerStarted = true;
+  try {
+    const wCode = `
+      var interval = 60000;
+      setInterval(function() { postMessage('tick'); }, interval);
+    `;
+    const wBlob = new Blob([wCode], { type: 'application/javascript' });
+    const wWorker = new Worker(URL.createObjectURL(wBlob));
+    wWorker.onmessage = function() {
+      // Worker tick：检查是否有待发送的自动消息
+      try {
+        if (typeof triggerPendingAutoMessages === 'function') {
+          triggerPendingAutoMessages();
+        }
+      } catch(e) {}
+    };
+    window._fallbackWorker = wWorker;
+  } catch(e) {}
+}
+
+// 统一触发所有到期的自动消息（由 Worker tick 或定时器调用）
+function triggerPendingAutoMessages() {
+  if (typeof personas === 'undefined' || !personas) return;
+  personas.forEach(function(p) {
+    if (!p.autoMsg) return;
+    var minMs = Math.max(5, p.autoMsgMinInterval || 60) * 60 * 1000;
+    var lastAutoTime = 0;
+    if (p.history && p.history.length > 0) {
+      for (var i = p.history.length - 1; i >= 0; i--) {
+        if (p.history[i]._autoMsgTime) { lastAutoTime = p.history[i]._autoMsgTime; break; }
+      }
+    }
+    if (lastAutoTime > 0 && Date.now() - lastAutoTime >= minMs) {
+      try { triggerAutoMessage(p.id); } catch(e) {}
+    }
+  });
 }
 // ===== 后台群组自动回复系统 =====
 // 当用户离开页面后，群组里的角色会继续根据最后一条消息互动
@@ -40746,24 +41033,37 @@ function startAutoMsgTimers() {
   _autoMsgTimersRunning = true;
   setTimeout(() => { _autoMsgTimersRunning = false; }, 3000);
   // Clear existing timers
-  Object.values(_autoMsgTimers).forEach(t => clearInterval(t));
+  Object.values(_autoMsgTimers).forEach(t => clearTimeout(t));
   _autoMsgTimers = {};
   personas.forEach(p => {
-    if (p.autoMsg && p.autoMsgInterval >= 1) {
-      const intervalMs = (p.autoMsgInterval || 1) * 3600 * 1000;
-      _autoMsgTimers[p.id] = setInterval(() => {
-        triggerAutoMessage(p.id);
-      }, intervalMs);
+    if (p.autoMsg) {
+      _scheduleNextAutoMsg(p.id);
       // Also check if we should send immediately based on last message time
+      const minMs = (p.autoMsgMinInterval || 60) * 60 * 1000;
       const lastMsg = p.history && p.history.length > 0 ? p.history[p.history.length - 1] : null;
-      if (lastMsg && lastMsg._autoMsgTime) {
-        const elapsed = Date.now() - lastMsg._autoMsgTime;
-        if (elapsed >= intervalMs) {
-          setTimeout(() => triggerAutoMessage(p.id), 3000 + Math.random() * 5000);
+      const lastAutoTime = (() => {
+        if (!p.history) return 0;
+        for (let i = p.history.length - 1; i >= 0; i--) {
+          if (p.history[i]._autoMsgTime) return p.history[i]._autoMsgTime;
         }
+        return 0;
+      })();
+      if (lastAutoTime && (Date.now() - lastAutoTime) >= minMs) {
+        setTimeout(() => triggerAutoMessage(p.id), 3000 + Math.random() * 5000);
       }
     }
   });
+}
+function _scheduleNextAutoMsg(personaId) {
+  const p = personas.find(x => x.id == personaId);
+  if (!p || !p.autoMsg) return;
+  const minMs = Math.max(5, p.autoMsgMinInterval || 60) * 60 * 1000;
+  const maxMs = Math.max(minMs, (p.autoMsgMaxInterval || 120) * 60 * 1000);
+  const intervalMs = minMs + Math.random() * (maxMs - minMs);
+  _autoMsgTimers[personaId] = setTimeout(async () => {
+    await triggerAutoMessage(personaId);
+    _scheduleNextAutoMsg(personaId);
+  }, intervalMs);
 }
 async function triggerAutoMessage(personaId) {
   if (!apiConfig.url || !apiConfig.key || !apiConfig.model) return;
@@ -40783,13 +41083,34 @@ async function triggerAutoMessage(personaId) {
   else if (_h < 20) _aPeriod = '傍晚';
   else if (_h < 23) _aPeriod = '晚上';
   else              _aPeriod = '深夜';
+  // Calculate time since last conversation message
+  let _timeSinceLastChat = '';
+  if (p.history && p.history.length > 0) {
+    const lastMsg = p.history[p.history.length - 1];
+    const lastTs = lastMsg.timestamp || lastMsg._autoMsgTime || 0;
+    if (lastTs) {
+      const diffMs = Date.now() - lastTs;
+      const diffMin = Math.floor(diffMs / 60000);
+      if (diffMin < 60) {
+        _timeSinceLastChat = `距离上次对话约 ${diffMin} 分钟前`;
+      } else if (diffMin < 60 * 24) {
+        const diffH = Math.floor(diffMin / 60);
+        const remMin = diffMin % 60;
+        _timeSinceLastChat = `距离上次对话约 ${diffH} 小时${remMin > 0 ? remMin + '分钟' : ''}前`;
+      } else {
+        const diffD = Math.floor(diffMin / 1440);
+        _timeSinceLastChat = `距离上次对话已过去约 ${diffD} 天`;
+      }
+    }
+  }
   const _autoMsgWbInject = typeof buildWorldBookInjection === 'function' ? buildWorldBookInjection(recentChat, p.id) : '';
   const _aLangOv = typeof _langOverridePrompt === 'function' ? _langOverridePrompt(typeof _detectPersonaLang === 'function' ? _detectPersonaLang(p) : '') : '';
   // Determine how many messages to send based on persona settings
   const minAutoReply = p.minReplyCount || 1;
-  const maxAutoReply = Math.min(p.maxReplyCount || 3, 3); // cap at 3 for auto messages
+  const maxAutoReply = p.maxReplyCount || 3;
   const autoMsgCount = Math.floor(Math.random() * (maxAutoReply - minAutoReply + 1)) + minAutoReply;
-  const prompt = `${LANG_SYSTEM_PREFIX}${STYLE_INSTRUCTIONS}\n你是${p.name}，人设：${p.persona}。你对用戶（${userProfile.name}）的暱称是${p.nickname||p.name}。${_aLangOv}\n现在时間是${timeStr}，时段：${_aPeriod}。\n你现在主动给${userProfile.name}发消息。\n\n【主动发消息的要求】\n1. 根据你的人设性格，自然地发起这条消息——可以是忽然想到什么想分享、对之前对话的后续想法、你生活中发生的小事、或者就是单纯想聊聊。\n2. 消息要有你独特的语气，不要总是"嗯嗯在干嘛"这种万能开场，要有角色自己的味道。\n3. 发送恰好 ${autoMsgCount} 条消息，消息之间用 "###" 分隔。\n4. 多条消息要连贯自然，像同一个人连续说话，后一条承接前一条。\n5. 根据当前时间（${timeStr}）和时段（${_aPeriod}）调整语气和话题。\n6. 默认风格是短句分开发，尽量不要用逗号和句号；问号、感叹号、省略号可以保留来表达情绪。只有当你的人设或世界书明确要求别的格式时，才覆盖这个默认风格。\n7. 不要加引号，只返回消息内容本身。${BUILTIN_WB}${_autoMsgWbInject}\n\n【最近对话记录】\n${recentChat || '(暫無对话记录)'}`;
+  const _timeSinceCtx = _timeSinceLastChat ? `\n【时间感知】${_timeSinceLastChat}，请根据这段时间的流逝，自然地选择合适的话题和语气——间隔短可以接着上次的话题继续，间隔长则可以从新的生活片段开始。` : '';
+  const prompt = `${LANG_SYSTEM_PREFIX}${STYLE_INSTRUCTIONS}\n你是${p.name}，人设：${p.persona}。你对用戶（${userProfile.name}）的暱称是${p.nickname||p.name}。${_aLangOv}\n现在时間是${timeStr}，时段：${_aPeriod}。${_timeSinceCtx}\n你现在主动给${userProfile.name}发消息。\n\n【主动发消息的要求】\n1. 根据你的人设性格，自然地发起这条消息——可以是忽然想到什么想分享、对之前对话的后续想法、你生活中发生的小事、或者就是单纯想聊聊。\n2. 消息要有你独特的语气，不要总是"嗯嗯在干嘛"这种万能开场，要有角色自己的味道。\n3. 发送恰好 ${autoMsgCount} 条消息，消息之间用 "###" 分隔。\n4. 多条消息要连贯自然，像同一个人连续说话，后一条承接前一条。\n5. 根据当前时间（${timeStr}）和时段（${_aPeriod}）调整语气和话题，符合这个时段真实的生活状态。\n6. 内容必须与最近对话记录和时间流逝逻辑连贯——如果刚刚聊过某件事就不要假装完全不知道，如果隔了很久就不要假装刚才还在聊。\n7. 默认风格是短句分开发，尽量不要用逗号和句号；问号、感叹号、省略号可以保留来表达情绪。只有当你的人设或世界书明确要求别的格式时，才覆盖这个默认风格。\n8. 不要加引号，只返回消息内容本身。${BUILTIN_WB}${_autoMsgWbInject}\n\n【最近对话记录】\n${recentChat || '(暫無对话记录)'}`;
   try {
     const r = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, {
       method: 'POST',
@@ -41043,9 +41364,8 @@ document.addEventListener('visibilitychange', function() {
   if (document.hidden) {
     _lastVisibleTime = Date.now();
     try { syncBgConfigToSW(); } catch(e) {}
-    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-      navigator.serviceWorker.controller.postMessage({ type: 'BG_CHECK' });
-    }
+    // 触发 SW 后台检查（兼容 controller 为 null 的情况）
+    try { _triggerSwBgCheck(); } catch(e) {}
     if (window._swRegistration && 'sync' in window._swRegistration) {
       window._swRegistration.sync.register('mono-bg-sync').catch(() => {});
     }
@@ -41075,7 +41395,7 @@ function catchUpMissedGenerations() {
       try { checkAutoMoments(p.id, true); } catch(e) {}
     }
     // ── 补生成自动消息 ──
-    if (p.autoMsg && p.autoMsgInterval >= 1) {
+    if (p.autoMsg) {
       try { catchUpAutoMessage(p); } catch(e) {}
     }
   });
@@ -41086,8 +41406,8 @@ function catchUpMissedGenerations() {
   try { renderMoments(); } catch(e) {}
 }
 function catchUpAutoMessage(p) {
-  if (!p || !p.autoMsg || !p.autoMsgInterval) return;
-  var intervalMs = (p.autoMsgInterval || 1) * 3600 * 1000;
+  if (!p || !p.autoMsg) return;
+  const minMs = Math.max(5, p.autoMsgMinInterval || 60) * 60 * 1000;
   // 查找最后一条自动消息的时間
   var lastAutoTime = 0;
   if (p.history && p.history.length > 0) {
@@ -41098,14 +41418,13 @@ function catchUpAutoMessage(p) {
       }
     }
   }
-  // 如果没找到自动消息时間戳，用最后一条消息的大概时間
+  // 如果没找到自动消息时間戳，不补发（避免重复）
   if (!lastAutoTime && p.history && p.history.length > 0) {
-    // 没有明确的时間戳，不补发（避免重复）
     return;
   }
   var elapsed = Date.now() - lastAutoTime;
-  if (elapsed >= intervalMs) {
-    // 错过了至少一个間隔，补发一条自动消息（只补一条，避免刷屏）
+  if (elapsed >= minMs) {
+    // 错过了至少一个最小間隔，补发一条自动消息（只补一条，避免刷屏）
     setTimeout(function() {
       triggerAutoMessage(p.id);
     }, 2000 + Math.random() * 3000);
@@ -41114,13 +41433,19 @@ function catchUpAutoMessage(p) {
 // ===================== 后台保活 & SW 配置同步 =====================
 function syncBgConfigToSW() {
   try {
-    if (!navigator.serviceWorker || !navigator.serviceWorker.controller) return;
+    if (!navigator.serviceWorker) return;
     if (typeof apiConfig === 'undefined' || !apiConfig || !apiConfig.url || !apiConfig.key) return;
-    const bgPersonas = (personas || []).filter(p => p.autoMsg && p.autoMsgInterval >= 1).map(p => ({
+    // 找到可用的 SW worker（controller 优先，其次 registration.active）
+    const sw = navigator.serviceWorker.controller ||
+      (window._swRegistration && window._swRegistration.active) || null;
+    if (!sw) return;
+    const bgPersonas = (personas || []).filter(p => p.autoMsg).map(p => ({
       id: p.id, name: p.name,
       persona: (p.persona || '').substring(0, 500),
       avatar: p.avatar || '',
-      autoMsg: p.autoMsg, autoMsgInterval: p.autoMsgInterval,
+      autoMsg: p.autoMsg,
+      autoMsgMinInterval: p.autoMsgMinInterval || 60,
+      autoMsgMaxInterval: p.autoMsgMaxInterval || 120,
       lastAutoMsgTime: (() => {
         if (!p.history || !p.history.length) return 0;
         for (let i = p.history.length - 1; i >= 0; i--) {
@@ -41132,7 +41457,7 @@ function syncBgConfigToSW() {
         role: m.role, content: (m.content || '').substring(0, 200)
       }))
     }));
-    navigator.serviceWorker.controller.postMessage({
+    sw.postMessage({
       type: 'SYNC_BG_CONFIG',
       apiConfig: { url: apiConfig.url, key: apiConfig.key, model: apiConfig.model },
       bgPersonas
@@ -41181,31 +41506,57 @@ async function syncBgMessagesToPage() {
 }
 let _keepAliveLock = null;
 function startKeepAlive() {
+  // Web Locks API：阻止浏览器回收后台标签（Chrome/Edge 支持）
   if (navigator.locks) {
     navigator.locks.request('mono-heart-keepalive', { mode: 'shared' }, () => {
       return new Promise(() => {});
     }).catch(() => {});
   }
+
+  // 主定时器：每3分钟同步配置到 SW 并触发后台检查
   setInterval(() => {
     try { syncBgConfigToSW(); } catch(e) {}
-    if (document.hidden && navigator.serviceWorker && navigator.serviceWorker.controller) {
-      navigator.serviceWorker.controller.postMessage({ type: 'BG_CHECK' });
+    if (document.hidden) {
+      _triggerSwBgCheck();
     }
   }, 3 * 60 * 1000);
+
+  // 独立 Worker 定时器：不受页面节流影响，每60秒 tick 一次
   try {
-    const workerCode = 'setInterval(function(){postMessage("tick");},60000);';
+    const workerCode = 'setInterval(function(){ postMessage("tick"); }, 60000);';
     const workerBlob = new Blob([workerCode], { type: 'application/javascript' });
     const keepAliveWorker = new Worker(URL.createObjectURL(workerBlob));
+    window._keepAliveWorker = keepAliveWorker;
     keepAliveWorker.onmessage = function() {
+      try { syncBgConfigToSW(); } catch(e) {}
       if (document.hidden) {
-        try {
-          if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-            navigator.serviceWorker.controller.postMessage({ type: 'BG_CHECK' });
-          }
-        } catch(e) {}
+        _triggerSwBgCheck();
+        // SW 不可用时用 fallback worker 触发消息
+        if (window._swFailed) {
+          try { triggerPendingAutoMessages(); } catch(e) {}
+        }
       }
     };
   } catch(e) {}
+}
+
+// 统一触发 SW 后台检查（不依赖 controller，直接用 registration）
+function _triggerSwBgCheck() {
+  if (!navigator.serviceWorker) return;
+  // 优先用 controller（已控制当前页面的 SW）
+  if (navigator.serviceWorker.controller) {
+    try { navigator.serviceWorker.controller.postMessage({ type: 'BG_CHECK' }); return; } catch(e) {}
+  }
+  // 降级：用 registration.active（blob URL SW 常见情况：active 但 controller 为 null）
+  if (window._swRegistration && window._swRegistration.active) {
+    try { window._swRegistration.active.postMessage({ type: 'BG_CHECK' }); return; } catch(e) {}
+  }
+  // 再降级：等 ready
+  navigator.serviceWorker.ready.then(reg => {
+    if (reg && reg.active) {
+      reg.active.postMessage({ type: 'BG_CHECK' });
+    }
+  }).catch(() => {});
 }
 setTimeout(startKeepAlive, 5000);
 document.addEventListener('visibilitychange', function() {
@@ -41215,6 +41566,9 @@ document.addEventListener('visibilitychange', function() {
     if (window._swRegistration && 'sync' in window._swRegistration) {
       window._swRegistration.sync.register('mono-bg-sync').catch(() => {});
     }
+  } else {
+    // 页面隐藏时也立即触发一次 BG_CHECK
+    setTimeout(() => { try { _triggerSwBgCheck(); } catch(e) {} }, 500);
   }
 });
 // ===================== 世界书 World Book =====================
@@ -73916,12 +74270,9 @@ function iccCheckAndMaybeTrigger(inspector, contact, summary, thoughtText) {
   /* 让 AI 判断情绪强度（0-10），是否值得触发私聊 */
   var assessPrompt =
     '你是' + inspector.name + '，人设：' + (inspector.persona || '') + '。' +
-    '你刚刚在用户手机里翻到了用户与「' + contact.name + '」的聊天记录：
-' +
-    summary.slice(0, 500) + '
-' +
-    '你的内心想法是：' + (thoughtText || '') + '
-' +
+    '你刚刚在用户手机里翻到了用户与「' + contact.name + '」的聊天记录：\n' +
+    summary.slice(0, 500) + '\n' +
+    '你的内心想法是：' + (thoughtText || '') + '\n' +
     '请判断你是否会想要直接联系「' + contact.name + '」来对峙或了解情况。' +
     '返回JSON：{"trigger":true/false,"intensity":0~10,"reason":"一句话理由（' + lang + '，20字内）","opening":"你主动发给对方的第一句话（' + lang + '，符合你性格，15~30字）"}
 只返回JSON。';
@@ -80548,6 +80899,175 @@ window.addEventListener('pagehide', csSave);
 document.addEventListener('visibilitychange', function() {
   if (document.visibilityState === 'hidden') csSave();
 });
+})();
+</script>
+<!-- ===== 后台SW测试面板 ===== -->
+<div id="bgTestPanelOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:99999;align-items:flex-end;justify-content:center;" onclick="if(event.target===this)closeBgTestPanel()">
+  <div id="bgTestPanel" style="width:100%;max-width:520px;background:#fff;border-radius:18px 18px 0 0;padding:0 0 env(safe-area-inset-bottom,0) 0;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 -4px 30px rgba(0,0,0,0.15);overflow:hidden;">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px 12px;border-bottom:1px solid #f0f0f0;flex-shrink:0;">
+      <div>
+        <div style="font-size:13px;font-weight:700;letter-spacing:.04em;" id="bgTestPanelTitle">后台自动消息 · 测试</div>
+        <div style="font-size:10px;color:#999;margin-top:2px;" id="bgTestPanelSubtitle">Service Worker 状态</div>
+      </div>
+      <button onclick="closeBgTestPanel()" style="width:28px;height:28px;border-radius:50%;border:none;background:#f0f0f0;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>
+    <!-- SW Status Bar -->
+    <div id="bgTestSwStatus" style="padding:10px 18px;background:#fafafa;border-bottom:1px solid #f0f0f0;font-size:11px;color:#555;flex-shrink:0;display:flex;flex-wrap:wrap;gap:10px;">
+      <span id="bgTestSwReg">⏳ 检查SW状态…</span>
+      <span id="bgTestSwCtrl"></span>
+      <span id="bgTestSwNotif"></span>
+    </div>
+    <!-- Action Buttons -->
+    <div style="padding:12px 18px;display:flex;gap:8px;flex-shrink:0;border-bottom:1px solid #f0f0f0;">
+      <button id="bgTestDiagnoseBtn" onclick="runBgTest('diagnose')" style="flex:1;padding:8px 0;border:1px solid #bbb;border-radius:20px;background:#f5f5f5;font-size:12px;cursor:pointer;font-weight:500;">🔍 诊断 IDB 状态</button>
+      <button id="bgTestSendBtn" onclick="runBgTest('test')" style="flex:1;padding:8px 0;border:none;border-radius:20px;background:#1a1a1a;color:#fff;font-size:12px;cursor:pointer;font-weight:500;">⚡ 强制触发发送</button>
+      <button onclick="syncAndRediagnose()" style="padding:8px 10px;border:1px solid #bbb;border-radius:20px;background:#f5f5f5;font-size:12px;cursor:pointer;" title="先同步配置到SW再诊断">🔄</button>
+    </div>
+    <!-- Log Area -->
+    <div style="flex:1;overflow-y:auto;padding:12px 18px;min-height:120px;">
+      <div id="bgTestLog" style="font-family:monospace;font-size:11.5px;line-height:1.75;color:#333;white-space:pre-wrap;word-break:break-all;"></div>
+      <div id="bgTestSpinner" style="display:none;text-align:center;padding:12px 0;font-size:12px;color:#888;">
+        <span style="animation:bgTestSpin 1s linear infinite;display:inline-block;">⏳</span> 处理中…
+      </div>
+    </div>
+    <!-- Pending msgs notice -->
+    <div id="bgTestPendingBar" style="display:none;padding:8px 18px;background:#fffbe6;border-top:1px solid #ffe58f;font-size:11px;color:#ad6800;flex-shrink:0;">
+      💡 检测到有消息待同步到聊天室，请<button onclick="forceSyncBgMsgs()" style="border:none;background:none;color:#1a1a1a;font-weight:700;font-size:11px;cursor:pointer;text-decoration:underline;">点此立即同步</button>
+    </div>
+    <!-- Footer hint -->
+    <div style="padding:8px 18px 12px;font-size:10px;color:#bbb;flex-shrink:0;text-align:center;">「强制触发」会绕过时间间隔限制，真实调用AI并写入聊天记录</div>
+  </div>
+</div>
+<style>
+@keyframes bgTestSpin { to { transform: rotate(360deg); } }
+#bgTestLog .log-success { color: #52c41a; }
+#bgTestLog .log-error   { color: #ff4d4f; }
+#bgTestLog .log-warn    { color: #fa8c16; }
+#bgTestLog .log-info    { color: #333; }
+</style>
+<script>
+(function(){
+// ========== BG Test Panel ==========
+window.openBgTestPanel = function(mode) {
+  const overlay = document.getElementById('bgTestPanelOverlay');
+  overlay.style.display = 'flex';
+  document.getElementById('bgTestLog').innerHTML = '';
+  document.getElementById('bgTestPanelTitle').textContent = mode === 'test' ? '后台自动消息 · 强制测试' : '后台自动消息 · 诊断';
+  document.getElementById('bgTestPanelSubtitle').textContent = mode === 'test' ? '绕过时间限制，强制触发一次完整发送流程' : '检查 SW 及 IDB 配置是否正常';
+  document.getElementById('bgTestPendingBar').style.display = 'none';
+  _refreshSwStatusBar();
+  if (mode) setTimeout(() => runBgTest(mode), 400);
+};
+window.closeBgTestPanel = function() {
+  document.getElementById('bgTestPanelOverlay').style.display = 'none';
+};
+function _refreshSwStatusBar() {
+  const regEl = document.getElementById('bgTestSwReg');
+  const ctrlEl = document.getElementById('bgTestSwCtrl');
+  const notifEl = document.getElementById('bgTestSwNotif');
+  if (!('serviceWorker' in navigator)) {
+    regEl.textContent = '❌ 当前浏览器不支持 Service Worker';
+    return;
+  }
+  navigator.serviceWorker.getRegistration().then(reg => {
+    if (!reg) {
+      regEl.innerHTML = '❌ SW <span style="color:#ff4d4f">未注册</span>';
+    } else {
+      const state = reg.active ? 'active' : reg.installing ? 'installing' : reg.waiting ? 'waiting' : '未知';
+      regEl.innerHTML = '✅ SW已注册 <span style="color:#52c41a;font-weight:600">' + state + '</span>';
+    }
+    const ctrl = navigator.serviceWorker.controller;
+    ctrlEl.textContent = ctrl ? '✅ Controller: 已控制' : '⚠️ Controller: 无（需刷新页面）';
+  }).catch(() => { regEl.textContent = '❌ SW 查询失败'; });
+  if ('Notification' in window) {
+    const p = Notification.permission;
+    notifEl.textContent = p === 'granted' ? '🔔 通知权限: 已授权' : p === 'denied' ? '🔕 通知权限: 已拒绝' : '⚠️ 通知权限: 未授权';
+    notifEl.style.color = p === 'granted' ? '#52c41a' : p === 'denied' ? '#ff4d4f' : '#fa8c16';
+  } else {
+    notifEl.textContent = '❌ 不支持通知API';
+  }
+}
+window.runBgTest = function(mode) {
+  const logEl = document.getElementById('bgTestLog');
+  const spinner = document.getElementById('bgTestSpinner');
+  logEl.innerHTML = '';
+  spinner.style.display = 'block';
+  document.getElementById('bgTestDiagnoseBtn').disabled = true;
+  document.getElementById('bgTestSendBtn').disabled = true;
+  _refreshSwStatusBar();
+  const sw = navigator.serviceWorker && (navigator.serviceWorker.controller ||
+    (window._swRegistration && window._swRegistration.active));
+  if (!sw) {
+    _bgTestAppendLog('❌ Service Worker 未激活或未控制当前页面。\n请尝试：\n1. 刷新页面后再测试\n2. 检查浏览器是否支持SW\n3. 检查是否在HTTPS或localhost下运行', 'error');
+    spinner.style.display = 'none';
+    document.getElementById('bgTestDiagnoseBtn').disabled = false;
+    document.getElementById('bgTestSendBtn').disabled = false;
+    return;
+  }
+  // First sync current config to SW
+  try { if (typeof syncBgConfigToSW === 'function') syncBgConfigToSW(); } catch(e){}
+  setTimeout(() => {
+    sw.postMessage({ type: mode === 'test' ? 'BG_TEST' : 'BG_DIAGNOSE' });
+  }, 600);
+};
+window.syncAndRediagnose = function() {
+  const logEl = document.getElementById('bgTestLog');
+  logEl.innerHTML = '';
+  _bgTestAppendLog('🔄 正在将当前配置同步至 SW IDB…', 'info');
+  try {
+    if (typeof syncBgConfigToSW === 'function') syncBgConfigToSW();
+    setTimeout(() => {
+      _bgTestAppendLog('✅ 同步完成，正在重新诊断…', 'info');
+      runBgTest('diagnose');
+    }, 800);
+  } catch(e) {
+    _bgTestAppendLog('❌ 同步失败：' + e.message, 'error');
+  }
+};
+window.forceSyncBgMsgs = function() {
+  try {
+    if (typeof syncBgMessagesToPage === 'function') {
+      syncBgMessagesToPage();
+      document.getElementById('bgTestPendingBar').style.display = 'none';
+      _bgTestAppendLog('✅ 已触发消息同步，请查看对应聊天室', 'success');
+    }
+  } catch(e) {}
+};
+function _bgTestAppendLog(msg, level) {
+  const logEl = document.getElementById('bgTestLog');
+  const line = document.createElement('div');
+  line.className = 'log-' + (level || 'info');
+  line.textContent = msg;
+  logEl.appendChild(line);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+// Listen for SW messages
+if (navigator.serviceWorker) {
+  navigator.serviceWorker.addEventListener('message', function(e) {
+    if (!e.data) return;
+    if (e.data.type === 'BG_TEST_LOG') {
+      if (document.getElementById('bgTestPanelOverlay').style.display !== 'none') {
+        _bgTestAppendLog(e.data.msg, e.data.level);
+        // Check for pending msgs mention
+        if (e.data.msg && e.data.msg.includes('待同步')) {
+          document.getElementById('bgTestPendingBar').style.display = 'block';
+        }
+      }
+    }
+    if (e.data.type === 'BG_TEST_DONE') {
+      document.getElementById('bgTestSpinner').style.display = 'none';
+      const d = document.getElementById('bgTestDiagnoseBtn');
+      const s = document.getElementById('bgTestSendBtn');
+      if (d) d.disabled = false;
+      if (s) s.disabled = false;
+      // Auto sync after test
+      if (typeof syncBgMessagesToPage === 'function') {
+        try { syncBgMessagesToPage(); } catch(e){}
+      }
+    }
+  });
+}
 })();
 </script>
 </body>

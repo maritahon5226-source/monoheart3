@@ -80651,6 +80651,20 @@ function csDateStrLocal(value) {
   if (!d || isNaN(d.getTime())) return '';
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
+function csNormalizeDateKey(value) {
+  var raw = String(value || '').trim();
+  if (!raw) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  var simple = raw.match(/^(\d{4})[\/\.-](\d{1,2})[\/\.-](\d{1,2})$/);
+  if (simple) {
+    return simple[1] + '-' + String(simple[2]).padStart(2, '0') + '-' + String(simple[3]).padStart(2, '0');
+  }
+  var zh = raw.match(/^(\d{4})年(\d{1,2})月(\d{1,2})日$/);
+  if (zh) {
+    return zh[1] + '-' + String(zh[2]).padStart(2, '0') + '-' + String(zh[3]).padStart(2, '0');
+  }
+  return csDateStrLocal(raw);
+}
 function csCreateDefaultAnniversaries(persona) {
   var today = csTodayStr();
   var base = today;
@@ -81020,16 +81034,41 @@ function csPickMoodDate(ymd) {
   renderCoupleSpace();
 }
 var csMoodApiPending = {};
-function csTodayHistory(personaId) {
-  var today = csTodayStr();
+function csHistoryByDate(personaId, targetDate) {
+  var dateKey = targetDate || csTodayStr();
   return csGetRecentHistory(personaId, 40).filter(function(item) {
     if (!item || !item.timestamp) return false;
     try {
-      return csDateStrLocal(item.timestamp) === today && (item.role === 'user' || item.role === 'assistant');
+      return csDateStrLocal(item.timestamp) === dateKey && (item.role === 'user' || item.role === 'assistant');
     } catch(e) { return false; }
   }).sort(function(a, b) {
     return (new Date(a.timestamp).getTime() || 0) - (new Date(b.timestamp).getTime() || 0);
   });
+}
+function csOfflineMemoryByDate(personaId, targetDate) {
+  var persona = csFindPersona(personaId);
+  if (!persona || !Array.isArray(persona.memoryCore)) return [];
+  var dateKey = targetDate || csTodayStr();
+  return persona.memoryCore.map(function(item) {
+    var raw = (typeof item === 'string') ? { content: item } : (item || {});
+    var source = String(raw.source || '').trim();
+    var isOfflineMemory = !!(
+      raw._offlineSessionId ||
+      raw._offlineMemoryType === 'summary' ||
+      /^线下剧情/.test(source)
+    );
+    if (!isOfflineMemory) return null;
+    var itemDate = csNormalizeDateKey(raw.date || '');
+    if (!itemDate || itemDate !== dateKey) return null;
+    var content = String(raw.content || '').trim();
+    if (!content) return null;
+    return {
+      date: itemDate,
+      source: source || '线下剧情',
+      content: content,
+      type: raw._offlineMemoryType || (/总结/.test(source) ? 'summary' : 'overview')
+    };
+  }).filter(Boolean);
 }
 function csTextSignature(text) {
   var raw = String(text || '');
@@ -81037,39 +81076,120 @@ function csTextSignature(text) {
   for (var i = 0; i < raw.length; i++) sum = (sum + raw.charCodeAt(i) * (i + 7)) % 10000019;
   return raw.length + '_' + sum;
 }
-function csExtractMoodId(text) {
+function csExtractMoodPayload(text) {
   var raw = String(text || '').trim();
-  if (!raw) return '';
+  if (!raw) return { mood: '', reason: '' };
   try {
     var parsed = JSON.parse(raw);
-    if (parsed && parsed.mood && csMoodById(parsed.mood).id === parsed.mood) return parsed.mood;
+    if (parsed && parsed.mood && csMoodById(parsed.mood).id === parsed.mood) {
+      return {
+        mood: parsed.mood,
+        reason: String(parsed.reason || '').trim()
+      };
+    }
   } catch(e) {}
   for (var i = 0; i < CS_MOODS.length; i++) {
-    if (raw.indexOf(CS_MOODS[i].id) >= 0) return CS_MOODS[i].id;
+    if (raw.indexOf(CS_MOODS[i].id) >= 0) return { mood: CS_MOODS[i].id, reason: '' };
   }
-  return '';
+  return { mood: '', reason: '' };
 }
-async function csInferCharacterMoodFromApi(personaId, history) {
+async function csInferCharacterMoodFromApi(personaId, history, offlineMemories, targetDate) {
   if (!apiConfig || !apiConfig.url || !apiConfig.key || !apiConfig.model) {
     throw new Error('请先在 API Config 里连接聊天 API。');
   }
   var persona = csFindPersona(personaId);
   var userName = (userProfile && userProfile.name) || '用户';
   var personaName = csPersonaDisplayName(persona);
+  var dateLabel = csFormatDate(targetDate || csTodayStr());
   var lines = (history || []).map(function(item) {
     var role = item && item.role === 'user' ? '用户' : '角色';
     return role + '：' + String(item && item.content || '').replace(/\s+/g, ' ').trim();
   }).filter(Boolean);
-  if (!lines.length) return 'soft';
+  var offlineLines = (offlineMemories || []).map(function(item) {
+    return (item.source || '线下剧情') + '：' + String(item.content || '').replace(/\s+/g, ' ').trim();
+  }).filter(Boolean);
+  if (!lines.length && !offlineLines.length) return { mood: 'soft', reason: '当天没有可参考内容' };
   var prompt = '你是情侣空间的情绪判断器。当前用户是“' + userName + '”，当前角色是“' + personaName + '”。'
-    + '\n你只能根据“今天该角色和该用户在这个角色聊天室里的聊天内容”判断这个角色今天的唯一心情。'
-    + '\n不要参考昨天或更早的内容，不要分析用户心情。'
+    + '\n你只能根据“' + dateLabel + '这一天该角色和该用户在这个角色聊天室里的聊天内容，以及这一天已写进核心记忆的线下剧情总结”判断这个角色那一天的整体唯一心情。'
+    + '\n不要参考其他日期的内容，不要分析用户心情。'
     + '\n不同角色之间的情绪记录绝不能混用。'
     + '\n可选 mood id 只有：dizzy, shocked, heart, soft, happy, sparkle, stress, sideeye, angry, dot, cool, blush, sleepy, cute, cry, confused。'
     + '\n请只返回 JSON，例如 {"mood":"heart","reason":"不超过12字"}。'
-    + '\n\n今天的聊天内容：\n' + lines.join('\n');
+    + '\n请优先判断这一天里角色整体最主导、最稳定的情绪，而不是某一句话的瞬间反应。'
+    + '\n如果当天没有聊天，但有核心记忆里的线下剧情总结，就根据这些线下记忆判断。'
+    + '\n\n' + dateLabel + '的聊天内容：\n' + (lines.length ? lines.join('\n') : '（当天没有聊天记录）')
+    + '\n\n' + dateLabel + '的核心记忆线下剧情总结：\n' + (offlineLines.length ? offlineLines.join('\n') : '（当天没有相关线下记忆）');
   var text = await csCallChatApi(prompt, 220);
-  return csExtractMoodId(text) || 'soft';
+  var payload = csExtractMoodPayload(text);
+  return {
+    mood: payload.mood || 'soft',
+    reason: payload.reason || ''
+  };
+}
+function csPickWeightedMood(weightMap) {
+  var entries = Object.keys(weightMap || {}).map(function(key) {
+    return { id: key, weight: Math.max(0, Number(weightMap[key]) || 0) };
+  }).filter(function(item) { return item.weight > 0; });
+  if (!entries.length) return 'soft';
+  var total = entries.reduce(function(sum, item) { return sum + item.weight; }, 0);
+  var seed = Math.random() * total;
+  for (var i = 0; i < entries.length; i++) {
+    seed -= entries[i].weight;
+    if (seed <= 0) return entries[i].id;
+  }
+  return entries[entries.length - 1].id;
+}
+function csInferFallbackMoodFromPersona(persona, targetDate) {
+  var desc = String((persona && persona.persona) || '').toLowerCase();
+  var weights = {
+    soft: 20,
+    happy: 12,
+    blush: 9,
+    cool: 8,
+    sideeye: 6,
+    stress: 5,
+    sleepy: 5,
+    confused: 4,
+    cute: 6,
+    heart: 4,
+    sparkle: 4,
+    dot: 5,
+    angry: 2,
+    cry: 2,
+    dizzy: 2,
+    shocked: 2
+  };
+  function bump(list, delta) {
+    list.forEach(function(key) {
+      weights[key] = Math.max(0, (weights[key] || 0) + delta);
+    });
+  }
+  if (/(温柔|细腻|体贴|治愈|成熟|安静|稳重|冷静|克制|理性|淡淡|平静|gentle|calm|soft|mature)/.test(desc)) bump(['soft', 'cool', 'dot'], 6);
+  if (/(活泼|开朗|阳光|热情|可爱|甜|元气|黏人|小狗|cheerful|bright|cute|playful)/.test(desc)) bump(['happy', 'cute', 'sparkle', 'heart'], 7);
+  if (/(高冷|嘴硬|傲娇|别扭|冷淡|疏离|毒舌|tsundere|cold)/.test(desc)) bump(['sideeye', 'cool', 'blush', 'stress'], 7);
+  if (/(敏感|脆弱|悲观|忧郁|低落|孤独|缺爱|不安|anxious|sad|lonely)/.test(desc)) bump(['soft', 'confused', 'cry', 'blush'], 6);
+  if (/(易怒|暴躁|占有欲|控制欲|强势|攻击性|jealous|possessive|angry)/.test(desc)) bump(['stress', 'angry', 'sideeye'], 7);
+  if (/(困|懒|慢热|散漫|夜猫子|sleepy|lazy)/.test(desc)) bump(['sleepy', 'dot', 'soft'], 6);
+  var picked = csPickWeightedMood(weights);
+  var reasonMap = {
+    soft: '当天无记录，偏温柔',
+    happy: '当天无记录，偏明朗',
+    blush: '当天无记录，偏含蓄',
+    cool: '当天无记录，偏冷静',
+    sideeye: '当天无记录，偏别扭',
+    stress: '当天无记录，偏紧绷',
+    sleepy: '当天无记录，偏懒散',
+    confused: '当天无记录，偏游离',
+    cute: '当天无记录，偏可爱',
+    heart: '当天无记录，偏心动',
+    sparkle: '当天无记录，偏雀跃',
+    dot: '当天无记录，偏平淡',
+    angry: '当天无记录，偏烦躁',
+    cry: '当天无记录，偏脆弱',
+    dizzy: '当天无记录，偏恍惚',
+    shocked: '当天无记录，偏起伏'
+  };
+  return { mood: picked, reason: reasonMap[picked] || '当天无记录，按人设估计' };
 }
 async function csDescribeImageWithChatApi(dataUrl, options) {
   if (!apiConfig || !apiConfig.url || !apiConfig.key || !apiConfig.model) {
@@ -81312,79 +81432,69 @@ async function csGenerateGalleryNarration(id) {
     csRenderGalleryDetailOverlay();
   }
 }
-function csSetAutoCharMood() {
+function csGetStoredCharMood(profile, targetDate) {
+  if (!profile) return null;
+  var dateKey = targetDate || csTodayStr();
+  var entry = (profile.moodMap && profile.moodMap[dateKey]) || {};
+  return entry.char ? csMoodById(entry.char) : null;
+}
+async function csGenerateCharMoodForSelectedDate() {
   var profile = csGetActiveProfile();
   var persona = csGetActivePersona();
-  if (!profile || !persona) return null;
-  var today = csTodayStr();
-  if (!profile.moodMap[today]) profile.moodMap[today] = {};
-  var entry = profile.moodMap[today];
-  if (entry._manualChar && entry.char) return csMoodById(entry.char);
-  var history = csTodayHistory(persona.id);
+  if (!profile || !persona) return;
+  var targetDate = csGetSelectedMoodDate();
+  var history = csHistoryByDate(persona.id, targetDate);
+  var offlineMemories = csOfflineMemoryByDate(persona.id, targetDate);
+  if (!profile.moodMap[targetDate]) profile.moodMap[targetDate] = {};
+  var entry = profile.moodMap[targetDate];
   var signature = csTextSignature(history.map(function(item) {
     return (item && item.role || '') + ':' + String(item && item.content || '');
+  }).join('\n') + '\n' + offlineMemories.map(function(item) {
+    return (item.source || '') + ':' + String(item.content || '');
   }).join('\n'));
-  var moodId = entry.char || 'soft';
-  var requestKey = persona.id + '_' + today + '_' + signature;
-  if (!history.length) {
-    if (entry.char !== 'soft' || entry._charSig !== signature) {
-      entry.char = 'soft';
-      entry._charSig = signature;
-      csSave();
-    }
-    return csMoodById('soft');
-  }
-  if (entry._charSig !== signature && !csMoodApiPending[requestKey] && apiConfig && apiConfig.url && apiConfig.key && apiConfig.model) {
-    csMoodApiPending[requestKey] = true;
-    csInferCharacterMoodFromApi(persona.id, history).then(function(nextMoodId) {
-      var nextProfile = csGetActiveProfile();
-      var nextToday = csTodayStr();
-      if (!nextProfile) return;
-      if (!nextProfile.moodMap[nextToday]) nextProfile.moodMap[nextToday] = {};
-      nextProfile.moodMap[nextToday].char = nextMoodId || 'soft';
-      nextProfile.moodMap[nextToday]._charSig = signature;
-      csSave();
-      renderCoupleSpaceWidget();
-      renderCoupleCalendarWidgets();
-      var page = document.getElementById('coupleSpacePage');
-      if (page && page.style.display === 'block') renderCoupleSpace();
-    }).catch(function(err) {
-      console.warn('cs mood inference failed:', err);
-    }).finally(function() {
-      delete csMoodApiPending[requestKey];
-    });
-  }
-  if (entry.char) moodId = entry.char;
-  if (!entry._charSig && history.length && entry.char) {
+  var requestKey = persona.id + '_' + targetDate + '_' + signature;
+  if (csMoodApiPending[requestKey]) return;
+  if (!history.length && !offlineMemories.length) {
+    var fallback = csInferFallbackMoodFromPersona(persona, targetDate);
+    entry.char = fallback.mood || 'soft';
+    entry.charReason = fallback.reason || '当天无记录，按人设估计';
     entry._charSig = signature;
+    entry._generatedFromChat = false;
+    entry._generatedFromOffline = false;
+    entry._generatedFromFallback = true;
+    entry._generatedAt = Date.now();
     csSave();
+    renderCoupleSpaceWidget();
+    renderCoupleCalendarWidgets();
+    renderCoupleSpace();
+    return;
   }
-  return csMoodById(moodId);
-}
-function csSelectCharMood(id) {
-  var profile = csGetActiveProfile();
-  if (!profile) return;
-  var targetDate = csGetSelectedMoodDate();
-  if (!profile.moodMap[targetDate]) profile.moodMap[targetDate] = {};
-  profile.moodMap[targetDate].char = id;
-  profile.moodMap[targetDate]._manualChar = true;
-  if (targetDate !== csTodayStr()) delete profile.moodMap[targetDate]._charSig;
-  csSave();
-  renderCoupleSpace();
-}
-function csResetCharMoodAuto() {
-  var profile = csGetActiveProfile();
-  if (!profile) return;
-  var targetDate = csGetSelectedMoodDate();
-  if (!profile.moodMap[targetDate]) return;
-  delete profile.moodMap[targetDate]._manualChar;
-  if (targetDate === csTodayStr()) {
-    delete profile.moodMap[targetDate].char;
-    delete profile.moodMap[targetDate]._charSig;
-    csSetAutoCharMood();
+  if (!apiConfig || !apiConfig.url || !apiConfig.key || !apiConfig.model) {
+    alert('请先在 API Config 里连接聊天 API。');
+    return;
   }
-  csSave();
+  csMoodApiPending[requestKey] = true;
   renderCoupleSpace();
+  try {
+    var payload = await csInferCharacterMoodFromApi(persona.id, history, offlineMemories, targetDate);
+    entry.char = payload.mood || 'soft';
+    entry.charReason = payload.reason || (offlineMemories.length ? '结合聊天与线下记忆判断' : '根据当天聊天判断');
+    entry._charSig = signature;
+    entry._generatedFromChat = !!history.length;
+    entry._generatedFromOffline = !!offlineMemories.length;
+    entry._generatedFromFallback = false;
+    entry._generatedAt = Date.now();
+    csSave();
+    renderCoupleSpaceWidget();
+    renderCoupleCalendarWidgets();
+    renderCoupleSpace();
+  } catch (err) {
+    console.warn('cs mood inference failed:', err);
+    alert('生成角色情绪失败：' + err.message);
+  } finally {
+    delete csMoodApiPending[requestKey];
+    renderCoupleSpace();
+  }
 }
 function csOpenFile(id) {
   var input = document.getElementById(id);
@@ -81712,7 +81822,6 @@ function csSelectUserMood(id) {
   var targetDate = csGetSelectedMoodDate();
   if (!profile.moodMap[targetDate]) profile.moodMap[targetDate] = {};
   profile.moodMap[targetDate].user = id;
-  if (targetDate === csTodayStr()) csSetAutoCharMood();
   csSave();
   renderCoupleSpace();
 }
@@ -82056,23 +82165,33 @@ function csRenderMoodTab(profile, persona, mood, moodCalendar) {
   var selectedDate = csGetSelectedMoodDate();
   var selectedEntry = (profile.moodMap && profile.moodMap[selectedDate]) || {};
   var selectedCharMood = selectedEntry.char ? csMoodById(selectedEntry.char) : null;
-  var isTodaySelected = selectedDate === csTodayStr();
+  var selectedHistory = csHistoryByDate(persona.id, selectedDate);
+  var selectedOfflineMemories = csOfflineMemoryByDate(persona.id, selectedDate);
+  var selectedHistoryCount = selectedHistory.length;
+  var selectedOfflineCount = selectedOfflineMemories.length;
+  var pendingKey = persona.id + '_' + selectedDate + '_' + csTextSignature(selectedHistory.map(function(item) {
+    return (item && item.role || '') + ':' + String(item && item.content || '');
+  }).join('\n') + '\n' + selectedOfflineMemories.map(function(item) {
+    return (item.source || '') + ':' + String(item.content || '');
+  }).join('\n'));
+  var isGenerating = !!csMoodApiPending[pendingKey];
+  var charSummary = selectedCharMood
+    ? ('<span class="cs-mood-inline-pill"><span class="cs-mood-icon-box">' + csMoodSpriteNode(selectedCharMood.id || selectedCharMood.icon, 'cs-mood-sprite', selectedCharMood.label) + '</span>' + csEsc(selectedCharMood.label) + '</span>')
+    : '<span class="cs-mood-inline-pill">未生成</span>';
+  var reasonText = String(selectedEntry.charReason || '').trim();
   return ''
     + '<section class="cs-section">'
-    + '<div class="cs-section-head"><div><div class="cs-section-title">每日情绪</div><div class="cs-section-desc">角色情绪在上、用户情绪在下。角色只根据当天和这个角色的聊天内容自动判断。</div></div></div>'
+    + '<div class="cs-section-head"><div><div class="cs-section-title">每日情绪</div><div class="cs-section-desc">角色情绪在上、用户情绪在下。角色不会自动更新，只有你点击按钮后，才会按选中日期当天的聊天内容，以及核心记忆里当天保存的线下剧情总结，判断那一天的整体情绪。</div></div></div>'
     + '<div class="cs-mood-ref-card">'
     + '<div class="cs-mood-card-top"><div class="cs-mood-pet-left">' + csMoodSpriteNode('cute', 'cs-mood-pet-sprite', '乖乖') + '</div><div class="cs-mood-title-wrap"><div class="cs-mood-title-main">' + csEsc(moodCalendar.monthLabel) + '</div><div class="cs-mood-title-sub">' + csEsc(moodCalendar.yearLabel) + '</div></div></div>'
     + '<div class="cs-mood-nav"><button class="cs-icon-btn" onclick="csShiftMoodMonth(-1)"><i class="fas fa-chevron-left"></i></button><div class="cs-inline-note">角色在上 · 用户在下</div><button class="cs-icon-btn" onclick="csShiftMoodMonth(1)"><i class="fas fa-chevron-right"></i></button></div>'
     + '<div class="cs-mood-grid-ref">' + moodCalendar.html + '</div>'
     + '</div>'
-    + '<div class="cs-mood-panel"><div class="cs-inline-note">角色今日情绪：<span class="cs-mood-inline-pill"><span class="cs-mood-icon-box">' + csMoodSpriteNode(mood.id || mood.icon, 'cs-mood-sprite', mood.label) + '</span>' + csEsc(mood.label) + '</span>' + (selectedEntry._manualChar && isTodaySelected ? ' 已手动修改' : ' 默认按当天聊天自动判断') + '</div>'
-    + '<div class="cs-inline-note" style="margin-top:8px;">当前正在编辑：<span class="cs-mood-inline-pill">' + csEsc(csFormatDate(selectedDate)) + (selectedDate === csTodayStr() ? ' · 今天' : '') + '</span> 用户可以随时修改任意日期的心情。</div>'
-    + '<div class="cs-inline-note" style="margin-top:10px;">角色情绪</div>'
-    + '<div class="cs-mood-picker-ref">' + CS_MOODS.map(function(item) {
-      var picked = selectedCharMood && selectedCharMood.id === item.id;
-      return '<div class="cs-mood-choice' + (picked ? ' active' : '') + '" onclick="csSelectCharMood(\'' + item.id + '\')">' + csMoodSpriteNode(item.id || item.icon, 'cs-mood-choice-sprite', item.label) + '<div class="cs-mood-option-label">' + csEsc(item.label) + '</div></div>';
-    }).join('') + '</div>'
-    + (isTodaySelected ? '<div class="cs-actions" style="margin-top:10px;"><button class="cs-btn light" onclick="csResetCharMoodAuto()">恢复今天的自动判断</button></div>' : '')
+    + '<div class="cs-mood-panel"><div class="cs-inline-note">当前选中日期的角色情绪：' + charSummary + '</div>'
+    + '<div class="cs-inline-note" style="margin-top:8px;">当前正在编辑：<span class="cs-mood-inline-pill">' + csEsc(csFormatDate(selectedDate)) + (selectedDate === csTodayStr() ? ' · 今天' : '') + '</span></div>'
+    + '<div class="cs-inline-note" style="margin-top:8px;">这一天可用聊天：<span class="cs-mood-inline-pill">' + selectedHistoryCount + ' 条</span><span class="cs-mood-inline-pill" style="margin-left:6px;">线下记忆 ' + selectedOfflineCount + ' 条</span>' + (selectedEntry._generatedFromFallback ? '<span class="cs-mood-inline-pill" style="margin-left:6px;">按人设概率生成</span>' : selectedEntry.char ? '<span class="cs-mood-inline-pill" style="margin-left:6px;">已生成</span>' : '<span class="cs-mood-inline-pill" style="margin-left:6px;">尚未生成</span>') + '</div>'
+    + '<div class="cs-actions" style="margin-top:12px;"><button class="cs-btn" onclick="csGenerateCharMoodForSelectedDate()">' + (isGenerating ? '正在判断中...' : (selectedEntry.char ? '重新按当天聊天生成角色情绪' : '按当天聊天生成角色情绪')) + '</button></div>'
+    + '<div class="cs-inline-note" style="margin-top:8px;">情绪原因：' + csEsc(reasonText || '还没有生成这一日的角色情绪原因。') + '</div>'
     + '<div class="cs-inline-note" style="margin-top:12px;">用户情绪</div>'
     + '<div class="cs-mood-picker-ref">' + CS_MOODS.map(function(item) {
       var picked = selectedEntry.user === item.id;
@@ -82096,7 +82215,7 @@ function renderCoupleSpace() {
       + '<div class="cs-avatars"><div class="cs-avatar">' + csGetAvatarSrc(userProfile, (userProfile && userProfile.name) || '你') + '</div><div class="cs-avatar-link"><i class="fas fa-heart"></i></div><div class="cs-avatar">TA</div></div>'
       + '<div class="cs-actions"><button class="cs-btn" onclick="openCoupleBindSheet()">选择角色并开始</button></div>'
       + '</div></section>'
-      + '<section class="cs-section"><div class="cs-section-title">待开启内容</div><div class="cs-section-desc">绑定之后会自动开启桌件纪念日倒计时、恋爱天数、纪念日日历、双人相册、足迹打卡，以及按当天聊天内容自动判断的角色心情日历。</div></section>';
+      + '<section class="cs-section"><div class="cs-section-title">待开启内容</div><div class="cs-section-desc">绑定之后会开启桌件纪念日倒计时、恋爱天数、纪念日日历、双人相册、足迹打卡，以及可以按指定日期聊天内容手动生成的角色心情日历。</div></section>';
     csRenderGalleryDetailOverlay();
     return;
   }
@@ -82112,7 +82231,7 @@ function renderCoupleSpace() {
   }
   var ann = csGetDisplayAnniversary(profile);
   var count = ann ? csCountdownInfo(ann.date) : { label:'D-0', nextLabel:'未设定' };
-  var mood = csSetAutoCharMood();
+  var mood = csGetStoredCharMood(profile, csGetSelectedMoodDate());
   var moodCalendar = renderMoodCalendar(profile);
   var userName = (userProfile && userProfile.name) || '你';
   var togetherDays = csLoveDays(profile);
@@ -82235,8 +82354,7 @@ window.csAddManualFootprint = csAddManualFootprint;
 window.csGenerateAlbumIdeas = csGenerateAlbumIdeas;
 window.csGenerateFootprints = csGenerateFootprints;
 window.csPickMoodDate = csPickMoodDate;
-window.csSelectCharMood = csSelectCharMood;
-window.csResetCharMoodAuto = csResetCharMoodAuto;
+window.csGenerateCharMoodForSelectedDate = csGenerateCharMoodForSelectedDate;
 window.csSelectUserMood = csSelectUserMood;
 window.csShiftMoodMonth = csShiftMoodMonth;
 window.csSetTab = csSetTab;
@@ -87030,6 +87148,5 @@ if (document.readyState === 'loading') {
   try { generateAutoMomentsPost = window.generateAutoMomentsPost; } catch (err) {}
 })();
 </script>
-
 </body>
 </html>

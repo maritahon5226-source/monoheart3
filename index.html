@@ -23,6 +23,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head><base href="https://d16ilfvy4mv02r.cloudfront.net/workspaces/sh0bDVYUIEw8H1dpwjAJvINuiJ6ETxg0/6c9a375e-adcc-44e2-9ec5-2d1ce63bc50b/files/">
@@ -8896,7 +8897,7 @@ body.editor-modal-open #chatPage .app-back-bar {
 .visit-char-info .vdesc { font-size: calc(10px * var(--fs, 1)); color: #999; margin-top: 2px; letter-spacing: 0.3px; }
 .visit-char-arrow { color: #bbb; font-size: calc(12px * var(--fs, 1)); }
 /* Visit Home (character's home) */
-.visit-home-view { display: flex; flex-direction: column; height: 100%; background: #f7f7f7; }
+.visit-home-view { display: flex; flex-direction: column; height: 100%; min-height: 0; background: #f7f7f7; }
 .visit-home-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 10px 16px; border-bottom: 1px solid #ddd; background: #fff;
@@ -8930,7 +8931,7 @@ body.editor-modal-open #chatPage .app-back-bar {
 .visit-room-tab:hover { color: #555; }
 /* Room content area */
 .visit-room-content {
-  flex: 1; overflow-y: auto; padding: 12px 16px;
+  flex: 1; min-height: 0; overflow-y: auto; padding: 12px 16px;
   display: flex; flex-direction: column; gap: 8px;
 }
 .visit-room-title {
@@ -8973,9 +8974,15 @@ body.editor-modal-open #chatPage .app-back-bar {
 /* Message / Comment area */
 .visit-msg-section {
   border-top: 1px solid #ddd; background: #fff; flex-shrink: 0;
+  display: flex; flex-direction: column; min-height: 0;
+  max-height: min(38vh, 300px);
+}
+#visitMsgBody {
+  display: flex; flex-direction: column; min-height: 0; max-height: 100%;
 }
 .visit-msg-list {
-  max-height: 160px; overflow-y: auto; padding: 8px 16px;
+  flex: 1; min-height: 96px; max-height: none; overflow-y: auto; padding: 8px 16px;
+  -webkit-overflow-scrolling: touch;
 }
 .visit-msg-item {
   margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #f0f0f0;
@@ -8993,7 +9000,9 @@ body.editor-modal-open #chatPage .app-back-bar {
 }
 .visit-msg-input-row {
   display: flex; gap: 8px; padding: 8px 16px; border-top: 1px solid #eee;
-  align-items: center;
+  align-items: center; flex-shrink: 0; background: #fff;
+  position: sticky; bottom: 0; z-index: 1;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
 }
 .visit-msg-input-row input {
   flex: 1; border: none; border-bottom: 1px solid #ddd;
@@ -20224,8 +20233,12 @@ body.editor-modal-open #chatPage .app-back-bar {
         <div style="display:flex;align-items:center;gap:10px;margin-top:4px;">
           <input type="time" id="pAutoDiaryTime" value="21:00" class="border-b border-black py-2 outline-none" style="max-width:140px;">
         </div>
+        <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:12px;line-height:1.6;margin-top:12px;padding:10px 12px;background:#f7f7f7;border:1px solid #ececec;border-radius:10px;">
+          <input type="checkbox" id="monoDiaryOfflineSetting" style="width:16px;height:16px;accent-color:#1a1a1a;margin-top:1px;" checked>
+          <span>该角色生成日记时（包括手动让角色写日记和自动日记）包含已开启记忆的线下剧情，并明确知道那是真实发生过的线下互动，不是线上私聊</span>
+        </label>
       </div>
-      <p style="font-size:10px;color:#999;margin-top:2px;">开启后，角色会在每天设置的时间自动生成一篇私人日记。</p>
+      <p style="font-size:10px;color:#999;margin-top:2px;">这里除了自动时间，也控制这个角色写日记时是否会把已开启记忆的线下剧情一起纳入内容理解。</p>
     </div>
     <!-- ===== 自动发送朋友圈设置 ===== -->
     <div class="space-y-2" style="border-top:1px solid #eee;padding-top:20px;">
@@ -20241,8 +20254,12 @@ body.editor-modal-open #chatPage .app-back-bar {
         <div style="display:flex;align-items:center;gap:10px;margin-top:4px;">
           <input type="time" id="pAutoMomentsTime" value="20:00" class="border-b border-black py-2 outline-none" style="max-width:140px;">
         </div>
+        <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:12px;line-height:1.6;margin-top:12px;padding:10px 12px;background:#f7f7f7;border:1px solid #ececec;border-radius:10px;">
+          <input type="checkbox" id="monoMomentsOfflineSetting" style="width:16px;height:16px;accent-color:#1a1a1a;margin-top:1px;" checked>
+          <span>该角色生成朋友圈动态时（包括手动发布和自动发布）包含已开启记忆的线下剧情，并明确知道那是真实发生过的线下互动，不是线上私聊</span>
+        </label>
       </div>
-      <p style="font-size:10px;color:#999;margin-top:2px;">开启后，角色会在每天设置的时间自动发布一条朋友圈动态（独立于日记功能）。</p>
+      <p style="font-size:10px;color:#999;margin-top:2px;">这里除了自动时间，也控制这个角色生成朋友圈动态时是否会把已开启记忆的线下剧情一起纳入内容理解。</p>
     </div>
     <!-- Custom Bubble CSS -->
     <div class="custom-section">
@@ -23746,20 +23763,53 @@ function _getOfflineSessionsForPersona(personaId) {
   try {
     if (typeof _offlineState !== 'undefined' && _offlineState.sessions) liveSessions = _offlineState.sessions || {};
   } catch(e) {}
-  try { storedSessions = JSON.parse(localStorage.getItem('mono_offline_sessions') || '{}'); } catch(e) { storedSessions = {}; }
+  try {
+    storedSessions = _offlineReadPersistedJson('mono_offline_sessions', {}) || {};
+  } catch(e) { storedSessions = {}; }
   var merged = [];
   var seen = new Set();
   var pid = String(personaId);
-  [storedSessions[pid], liveSessions[pid]].forEach(function(list) {
+  var personaName = '';
+  try {
+    var targetPersona = (typeof personas !== 'undefined' && Array.isArray(personas))
+      ? personas.find(function(item) { return String(item.id) === pid; })
+      : null;
+    personaName = targetPersona && targetPersona.name ? String(targetPersona.name) : '';
+  } catch(e) {}
+  function _pushSessions(list, ownerKey) {
     if (!Array.isArray(list)) return;
     list.forEach(function(session) {
       if (!session || typeof session !== 'object') return;
       var id = String(session.id || '');
       if (id && seen.has(id)) return;
       if (id) seen.add(id);
+      if (!session.personaId && ownerKey) session.personaId = String(ownerKey);
+      if (!session.personaName && personaName && String(ownerKey) === pid) session.personaName = personaName;
       merged.push(session);
     });
+  }
+  [storedSessions[pid], liveSessions[pid]].forEach(function(list) {
+    _pushSessions(list, pid);
   });
+  if (!merged.length) {
+    [storedSessions, liveSessions].forEach(function(sourceMap) {
+      if (!sourceMap || typeof sourceMap !== 'object') return;
+      Object.keys(sourceMap).forEach(function(ownerKey) {
+        var list = sourceMap[ownerKey];
+        if (!Array.isArray(list)) return;
+        list.forEach(function(session) {
+          if (!session || typeof session !== 'object') return;
+          var sessionPid = session.personaId != null ? String(session.personaId) : '';
+          var sessionPName = session.personaName ? String(session.personaName) : '';
+          var sessionTitle = session.title ? String(session.title) : '';
+          var looksLikeTarget = (sessionPid && sessionPid === pid)
+            || (personaName && sessionPName === personaName)
+            || (personaName && sessionTitle.indexOf(personaName + ' · ') === 0);
+          if (looksLikeTarget) _pushSessions([session], ownerKey);
+        });
+      });
+    });
+  }
   return merged.sort(function(a, b) {
     return (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0);
   });
@@ -23770,7 +23820,9 @@ function _getOfflineMergedSettings() {
   try {
     if (typeof _offlineState !== 'undefined' && _offlineState.settings) liveSettings = _offlineState.settings || {};
   } catch(e) {}
-  try { storedSettings = JSON.parse(localStorage.getItem('mono_offline_settings') || '{}'); } catch(e) { storedSettings = {}; }
+  try {
+    storedSettings = _offlineReadPersistedJson('mono_offline_settings', {}) || {};
+  } catch(e) { storedSettings = {}; }
   return Object.assign({}, storedSettings || {}, liveSettings || {});
 }
 function _buildOfflineSessionMemoryPayload(session, personaName, userName) {
@@ -23778,15 +23830,19 @@ function _buildOfflineSessionMemoryPayload(session, personaName, userName) {
   var pName = personaName || '角色';
   var uName = userName || '你';
   var entryCount = session.entries.length;
-  var recentSummaries = Array.isArray(session.memorySummaries) ? session.memorySummaries.slice(-3) : [];
-  var summaryEntries = session.entries.slice(-12).map(function(e) {
-    return (e.role === 'user' ? uName : pName) + '：' + String(e.content || '').slice(0, 140);
-  }).join('\n');
-  var summary = '【线下剧情】' + (session.title || '线下互动') + '（共' + entryCount + '段）\n' + summaryEntries;
+  var recentSummaries = Array.isArray(session.memorySummaries) ? session.memorySummaries.slice() : [];
+  var summary = '【线下剧情】' + (session.title || '线下互动') + '（共' + entryCount + '段）';
   if (recentSummaries.length) {
-    summary += '\n\n【本段剧情关键阶段记忆】\n' + recentSummaries.map(function(item, idx) {
-      return (idx + 1) + '. ' + (item.content || '');
-    }).join('\n');
+    summary += '\n\n【这段线下剧情已保存的阶段总结】\n' + recentSummaries.map(function(item, idx) {
+      return '第' + (idx + 1) + '段：' + String((item && item.content) || '').trim();
+    }).filter(Boolean).join('\n\n');
+  } else {
+    var summaryEntries = session.entries.slice(-12).map(function(e) {
+      return (e.role === 'user' ? uName : pName) + '：' + String(e.content || '').trim();
+    }).filter(Boolean).join('\n');
+    if (summaryEntries) {
+      summary += '\n\n【最近线下互动记录】\n' + summaryEntries;
+    }
   }
   return {
     overview: summary,
@@ -23859,42 +23915,24 @@ function _hydrateOfflineMemoriesIntoPersona(personaId, skipSave) {
 function _buildOfflineSceneInjection(personaId) {
   try {
     const pid = String(personaId);
-    const sessions = _getOfflineSessionsForPersona(pid);
-    const now = Date.now();
-    const sevenDays = 7 * 24 * 3600 * 1000;
-    const mergedSettings = _getOfflineMergedSettings();
-    const recentSessions = sessions.filter(function(s) {
-      if (s.mode === 'if') return false;
-      const shouldSave = s.saveToMemory !== undefined ? s.saveToMemory : (mergedSettings && mergedSettings.saveToMemory !== false);
-      if (!shouldSave) return false;
-      const age = now - (s.updatedAt || s.createdAt || 0);
-      return age <= sevenDays && s.entries && s.entries.length > 0;
-    });
     const p = personas.find(function(x) { return x.id == personaId; });
-    const uName = (typeof userProfile !== 'undefined' && userProfile.name) ? userProfile.name : '你';
-    if (recentSessions.length) {
-      const lines = recentSessions
-        .slice(0, 4)
-        .map(function(s) {
-        const dateStr = new Date(s.updatedAt || Date.now()).toLocaleDateString('zh-CN');
-        const summaryLines = (s.memorySummaries || []).slice(-3).map(function(item) {
-          return '阶段记忆：' + (item.content || '').slice(0, 140);
-        });
-        const snippet = s.entries.slice(-8).map(function(e) {
-          return (e.role === 'user' ? uName : (p ? p.name : '你')) + '：' + (e.content || '').slice(0, 100);
-        });
-        const mergedSnippet = summaryLines.concat(snippet).slice(0, 10).join('\n');
-        return '「' + (s.title || '线下互动') + '」（' + dateStr + '）\n' + mergedSnippet;
-      }).join('\n\n');
+    const timelineItems = (typeof _monoCollectOfflineTimelineItems === 'function')
+      ? _monoCollectOfflineTimelineItems(pid, { limit: 18 })
+      : [];
+    if (timelineItems.length) {
+      const lines = (typeof _monoBuildTimelineLines === 'function')
+        ? _monoBuildTimelineLines(timelineItems, p).join('\n')
+        : timelineItems.map(function(item) { return String(item.text || ''); }).join('\n');
       return `\n\n# 近期线下互动记忆（必须记住）
 ---
-你们最近在线下有过以下真实互动，这是你亲身经历的事情，你清楚地记得：
+你们最近在线下有过以下真实互动，这是你亲身经历的事情，你清楚地记得。以下时间线已经发生，线上私聊时必须自然承接：
 ${lines}
 ---
 ⚠️ 重要规则：
-1. 在线上聊天中，你必须把这些线下经历当成刚刚真实发生过的事，自然承接。
-2. 如果用户提到与你们线下经历相关的人、地点、情绪、约定、误会，你必须接得上，不能装作没发生。
-3. 如果线上聊天与线下已发生的事实冲突，以线下真实经历为准，自行做自然化衔接。`;
+1. 在线上聊天中，你必须把这些线下经历当成刚刚真实发生过的事，自然承接，不能把线上和线下当成两套分裂的关系。
+2. 如果用户提到与你们线下经历相关的人、地点、情绪、约定、误会、刚发生过的互动余波，你必须接得上，不能装作没发生。
+3. 如果用户刚在线下和你相处过，随后又来线上找你，你的状态、语气、记忆和提到的细节都应延续那段线下时间线。
+4. 如果线上聊天与线下已发生的事实冲突，以线下真实经历为准，自行做自然化衔接。`;
     }
     var offlineMemoryCore = (p && Array.isArray(p.memoryCore) ? p.memoryCore : []).filter(function(item) {
       return item && typeof item === 'object' && (item._offlineSessionId || item._offlineMemoryType || item.source === '线下剧情' || /^线下剧情/.test(item.source || ''));
@@ -24934,6 +24972,10 @@ function openEditor(isEdit=false) {
     document.getElementById('pAutoMsgMaxInterval').value = 120;
     document.getElementById('pAutoDiary').checked = false;
     document.getElementById('pAutoDiaryTime').value = '21:00';
+    if (document.getElementById('monoDiaryOfflineSetting')) document.getElementById('monoDiaryOfflineSetting').checked = true;
+    document.getElementById('pAutoMoments').checked = false;
+    document.getElementById('pAutoMomentsTime').value = '20:00';
+    if (document.getElementById('monoMomentsOfflineSetting')) document.getElementById('monoMomentsOfflineSetting').checked = true;
     document.getElementById('pAutoSummary').checked = false;
     document.getElementById('pAutoSummaryInterval').value = 20;
     document.getElementById('pShowHeartVoiceInHeader').checked = false;
@@ -25011,8 +25053,10 @@ function openEditor(isEdit=false) {
     document.getElementById('pAutoMsgMaxInterval').value = p.autoMsgMaxInterval || (p.autoMsgInterval ? Math.max(p.autoMsgInterval * 60, p.autoMsgInterval * 60 + 60) : 120);
     document.getElementById('pAutoDiary').checked = !!p.autoDiary;
     document.getElementById('pAutoDiaryTime').value = p.autoDiaryTime || '21:00';
+    if (document.getElementById('monoDiaryOfflineSetting')) document.getElementById('monoDiaryOfflineSetting').checked = p.diaryIncludeOfflineMemory !== false;
     document.getElementById('pAutoMoments').checked = !!p.autoMoments;
     document.getElementById('pAutoMomentsTime').value = p.autoMomentsTime || '20:00';
+    if (document.getElementById('monoMomentsOfflineSetting')) document.getElementById('monoMomentsOfflineSetting').checked = p.momentsIncludeOfflineMemory !== false;
     document.getElementById('pAutoSummary').checked = !!p.autoSummary;
     document.getElementById('pAutoSummaryInterval').value = p.autoSummaryInterval || 20;
     var _hvSettings = _normalizePersonaHeartVoiceSettings(p);
@@ -25132,11 +25176,11 @@ function savePersona() {
     const p = personas.find(x=>x.id==currentId);
     const _saveAiColor = document.getElementById('pBubbleAiFontColorEnabled').checked ? (document.getElementById('pBubbleAiFontColor').value||'') : '';
     const _saveUserColor = document.getElementById('pBubbleUserFontColorEnabled').checked ? (document.getElementById('pBubbleUserFontColor').value||'') : '';
-    if(p){ p.name=name; p.nickname=document.getElementById('pNick').value.trim(); p.persona=document.getElementById('pPersona').value.trim()||'一个简单的角色设定'; p.avatar=avatar; p.minReplyCount=minReply; p.maxReplyCount=maxReply; p.temperature=temperature; p.timeAwareness=timeAwareness; p.allowSticker=allowSticker; p.stickerLibraryIds=stickerLibraryIds; p.allowVoice=allowVoice; p.voiceId=voiceId; p.voiceSpeed=voiceSpeed; p.voiceLang=voiceLang; p.outputLang=outputLang; p.enableTranslation=enableTranslation; p.translateLang=translateLang; p.voiceFreq=voiceFreq; p.memoryCount=parseInt(document.getElementById('pMemoryCount').value)||100; p.autoMsg=document.getElementById('pAutoMsg').checked; p.autoMsgMinInterval=Math.max(5,parseInt(document.getElementById('pAutoMsgMinInterval').value)||60); p.autoMsgMaxInterval=Math.max(p.autoMsgMinInterval,parseInt(document.getElementById('pAutoMsgMaxInterval').value)||120); p.autoDiary=document.getElementById('pAutoDiary').checked; p.autoDiaryTime=document.getElementById('pAutoDiaryTime').value||'21:00'; p.autoMoments=document.getElementById('pAutoMoments').checked; p.autoMomentsTime=document.getElementById('pAutoMomentsTime').value||'20:00'; p.autoSummary=document.getElementById('pAutoSummary').checked; p.autoSummaryInterval=parseInt(document.getElementById('pAutoSummaryInterval').value)||20; p.bubbleAiCss=document.getElementById('pBubbleAiCss').value.trim(); p.bubbleUserCss=document.getElementById('pBubbleUserCss').value.trim(); p.chatRoomCustomCss=(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(); p.bubbleAiFontColor=_saveAiColor; p.bubbleUserFontColor=_saveUserColor; p.bubblePreset=(document.getElementById('pBubblePreset')||{}).value||'none'; p.oshiGlowBlue=_saveOshiBlue; p.oshiGlowPink=_saveOshiPink; p.oshiGlowShowHeart=_saveOshiShowHeart; p.metaTimeColor=(document.getElementById('pMetaTimeColor')||{}).value||''; p.metaNameColor=(document.getElementById('pMetaNameColor')||{}).value||''; p.metaReadColor=(document.getElementById('pMetaReadColor')||{}).value||''; p.metaUnreadColor=(document.getElementById('pMetaUnreadColor')||{}).value||''; if(document.getElementById('pChatBgImg').src && document.getElementById('pChatBgImg').style.display!=='none') p.chatBgImage=document.getElementById('pChatBgImg').src; else p.chatBgImage=''; p.replyMode=_getSelectedReplyMode(); var _spd=document.querySelector('input[name="pReplySpeed"]:checked'); p.replySpeed=_spd?_spd.value:'fast'; p.replySpeedCustomMin=parseInt(document.getElementById('pReplySpeedCustomMin').value)||0; p.replySpeedCustomMax=parseInt(document.getElementById('pReplySpeedCustomMax').value)||10; p.showHeartVoiceInHeader=heartVoiceEnabled; p.heartVoiceEnabled=heartVoiceEnabled; p.heartVoiceMode=heartVoiceMode; p.allowCallTts=document.getElementById('pAllowCallTts').checked; if (p.momentsNickname == null || !String(p.momentsNickname).trim()) p.momentsNickname = name; if (p.momentsSignature == null) p.momentsSignature = ''; if (p.momentsBanner == null) p.momentsBanner = ''; }
+    if(p){ p.name=name; p.nickname=document.getElementById('pNick').value.trim(); p.persona=document.getElementById('pPersona').value.trim()||'一个简单的角色设定'; p.avatar=avatar; p.minReplyCount=minReply; p.maxReplyCount=maxReply; p.temperature=temperature; p.timeAwareness=timeAwareness; p.allowSticker=allowSticker; p.stickerLibraryIds=stickerLibraryIds; p.allowVoice=allowVoice; p.voiceId=voiceId; p.voiceSpeed=voiceSpeed; p.voiceLang=voiceLang; p.outputLang=outputLang; p.enableTranslation=enableTranslation; p.translateLang=translateLang; p.voiceFreq=voiceFreq; p.memoryCount=parseInt(document.getElementById('pMemoryCount').value)||100; p.autoMsg=document.getElementById('pAutoMsg').checked; p.autoMsgMinInterval=Math.max(5,parseInt(document.getElementById('pAutoMsgMinInterval').value)||60); p.autoMsgMaxInterval=Math.max(p.autoMsgMinInterval,parseInt(document.getElementById('pAutoMsgMaxInterval').value)||120); p.autoDiary=document.getElementById('pAutoDiary').checked; p.autoDiaryTime=document.getElementById('pAutoDiaryTime').value||'21:00'; p.diaryIncludeOfflineMemory=!document.getElementById('monoDiaryOfflineSetting') || document.getElementById('monoDiaryOfflineSetting').checked; p.autoMoments=document.getElementById('pAutoMoments').checked; p.autoMomentsTime=document.getElementById('pAutoMomentsTime').value||'20:00'; p.momentsIncludeOfflineMemory=!document.getElementById('monoMomentsOfflineSetting') || document.getElementById('monoMomentsOfflineSetting').checked; p.autoSummary=document.getElementById('pAutoSummary').checked; p.autoSummaryInterval=parseInt(document.getElementById('pAutoSummaryInterval').value)||20; p.bubbleAiCss=document.getElementById('pBubbleAiCss').value.trim(); p.bubbleUserCss=document.getElementById('pBubbleUserCss').value.trim(); p.chatRoomCustomCss=(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(); p.bubbleAiFontColor=_saveAiColor; p.bubbleUserFontColor=_saveUserColor; p.bubblePreset=(document.getElementById('pBubblePreset')||{}).value||'none'; p.oshiGlowBlue=_saveOshiBlue; p.oshiGlowPink=_saveOshiPink; p.oshiGlowShowHeart=_saveOshiShowHeart; p.metaTimeColor=(document.getElementById('pMetaTimeColor')||{}).value||''; p.metaNameColor=(document.getElementById('pMetaNameColor')||{}).value||''; p.metaReadColor=(document.getElementById('pMetaReadColor')||{}).value||''; p.metaUnreadColor=(document.getElementById('pMetaUnreadColor')||{}).value||''; if(document.getElementById('pChatBgImg').src && document.getElementById('pChatBgImg').style.display!=='none') p.chatBgImage=document.getElementById('pChatBgImg').src; else p.chatBgImage=''; p.replyMode=_getSelectedReplyMode(); var _spd=document.querySelector('input[name="pReplySpeed"]:checked'); p.replySpeed=_spd?_spd.value:'fast'; p.replySpeedCustomMin=parseInt(document.getElementById('pReplySpeedCustomMin').value)||0; p.replySpeedCustomMax=parseInt(document.getElementById('pReplySpeedCustomMax').value)||10; p.showHeartVoiceInHeader=heartVoiceEnabled; p.heartVoiceEnabled=heartVoiceEnabled; p.heartVoiceMode=heartVoiceMode; p.allowCallTts=document.getElementById('pAllowCallTts').checked; if (p.momentsNickname == null || !String(p.momentsNickname).trim()) p.momentsNickname = name; if (p.momentsSignature == null) p.momentsSignature = ''; if (p.momentsBanner == null) p.momentsBanner = ''; }
   } else {
     const _saveAiColor = document.getElementById('pBubbleAiFontColorEnabled').checked ? (document.getElementById('pBubbleAiFontColor').value||'') : '';
     const _saveUserColor = document.getElementById('pBubbleUserFontColorEnabled').checked ? (document.getElementById('pBubbleUserFontColor').value||'') : '';
-    const newP = { id:Date.now(), name, nickname:document.getElementById('pNick').value.trim()||name, momentsNickname:name, momentsSignature:'', momentsBanner:'', persona:document.getElementById('pPersona').value.trim()||'一个简单的角色设定', avatar, history:[], memoryCore:[], lastHeartVoice:null, autoSummary:document.getElementById('pAutoSummary').checked, autoSummaryInterval:parseInt(document.getElementById('pAutoSummaryInterval').value)||20, minReplyCount:minReply, maxReplyCount:maxReply, temperature:temperature, timeAwareness:timeAwareness, allowSticker:allowSticker, stickerLibraryIds:stickerLibraryIds, allowVoice:allowVoice, voiceId:voiceId, voiceSpeed:voiceSpeed, voiceLang:voiceLang, outputLang:outputLang, enableTranslation:enableTranslation, translateLang:translateLang, voiceFreq:voiceFreq, memoryCount:parseInt(document.getElementById('pMemoryCount').value)||100, autoMsg:document.getElementById('pAutoMsg').checked, autoMsgMinInterval:Math.max(5,parseInt(document.getElementById('pAutoMsgMinInterval').value)||60), autoMsgMaxInterval:Math.max(5,parseInt(document.getElementById('pAutoMsgMaxInterval').value)||120), autoDiary:document.getElementById('pAutoDiary').checked, autoDiaryTime:document.getElementById('pAutoDiaryTime').value||'21:00', autoMoments:document.getElementById('pAutoMoments').checked, autoMomentsTime:document.getElementById('pAutoMomentsTime').value||'20:00', bubbleAiCss:document.getElementById('pBubbleAiCss').value.trim(), bubbleUserCss:document.getElementById('pBubbleUserCss').value.trim(), chatRoomCustomCss:(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(), bubbleAiFontColor:_saveAiColor, bubbleUserFontColor:_saveUserColor, bubblePreset:(document.getElementById('pBubblePreset')||{}).value||'none', oshiGlowBlue:_saveOshiBlue, oshiGlowPink:_saveOshiPink, oshiGlowShowHeart:_saveOshiShowHeart, metaTimeColor:(document.getElementById('pMetaTimeColor')||{}).value||'', metaNameColor:(document.getElementById('pMetaNameColor')||{}).value||'', metaReadColor:(document.getElementById('pMetaReadColor')||{}).value||'', metaUnreadColor:(document.getElementById('pMetaUnreadColor')||{}).value||'', chatBgImage:(document.getElementById('pChatBgImg').style.display!=='none'?document.getElementById('pChatBgImg').src:''), replyMode:_getSelectedReplyMode(), replySpeed:(document.querySelector('input[name="pReplySpeed"]:checked')||{}).value||'fast', replySpeedCustomMin:parseInt(document.getElementById('pReplySpeedCustomMin').value)||0, replySpeedCustomMax:parseInt(document.getElementById('pReplySpeedCustomMax').value)||10, showHeartVoiceInHeader:heartVoiceEnabled, heartVoiceEnabled:heartVoiceEnabled, heartVoiceMode:heartVoiceMode, allowCallTts:document.getElementById('pAllowCallTts').checked };
+    const newP = { id:Date.now(), name, nickname:document.getElementById('pNick').value.trim()||name, momentsNickname:name, momentsSignature:'', momentsBanner:'', persona:document.getElementById('pPersona').value.trim()||'一个简单的角色设定', avatar, history:[], memoryCore:[], lastHeartVoice:null, autoSummary:document.getElementById('pAutoSummary').checked, autoSummaryInterval:parseInt(document.getElementById('pAutoSummaryInterval').value)||20, minReplyCount:minReply, maxReplyCount:maxReply, temperature:temperature, timeAwareness:timeAwareness, allowSticker:allowSticker, stickerLibraryIds:stickerLibraryIds, allowVoice:allowVoice, voiceId:voiceId, voiceSpeed:voiceSpeed, voiceLang:voiceLang, outputLang:outputLang, enableTranslation:enableTranslation, translateLang:translateLang, voiceFreq:voiceFreq, memoryCount:parseInt(document.getElementById('pMemoryCount').value)||100, autoMsg:document.getElementById('pAutoMsg').checked, autoMsgMinInterval:Math.max(5,parseInt(document.getElementById('pAutoMsgMinInterval').value)||60), autoMsgMaxInterval:Math.max(5,parseInt(document.getElementById('pAutoMsgMaxInterval').value)||120), autoDiary:document.getElementById('pAutoDiary').checked, autoDiaryTime:document.getElementById('pAutoDiaryTime').value||'21:00', diaryIncludeOfflineMemory:!document.getElementById('monoDiaryOfflineSetting') || document.getElementById('monoDiaryOfflineSetting').checked, autoMoments:document.getElementById('pAutoMoments').checked, autoMomentsTime:document.getElementById('pAutoMomentsTime').value||'20:00', momentsIncludeOfflineMemory:!document.getElementById('monoMomentsOfflineSetting') || document.getElementById('monoMomentsOfflineSetting').checked, bubbleAiCss:document.getElementById('pBubbleAiCss').value.trim(), bubbleUserCss:document.getElementById('pBubbleUserCss').value.trim(), chatRoomCustomCss:(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(), bubbleAiFontColor:_saveAiColor, bubbleUserFontColor:_saveUserColor, bubblePreset:(document.getElementById('pBubblePreset')||{}).value||'none', oshiGlowBlue:_saveOshiBlue, oshiGlowPink:_saveOshiPink, oshiGlowShowHeart:_saveOshiShowHeart, metaTimeColor:(document.getElementById('pMetaTimeColor')||{}).value||'', metaNameColor:(document.getElementById('pMetaNameColor')||{}).value||'', metaReadColor:(document.getElementById('pMetaReadColor')||{}).value||'', metaUnreadColor:(document.getElementById('pMetaUnreadColor')||{}).value||'', chatBgImage:(document.getElementById('pChatBgImg').style.display!=='none'?document.getElementById('pChatBgImg').src:''), replyMode:_getSelectedReplyMode(), replySpeed:(document.querySelector('input[name="pReplySpeed"]:checked')||{}).value||'fast', replySpeedCustomMin:parseInt(document.getElementById('pReplySpeedCustomMin').value)||0, replySpeedCustomMax:parseInt(document.getElementById('pReplySpeedCustomMax').value)||10, showHeartVoiceInHeader:heartVoiceEnabled, heartVoiceEnabled:heartVoiceEnabled, heartVoiceMode:heartVoiceMode, allowCallTts:document.getElementById('pAllowCallTts').checked };
     personas.push(newP); currentId=newP.id;
   }
   saveData(); renderContactList(); if(currentId) selectPersona(currentId); closeEditor(); renderDiaryTabs();
@@ -29499,6 +29543,26 @@ function _showMomentsPersonaPickerModal() {
   overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
   document.body.appendChild(overlay);
 }
+// ── 构建朋友圈近期聊天上下文（纯文本） ──
+function _monoBuildPlainRecentChatContext(p) {
+  if (!p || !Array.isArray(p.history)) return '';
+  var memCount = p.memoryCount || 100;
+  var userName = (typeof userProfile !== 'undefined' && userProfile && userProfile.name) ? userProfile.name : '用户';
+  return p.history.slice(-memCount).map(function(m) {
+    return (m.role === 'user' ? userName : p.name) + '：' + m.content;
+  }).join('\n');
+}
+// ── 构建朋友圈生成完整 Prompt（含线下剧情记忆注入） ──
+function _monoBuildMomentsPrompt(p, relCtx, langOv, langLabel, lengthDesc) {
+  var userName = (typeof userProfile !== 'undefined' && userProfile && userProfile.name) ? userProfile.name : '用户';
+  var baseContext = _monoBuildPlainRecentChatContext(p) || '(暂无互动记录)';
+  var _momentsOfflineInject = (p.momentsIncludeOfflineMemory !== false && typeof _buildOfflineSceneInjection === 'function') ? _buildOfflineSceneInjection(p.id) : '';
+  var offlinePromptExtra = '';
+  if (_momentsOfflineInject) {
+    offlinePromptExtra = '\n如果近期有线下互动/线下剧情的记忆，你可以自然地在朋友圈中提及或反映那些真实经历过的事情，就像发朋友圈时会提到生活中真实发生过的事一样，不要忽略线下发生过的经历。';
+  }
+  return (typeof LANG_SYSTEM_PREFIX !== 'undefined' ? LANG_SYSTEM_PREFIX : '') + '你是' + p.name + '，根据你的人设「' + p.persona + '」，以及你最近和' + userName + '的互动记录：\n' + baseContext + (langOv || '') + (relCtx || '') + _momentsOfflineInject + '\n\n以' + langLabel + '发布一条朋友圈动态，语气符合你的性格，' + lengthDesc + '。如动态中提及有关系设定的角色，措辞和情感必须符合该关系。' + offlinePromptExtra + '只返回朋友圈内容本身。';
+}
 async function _confirmMomentsPersona(pid) {
   const overlay = document.getElementById('_momentsPicker');
   if (overlay) overlay.remove();
@@ -29508,11 +29572,20 @@ async function _confirmMomentsPersona(pid) {
   const _umBtn = document.querySelector('#momentsPage .moments-pill-btn[onclick="updateMoments()"]');
   if (_umBtn) { _umBtn.disabled = true; _umBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 生成中…'; }
   _showMomentsLoadingCard(p);
-  const recentChat = p.history.slice(-(p.memoryCount||100)).map(m => `${m.role==='user'?userProfile.name:p.name}：${m.content}`).join('\n');
   const _mLang = _detectPersonaLang(p);
   const _mLangOv = _langOverridePrompt(_mLang);
   const _relCtxManualMoment = (typeof _mwBuildRelInjectForChar === 'function') ? _mwBuildRelInjectForChar(p.name, null, false) : '';
-  const prompt = `${LANG_SYSTEM_PREFIX}你是${p.name}，根据你的人设「${p.persona}」，以及你最近和${userProfile.name}的聊天记录：\n${recentChat}${_mLangOv}${_relCtxManualMoment}\n\n根据这段对话，以${_mLang ? '你的语言设定' : '简体中文'}发布一条朋友圈动态，语气符合你的性格，约50-100字。如动态中提及有关系设定的角色，措辞和情感必须符合该关系。允许出现“无法直接说出口，只能借朋友圈轻轻泄露”的表达，但不要写得过于直白。只返回朋友圈内容本身。`;
+  let prompt = '';
+  try {
+    prompt = _monoBuildMomentsPrompt(p, _relCtxManualMoment, _mLangOv, _mLang ? '你的语言设定' : '简体中文', '约50-100字');
+  } catch (err) {
+    console.warn('[mono manual moments prompt fallback]', err && err.message ? err.message : err);
+    const userName = (typeof userProfile !== 'undefined' && userProfile && userProfile.name) ? userProfile.name : '用户';
+    const baseContext = _monoBuildPlainRecentChatContext(p) || '(暂无互动记录)';
+    const _fbManualMomentsOfflineInject = (p.momentsIncludeOfflineMemory !== false && typeof _buildOfflineSceneInjection === 'function') ? _buildOfflineSceneInjection(p.id) : '';
+    const _fbManualMomentsOfflineExtra = _fbManualMomentsOfflineInject ? '\n如果近期有线下互动/线下剧情的记忆，你可以自然地在朋友圈中提及或反映那些真实经历过的事情，不要忽略线下发生过的经历。' : '';
+    prompt = `${typeof LANG_SYSTEM_PREFIX !== 'undefined' ? LANG_SYSTEM_PREFIX : ''}你是${p.name}，根据你的人设「${p.persona}」，以及你最近和${userName}的互动记录：\n${baseContext}${_mLangOv}${_relCtxManualMoment}${_fbManualMomentsOfflineInject}\n\n根据这段互动，以${_mLang ? '你的语言设定' : '简体中文'}发布一条朋友圈动态，语气符合你的性格，约50-100字。如动态中提及有关系设定的角色，措辞和情感必须符合该关系。${_fbManualMomentsOfflineExtra}只返回朋友圈内容本身。`;
+  }
   try {
     const r = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, { method: 'POST', headers: { 'Authorization': `Bearer ${apiConfig.key}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ model: apiConfig.model, messages: [{ role: 'user', content: prompt }], temperature: 0.85 }) });
     if (!r.ok) throw new Error(`API Error: ${r.status}`);
@@ -29525,7 +29598,8 @@ async function _confirmMomentsPersona(pid) {
         if (_tr.ok) { const _td = await _tr.json(); translation = (_td.choices[0].message.content || '').trim(); }
       } catch(e) {}
     }
-    const likes = Math.random() > 0.4 ? [userProfile.name] : [];
+    const likeUserName = (typeof userProfile !== 'undefined' && userProfile && userProfile.name) ? userProfile.name : '用户';
+    const likes = Math.random() > 0.4 ? [likeUserName] : [];
     maybeEvolvePersonaMomentsIdentity(p);
     momentsData.unshift({ id: Date.now(), author: p.name, avatar: p.avatar, authorType: 'persona', personaId: p.id, authorProfileName: p.momentsNickname || p.name, content, translation, time: new Date().getTime(), comments: [], likes });
     localStorage.setItem('mono_moments', JSON.stringify(momentsData));
@@ -29563,6 +29637,16 @@ function switchDiaryTab(tab) {
   renderDiaryTabs();
   renderDiary();
 }
+function _monoResolveDiaryEntryPersona(item) {
+  if (!item || item.authorType === 'user') return null;
+  if (item.personaId != null) {
+    const byId = personas.find(function(px) { return String(px.id) === String(item.personaId); });
+    if (byId) return byId;
+  }
+  const authorName = String((item && item.author) || '').replace(/\s*的日记\s*$/, '').trim();
+  if (!authorName) return null;
+  return personas.find(function(px) { return px && px.name === authorName; }) || null;
+}
 function renderDiary() {
   const listEl = document.getElementById('diaryList');
   if (!listEl) return;
@@ -29594,15 +29678,17 @@ function renderDiary() {
         ${isUserEntry ? `<button onclick="editDiaryEntry(${item.id})" style="font-size:9px;padding:2px 8px;border:1px solid #ccc;border-radius:10px;background:#f5f5f5;cursor:pointer;font-family:inherit;"><i class="fas fa-pen"></i> 编辑</button>` : ''}
         <button onclick="deleteDiaryEntry(${item.id})" style="font-size:9px;padding:2px 8px;border:1px solid #f5c6c6;border-radius:10px;background:#fff0f0;color:#e74c3c;cursor:pointer;font-family:inherit;"><i class="fas fa-trash"></i> 删除</button>
       </div>`;
-    const _diaryAuthorP = personas.find(px => px.name === item.author);
+    const _diaryAuthorP = _monoResolveDiaryEntryPersona(item);
     const _diaryTrEnabled = _diaryAuthorP ? (_diaryAuthorP.enableTranslation !== false) : true;
+    const _diaryContentHtml = (typeof _monoRenderDiaryContentBlock === 'function')
+      ? _monoRenderDiaryContentBlock(item, _diaryTrEnabled)
+      : `<div class="diary-content">${item.content}</div>${(item.translation && _diaryTrEnabled) ? _buildKoreanTranslation(item.translation) : ''}`;
     return `<div class="diary-item ${isPersona ? 'diary-item-persona' : ''}">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
         <div class="diary-date">${formatDate(item.date)}</div>
         ${entryControls}
       </div>
-      <div class="diary-content">${item.content}</div>
-      ${(item.translation && _diaryTrEnabled) ? _buildKoreanTranslation(item.translation) : ''}
+      ${_diaryContentHtml}
     </div>`;
   }).join('');
 }
@@ -29643,7 +29729,9 @@ async function updateDiary() {
   if (!p) { alert("未找到该角色，请重新选择日记标签！"); return; }
   const recentChat = p.history.slice(-(p.memoryCount||100)).map(m => `${m.role==='user'?userProfile.name:p.name}：${m.content}`).join('\n');
   const _relCtxDiary = (typeof _mwBuildRelInjectForChar === 'function') ? _mwBuildRelInjectForChar(p.name, null, false) : '';
-  const prompt = `${LANG_SYSTEM_PREFIX}你是${p.name}，根据你的人设「${p.persona}」，以及你最近和${userProfile.name}的聊天记录：\n${recentChat}${_relCtxDiary}\n\n以第一人称用简体中文写一篇私人日记，约100-200字。如日记中提及有关系设定的角色，措辞和情感必须符合该关系。不要使用标题，只返回日记正文。`;
+  const _diaryOfflineInject = (p.diaryIncludeOfflineMemory !== false && typeof _buildOfflineSceneInjection === 'function') ? _buildOfflineSceneInjection(p.id) : '';
+  const _diaryOfflineExtra = _diaryOfflineInject ? '\n如果近期有线下互动/线下剧情的记忆，日记中必须自然地提及或反映那些真实经历过的线下事件，就像写日记时会回忆今天实际发生过的事一样，不要忽略线下发生过的经历。' : '';
+  const prompt = `${LANG_SYSTEM_PREFIX}你是${p.name}，根据你的人设「${p.persona}」，以及你最近和${userProfile.name}的聊天记录：\n${recentChat}${_relCtxDiary}${_diaryOfflineInject}\n\n以第一人称用简体中文写一篇私人日记，约100-200字。如日记中提及有关系设定的角色，措辞和情感必须符合该关系。${_diaryOfflineExtra}不要使用标题，只返回日记正文。`;
   try {
     const r = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, { method: 'POST', headers: { 'Authorization': `Bearer ${apiConfig.key}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ model: apiConfig.model, messages: [{ role: 'user', content: prompt }], temperature: 0.85 }) });
     if (!r.ok) throw new Error(`API Error: ${r.status}`);
@@ -30339,12 +30427,18 @@ async function generatePersonaForumPost(personaId) {
     .map(m => '朋友圈：' + (m.content || '')).join('\n');
   let offlineCtx = '';
   try {
-    const sessions = JSON.parse(localStorage.getItem('mono_offline_sessions') || '{}');
-    const pSession = sessions[persona.id];
-    if (pSession && pSession.messages)
-      offlineCtx = pSession.messages.slice(-10).map(m =>
-        `[线下] ${m.role === 'user' ? userProfile.name : persona.name}：${m.content || ''}`
-      ).join('\n');
+    if (typeof _monoCollectOfflineTimelineItems === 'function' && typeof _monoBuildTimelineLines === 'function') {
+      const offlineItems = _monoCollectOfflineTimelineItems(persona.id, { limit: 10 });
+      offlineCtx = _monoBuildTimelineLines(offlineItems, persona).join('\n');
+    } else if (typeof _getOfflineSessionsForPersona === 'function') {
+      const sessions = _getOfflineSessionsForPersona(persona.id);
+      const latestSession = Array.isArray(sessions) && sessions.length ? sessions[0] : null;
+      if (latestSession && Array.isArray(latestSession.entries)) {
+        offlineCtx = latestSession.entries.slice(-10).map(m =>
+          `[线下] ${m.role === 'user' ? userProfile.name : persona.name}：${m.content || ''}`
+        ).join('\n');
+      }
+    }
   } catch(e) {}
   const contextBlock = [
     recentChat   ? '【你（' + persona.name + '）最近说过的话/心情】\n' + recentChat   : '',
@@ -36616,10 +36710,10 @@ async function _doExportAllData(statusEl) {
       // 线下模式聊天记录（優先使用記憶體中最新狀態，確保導出不遺漏未持久化的資料）
       offlineSessions: (typeof _offlineState !== 'undefined' && _offlineState.sessions && Object.keys(_offlineState.sessions).length > 0)
         ? _offlineState.sessions
-        : JSON.parse(localStorage.getItem('mono_offline_sessions') || '{}'),
+        : (_offlineReadPersistedJson('mono_offline_sessions', {}) || {}),
       offlineSettings: (typeof _offlineState !== 'undefined' && _offlineState.settings)
         ? _offlineState.settings
-        : JSON.parse(localStorage.getItem('mono_offline_settings') || '{}'),
+        : (_offlineReadPersistedJson('mono_offline_settings', {}) || {}),
       // 健康软件数据
       healthApp: JSON.parse(localStorage.getItem('mono_health_v2') || '{}'),
       // 副 API 数据
@@ -37873,16 +37967,20 @@ async function confirmImport() {
   // 20. 线下模式聊天记录
   await safe('线下剧情', () => {
     if (data.offlineSessions && Object.keys(data.offlineSessions).length > 0) {
-      localStorage.setItem('mono_offline_sessions', JSON.stringify(data.offlineSessions));
+      _offlinePersistKeyNow('mono_offline_sessions', JSON.stringify(data.offlineSessions));
       if (typeof _offlineState !== 'undefined') {
         _offlineState.sessions = data.offlineSessions;
       }
+    } else if (typeof _offlineRemovePersistedKeyNow === 'function') {
+      _offlineRemovePersistedKeyNow('mono_offline_sessions');
     }
     if (data.offlineSettings && Object.keys(data.offlineSettings).length > 0) {
-      localStorage.setItem('mono_offline_settings', JSON.stringify(data.offlineSettings));
+      _offlinePersistKeyNow('mono_offline_settings', JSON.stringify(data.offlineSettings));
       if (typeof _offlineState !== 'undefined') {
         Object.assign(_offlineState.settings, data.offlineSettings);
       }
+    } else if (typeof _offlineRemovePersistedKeyNow === 'function') {
+      _offlineRemovePersistedKeyNow('mono_offline_settings');
     }
   });
   // 21. 健康软件
@@ -39003,6 +39101,10 @@ function visitEnterHome(charId) {
   renderVisitMessages(charId);
   // Load saved items
   renderVisitSavedItems(charId);
+  const msgBody = document.getElementById('visitMsgBody');
+  const msgChevron = document.getElementById('visitMsgChevron');
+  if (msgBody) msgBody.style.display = visitMsgSectionOpen ? 'flex' : 'none';
+  if (msgChevron) msgChevron.className = visitMsgSectionOpen ? 'fas fa-chevron-up' : 'fas fa-chevron-down';
   // Reset room content
   document.getElementById('visitRoomContent').innerHTML = '<div class="visit-item-empty">选择一个房间开始探索</div>';
 }
@@ -39333,7 +39435,7 @@ function toggleVisitMsgSection() {
   visitMsgSectionOpen = !visitMsgSectionOpen;
   const body = document.getElementById('visitMsgBody');
   const chevron = document.getElementById('visitMsgChevron');
-  body.style.display = visitMsgSectionOpen ? 'block' : 'none';
+  body.style.display = visitMsgSectionOpen ? 'flex' : 'none';
   chevron.className = visitMsgSectionOpen ? 'fas fa-chevron-up' : 'fas fa-chevron-down';
 }
 // ===================== Refresh Items =====================
@@ -42093,13 +42195,14 @@ async function triggerAutoMessage(personaId) {
     }
   }
   const _autoMsgWbInject = typeof buildWorldBookInjection === 'function' ? buildWorldBookInjection(recentChat, p.id) : '';
+  const _autoMsgOfflineInject = typeof _buildOfflineSceneInjection === 'function' ? _buildOfflineSceneInjection(p.id) : '';
   const _aLangOv = typeof _langOverridePrompt === 'function' ? _langOverridePrompt(typeof _detectPersonaLang === 'function' ? _detectPersonaLang(p) : '') : '';
   // Determine how many messages to send based on persona settings
   const minAutoReply = p.minReplyCount || 1;
   const maxAutoReply = p.maxReplyCount || 3;
   const autoMsgCount = Math.floor(Math.random() * (maxAutoReply - minAutoReply + 1)) + minAutoReply;
   const _timeSinceCtx = _timeSinceLastChat ? `\n【时间感知】${_timeSinceLastChat}，请根据这段时间的流逝，自然地选择合适的话题和语气——间隔短可以接着上次的话题继续，间隔长则可以从新的生活片段开始。` : '';
-  const prompt = `${LANG_SYSTEM_PREFIX}${STYLE_INSTRUCTIONS}\n你是${p.name}，人设：${p.persona}。你对用戶（${userProfile.name}）的暱称是${p.nickname||p.name}。${_aLangOv}\n现在时間是${timeStr}，时段：${_aPeriod}。${_timeSinceCtx}\n你现在主动给${userProfile.name}发消息。\n\n【主动发消息的要求】\n1. 根据你的人设性格，自然地发起这条消息——可以是忽然想到什么想分享、对之前对话的后续想法、你生活中发生的小事、或者就是单纯想聊聊。\n2. 消息要有你独特的语气，不要总是"嗯嗯在干嘛"这种万能开场，要有角色自己的味道。\n3. 发送恰好 ${autoMsgCount} 条消息，消息之间用 "###" 分隔。\n4. 多条消息要连贯自然，像同一个人连续说话，后一条承接前一条。\n5. 根据当前时间（${timeStr}）和时段（${_aPeriod}）调整语气和话题，符合这个时段真实的生活状态。\n6. 内容必须与最近对话记录和时间流逝逻辑连贯——如果刚刚聊过某件事就不要假装完全不知道，如果隔了很久就不要假装刚才还在聊。\n7. 默认风格是短句分开发，尽量不要用逗号和句号；问号、感叹号、省略号可以保留来表达情绪。只有当你的人设或世界书明确要求别的格式时，才覆盖这个默认风格。\n8. 不要加引号，只返回消息内容本身。${BUILTIN_WB}${_autoMsgWbInject}\n\n【最近对话记录】\n${recentChat || '(暫無对话记录)'}`;
+  const prompt = `${LANG_SYSTEM_PREFIX}${STYLE_INSTRUCTIONS}\n你是${p.name}，人设：${p.persona}。你对用戶（${userProfile.name}）的暱称是${p.nickname||p.name}。${_aLangOv}\n现在时間是${timeStr}，时段：${_aPeriod}。${_timeSinceCtx}\n你现在主动给${userProfile.name}发消息。\n\n【主动发消息的要求】\n1. 根据你的人设性格，自然地发起这条消息——可以是忽然想到什么想分享、对之前对话的后续想法、你生活中发生的小事、或者就是单纯想聊聊。\n2. 消息要有你独特的语气，不要总是"嗯嗯在干嘛"这种万能开场，要有角色自己的味道。\n3. 发送恰好 ${autoMsgCount} 条消息，消息之间用 "###" 分隔。\n4. 多条消息要连贯自然，像同一个人连续说话，后一条承接前一条。\n5. 根据当前时间（${timeStr}）和时段（${_aPeriod}）调整语气和话题，符合这个时段真实的生活状态。\n6. 内容必须与最近对话记录和时间流逝逻辑连贯——如果刚刚聊过某件事就不要假装完全不知道，如果隔了很久就不要假装刚才还在聊。\n7. 如果你们最近发生过已开启记忆的线下互动，你必须把那些线下剧情也当成真实已发生的经历来承接，线上内容要与线下时间线逻辑一致。\n8. 默认风格是短句分开发，尽量不要用逗号和句号；问号、感叹号、省略号可以保留来表达情绪。只有当你的人设或世界书明确要求别的格式时，才覆盖这个默认风格。\n9. 不要加引号，只返回消息内容本身。${BUILTIN_WB}${_autoMsgWbInject}${_autoMsgOfflineInject}\n\n【最近对话记录】\n${recentChat || '(暫無对话记录)'}`;
   try {
     const r = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, {
       method: 'POST',
@@ -42220,7 +42323,9 @@ async function generateAutoDiaryOnly(personaId) {
   const _dLangOverride = _langOverridePrompt(_dLang);
   // Generate diary only
   const _relCtxAutoDiary = (typeof _mwBuildRelInjectForChar === 'function') ? _mwBuildRelInjectForChar(p.name, null, false) : '';
-  const prompt = `${LANG_SYSTEM_PREFIX}你是${p.name}，根据你的人设「${p.persona}」，以及你最近和${userProfile.name}的聊天记录：\n${recentChat || '(暫無对话)'}${_dLangOverride}${_relCtxAutoDiary}\n\n${_dLang ? '请以第一人称按照你的语言设定写' : '请以第一人称用简体中文写'}一篇私人日记，約100-200字。如日记中提及有关系设定的角色，措辞和情感必须符合该关系。不要使用标題，只返回日记正文。`;
+  const _autoDiaryOfflineInject = (p.diaryIncludeOfflineMemory !== false && typeof _buildOfflineSceneInjection === 'function') ? _buildOfflineSceneInjection(p.id) : '';
+  const _autoDiaryOfflineExtra = _autoDiaryOfflineInject ? (_dLang ? '\nIf you have recent offline interaction memories, your diary must naturally mention or reflect those real offline experiences.' : '\n如果近期有线下互动/线下剧情的记忆，日记中必须自然地提及或反映那些真实经历过的线下事件，就像写日记时会回忆今天实际发生过的事一样，不要忽略线下发生过的经历。') : '';
+  const prompt = `${LANG_SYSTEM_PREFIX}你是${p.name}，根据你的人设「${p.persona}」，以及你最近和${userProfile.name}的聊天记录：\n${recentChat || '(暫無对话)'}${_dLangOverride}${_relCtxAutoDiary}${_autoDiaryOfflineInject}\n\n${_dLang ? '请以第一人称按照你的语言设定写' : '请以第一人称用简体中文写'}一篇私人日记，約100-200字。如日记中提及有关系设定的角色，措辞和情感必须符合该关系。${_autoDiaryOfflineExtra}不要使用标題，只返回日记正文。`;
   try {
     const r = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, {
       method: 'POST',
@@ -42255,12 +42360,20 @@ async function generateAutoMomentsPost(personaId) {
   const p = personas.find(x => x.id == personaId);
   if (!p) return;
   _showMomentsLoadingCard(p);
-  const memCount = p.memoryCount || 100;
-  const recentChat = p.history.slice(-memCount).map(m => `${m.role==='user'?userProfile.name:p.name}：${m.content}`).join('\n');
   const _mLang = _detectPersonaLang(p);
   const _mLangOv = _langOverridePrompt(_mLang);
   const _relCtxMoment = (typeof _mwBuildRelInjectForChar === 'function') ? _mwBuildRelInjectForChar(p.name, null, false) : '';
-  const momentsPrompt = `${LANG_SYSTEM_PREFIX}你是${p.name}，根据你的人设「${p.persona}」，以及你最近和${userProfile.name}的聊天记录：\n${recentChat || '(暫無对话)'}${_mLangOv}${_relCtxMoment}\n\n以${_mLang ? '你的语言设定' : '简体中文'}发布一条朋友圈动态，语气符合你的性格，約30-80字。如动态中提及有关系设定的角色，措辞和情感必须符合该关系。可以偶尔带一点“说不出口的话只能拐弯发在朋友圈里”的感觉，但不要直接表白或说破。只返回朋友圈內容本身。`;
+  let momentsPrompt = '';
+  try {
+    momentsPrompt = _monoBuildMomentsPrompt(p, _relCtxMoment, _mLangOv, _mLang ? '你的语言设定' : '简体中文', '约30-80字');
+  } catch (err) {
+    console.warn('[mono auto moments prompt fallback]', err && err.message ? err.message : err);
+    const userName = (typeof userProfile !== 'undefined' && userProfile && userProfile.name) ? userProfile.name : '用户';
+    const baseContext = _monoBuildPlainRecentChatContext(p) || '(暂无互动记录)';
+    const _fbAutoMomentsOfflineInject = (p.momentsIncludeOfflineMemory !== false && typeof _buildOfflineSceneInjection === 'function') ? _buildOfflineSceneInjection(p.id) : '';
+    const _fbAutoMomentsOfflineExtra = _fbAutoMomentsOfflineInject ? '\n如果近期有线下互动/线下剧情的记忆，你可以自然地在朋友圈中提及或反映那些真实经历过的事情，不要忽略线下发生过的经历。' : '';
+    momentsPrompt = `${typeof LANG_SYSTEM_PREFIX !== 'undefined' ? LANG_SYSTEM_PREFIX : ''}你是${p.name}，根据你的人设「${p.persona}」，以及你最近和${userName}的互动记录：\n${baseContext}${_mLangOv}${_relCtxMoment}${_fbAutoMomentsOfflineInject}\n\n以${_mLang ? '你的语言设定' : '简体中文'}发布一条朋友圈动态，语气符合你的性格，约30-80字。如动态中提及有关系设定的角色，措辞和情感必须符合该关系。${_fbAutoMomentsOfflineExtra}只返回朋友圈内容本身。`;
+  }
   try {
     const r = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, {
       method: 'POST',
@@ -48817,11 +48930,13 @@ function _extractDialogueForTranslation(text, charName) {
 // ── Storage keys ──
 const DATING_SESSIONS_KEY = 'mono_dating_sessions'; // { personaId: { history, chatBg, bubbleAi, bubbleUser, unread } }
 const DATING_PREFS_KEY    = 'mono_dating_prefs';
+const DATING_BIO_CACHE_KEY = 'mono_dating_profile_bios';
 let datingSessions   = {};   // personaId → session data
 let datingPrefs      = {};
 let datingCurrentPid = null; // persona id currently in chat
 let datingIsTyping   = false;
 let _datingNotifTimers = {};
+let _datingBioGenJobs = {};
 // Dating chat double-click / context menu state
 let datingIsMultiSelect     = false;
 let datingSelectedIdx       = new Set();
@@ -48863,6 +48978,12 @@ function _datingPrefsDefaults() {
 }
 function saveDatingPrefs() { localStorage.setItem(DATING_PREFS_KEY, JSON.stringify(datingPrefs)); }
 function saveDatingSessions() { localStorage.setItem(DATING_SESSIONS_KEY, JSON.stringify(datingSessions)); }
+function _loadDatingBioCache() {
+  try { return JSON.parse(localStorage.getItem(DATING_BIO_CACHE_KEY) || '{}'); } catch(e) { return {}; }
+}
+function _saveDatingBioCache(cache) {
+  try { localStorage.setItem(DATING_BIO_CACHE_KEY, JSON.stringify(cache || {})); } catch(e) {}
+}
 function _getSession(pid) {
   if (!datingSessions[pid]) datingSessions[pid] = { history:[], chatBg:null, bubbleAi:null, bubbleUser:null, unread:0 };
   return datingSessions[pid];
@@ -48873,6 +48994,73 @@ function _getDatingPersonas() {
 }
 function _getPersonaById(pid) {
   return _getDatingPersonas().find(function(p){ return String(p.id) === String(pid); }) || null;
+}
+function _datingPersonaBioSig(persona) {
+  return [
+    persona && persona.name || '',
+    persona && persona.persona || '',
+    persona && persona.outputLang || '',
+    persona && persona.nickname || ''
+  ].join('||');
+}
+function _datingFallbackBio(persona) {
+  var raw = persona && persona.persona ? String(persona.persona).replace(/\s+/g, ' ').trim() : '';
+  if (!raw) return '点擊开始心动';
+  return raw.length > 60 ? raw.slice(0, 60) + '...' : raw;
+}
+async function _generateDatingPersonaBio(persona) {
+  if (!persona || !persona.id) return;
+  var jobKey = String(persona.id);
+  if (_datingBioGenJobs[jobKey]) return _datingBioGenJobs[jobKey];
+  var api = _getCurrentActiveApiConfig();
+  if (!api || !api.url || !api.key || !api.model) return;
+  var cache = _loadDatingBioCache();
+  var sig = _datingPersonaBioSig(persona);
+  if (cache[jobKey] && cache[jobKey].sig === sig && cache[jobKey].bio) return;
+  _datingBioGenJobs[jobKey] = (async function() {
+    try {
+      var langCode = typeof _detectPersonaLang === 'function' ? (_detectPersonaLang(persona) || '') : '';
+      var langOverride = typeof _langOverridePrompt === 'function' ? (_langOverridePrompt(langCode) || '') : '';
+      var prompt = (typeof LANG_SYSTEM_PREFIX !== 'undefined' ? LANG_SYSTEM_PREFIX : '')
+        + '你在为一个相亲 / 交友应用生成角色资料卡简介。\n'
+        + '角色名：' + (persona.name || '角色') + '\n'
+        + '角色人设：' + (persona.persona || '无') + '\n'
+        + langOverride + '\n'
+        + '请严格按照该角色的输出语言设定，写一段适合展示在交友卡片上的个人简介或签名。\n'
+        + '要求：18-40字，像真人资料卡，不要分点，不要加引号，不要解释。只返回正文。';
+      var response = await fetch(api.url.replace(/\/$/, '') + '/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + api.key, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: api.model,
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.8
+        })
+      });
+      if (!response.ok) return;
+      var data = await response.json();
+      var text = (((data || {}).choices || [])[0] || {}).message;
+      var bio = text && text.content ? String(text.content).replace(/[\r\n]+/g, ' ').trim() : '';
+      if (!bio) return;
+      cache = _loadDatingBioCache();
+      cache[jobKey] = { sig: sig, bio: bio };
+      _saveDatingBioCache(cache);
+      if (document.getElementById('datingPickList')) renderDatingPickList();
+    } catch (e) {
+    } finally {
+      delete _datingBioGenJobs[jobKey];
+    }
+  })();
+  return _datingBioGenJobs[jobKey];
+}
+function _getDatingPersonaBio(persona) {
+  if (!persona) return '点擊开始心动';
+  var cache = _loadDatingBioCache();
+  var key = String(persona.id);
+  var sig = _datingPersonaBioSig(persona);
+  if (cache[key] && cache[key].sig === sig && cache[key].bio) return cache[key].bio;
+  _generateDatingPersonaBio(persona);
+  return _datingFallbackBio(persona);
 }
 // ── Open / Close app ──
 function openDatingApp() {
@@ -48950,7 +49138,7 @@ function renderDatingPickList() {
     var avatarHtml = p.avatar
       ? '<img src="' + p.avatar + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">'
       : '<i class="fas fa-user" style="font-size:22px;color:#c8a0b0;"></i>';
-    var shortBio = p.persona ? p.persona.slice(0, 60).replace(/\n/g,' ') + '...' : '点擊开始心动';
+    var shortBio = _getDatingPersonaBio(p);
     return '<div class="dating-match-card">'
       + '<div class="dating-match-card-top">'
       + '<div class="dating-match-card-avatar">' + avatarHtml + '</div>'
@@ -52114,7 +52302,16 @@ function _normalizeOfflineSettings(settings) {
 function _normalizeOfflineSession(session) {
   if (!session || typeof session !== 'object') session = {};
   session.mode = session.mode || 'long';
-  session.entries = Array.isArray(session.entries) ? session.entries : [];
+  session.personaId = session.personaId != null ? String(session.personaId) : '';
+  session.personaName = session.personaName ? String(session.personaName) : '';
+  session.entries = Array.isArray(session.entries) ? session.entries.map(function(entry, idx) {
+    if (!entry || typeof entry !== 'object') return entry;
+    // Ensure every entry has a ts for timeline matching
+    if (!entry.ts && !entry.timestamp) {
+      entry.ts = session.createdAt ? (session.createdAt + idx * 60000) : (Date.now() - (session.entries.length - idx) * 60000);
+    }
+    return entry;
+  }) : [];
   session.createdAt = session.createdAt || Date.now();
   session.updatedAt = session.updatedAt || session.createdAt;
   session.memorySummaries = Array.isArray(session.memorySummaries)
@@ -52135,13 +52332,115 @@ function _normalizeOfflineSession(session) {
   session.modeConfig = _cloneOfflineModeConfig(session.mode, session.modeConfig);
   return session;
 }
+function _offlineStorageTransformedKey(key) {
+  try {
+    return (typeof _mwTransformKey === 'function') ? _mwTransformKey(key) : key;
+  } catch(e) {
+    return key;
+  }
+}
+function _offlinePersistScore(value) {
+  if (!value || typeof value !== 'string') return 0;
+  try {
+    var parsed = JSON.parse(value);
+    if (parsed && typeof parsed === 'object') {
+      return JSON.stringify(parsed).length;
+    }
+  } catch(e) {}
+  return value.length;
+}
+function _offlineReadPersistedJson(key, fallbackValue) {
+  var fallbackJson = '{}';
+  if (fallbackValue !== undefined) {
+    try {
+      fallbackJson = JSON.stringify(fallbackValue);
+    } catch(e) {
+      fallbackJson = '{}';
+    }
+  }
+  var raw = _offlineReadPersistedKey(key, fallbackJson);
+  try {
+    return JSON.parse(raw);
+  } catch(e) {
+    return fallbackValue !== undefined ? fallbackValue : {};
+  }
+}
+function _offlineReadPersistedKey(key, fallback) {
+  var best = fallback || '{}';
+  var tkey = _offlineStorageTransformedKey(key);
+  var candidates = [];
+  function _pushCandidate(val) {
+    if (typeof val === 'string' && val) candidates.push(val);
+  }
+  try {
+    _pushCandidate(localStorage.getItem(key));
+  } catch(e) {}
+  try {
+    if (window._monoRawLocalStorage) {
+      _pushCandidate(window._monoRawLocalStorage.getItem(tkey));
+    }
+  } catch(e) {}
+  try {
+    if (typeof _cache !== 'undefined' && _cache && _cache[tkey]) _pushCandidate(_cache[tkey]);
+  } catch(e) {}
+  try {
+    if (window._monoRawLocalStorage) {
+      for (var i = 0; i < window._monoRawLocalStorage.length; i++) {
+        var lsKey = window._monoRawLocalStorage.key(i);
+        if (!lsKey || (lsKey !== key && lsKey !== tkey && lsKey.indexOf(key) === -1)) continue;
+        _pushCandidate(window._monoRawLocalStorage.getItem(lsKey));
+      }
+    }
+  } catch(e) {}
+  try {
+    if (typeof _cache !== 'undefined' && _cache) {
+      Object.keys(_cache).forEach(function(cacheKey) {
+        if (!cacheKey || (cacheKey !== key && cacheKey !== tkey && cacheKey.indexOf(key) === -1)) return;
+        _pushCandidate(_cache[cacheKey]);
+      });
+    }
+  } catch(e) {}
+  candidates.forEach(function(item) {
+    if (_offlinePersistScore(item) > _offlinePersistScore(best)) best = item;
+  });
+  return best;
+}
+function _offlinePersistKeyNow(key, jsonStr) {
+  var tkey = _offlineStorageTransformedKey(key);
+  try { localStorage.setItem(key, jsonStr); } catch(e) {}
+  try {
+    if (window._monoRawLocalStorage) window._monoRawLocalStorage.setItem(tkey, jsonStr);
+  } catch(e) {}
+  try {
+    if (typeof _cache !== 'undefined' && _cache) _cache[tkey] = jsonStr;
+  } catch(e) {}
+  try {
+    if (window._idb) {
+      var tx = window._idb.transaction('kv', 'readwrite');
+      tx.objectStore('kv').put(jsonStr, tkey);
+    }
+  } catch(e) {}
+}
+function _offlineRemovePersistedKeyNow(key) {
+  var tkey = _offlineStorageTransformedKey(key);
+  try { localStorage.removeItem(key); } catch(e) {}
+  try {
+    if (window._monoRawLocalStorage) window._monoRawLocalStorage.removeItem(tkey);
+  } catch(e) {}
+  try {
+    if (typeof _cache !== 'undefined' && _cache && Object.prototype.hasOwnProperty.call(_cache, tkey)) delete _cache[tkey];
+  } catch(e) {}
+  try {
+    if (window._idb) {
+      var tx = window._idb.transaction('kv', 'readwrite');
+      tx.objectStore('kv').delete(tkey);
+    }
+  } catch(e) {}
+}
 function _persistOfflineSettings() {
   _offlineState.settings = _normalizeOfflineSettings(_offlineState.settings);
   var jsonStr = JSON.stringify(_offlineState.settings);
-  localStorage.setItem('mono_offline_settings', jsonStr);
-  try {
-    if (window._monoRawLocalStorage) window._monoRawLocalStorage.setItem('mono_offline_settings', jsonStr);
-  } catch(e) {}
+  _offlinePersistKeyNow('mono_offline_settings', jsonStr);
 }
 function _getOfflineModeConfig(mode, session) {
   var key = _getOfflineModeKey(mode);
@@ -52153,10 +52452,7 @@ function _getOfflineModeConfig(mode, session) {
 }
 function _loadOfflineSessions() {
   try {
-    var raw = localStorage.getItem(OFFLINE_STORAGE_KEY)
-      || (window._monoRawLocalStorage && window._monoRawLocalStorage.getItem(OFFLINE_STORAGE_KEY))
-      || '{}';
-    _offlineState.sessions = JSON.parse(raw);
+    _offlineState.sessions = _offlineReadPersistedJson(OFFLINE_STORAGE_KEY, {});
   } catch(e) { _offlineState.sessions = {}; }
   if (!_offlineState.sessions || typeof _offlineState.sessions !== 'object') _offlineState.sessions = {};
   Object.keys(_offlineState.sessions).forEach(function(pid) {
@@ -52165,13 +52461,44 @@ function _loadOfflineSessions() {
   });
 }
 function _saveOfflineSessions() {
-  var jsonStr = JSON.stringify(_offlineState.sessions);
-  // localStorage 代理会同步写入 _cache + _realLS，并自动队列写入 IDB（含 oncomplete 保障）
-  // 不再额外绕过代理直接写 IDB（那条路径缺少 oncomplete/onerror，快速关闭时会丢数据）
-  localStorage.setItem(OFFLINE_STORAGE_KEY, jsonStr);
   try {
-    if (window._monoRawLocalStorage) window._monoRawLocalStorage.setItem(OFFLINE_STORAGE_KEY, jsonStr);
+    Object.keys(_offlineState.sessions || {}).forEach(function(ownerKey) {
+      var persona = (typeof personas !== 'undefined' && Array.isArray(personas))
+        ? personas.find(function(item) { return String(item.id) === String(ownerKey); })
+        : null;
+      var personaName = persona && persona.name ? String(persona.name) : '';
+      var list = Array.isArray(_offlineState.sessions[ownerKey]) ? _offlineState.sessions[ownerKey] : [];
+      list.forEach(function(session) {
+        if (!session || typeof session !== 'object') return;
+        session.personaId = String(ownerKey);
+        if (personaName) session.personaName = personaName;
+      });
+    });
   } catch(e) {}
+  var sessionsJson = JSON.stringify(_offlineState.sessions || {});
+  var normalizedSessions = {};
+  try { normalizedSessions = JSON.parse(sessionsJson) || {}; } catch(e) { normalizedSessions = {}; }
+  var hasAnySession = Object.keys(normalizedSessions).some(function(pid) {
+    return Array.isArray(normalizedSessions[pid]) && normalizedSessions[pid].length > 0;
+  });
+  if (hasAnySession) {
+    _offlinePersistKeyNow(OFFLINE_STORAGE_KEY, sessionsJson);
+  } else {
+    // Safety guard: only remove persisted key if persisted storage also shows no sessions.
+    // This prevents wiping data when _offlineState.sessions is empty because sessions
+    // haven't been loaded yet (e.g. called before _loadOfflineSessions).
+    try {
+      var _persistedCheckSave = _offlineReadPersistedJson(OFFLINE_STORAGE_KEY, {}) || {};
+      var _persistedHasAnySave = Object.keys(_persistedCheckSave).some(function(pid) {
+        return Array.isArray(_persistedCheckSave[pid]) && _persistedCheckSave[pid].length > 0;
+      });
+      if (!_persistedHasAnySave) {
+        _offlineRemovePersistedKeyNow(OFFLINE_STORAGE_KEY);
+      }
+      // If persisted storage has sessions, don't touch it — the in-memory state just
+      // happens to be empty (e.g. not loaded yet). The data on disk is still valid.
+    } catch(e) {}
+  }
 }
 function _getCurrentSession() {
   var pid = String(_offlineState.personaId);
@@ -52186,6 +52513,8 @@ function _createNewSession(mode) {
   var modeKey = _getOfflineModeKey(mode || _offlineState.tab);
   var session = {
     id: 'off_' + now,
+    personaId: pid,
+    personaName: p ? p.name : '',
     title: (p ? p.name : '线下') + ' · ' + new Date(now).toLocaleDateString('zh-TW', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }),
     mode: modeKey,
     entries: [],
@@ -52215,7 +52544,7 @@ function openOfflineMode() {
   _offlineState.currentSessionIdx = 0;
   // Load settings
   try {
-    var s = JSON.parse(localStorage.getItem('mono_offline_settings') || '{}');
+    var s = _offlineReadPersistedJson('mono_offline_settings', {});
     _offlineState.settings = _normalizeOfflineSettings(Object.assign({}, _offlineState.settings, s));
   } catch(e) {
     _offlineState.settings = _normalizeOfflineSettings(_offlineState.settings);
@@ -54055,26 +54384,15 @@ window.addEventListener('beforeunload', function() {
   try {
     // 強制寫入離線聊天存檔
     if (typeof _offlineState !== 'undefined' && _offlineState.sessions) {
-      var offJson = JSON.stringify(_offlineState.sessions);
-      try { window.localStorage.setItem('mono_offline_sessions', offJson); } catch(e) {}
-      // 同步寫入 IDB（同步版本 — beforeunload 裡不能用 async）
-      if (window._idb) {
-        try {
-          var tx = window._idb.transaction('kv', 'readwrite');
-          tx.objectStore('kv').put(offJson, 'mono_offline_sessions');
-        } catch(e) {}
-      }
+      try {
+        if (typeof _saveOfflineSessions === 'function') _saveOfflineSessions();
+        else _offlinePersistKeyNow('mono_offline_sessions', JSON.stringify(_offlineState.sessions));
+      } catch(e) {}
     }
     // 強制寫入離線設定
     if (typeof _offlineState !== 'undefined' && _offlineState.settings) {
       var settJson = JSON.stringify(_offlineState.settings);
-      try { window.localStorage.setItem('mono_offline_settings', settJson); } catch(e) {}
-      if (window._idb) {
-        try {
-          var tx2 = window._idb.transaction('kv', 'readwrite');
-          tx2.objectStore('kv').put(settJson, 'mono_offline_settings');
-        } catch(e) {}
-      }
+      try { _offlinePersistKeyNow('mono_offline_settings', settJson); } catch(e) {}
     }
   } catch(e) {}
 });
@@ -66901,13 +67219,22 @@ function _callCompanionApi(persona, chContent, hist, callback) {
   display: none;
 }
 .lcw-ai-content {
-  flex: 1; display: flex; align-items: center; justify-content: center;
+  flex: 1; display: block;
   padding: 4px 2px;
   font-size: 14px; color: #2c2c2e; line-height: 1.6;
   word-break: break-word; position: relative; z-index: 1;
-  text-align: left; overflow: hidden;
+  text-align: left; overflow-y: auto; overflow-x: hidden;
+  white-space: normal;
 }
-.lcw-ai-content-inner { max-height: 100%; overflow: hidden; width: 100%; word-break: break-word; transition: font-size .1s; }
+.lcw-ai-content-inner {
+  width: 100%;
+  min-height: 100%;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  line-height: 1.7;
+  font-size: 14px;
+}
 .lcw-ai-placeholder { color: #aaaaaa; font-size: 12px; }
 .lcw-ai-status {
   display: flex; align-items: center; justify-content: flex-end; gap: 4px;
@@ -67371,10 +67698,10 @@ function _callCompanionApi(persona, chContent, hist, callback) {
   display: none;
 }
 .lcw-fp-ai-content {
-  flex: 1; display: flex; align-items: center; justify-content: center;
+  flex: 1; display: block;
   font-size: 16px; color: #2c2c2e; line-height: 1.6; word-break: break-word;
-  overflow: hidden; padding: 4px 0;
-  transition: font-size 0.12s ease;
+  overflow-y: auto; overflow-x: hidden; padding: 4px 0;
+  white-space: pre-wrap; overflow-wrap: anywhere; text-align: left;
 }
 .lcw-fp-ai-status {
   display: flex; align-items: center; justify-content: flex-end; gap: 4px;
@@ -67419,8 +67746,8 @@ function _callCompanionApi(persona, chContent, hist, callback) {
 }
 /* ── 小桌件 AI内容自适应字号 ── */
 .lcw-ai-content-inner {
-  width: 100%; overflow: hidden; word-break: break-word;
-  line-height: 1.6; transition: font-size 0.1s;
+  width: 100%; word-break: break-word;
+  line-height: 1.7;
 }
 .lcw-fp-user-card {
   flex: 1; min-height: 0;
@@ -70855,6 +71182,10 @@ if (document.readyState === 'loading') {
   // ─── DOM helpers ───
   function q(id, sel) { var el=document.getElementById(id); return el ? el.querySelector(sel) : null; }
   function qfp(sel) { var fp=document.getElementById('lcw-float-popup'); return fp ? fp.querySelector(sel) : null; }
+  function _lcwScrollToBottom(box) {
+    if (!box) return;
+    box.scrollTop = box.scrollHeight;
+  }
   // ─── Render header ───
   function renderHeader(id) {
     var el = document.getElementById(id); if (!el) return;
@@ -70885,7 +71216,7 @@ if (document.readyState === 'loading') {
     } else {
       aibox.innerHTML='<div class="lcw-ai-content-inner">'+esc(lastChar.content)+'</div>';
     }
-    requestAnimationFrame(function(){ _lcwFitWidget(id); });
+    requestAnimationFrame(function(){ _lcwScrollToBottom(aibox); });
     if (_lcwFloatId===id) renderFpHistory();
   }
   // ─── Render typing zone (new two-card UI) ───
@@ -70908,7 +71239,7 @@ if (document.readyState === 'loading') {
     if (status) {
       status.className = 'lcw-ai-status'+(active?'':' hidden');
     }
-    requestAnimationFrame(function(){ _lcwFitWidget(id); });
+    requestAnimationFrame(function(){ _lcwScrollToBottom(aibox); });
     if (_lcwFloatId===id) renderFpTyping(text, active, p);
   }
   // ─── Float popup renders ───
@@ -70935,7 +71266,7 @@ if (document.readyState === 'loading') {
     } else {
       aiContent.innerHTML=esc(lastChar.content);
     }
-    requestAnimationFrame(_lcwFitFp);
+    requestAnimationFrame(function(){ _lcwScrollToBottom(aiContent); });
   }
   function renderFpTyping(text, active, p) {
     var aiContent = document.getElementById('lcwFpAiContent');
@@ -70954,7 +71285,7 @@ if (document.readyState === 'loading') {
     if (status) {
       status.className = 'lcw-fp-ai-status'+(active?'':' hidden');
     }
-    requestAnimationFrame(_lcwFitFp);
+    requestAnimationFrame(function(){ _lcwScrollToBottom(aiContent); });
     /* also sync PiP window if open */
     if (window._lcwPipWindow && !window._lcwPipWindow.closed) {
       try {
@@ -71233,7 +71564,7 @@ if (document.readyState === 'loading') {
     var shown = '';
     var i = 0;
     // Occasionally "think and retype" for human feel
-    var retypeChance = 0.16;
+    var retypeChance = 0.03;
     while (i < fullText.length && st.isCharTyping) {
       var ch = fullText[i];
       var isPunct = '，。！？…、；：'.indexOf(ch) >= 0;
@@ -71245,16 +71576,16 @@ if (document.readyState === 'loading') {
           shown = shown.slice(0,-1);
           renderTyping(id, shown, true);
           if (_lcwFloatId===id) renderFpTyping(shown,true,p);
-          await delay(55+Math.random()*35);
+          await delay(85+Math.random()*45);
         }
-        await delay(180+Math.random()*280);
+        await delay(240+Math.random()*320);
         // Retype
         var reChunk = fullText.substring(i-delN, i);
         for (var ri=0; ri<reChunk.length; ri++) {
           shown += reChunk[ri];
           renderTyping(id, shown, true);
           if (_lcwFloatId===id) renderFpTyping(shown,true,p);
-          await delay(48+Math.random()*52);
+          await delay(90+Math.random()*60);
         }
       }
       shown += ch;
@@ -71262,12 +71593,12 @@ if (document.readyState === 'loading') {
       if (_lcwFloatId===id) renderFpTyping(shown,true,p);
       i++;
       // Typing delay varies by char type
-      var spd = 38 + Math.random()*44;
-      if (isPunct) spd = 160 + Math.random()*320;
-      else if (ch===' ') spd = 70 + Math.random()*50;
+      var spd = 92 + Math.random()*68;
+      if (isPunct) spd = 260 + Math.random()*360;
+      else if (ch===' ') spd = 120 + Math.random()*90;
       await delay(spd);
     }
-    await delay(360+Math.random()*240); // brief "about to send" pause
+    await delay(460+Math.random()*260); // brief "about to send" pause
   }
   // ─── Float popup ───
   window.lcwOpenFloat = function(wid) {
@@ -71362,21 +71693,7 @@ if (document.readyState === 'loading') {
   }
   // ─── Text auto-fit functions ───
   function _lcwFitFp() {
-    var aiCard = document.querySelector('#lcw-float-popup .lcw-fp-ai-card');
-    var aiContent = document.getElementById('lcwFpAiContent');
     var ta = document.getElementById('lcwFpInput');
-    if (aiCard && aiContent) {
-      var cardH = aiCard.clientHeight;
-      var labelH = 30; // label + status rows
-      var avail = Math.max(40, cardH - labelH - 20);
-      // Try from 18px down to 9px
-      var fs = 18;
-      aiContent.style.fontSize = fs + 'px';
-      while (fs > 9 && aiContent.scrollHeight > avail) {
-        fs--;
-        aiContent.style.fontSize = fs + 'px';
-      }
-    }
     if (ta) {
       var userCard = ta.closest('.lcw-fp-user-card');
       if (userCard) {
@@ -71394,19 +71711,7 @@ if (document.readyState === 'loading') {
   }
   // Fit text inside a small livechat widget's AI box
   function _lcwFitWidget(id) {
-    var aiContent = document.getElementById(id + '_aibox');
-    var aiCard = document.getElementById(id + '_aicard');
-    if (!aiContent || !aiCard) return;
-    var inner = aiContent.querySelector('.lcw-ai-content-inner');
-    if (!inner) return;
-    var avail = aiContent.clientHeight;
-    if (avail < 10) return;
-    var fs = 16;
-    inner.style.fontSize = fs + 'px';
-    while (fs > 8 && inner.scrollHeight > avail) {
-      fs--;
-      inner.style.fontSize = fs + 'px';
-    }
+    return;
   }
   window.lcwFpOnInput = function(inp) {
     if (!_lcwFloatId) return;
@@ -74469,7 +74774,7 @@ function getRecentUserDiary(days) {
 function getRecentOfflineSessions(personaId, days) {
   var cutoff = Date.now() - (days || 3) * 864e5;
   try {
-    var stored = JSON.parse(localStorage.getItem('mono_offline_sessions') || '{}');
+    var stored = _offlineReadPersistedJson('mono_offline_sessions', {}) || {};
     var live = (typeof _offlineState !== 'undefined' && _offlineState.sessions) || {};
     var allPid = live[String(personaId)] || stored[String(personaId)] || [];
     return allPid.filter(function(s) {
@@ -82526,13 +82831,17 @@ function _renderEntryContent(entry, textColor) {
   const color = textColor || '#2a2726';
   const isUser = _dbv_ownerId === 'user';
   const isPersona = !isUser;
-  
-  // Split content into paragraphs
-  const paragraphs = (entry.content || '').split(/\n\n+|\n/).filter(p => p.trim());
-  
-  let paras = paragraphs.map(p => 
-    `<div class="diary-entry-paragraph" style="color:${color};">${_escHtml(p.trim())}</div>`
-  ).join('');
+  const diaryPersona = isPersona ? _monoResolveDiaryEntryPersona(entry) : null;
+  const diaryTrEnabled = diaryPersona ? (diaryPersona.enableTranslation !== false) : true;
+  let paras = '';
+  if (typeof _monoRenderDiaryContentBlock === 'function') {
+    paras = _monoRenderDiaryContentBlock(entry, diaryTrEnabled);
+  } else {
+    const paragraphs = (entry.content || '').split(/\n\n+|\n/).filter(p => p.trim());
+    paras = paragraphs.map(function(p) {
+      return `<div class="diary-entry-paragraph" style="color:${color};">${_escHtml(p.trim())}</div>`;
+    }).join('');
+  }
   
   // Control buttons
   let controls = `<div style="display:flex;align-items:center;margin-bottom:4px;justify-content:flex-end;gap:6px;">`;
@@ -83576,10 +83885,24 @@ _showHeartVoicePopupCard = function(p, line, opts) {
 
 function _monoGetOfflineSessionsEnabled(personaId) {
   const settings = _getOfflineMergedSettings();
-  return _getOfflineSessionsForPersona(personaId).filter(function(session) {
+  const allSessions = _getOfflineSessionsForPersona(personaId).filter(function(session) {
     if (!session || session.mode === 'if' || !Array.isArray(session.entries) || !session.entries.length) return false;
+    return true;
+  });
+  const enabledSessions = allSessions.filter(function(session) {
     return session.saveToMemory !== undefined ? session.saveToMemory : (settings && settings.saveToMemory !== false);
   });
+  return enabledSessions.length ? enabledSessions : allSessions;
+}
+function _monoCountAllOfflineSessions() {
+  try {
+    var all = _offlineReadPersistedJson('mono_offline_sessions', {}) || {};
+    return Object.keys(all).reduce(function(sum, key) {
+      return sum + (Array.isArray(all[key]) ? all[key].length : 0);
+    }, 0);
+  } catch (err) {
+    return 0;
+  }
 }
 function _monoFormatInteractionLabel(ts, labelPrefix) {
   if (!ts) return labelPrefix || '';
@@ -83641,23 +83964,277 @@ function _monoCollectOfflineSummaryLines(personaId, maxLines) {
   const lines = [];
   sessions.slice(0, 4).forEach(function(session) {
     (session.memorySummaries || []).slice(-2).forEach(function(item) {
-      if (lines.length < (maxLines || 6) && item && item.content) lines.push('线下剧情《' + (session.title || '线下互动') + '》：' + String(item.content).slice(0, 180));
+      if (lines.length < (maxLines || 6) && item && item.content) {
+        lines.push('线下剧情《' + (session.title || '线下互动') + '》：' + String(item.content).trim());
+      }
     });
     if (lines.length < (maxLines || 6) && session.entries && session.entries.length) {
       const lastEntry = session.entries[session.entries.length - 1];
-      if (lastEntry && lastEntry.content) lines.push('最近线下收尾：' + String(lastEntry.content).slice(0, 180));
+      if (lastEntry && lastEntry.content) lines.push('最近线下收尾：' + String(lastEntry.content).trim());
     }
   });
   return lines.slice(0, maxLines || 6);
 }
-function _monoBuildDiaryContext(p) {
-  const chatLines = _monoRecentChatLines(p, p.memoryCount || 100);
-  let context = chatLines.join('\n');
-  if (p && p.diaryIncludeOfflineMemory !== false) {
-    const offlineLines = _monoCollectOfflineSummaryLines(p.id, 6);
-    if (offlineLines.length) context += '\n\n【近期线下剧情记忆（这些是真实发生过的线下互动，不是线上私聊）】\n' + offlineLines.join('\n');
+function _monoPad2(num) {
+  return String(num == null ? '' : num).padStart(2, '0');
+}
+function _monoGetTimelineTs(item, fallbackTs) {
+  if (!item || typeof item !== 'object') return fallbackTs || 0;
+  return item.timestamp || item.ts || item.time || item.date || item.createdAt || item.updatedAt || fallbackTs || 0;
+}
+function _monoHasTimelineTs(item) {
+  if (!item || typeof item !== 'object') return false;
+  return !!(item.timestamp || item.ts || item.time || item.date || item.createdAt || item.updatedAt);
+}
+function _monoDayKey(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.getFullYear() + '-' + _monoPad2(d.getMonth() + 1) + '-' + _monoPad2(d.getDate());
+}
+function _monoFormatDayKey(dayKey) {
+  if (!dayKey) return '最近有内容的一天';
+  const todayKey = _monoDayKey(Date.now());
+  if (dayKey === todayKey) return '今天';
+  const parts = String(dayKey).split('-');
+  if (parts.length !== 3) return dayKey;
+  return parts[0] + '年' + Number(parts[1]) + '月' + Number(parts[2]) + '日';
+}
+function _monoFormatTimelineStamp(ts) {
+  if (!ts) return '时间未知';
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return '时间未知';
+  return d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + _monoPad2(d.getHours()) + ':' + _monoPad2(d.getMinutes());
+}
+function _monoClipTimelineText(text, maxLen) {
+  text = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!text) return '';
+  const limit = Math.max(40, maxLen || 180);
+  return text.length > limit ? (text.slice(0, limit) + '…') : text;
+}
+function _monoCollectOfflineTimelineItems(personaId, options) {
+  const sessions = _monoGetOfflineSessionsEnabled(personaId);
+  const sameDayKey = options && options.sameDayTs ? _monoDayKey(options.sameDayTs) : '';
+  const limit = options && options.limit ? options.limit : 0;
+  const items = [];
+  sessions.forEach(function(session) {
+    const sessionTs = _monoGetTimelineTs(session, 0);
+    (Array.isArray(session.entries) ? session.entries : []).forEach(function(entry, idx) {
+      const text = String((entry && entry.content) || '').trim();
+      if (!text) return;
+      const ts = _monoGetTimelineTs(entry, sessionTs || (session.createdAt || 0) || (Date.now() - Math.max(1, idx) * 60000));
+      if (sameDayKey && _monoDayKey(ts) !== sameDayKey) return;
+      items.push({
+        source: 'offline',
+        ts: ts,
+        explicitTs: _monoHasTimelineTs(entry) || _monoHasTimelineTs(session),
+        dayKey: _monoDayKey(ts),
+        sessionId: String(session.id || ''),
+        sessionTitle: String(session.title || '线下互动'),
+        mode: String((entry && entry.mode) || session.mode || 'long'),
+        role: entry && entry.role === 'user' ? 'user' : 'assistant',
+        fullText: text,
+        text: _monoClipTimelineText(text, 220)
+      });
+    });
+  });
+  items.sort(function(a, b) { return (a.ts || 0) - (b.ts || 0); });
+  return limit > 0 ? items.slice(-limit) : items;
+}
+function _monoCollectChatTimelineItems(p, options) {
+  if (!p) return [];
+  const userName = (typeof userProfile !== 'undefined' && userProfile.name) ? userProfile.name : '用户';
+  const history = Array.isArray(p.history) ? p.history : [];
+  const limit = options && options.limit ? options.limit : 0;
+  const sameDayKey = options && options.sameDayTs ? _monoDayKey(options.sameDayTs) : '';
+  const fallbackBase = Date.now() - Math.max(history.length, 1) * 60000;
+  const items = [];
+  history.forEach(function(m, idx, arr) {
+    const text = m && m.msgType === 'sticker'
+      ? _monoBuildStickerHistoryText(m, idx, arr, p, userName)
+      : _monoMessageDisplayText(m, p, userName);
+    if (!text) return;
+    const inferredTs = fallbackBase + idx * 60000;
+    const ts = _monoGetTimelineTs(m, inferredTs);
+    if (sameDayKey && _monoDayKey(ts) !== sameDayKey) return;
+    items.push({
+      source: 'chat',
+      ts: ts,
+      explicitTs: _monoHasTimelineTs(m),
+      dayKey: _monoDayKey(ts),
+      role: m && m.role === 'user' ? 'user' : 'assistant',
+      fullText: String(text || '').trim(),
+      text: _monoClipTimelineText(text, 180),
+      speaker: m && m.role === 'user' ? userName : (p.name || '角色')
+    });
+  });
+  items.sort(function(a, b) { return (a.ts || 0) - (b.ts || 0); });
+  return limit > 0 ? items.slice(-limit) : items;
+}
+function _monoTimelineItemToLine(item, p) {
+  if (!item) return '';
+  const userName = (typeof userProfile !== 'undefined' && userProfile.name) ? userProfile.name : '用户';
+  const speaker = item.role === 'user' ? userName : ((p && p.name) || item.speaker || '角色');
+  if (item.source === 'offline') {
+    return '【线下｜' + _monoFormatTimelineStamp(item.ts) + '｜' + (item.sessionTitle || '线下互动') + '】' + speaker + '：' + String(item.text || '').trim();
   }
-  return context.trim();
+  return '【线上｜' + _monoFormatTimelineStamp(item.ts) + '】' + speaker + '：' + String(item.text || '').trim();
+}
+function _monoCollectMergedTimelineItems(p, options) {
+  const merged = _monoCollectChatTimelineItems(p, { limit: options && options.chatLimit ? options.chatLimit : 24 }).concat(
+    _monoCollectOfflineTimelineItems(p && p.id, { limit: options && options.offlineLimit ? options.offlineLimit : 24 })
+  );
+  merged.sort(function(a, b) { return (a.ts || 0) - (b.ts || 0); });
+  const limit = options && options.limit ? options.limit : 0;
+  return limit > 0 ? merged.slice(-limit) : merged;
+}
+function _monoPickFocusedTimelineWindow(p, options) {
+  const merged = _monoCollectMergedTimelineItems(p, options);
+  if (!merged.length) return { merged: [], focusItems: [], focusDayKey: '', focusLabel: '今天' };
+  const todayKey = _monoDayKey(Date.now());
+  const explicitItems = merged.filter(function(item) { return item && item.dayKey && item.explicitTs; });
+  const datedPool = explicitItems.length ? explicitItems : merged.filter(function(item) { return item && item.dayKey; });
+  let focusDayKey = '';
+  if (datedPool.some(function(item) { return item.dayKey === todayKey; })) {
+    focusDayKey = todayKey;
+  } else if (datedPool.length) {
+    focusDayKey = datedPool[datedPool.length - 1].dayKey;
+  } else {
+    focusDayKey = merged[merged.length - 1].dayKey || '';
+  }
+  let focusItems = focusDayKey
+    ? merged.filter(function(item) { return item.dayKey === focusDayKey; })
+    : merged.slice();
+  const focusLimit = options && options.focusLimit ? options.focusLimit : 18;
+  if (focusLimit > 0 && focusItems.length > focusLimit) focusItems = focusItems.slice(-focusLimit);
+  return {
+    merged: merged,
+    focusItems: focusItems,
+    focusDayKey: focusDayKey,
+    focusLabel: _monoFormatDayKey(focusDayKey)
+  };
+}
+function _monoBuildTimelineLines(items, p) {
+  return (items || []).map(function(item) {
+    return _monoTimelineItemToLine(item, p);
+  }).filter(Boolean);
+}
+function _monoBuildFocusedOfflineFullLines(items, p, options) {
+  const userName = (typeof userProfile !== 'undefined' && userProfile.name) ? userProfile.name : '用户';
+  const maxItems = options && options.maxItems ? options.maxItems : 30;
+  const maxChars = options && options.maxChars ? options.maxChars : 360;
+  return (items || []).filter(function(item) {
+    return item && item.source === 'offline' && item.fullText;
+  }).slice(-maxItems).map(function(item) {
+    const speaker = item.role === 'user' ? userName : ((p && p.name) || '角色');
+    const fullText = _monoClipTimelineText(item.fullText, maxChars);
+    return '【线下原文｜' + _monoFormatTimelineStamp(item.ts) + '｜' + (item.sessionTitle || '线下互动') + '】' + speaker + '：' + fullText;
+  }).filter(Boolean);
+}
+function _monoBuildRequiredOfflineFacts(items, p, maxFacts) {
+  const userName = (typeof userProfile !== 'undefined' && userProfile.name) ? userProfile.name : '用户';
+  return (items || []).filter(function(item) {
+    return item && item.source === 'offline' && item.fullText;
+  }).slice(-(maxFacts || 3)).map(function(item, idx) {
+    const speaker = item.role === 'user' ? userName : ((p && p.name) || '角色');
+    return (idx + 1) + '. ' + speaker + '在' + _monoFormatTimelineStamp(item.ts) + '的线下互动里明确出现过：' + _monoClipTimelineText(item.fullText, 180);
+  }).filter(Boolean);
+}
+function _monoBuildPlainRecentChatContext(p) {
+  if (!p || !Array.isArray(p.history)) return '';
+  const userName = (typeof userProfile !== 'undefined' && userProfile && userProfile.name) ? userProfile.name : '用户';
+  return p.history.slice(-(p.memoryCount || 100)).map(function(m) {
+    const speaker = m && m.role === 'user' ? userName : (p.name || '角色');
+    const raw = m && (m.content || m.transcript || m.imageCaption || '');
+    return speaker + '：' + String(raw || '').trim();
+  }).filter(Boolean).join('\n').trim();
+}
+function _monoBuildDiaryContext(p) {
+  try {
+    if (!p) return '';
+    const sections = [];
+    const focusWindow = _monoPickFocusedTimelineWindow(p, {
+      chatLimit: Math.max(18, Math.min(36, p.memoryCount || 24)),
+      offlineLimit: 28,
+      limit: 48,
+      focusLimit: 22
+    });
+    const focusItems = focusWindow.focusItems || [];
+    const focusLines = _monoBuildTimelineLines(focusItems, p);
+    if (focusLines.length) {
+      sections.push('【本次日记应重点围绕' + focusWindow.focusLabel + '的互动内容来写】\n只聚焦这一天已经发生过的线上聊天与真实线下互动；如果今天没有内容，就围绕最近有内容的最新那一天。不要把别的日期的旧内容写成今天刚发生的事。\n' + focusLines.join('\n'));
+    }
+    const focusOfflineItems = focusItems.filter(function(item) { return item && item.source === 'offline'; });
+    if (focusOfflineItems.length && p.diaryIncludeOfflineMemory !== false) {
+      sections.push('【' + focusWindow.focusLabel + '真实发生过的线下剧情】\n这些都是真实发生过的线下互动，不是线上私聊；写日记时请把它们视为这一天已经发生的事。\n' + _monoBuildTimelineLines(focusOfflineItems, p).join('\n'));
+      const focusOfflineFullLines = _monoBuildFocusedOfflineFullLines(focusOfflineItems, p, { maxItems: 36, maxChars: 420 });
+      if (focusOfflineFullLines.length) {
+        sections.push('【' + focusWindow.focusLabel + '线下剧情原文片段（最高优先级素材，优先参考这里，不要只参考线下剧情总结）】\n' + focusOfflineFullLines.join('\n'));
+      }
+      const requiredFacts = _monoBuildRequiredOfflineFacts(focusOfflineItems, p, 3);
+      if (requiredFacts.length) {
+        sections.push('【本次日记必须承接到的线下具体细节】\n' + requiredFacts.join('\n'));
+      }
+    }
+    if (!focusOfflineItems.length && p.diaryIncludeOfflineMemory !== false) {
+      const offlineLines = _monoCollectOfflineSummaryLines(p.id, 6);
+      if (offlineLines.length) sections.push('【已开启记忆的线下剧情（这是真实发生过的线下互动，写日记时必须自然融入，不能无视）】\n' + offlineLines.join('\n'));
+    }
+    return sections.join('\n\n').trim();
+  } catch (err) {
+    console.warn('[mono diary context fallback]', err && err.message ? err.message : err);
+    return _monoBuildPlainRecentChatContext(p);
+  }
+}
+function _monoBuildMomentsContext(p) {
+  try {
+    if (!p) return '';
+    const focusWindow = _monoPickFocusedTimelineWindow(p, {
+      chatLimit: Math.max(20, Math.min(40, p.memoryCount || 24)),
+      offlineLimit: 32,
+      limit: 48,
+      focusLimit: 18
+    });
+    const focus = (focusWindow.focusItems || []).slice(-14);
+    const sections = [];
+    const focusLines = _monoBuildTimelineLines(focus, p);
+    if (focusLines.length) {
+      sections.push('【朋友圈只应围绕' + focusWindow.focusLabel + '这一天的连续互动主线来写】\n如果这一天里线下互动更关键，就主要写线下；如果线上是在承接线下，也要写出这种承接。不要跑去写别的旧日期内容。\n' + focusLines.join('\n'));
+    }
+    if (p.momentsIncludeOfflineMemory !== false) {
+      const focusOffline = focus.filter(function(item) { return item && item.source === 'offline'; });
+      if (focusOffline.length) {
+        sections.push('【' + focusWindow.focusLabel + '真实线下互动补充（这些都不是线上私聊）】\n' + _monoBuildTimelineLines(focusOffline, p).join('\n'));
+        const focusOfflineFullLines = _monoBuildFocusedOfflineFullLines(focusOffline, p, { maxItems: 24, maxChars: 360 });
+        if (focusOfflineFullLines.length) {
+          sections.push('【' + focusWindow.focusLabel + '线下剧情原文片段（朋友圈生成时的最高优先级素材，必须优先参考，不要只参考总结）】\n' + focusOfflineFullLines.join('\n'));
+        }
+        const requiredFacts = _monoBuildRequiredOfflineFacts(focusOffline, p, 3);
+        if (requiredFacts.length) {
+          sections.push('【本次朋友圈必须承接到的线下具体细节】\n' + requiredFacts.join('\n'));
+        }
+      } else {
+        const offlineLines = _monoCollectOfflineSummaryLines(p.id, 4);
+        if (offlineLines.length) sections.push('【已开启记忆的线下剧情（这是真实发生过的线下互动，发朋友圈时必须自然提及，不能完全无视）】\n' + offlineLines.join('\n'));
+      }
+    }
+    return sections.join('\n\n').trim();
+  } catch (err) {
+    console.warn('[mono moments context fallback]', err && err.message ? err.message : err);
+    return _monoBuildPlainRecentChatContext(p);
+  }
+}
+function _monoBuildMomentsPrompt(p, relCtx, langOverride, preferredLangText, lengthText) {
+  const context = _monoBuildMomentsContext(p);
+  let prompt = (typeof LANG_SYSTEM_PREFIX !== 'undefined' ? LANG_SYSTEM_PREFIX : '')
+    + '你是' + p.name + '，根据你的人设「' + p.persona + '」，以及你最近和' + ((typeof userProfile !== 'undefined' && userProfile.name) ? userProfile.name : '用户') + '的互动记录：\n'
+    + (context || '(暂无互动记录)')
+    + (langOverride || '')
+    + (relCtx || '')
+    + '\n\n根据这段互动，以' + preferredLangText + '发布一条朋友圈动态，语气符合你的性格，' + lengthText + '。如动态中提及有关系设定的角色，措辞和情感必须符合该关系。';
+  if (p && p.momentsIncludeOfflineMemory !== false) prompt += '如果内容里提到线下剧情，请明确知道那是真实发生过的线下互动，不要误写成线上私聊。';
+  prompt += '允许出现“无法直接说出口，只能借朋友圈轻轻泄露”的表达，但不要写得过于直白。只返回朋友圈内容本身。';
+  return prompt;
 }
 function _monoBuildChatExportText(p, history) {
   const userName = (typeof userProfile !== 'undefined' && userProfile.name) ? userProfile.name : '用户';
@@ -83986,7 +84563,18 @@ function _monoBuildDiaryPrompt(p, upName, relCtx) {
 }
 async function _monoFetchDiaryContent(p, relCtx) {
   const up = (typeof userProfile !== 'undefined') ? userProfile : { name: '用户' };
-  const prompt = _monoBuildDiaryPrompt(p, up.name || '用户', relCtx || '');
+  let prompt = '';
+  try {
+    prompt = _monoBuildDiaryPrompt(p, up.name || '用户', relCtx || '');
+  } catch (err) {
+    console.warn('[mono diary prompt fallback]', err && err.message ? err.message : err);
+    const baseContext = _monoBuildPlainRecentChatContext(p) || '(暂无互动记录)';
+    prompt = ((typeof LANG_SYSTEM_PREFIX !== 'undefined' ? LANG_SYSTEM_PREFIX : ''))
+      + '你是' + p.name + '，根据你的人设「' + p.persona + '」，以及你最近和' + (up.name || '用户') + '的互动记录：\n'
+      + baseContext
+      + (relCtx || '')
+      + '\n\n以第一人称用简体中文写一篇私人日记，约100-200字。如日记中提及有关系设定的角色，措辞和情感必须符合该关系。不要使用标题，只返回日记正文。';
+  }
   const r = await fetch(apiConfig.url.replace(/\/$/, '') + '/chat/completions', {
     method: 'POST',
     headers: { 'Authorization': 'Bearer ' + apiConfig.key, 'Content-Type': 'application/json' },
@@ -84019,7 +84607,7 @@ diaryRunAiGenerate = async function() {
   const p = (typeof personas !== 'undefined') ? personas.find(function(x) { return x.id == _dai_selectedCharId; }) : null;
   if (!p) { alert('未找到该角色。'); return; }
   const statusEl = document.getElementById('diaryAiStatus');
-  statusEl.textContent = '正在生成日记...';
+  if (statusEl) statusEl.textContent = '正在生成日记...';
   try {
     if (!apiConfig.url || !apiConfig.key) throw new Error('请先在设置中配置 API。');
     const relCtx = (typeof _mwBuildRelInjectForChar === 'function') ? _mwBuildRelInjectForChar(p.name, null, false) : '';
@@ -84028,7 +84616,7 @@ diaryRunAiGenerate = async function() {
     diaryData.unshift(entry);
     localStorage.setItem(KEY_DIARY, JSON.stringify(diaryData));
     await _generateCalMemos(p.id, entry);
-    statusEl.textContent = '生成成功！';
+    if (statusEl) statusEl.textContent = '生成成功！';
     setTimeout(function() {
       diaryCloseAiModal();
       renderDiaryShelf();
@@ -84036,7 +84624,8 @@ diaryRunAiGenerate = async function() {
     }, 600);
     if (typeof dispatchNotification === 'function') dispatchNotification(p.id, p.name, '写了新日记', p.avatar);
   } catch(e) {
-    statusEl.textContent = '错误：' + e.message;
+    if (statusEl) statusEl.textContent = '错误：' + e.message;
+    else alert('日记生成失败：' + e.message);
   }
 };
 diaryRegenEntry = async function(entryId) {
@@ -84267,7 +84856,7 @@ function _monoPersonaExportBase(p) {
       heartVoiceMode: p.heartVoiceMode || 'header', autoSummary: !!p.autoSummary, autoSummaryInterval: p.autoSummaryInterval || 20,
       autoMsg: !!p.autoMsg, autoMsgMinInterval: p.autoMsgMinInterval || 60, autoMsgMaxInterval: p.autoMsgMaxInterval || 120,
       autoDiary: !!p.autoDiary, autoDiaryTime: p.autoDiaryTime || '21:00', autoMoments: !!p.autoMoments, autoMomentsTime: p.autoMomentsTime || '20:00',
-      diaryIncludeOfflineMemory: p.diaryIncludeOfflineMemory !== false, bubbleAiCss: p.bubbleAiCss || '', bubbleUserCss: p.bubbleUserCss || '',
+      diaryIncludeOfflineMemory: p.diaryIncludeOfflineMemory !== false, momentsIncludeOfflineMemory: p.momentsIncludeOfflineMemory !== false, bubbleAiCss: p.bubbleAiCss || '', bubbleUserCss: p.bubbleUserCss || '',
       bubbleAiFontColor: p.bubbleAiFontColor || '', bubbleUserFontColor: p.bubbleUserFontColor || '', bubblePreset: p.bubblePreset || 'none',
       chatRoomCustomCss: p.chatRoomCustomCss || '', chatBgImage: p.chatBgImage || '', replyMode: p.replyMode || 'normal', replySpeed: p.replySpeed || 'fast',
       replySpeedCustomMin: p.replySpeedCustomMin || 0, replySpeedCustomMax: p.replySpeedCustomMax || 10, allowCallTts: !!p.allowCallTts,
@@ -84332,6 +84921,7 @@ function monoImportPersonaPackage(event) {
         history: Array.isArray(data.history) ? data.history : [],
         memoryCore: settings.memoryCore || [],
         diaryIncludeOfflineMemory: settings.diaryIncludeOfflineMemory !== false,
+        momentsIncludeOfflineMemory: settings.momentsIncludeOfflineMemory !== false,
         lastHeartVoice: settings.lastHeartVoice || null
       }, settings);
       newPersona.id = newId;
@@ -84820,11 +85410,12 @@ if (document.readyState === 'loading') {
         autoMsg: !!persona.autoMsg,
         autoMsgMinInterval: persona.autoMsgMinInterval || 60,
         autoMsgMaxInterval: persona.autoMsgMaxInterval || 120,
-        autoDiary: !!persona.autoDiary,
-        autoDiaryTime: persona.autoDiaryTime || '21:00',
-        autoMoments: !!persona.autoMoments,
-        autoMomentsTime: persona.autoMomentsTime || '20:00',
-        diaryIncludeOfflineMemory: persona.diaryIncludeOfflineMemory !== false,
+      autoDiary: !!persona.autoDiary,
+      autoDiaryTime: persona.autoDiaryTime || '21:00',
+      autoMoments: !!persona.autoMoments,
+      autoMomentsTime: persona.autoMomentsTime || '20:00',
+      diaryIncludeOfflineMemory: persona.diaryIncludeOfflineMemory !== false,
+      momentsIncludeOfflineMemory: persona.momentsIncludeOfflineMemory !== false,
         bubbleAiCss: persona.bubbleAiCss || '',
         bubbleUserCss: persona.bubbleUserCss || '',
         bubbleAiFontColor: persona.bubbleAiFontColor || '',
@@ -84895,6 +85486,7 @@ if (document.readyState === 'loading') {
       memoryCore: Array.isArray(settings.memoryCore) ? settings.memoryCore : [],
       lastHeartVoice: settings.lastHeartVoice || null,
       diaryIncludeOfflineMemory: settings.diaryIncludeOfflineMemory !== false,
+      momentsIncludeOfflineMemory: settings.momentsIncludeOfflineMemory !== false,
       minReplyCount: settings.minReplyCount || 1,
       maxReplyCount: settings.maxReplyCount || 5,
       temperature: settings.temperature == null ? 1 : settings.temperature,
@@ -85498,5 +86090,946 @@ if (document.readyState === 'loading') {
   window._monoInitUiFixes = window._monoInitUiFixes || function() {};
 })();
 </script>
+
+<script>
+(function() {
+  function monoSafeApiConfig() {
+    return (typeof apiConfig !== 'undefined' && apiConfig) ? apiConfig : {};
+  }
+
+  function monoSafePersonas() {
+    return (typeof personas !== 'undefined' && Array.isArray(personas)) ? personas : [];
+  }
+
+  function monoSafeUserName() {
+    return (typeof userProfile !== 'undefined' && userProfile && userProfile.name) ? userProfile.name : '用户';
+  }
+
+  function monoSafeDiaryKey() {
+    return (typeof KEY_DIARY !== 'undefined' && KEY_DIARY) ? KEY_DIARY : 'mono_diary';
+  }
+
+  function monoSafeExtractContent(data) {
+    const choice = data && Array.isArray(data.choices) ? data.choices[0] : null;
+    const message = choice && choice.message ? choice.message : null;
+    const content = message ? message.content : '';
+    if (Array.isArray(content)) {
+      return content.map(function(part) {
+        if (!part) return '';
+        if (typeof part === 'string') return part;
+        return part.text || part.content || '';
+      }).join('').trim();
+    }
+    if (typeof content === 'string') return content.trim();
+    if (typeof choice.text === 'string') return choice.text.trim();
+    return '';
+  }
+
+  function monoSafeMessageText(message, persona, index, history) {
+    if (!message || typeof message !== 'object') return '';
+    try {
+      if (message.msgType === 'sticker' && typeof _monoBuildStickerHistoryText === 'function') {
+        return _monoBuildStickerHistoryText(message, index || 0, history || [], persona, monoSafeUserName());
+      }
+      if (typeof _monoMessageDisplayText === 'function') {
+        return _monoMessageDisplayText(message, persona, monoSafeUserName()) || '';
+      }
+    } catch (err) {}
+    return String(
+      message.content ||
+      message.transcript ||
+      message.imageCaption ||
+      message.caption ||
+      (message.fwdData && message.fwdData.content) ||
+      ''
+    ).trim();
+  }
+
+  function monoSafeRecentContext(persona) {
+    if (!persona || !Array.isArray(persona.history)) return '';
+    const history = persona.history.filter(function(item) { return item && typeof item === 'object'; });
+    const maxCount = Math.max(1, Number(persona.memoryCount) || 100);
+    const lines = history.slice(-maxCount).map(function(message, index, arr) {
+      const speaker = message.role === 'user' ? monoSafeUserName() : (persona.name || '角色');
+      const text = monoSafeMessageText(message, persona, index, arr);
+      if (!text) return '';
+      return speaker + '：' + text;
+    }).filter(Boolean);
+    return lines.join('\n').trim();
+  }
+
+  function monoSafeOfflineLines(persona, includeFlagKey) {
+    if (!persona || persona[includeFlagKey] === false) return [];
+    try {
+      if (typeof _monoCollectOfflineSummaryLines === 'function') {
+        const lines = _monoCollectOfflineSummaryLines(persona.id, 6);
+        return Array.isArray(lines) ? lines.filter(Boolean) : [];
+      }
+    } catch (err) {}
+    return [];
+  }
+
+  function monoResolveDiarySelectedPersonaId() {
+    var pid = '';
+    try {
+      if (window._monoDiarySelectedCharId) pid = String(window._monoDiarySelectedCharId);
+    } catch (err) {}
+    if (!pid) {
+      try {
+        if (typeof _dai_selectedCharId !== 'undefined' && _dai_selectedCharId) pid = String(_dai_selectedCharId);
+      } catch (err) {}
+    }
+    if (!pid) {
+      var selected = document.querySelector('#diaryCharGrid .diary-char-option.selected');
+      if (selected) pid = String(selected.getAttribute('data-pid') || '');
+    }
+    return pid;
+  }
+
+  function monoSafeLangInfo(persona) {
+    let lang = '';
+    let langOverride = '';
+    try {
+      lang = (typeof _detectPersonaLang === 'function') ? (_detectPersonaLang(persona) || '') : '';
+      langOverride = (typeof _langOverridePrompt === 'function') ? (_langOverridePrompt(lang) || '') : '';
+    } catch (err) {}
+    return { lang: lang, langOverride: langOverride };
+  }
+
+  async function monoChatCompletion(prompt, temperature) {
+    const conf = monoSafeApiConfig();
+    if (!conf.url || !conf.key) throw new Error('请先在设置中配置 API。');
+    const response = await fetch(conf.url.replace(/\/$/, '') + '/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + conf.key,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: conf.model,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: typeof temperature === 'number' ? temperature : 0.85
+      })
+    });
+    if (!response.ok) throw new Error('API 错误：' + response.status);
+    const data = await response.json();
+    const content = monoSafeExtractContent(data);
+    if (!content) throw new Error('API 没有返回可用内容。');
+    return content;
+  }
+
+  async function monoTranslateToZh(text) {
+    if (!text) return '';
+    try {
+      return await monoChatCompletion('将以下文字翻译成简体中文，只返回翻译结果：\n' + text, 0.2);
+    } catch (err) {
+      return '';
+    }
+  }
+
+  function monoEscHtml(text) {
+    return String(text || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  function monoSplitDiarySegments(text) {
+    var source = String(text || '').replace(/\r/g, '').trim();
+    if (!source) return [];
+    var segments = [];
+    source.split('\n').forEach(function(paragraph) {
+      var line = String(paragraph || '').trim();
+      if (!line) return;
+      var matched = line.match(/[^。！？!?…\n]+[。！？!?…]*|.+$/g) || [];
+      matched.forEach(function(part) {
+        var seg = String(part || '').trim();
+        if (seg) segments.push(seg);
+      });
+    });
+    return segments.length ? segments : [source];
+  }
+
+  function monoExtractJsonArray(rawText) {
+    var text = String(rawText || '').trim();
+    if (!text) return null;
+    try {
+      var parsed = JSON.parse(text);
+      return Array.isArray(parsed) ? parsed : null;
+    } catch (err) {}
+    var start = text.indexOf('[');
+    var end = text.lastIndexOf(']');
+    if (start >= 0 && end > start) {
+      try {
+        var sliced = JSON.parse(text.slice(start, end + 1));
+        return Array.isArray(sliced) ? sliced : null;
+      } catch (err) {}
+    }
+    return null;
+  }
+
+  function monoShouldTranslateDiary(lang, persona, content) {
+    if (!persona || persona.enableTranslation === false) return false;
+    // If translation is explicitly enabled on the persona, always translate non-Chinese content
+    var normalizedLang = String(lang || '').toLowerCase();
+    // Explicit non-Chinese output lang → always translate
+    if (normalizedLang && normalizedLang !== 'zh' && normalizedLang !== 'zh-cn' && normalizedLang !== 'zh-hans') return true;
+    // No explicit lang or Chinese lang — check actual content
+    try {
+      return typeof _isNonChineseText === 'function' ? !!_isNonChineseText(content || '') : false;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  async function monoBuildDiaryTranslationLines(text) {
+    var segments = monoSplitDiarySegments(text);
+    if (!segments.length) return [];
+    try {
+      var prompt = '请将下面每一行分别翻译成简体中文，保持顺序完全一致，并只返回 JSON 数组字符串。不要合并、不要省略、不要添加解释。\n\n'
+        + segments.map(function(seg, idx) { return (idx + 1) + '. ' + seg; }).join('\n');
+      var content = await monoChatCompletion(prompt, 0.2);
+      var parsed = monoExtractJsonArray(content);
+      if (parsed && parsed.length === segments.length) {
+        return segments.map(function(seg, idx) {
+          return { text: seg, translation: String(parsed[idx] || '').trim() };
+        });
+      }
+    } catch (err) {}
+    var fallback = [];
+    for (var i = 0; i < segments.length; i++) {
+      var translation = '';
+      try {
+        translation = await monoTranslateToZh(segments[i]);
+      } catch (err) {}
+      fallback.push({ text: segments[i], translation: translation || '' });
+    }
+    return fallback;
+  }
+
+  async function monoMaybeAttachDiaryTranslations(persona, lang, content) {
+    if (!monoShouldTranslateDiary(lang, persona, content)) {
+      return { translation: '', translationLines: [] };
+    }
+    var translationLines = [];
+    try {
+      translationLines = await monoBuildDiaryTranslationLines(content);
+    } catch(e) { translationLines = []; }
+    // Check if translationLines actually contain translations (they could have empty strings)
+    var hasRealTranslations = Array.isArray(translationLines) && translationLines.some(function(item) {
+      return item && item.translation && String(item.translation).trim().length > 0;
+    });
+    var fullTranslation = '';
+    if (hasRealTranslations) {
+      fullTranslation = translationLines.map(function(item) {
+        return String((item && item.translation) || '').trim();
+      }).filter(Boolean).join('\n');
+    }
+    // Fallback: if line-by-line translation failed or gave empty results, translate the full text
+    if (!fullTranslation) {
+      try { fullTranslation = await monoTranslateToZh(content); } catch(e) { fullTranslation = ''; }
+    }
+    // If line-by-line had empty translations but full-text succeeded, clear translationLines
+    // so the renderer uses the simpler full-translation path
+    if (!hasRealTranslations && fullTranslation) {
+      translationLines = [];
+    }
+    return {
+      translation: fullTranslation || '',
+      translationLines: hasRealTranslations ? translationLines : []
+    };
+  }
+
+  window._monoRenderDiaryContentBlock = function(item, translationEnabled) {
+    var html = '';
+    var lines = Array.isArray(item && item.translationLines) ? item.translationLines.filter(function(line) {
+      return line && (line.text || line.translation);
+    }) : [];
+    if (translationEnabled && lines.length) {
+      html += '<div style="display:flex;flex-direction:column;gap:10px;">';
+      lines.forEach(function(line) {
+        html += '<div>';
+        html += '<div class="diary-content">' + monoEscHtml(line.text || '') + '</div>';
+        if (line.translation) {
+          html += '<div style="margin-top:6px;padding:7px 10px;border-left:2px solid #d8d8d8;background:#fafafa;border-radius:8px;font-size:11px;line-height:1.7;color:#777;font-style:italic;">'
+            + '<div style="font-size:8px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:#b3b3b3;margin-bottom:4px;">简体中文译文</div>'
+            + monoEscHtml(line.translation)
+            + '</div>';
+        }
+        html += '</div>';
+      });
+      html += '</div>';
+      return html;
+    }
+    html += '<div class="diary-content">' + monoEscHtml(item && item.content ? item.content : '') + '</div>';
+    if (item && item.translation && translationEnabled && typeof _buildKoreanTranslation === 'function') {
+      html += _buildKoreanTranslation(item.translation);
+    }
+    return html;
+  };
+
+  function monoEnsureGenerationDebugModal() {
+    if (document.getElementById('monoGenerationDebugModal')) return;
+    var overlay = document.createElement('div');
+    overlay.id = 'monoGenerationDebugModal';
+    overlay.style.cssText = 'display:none;position:fixed;inset:0;z-index:10080;background:rgba(0,0,0,0.48);padding:18px;box-sizing:border-box;';
+    overlay.onclick = function(e) {
+      if (e.target === overlay) monoCloseGenerationDebug();
+    };
+    overlay.innerHTML = ''
+      + '<div style="background:#fff;width:min(980px,100%);height:min(86vh,100%);margin:0 auto;border-radius:20px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 18px 60px rgba(0,0,0,0.18);">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid #eee;gap:12px;">'
+      + '<div>'
+      + '<div id="monoGenerationDebugTitle" style="font-size:13px;font-weight:800;letter-spacing:1.1px;text-transform:uppercase;color:#1a1a1a;">生成前上下文调试</div>'
+      + '<div id="monoGenerationDebugMeta" style="font-size:11px;color:#888;margin-top:4px;line-height:1.6;"></div>'
+      + '</div>'
+      + '<div style="display:flex;align-items:center;gap:8px;">'
+      + '<button id="monoGenerationDebugCopyBtn" style="border:1px solid #ddd;background:#fff;color:#1a1a1a;border-radius:999px;padding:7px 12px;font-size:11px;font-weight:700;cursor:pointer;">复制调试文本</button>'
+      + '<button onclick="monoCloseGenerationDebug()" style="background:none;border:none;font-size:22px;color:#999;cursor:pointer;line-height:1;">&times;</button>'
+      + '</div>'
+      + '</div>'
+      + '<div style="padding:14px 16px 0;display:flex;gap:8px;flex-wrap:wrap;">'
+      + '<span style="font-size:10px;padding:5px 10px;border-radius:999px;background:#f5f5f5;color:#555;">展示的是生成前真正送去 API 的调试信息</span>'
+      + '<span style="font-size:10px;padding:5px 10px;border-radius:999px;background:#f5f5f5;color:#555;">重点看是否包含线上聊天与核心记忆里的线下剧情总结</span>'
+      + '</div>'
+      + '<div id="monoGenerationDebugBody" style="flex:1;overflow:auto;padding:14px 16px 18px;"></div>'
+      + '</div>';
+    document.body.appendChild(overlay);
+    var copyBtn = document.getElementById('monoGenerationDebugCopyBtn');
+    if (copyBtn) {
+      copyBtn.onclick = function() {
+        var raw = (window._monoLastGenerationDebug && window._monoLastGenerationDebug.rawText) ? window._monoLastGenerationDebug.rawText : '';
+        if (!raw) return;
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(raw);
+          } else {
+            var ta = document.createElement('textarea');
+            ta.value = raw;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            ta.remove();
+          }
+        } catch (err) {}
+      };
+    }
+  }
+
+  function monoCloseGenerationDebug() {
+    var overlay = document.getElementById('monoGenerationDebugModal');
+    if (overlay) overlay.style.display = 'none';
+  }
+  window.monoCloseGenerationDebug = monoCloseGenerationDebug;
+
+  function monoRenderDebugBlock(title, content, preserveWhitespace) {
+    var safeTitle = monoEscHtml(title || '');
+    var safeContent = monoEscHtml(content || '');
+    return ''
+      + '<div style="border:1px solid #ececec;border-radius:16px;background:#fafafa;padding:14px 14px 12px;margin-bottom:12px;">'
+      + '<div style="font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:#666;margin-bottom:8px;">' + safeTitle + '</div>'
+      + '<div style="font-size:12px;line-height:1.8;color:#222;white-space:' + (preserveWhitespace ? 'pre-wrap' : 'normal') + ';word-break:break-word;">' + safeContent + '</div>'
+      + '</div>';
+  }
+
+  function monoBuildGenerationDebugText(payload) {
+    var parts = [];
+    parts.push('类型：' + (payload.type || ''));
+    parts.push('角色：' + ((payload.personaName || '角色')));
+    if (payload.focusLabel) parts.push('聚焦日期：' + payload.focusLabel);
+    if (payload.lang) parts.push('输出语言：' + payload.lang);
+    if (payload.offlineSessionCount != null) parts.push('匹配到的线下存档：' + payload.offlineSessionCount);
+    if (payload.enabledOfflineSessionCount != null) parts.push('可用于记忆的线下存档：' + payload.enabledOfflineSessionCount);
+    if (payload.globalOfflineSessionCount != null) parts.push('全局线下存档总数：' + payload.globalOfflineSessionCount);
+    parts.push('');
+    if (payload.focusedOfflineFacts && payload.focusedOfflineFacts.length) {
+      parts.push('[必须承接的线下具体细节]');
+      parts.push(payload.focusedOfflineFacts.join('\n'));
+      parts.push('');
+    }
+    parts.push('[上下文]');
+    parts.push(payload.context || '');
+    parts.push('');
+    parts.push('[完整提示词]');
+    parts.push(payload.prompt || '');
+    return parts.join('\n');
+  }
+
+  function monoShowGenerationDebug(payload) {
+    monoEnsureGenerationDebugModal();
+    var overlay = document.getElementById('monoGenerationDebugModal');
+    var titleEl = document.getElementById('monoGenerationDebugTitle');
+    var metaEl = document.getElementById('monoGenerationDebugMeta');
+    var bodyEl = document.getElementById('monoGenerationDebugBody');
+    if (!overlay || !titleEl || !metaEl || !bodyEl) return;
+    var facts = Array.isArray(payload && payload.focusedOfflineFacts) ? payload.focusedOfflineFacts : [];
+    var title = (payload && payload.type === 'moments') ? '朋友圈生成前上下文调试' : '日记生成前上下文调试';
+    titleEl.textContent = title;
+    metaEl.textContent = '角色：' + ((payload && payload.personaName) || '角色')
+      + ' · 聚焦日期：' + (((payload && payload.focusLabel) || '未识别'))
+      + ' · 线下具体细节：' + facts.length + ' 条'
+      + ' · 匹配到的线下存档：' + (((payload && payload.offlineSessionCount) != null) ? payload.offlineSessionCount : 0)
+      + ' · 可用于记忆：' + (((payload && payload.enabledOfflineSessionCount) != null) ? payload.enabledOfflineSessionCount : 0)
+      + ' · 全局总数：' + (((payload && payload.globalOfflineSessionCount) != null) ? payload.globalOfflineSessionCount : 0);
+    bodyEl.innerHTML = ''
+      + monoRenderDebugBlock('聚焦日期', ((payload && payload.focusLabel) || '未识别'), false)
+      + monoRenderDebugBlock('线下存档匹配情况', '匹配到的线下存档：' + ((((payload && payload.offlineSessionCount) != null) ? payload.offlineSessionCount : 0)) + '\n可用于记忆的线下存档：' + ((((payload && payload.enabledOfflineSessionCount) != null) ? payload.enabledOfflineSessionCount : 0)) + '\n全局线下存档总数：' + ((((payload && payload.globalOfflineSessionCount) != null) ? payload.globalOfflineSessionCount : 0)), true)
+      + monoRenderDebugBlock('必须承接的线下具体细节', facts.length ? facts.join('\n') : '当前没有提取到必须承接的线下具体细节', true)
+      + monoRenderDebugBlock('生成上下文', ((payload && payload.context) || ''), true)
+      + monoRenderDebugBlock('完整提示词', ((payload && payload.prompt) || ''), true);
+    payload = payload || {};
+    payload.rawText = monoBuildGenerationDebugText(payload);
+    window._monoLastGenerationDebug = payload;
+    overlay.style.display = 'block';
+  }
+
+  // ── 直接收集所有已开启记忆的线下剧情全文原文 ──
+  function monoCollectOfflineFullRawText(personaId) {
+    try {
+      var sessions = (typeof _monoGetOfflineSessionsEnabled === 'function')
+        ? _monoGetOfflineSessionsEnabled(personaId)
+        : [];
+      if (!sessions || !sessions.length) return '';
+      var userName = monoSafeUserName();
+      var resolvedPersonaName = '角色';
+      try { var _rps = monoSafePersonas(); var _rp0 = _rps.find(function(x){return String(x.id)===String(personaId);}); if(_rp0&&_rp0.name) resolvedPersonaName=_rp0.name; } catch(_re){}
+      // Sort by createdAt ascending so the text reads in chronological order
+      var sorted = sessions.slice().sort(function(a, b) {
+        return (a.createdAt || a.updatedAt || 0) - (b.createdAt || b.updatedAt || 0);
+      });
+      var blocks = [];
+      sorted.forEach(function(session) {
+        if (!session || !Array.isArray(session.entries) || !session.entries.length) return;
+        var title = String(session.title || '线下互动').trim();
+        var dateStr = '';
+        try {
+          var ts = session.updatedAt || session.createdAt || 0;
+          if (ts) {
+            var d = new Date(ts);
+            dateStr = d.getFullYear() + '年' + (d.getMonth()+1) + '月' + d.getDate() + '日';
+          }
+        } catch(e) {}
+        var header = '【线下剧情《' + title + '》' + (dateStr ? ' · ' + dateStr : '') + '】';
+        var lines = session.entries.map(function(entry) {
+          if (!entry || !entry.content) return '';
+          var speaker = (entry.role === 'user') ? userName : resolvedPersonaName;
+          return speaker + '：' + String(entry.content).trim();
+        }).filter(Boolean);
+        if (lines.length) blocks.push(header + '\n' + lines.join('\n'));
+      });
+      return blocks.join('\n\n');
+    } catch(e) {
+      return '';
+    }
+  }
+
+  function monoGetOfflineMemoryEntries(persona, includeFlagKey, limit) {
+    if (!persona || (includeFlagKey && persona[includeFlagKey] === false)) return [];
+    var items = Array.isArray(persona.memoryCore) ? persona.memoryCore : [];
+    var normalized = items.map(function(item, idx) {
+      var raw = (typeof item === 'string') ? { content: item } : (item || {});
+      var content = String(raw.content || '').trim();
+      if (!content) return null;
+      var source = String(raw.source || '').trim();
+      var isOfflineMemory = !!(
+        raw._offlineSessionId ||
+        raw._offlineMemoryType ||
+        source === '线下剧情' ||
+        /^线下剧情/.test(source)
+      );
+      if (!isOfflineMemory) return null;
+      return {
+        idx: idx,
+        content: content,
+        source: source || '线下剧情',
+        date: raw.date ? String(raw.date) : '',
+        type: raw._offlineMemoryType || (/总结/.test(source) ? 'summary' : 'overview')
+      };
+    }).filter(Boolean);
+    var preferred = normalized.filter(function(item) { return item.type === 'summary'; });
+    var picked = (preferred.length ? preferred : normalized).slice(-(limit || 6));
+    return picked;
+  }
+
+  function monoBuildOfflineMemoryContext(persona, includeFlagKey, limit) {
+    var entries = monoGetOfflineMemoryEntries(persona, includeFlagKey, limit);
+    return {
+      entries: entries,
+      text: entries.map(function(item) {
+        var meta = [];
+        if (item.date) meta.push(item.date);
+        if (item.source) meta.push(item.source);
+        return '【' + (meta.join(' · ') || '线下剧情记忆') + '】\n' + item.content;
+      }).join('\n\n')
+    };
+  }
+
+  function monoBuildOfflineMemoryFacts(entries, maxFacts) {
+    var list = Array.isArray(entries) ? entries.slice(-(maxFacts || 3)) : [];
+    return list.map(function(item) {
+      var text = String((item && item.content) || '').replace(/\s+/g, ' ').trim();
+      if (!text) return '';
+      if (text.length <= 180) return text;
+      var short = text.slice(0, 180);
+      var cutAt = Math.max(
+        short.lastIndexOf('。'),
+        short.lastIndexOf('！'),
+        short.lastIndexOf('？'),
+        short.lastIndexOf('；'),
+        short.lastIndexOf('\n')
+      );
+      return (cutAt >= 40 ? short.slice(0, cutAt + 1) : short + '…').trim();
+    }).filter(Boolean);
+  }
+
+  function monoDiaryPrompt(persona, relCtx) {
+    const langInfo = monoSafeLangInfo(persona);
+    const chatContext = monoSafeRecentContext(persona) || '(暂无线上聊天记录)';
+    const offlineMemoryBundle = monoBuildOfflineMemoryContext(persona, 'diaryIncludeOfflineMemory', 8);
+    const offlineMemoryText = offlineMemoryBundle.text;
+    var contextParts = [];
+    if (chatContext && chatContext !== '(暂无线上聊天记录)') {
+      contextParts.push('【线上聊天记录】\n' + chatContext);
+    }
+    if (offlineMemoryText) {
+      contextParts.push('【核心记忆里已保存的线下剧情总结（这是真实发生过的线下见面互动，不是线上私聊）】\n' + offlineMemoryText);
+    }
+    var baseContext = contextParts.length ? contextParts.join('\n\n') : '(暂无互动记录)';
+    const offlineSessionCount = (typeof _getOfflineSessionsForPersona === 'function') ? _getOfflineSessionsForPersona(persona.id).length : 0;
+    const enabledOfflineSessionCount = (typeof _monoGetOfflineSessionsEnabled === 'function') ? _monoGetOfflineSessionsEnabled(persona.id).length : 0;
+    const globalOfflineSessionCount = (typeof _monoCountAllOfflineSessions === 'function') ? _monoCountAllOfflineSessions() : 0;
+    const focusedOfflineFacts = monoBuildOfflineMemoryFacts(offlineMemoryBundle.entries, 3);
+    const langRule = langInfo.lang
+      ? ('你必须全篇只使用' + langInfo.lang + '来写这篇日记，禁止把正文写成简体中文；如果系统之后需要翻译，那是显示层另外追加的译文，不属于日记正文。')
+      : '请使用简体中文来写这篇日记。';
+    let prompt = (typeof LANG_SYSTEM_PREFIX !== 'undefined' ? LANG_SYSTEM_PREFIX : '')
+      + '你是' + (persona.name || '角色')
+      + '，根据你的人设「' + (persona.persona || '') + '」，以及你最近和' + monoSafeUserName() + '的互动记录：\n'
+      + baseContext
+      + (langInfo.langOverride || '')
+      + (relCtx || '')
+      + '\n\n'
+      + '你只能根据以上这些角色已经记住的内容来写：线上聊天室记录，以及核心记忆里已经保存下来的线下剧情总结。不要擅自引用核心记忆之外的线下原文，也不要补写角色并没有记住的新细节。'
+      + '请把线上聊天和核心记忆里的线下互动视为同一条连续发生的关系时间线来理解，按时间先后自然衔接，不要把它们写成彼此分裂的两套世界。'
+      + '请以第一人称写一篇私人日记，约100-200字。如日记中提及有关系设定的角色，措辞和情感必须符合该关系。'
+      + langRule;
+    if (persona.diaryIncludeOfflineMemory !== false) {
+      if (offlineMemoryText) {
+        prompt += '上下文中已经给出了核心记忆里保存的线下剧情总结——这些都是真实发生过的线下见面互动，不是线上私聊。日记中必须自然融入这些线下经历，不能完全无视它们只写线上聊天；请把线上与线下当成同一段关系时间线来理解，前后自然承接。';
+        if (focusedOfflineFacts.length) {
+          prompt += '尤其要在日记里自然承接以下已经写进核心记忆的线下细节中的至少 1-2 个，不能完全略过：\n' + focusedOfflineFacts.join('\n') + '\n不要逐条照抄，但必须让读者看得出你确实记得这些线下内容。';
+        }
+      } else {
+        prompt += '如果核心记忆里暂时没有保存线下剧情总结，就不要凭空补写线下情节。';
+      }
+    }
+    prompt += '不要使用标题，只返回日记正文。';
+    return {
+      prompt: prompt,
+      lang: langInfo.lang,
+      context: baseContext,
+      focusLabel: offlineMemoryBundle.entries.length ? '核心记忆中的近期线下剧情' : '未识别',
+      focusedOfflineFacts: focusedOfflineFacts,
+      offlineSessionCount: offlineSessionCount,
+      enabledOfflineSessionCount: enabledOfflineSessionCount,
+      globalOfflineSessionCount: globalOfflineSessionCount
+    };
+  }
+
+  function monoMomentsPrompt(persona, relCtx, lengthText) {
+    const langInfo = monoSafeLangInfo(persona);
+    const offlineMemoryBundle = monoBuildOfflineMemoryContext(persona, 'momentsIncludeOfflineMemory', 8);
+    const _momentsOfflineMemoryText = offlineMemoryBundle.text;
+    const _momentsFocusCtx = monoSafeRecentContext(persona) || '';
+    const _momentsParts = [];
+    if (_momentsFocusCtx) _momentsParts.push(_momentsFocusCtx);
+    if (_momentsOfflineMemoryText) {
+      _momentsParts.push('【核心记忆里已保存的线下剧情总结（这是真实发生过的线下见面互动，不是线上私聊）】\n' + _momentsOfflineMemoryText);
+    }
+    const baseContext = _momentsParts.length ? _momentsParts.join('\n\n') : '(暂无互动记录)';
+    const offlineSessionCount = (typeof _getOfflineSessionsForPersona === 'function') ? _getOfflineSessionsForPersona(persona.id).length : 0;
+    const enabledOfflineSessionCount = (typeof _monoGetOfflineSessionsEnabled === 'function') ? _monoGetOfflineSessionsEnabled(persona.id).length : 0;
+    const globalOfflineSessionCount = (typeof _monoCountAllOfflineSessions === 'function') ? _monoCountAllOfflineSessions() : 0;
+    const focusedOfflineFacts = monoBuildOfflineMemoryFacts(offlineMemoryBundle.entries, 3);
+    let prompt = (typeof LANG_SYSTEM_PREFIX !== 'undefined' ? LANG_SYSTEM_PREFIX : '')
+      + '你是' + (persona.name || '角色')
+      + '，根据你的人设「' + (persona.persona || '') + '」，以及你最近和' + monoSafeUserName() + '的互动记录：\n'
+      + baseContext
+      + (langInfo.langOverride || '')
+      + (relCtx || '')
+      + '\n\n你只能根据以上这些角色已经记住的内容来发朋友圈：线上聊天室里的聊天内容，以及核心记忆里已经保存下来的线下剧情总结。不要擅自引用核心记忆之外的线下原文，也不要补出角色并没有记住的新细节。'
+      + '根据这段互动，以' + (langInfo.lang ? '你的语言设定' : '简体中文')
+      + '发布一条朋友圈动态，语气符合你的性格，' + (lengthText || '约50-100字')
+      + '。如动态中提及有关系设定的角色，措辞和情感必须符合该关系。';
+    if (persona.momentsIncludeOfflineMemory !== false) {
+      if (_momentsOfflineMemoryText) {
+        prompt += '上下文中已经给出了核心记忆里保存的线下剧情总结——这些都是真实发生过的线下见面互动，不是线上私聊。朋友圈不能完全无视这些线下经历；如果最近线下互动更重要，就主要围绕线下来写；如果线上承接了线下，也要体现这种承接。';
+        if (focusedOfflineFacts.length) {
+          prompt += '朋友圈里必须至少自然承接以下已经写进核心记忆的线下细节中的 1 个，不能完全略过：\n' + focusedOfflineFacts.join('\n') + '\n不要像写总结那样硬列点，但要让内容明显建立在这些线下细节之上。';
+        }
+      } else {
+        prompt += '如果核心记忆里暂时没有保存线下剧情总结，就不要凭空补写线下情节。';
+      }
+    }
+    prompt += '允许出现“无法直接说出口，只能借朋友圈轻轻泄露”的表达，但不要写得过于直白。只返回朋友圈内容本身。';
+    return {
+      prompt: prompt,
+      lang: langInfo.lang,
+      context: baseContext,
+      focusLabel: offlineMemoryBundle.entries.length ? '核心记忆中的近期线下剧情' : '未识别',
+      focusedOfflineFacts: focusedOfflineFacts,
+      offlineSessionCount: offlineSessionCount,
+      enabledOfflineSessionCount: enabledOfflineSessionCount,
+      globalOfflineSessionCount: globalOfflineSessionCount
+    };
+  }
+
+  var monoOrigDiaryOpenAiModal = window.diaryOpenAiModal;
+  window.diaryOpenAiModal = function() {
+    try { window._monoDiarySelectedCharId = ''; } catch (err) {}
+    try { if (typeof _dai_selectedCharId !== 'undefined') _dai_selectedCharId = null; } catch (err) {}
+    return typeof monoOrigDiaryOpenAiModal === 'function'
+      ? monoOrigDiaryOpenAiModal.apply(this, arguments)
+      : undefined;
+  };
+  try { diaryOpenAiModal = window.diaryOpenAiModal; } catch (err) {}
+
+  var monoOrigDiarySelectChar = window.diarySelectChar;
+  window.diarySelectChar = function(el, pid) {
+    try { window._monoDiarySelectedCharId = String(pid || ''); } catch (err) {}
+    try { if (typeof _dai_selectedCharId !== 'undefined') _dai_selectedCharId = pid; } catch (err) {}
+    if (typeof monoOrigDiarySelectChar === 'function') return monoOrigDiarySelectChar.apply(this, arguments);
+    document.querySelectorAll('#diaryCharGrid .diary-char-option').forEach(function(node) {
+      node.classList.remove('selected');
+    });
+    if (el && el.classList) el.classList.add('selected');
+  };
+  try { diarySelectChar = window.diarySelectChar; } catch (err) {}
+
+  async function monoGenerateDiaryText(persona, relCtx) {
+    const built = monoDiaryPrompt(persona, relCtx);
+    // Debug payload is stored silently (no modal popup)
+    try {
+      window._monoLastGenerationDebug = {
+        type: 'diary',
+        personaName: persona && persona.name,
+        focusLabel: built.focusLabel,
+        lang: built.lang || '简体中文',
+        offlineSessionCount: built.offlineSessionCount,
+        enabledOfflineSessionCount: built.enabledOfflineSessionCount,
+        globalOfflineSessionCount: built.globalOfflineSessionCount,
+        focusedOfflineFacts: built.focusedOfflineFacts || [],
+        context: built.context || '',
+        prompt: built.prompt || ''
+      };
+    } catch(e) {}
+    return {
+      content: await monoChatCompletion(built.prompt, 0.85),
+      lang: built.lang,
+      debug: built
+    };
+  }
+
+  async function monoRegenerateDiaryText(persona, relCtx, previousContent) {
+    const built = monoDiaryPrompt(persona, relCtx);
+    const extraRule = '\n\n【重新生成要求】\n'
+      + '这是同一篇日记的重新生成版本。\n'
+      + '1. 事实依据仍然只能来自上面的线上聊天和核心记忆，不要新增未记住的新剧情。\n'
+      + '2. 但表达方式、切入角度、句式节奏、情绪重心必须和旧版本明显不同，不能只是同义改写两三处。\n'
+      + '3. 可以保持同一时间线与同一情绪核心，但要换一种更自然的新写法。\n'
+      + '4. 不要照抄旧版本里的句子、短语、开头、结尾或结构。\n'
+      + (previousContent ? ('\n【旧版本日记（禁止复写成相同内容）】\n' + previousContent) : '');
+    const prompt = (built.prompt || '') + extraRule;
+    try {
+      window._monoLastGenerationDebug = {
+        type: 'diary',
+        personaName: persona && persona.name,
+        focusLabel: built.focusLabel,
+        lang: built.lang || '简体中文',
+        offlineSessionCount: built.offlineSessionCount,
+        enabledOfflineSessionCount: built.enabledOfflineSessionCount,
+        globalOfflineSessionCount: built.globalOfflineSessionCount,
+        focusedOfflineFacts: built.focusedOfflineFacts || [],
+        context: built.context || '',
+        prompt: prompt
+      };
+    } catch(e) {}
+    return {
+      content: await monoChatCompletion(prompt, 0.95),
+      lang: built.lang,
+      debug: built
+    };
+  }
+
+  async function monoGenerateMomentsText(persona, relCtx, lengthText) {
+    const built = monoMomentsPrompt(persona, relCtx, lengthText);
+    // Debug payload is stored silently (no modal popup)
+    try {
+      window._monoLastGenerationDebug = {
+        type: 'moments',
+        personaName: persona && persona.name,
+        focusLabel: built.focusLabel,
+        lang: built.lang || '简体中文',
+        offlineSessionCount: built.offlineSessionCount,
+        enabledOfflineSessionCount: built.enabledOfflineSessionCount,
+        globalOfflineSessionCount: built.globalOfflineSessionCount,
+        focusedOfflineFacts: built.focusedOfflineFacts || [],
+        context: built.context || '',
+        prompt: built.prompt || ''
+      };
+    } catch(e) {}
+    return {
+      content: await monoChatCompletion(built.prompt, 0.85),
+      lang: built.lang,
+      debug: built
+    };
+  }
+
+  window.updateDiary = async function() {
+    const conf = monoSafeApiConfig();
+    if (!conf.url || !conf.key) { alert('请先设置API！'); return; }
+    if (typeof currentDiaryTab === 'undefined' || currentDiaryTab === 'user') {
+      alert('请先切换到某个角色的日记标签，再点击 AI日记！');
+      return;
+    }
+    const persona = monoSafePersonas().find(function(item) { return String(item.id) === String(currentDiaryTab); });
+    if (!persona) { alert('未找到该角色，请重新选择日记标签！'); return; }
+    try {
+      const relCtx = (typeof _mwBuildRelInjectForChar === 'function') ? (_mwBuildRelInjectForChar(persona.name, null, false) || '') : '';
+      const result = await monoGenerateDiaryText(persona, relCtx);
+      const diaryLangBundle = await monoMaybeAttachDiaryTranslations(persona, result.lang, result.content);
+      if (typeof diaryData === 'undefined' || !Array.isArray(diaryData)) window.diaryData = [];
+      diaryData.unshift({
+        id: Date.now(),
+        author: persona.name + ' 的日记',
+        authorType: 'persona',
+        personaId: persona.id,
+        content: result.content,
+        translation: diaryLangBundle.translation,
+        translationLines: diaryLangBundle.translationLines,
+        date: Date.now()
+      });
+      localStorage.setItem(monoSafeDiaryKey(), JSON.stringify(diaryData));
+      if (typeof renderDiaryTabs === 'function') renderDiaryTabs();
+      if (typeof renderDiary === 'function') renderDiary();
+      alert('日记已根据最近互动更新。');
+    } catch (err) {
+      alert('更新日记失败: ' + err.message);
+    }
+  };
+  try { updateDiary = window.updateDiary; } catch (err) {}
+
+  window.diaryRunAiGenerate = async function() {
+    var selectedPersonaId = monoResolveDiarySelectedPersonaId();
+    if (!selectedPersonaId) {
+      alert('请先选择一个角色。');
+      return;
+    }
+    try { window._monoDiarySelectedCharId = String(selectedPersonaId); } catch (err) {}
+    try { if (typeof _dai_selectedCharId !== 'undefined') _dai_selectedCharId = selectedPersonaId; } catch (err) {}
+    const persona = monoSafePersonas().find(function(item) { return String(item.id) === String(selectedPersonaId); });
+    if (!persona) { alert('未找到该角色。'); return; }
+    const statusEl = document.getElementById('diaryAiStatus');
+    if (statusEl) statusEl.textContent = '正在生成日记...';
+    try {
+      const relCtx = (typeof _mwBuildRelInjectForChar === 'function') ? (_mwBuildRelInjectForChar(persona.name, null, false) || '') : '';
+      const result = await monoGenerateDiaryText(persona, relCtx);
+      const diaryLangBundle = await monoMaybeAttachDiaryTranslations(persona, result.lang, result.content);
+      const entry = {
+        id: Date.now(),
+        author: persona.name + ' 的日记',
+        authorType: 'persona',
+        personaId: persona.id,
+        content: result.content,
+        translation: diaryLangBundle.translation,
+        translationLines: diaryLangBundle.translationLines,
+        date: Date.now()
+      };
+      if (typeof diaryData === 'undefined' || !Array.isArray(diaryData)) window.diaryData = [];
+      diaryData.unshift(entry);
+      localStorage.setItem(monoSafeDiaryKey(), JSON.stringify(diaryData));
+      if (typeof _generateCalMemos === 'function') {
+        try { await _generateCalMemos(persona.id, entry); } catch (err) {}
+      }
+      if (statusEl) statusEl.textContent = '生成成功！';
+      setTimeout(function() {
+        if (typeof diaryCloseAiModal === 'function') diaryCloseAiModal();
+        if (typeof renderDiaryShelf === 'function') renderDiaryShelf();
+        if (typeof _dbv_ownerId !== 'undefined' && _dbv_ownerId == persona.id && typeof _buildDiaryPages === 'function' && typeof _renderCurrentPage === 'function') {
+          _buildDiaryPages();
+          _renderCurrentPage(false);
+        }
+      }, 600);
+      if (typeof dispatchNotification === 'function') dispatchNotification(persona.id, persona.name, '写了新日记', persona.avatar);
+    } catch (err) {
+      if (statusEl) statusEl.textContent = '错误：' + err.message;
+      else alert('日记生成失败：' + err.message);
+    }
+  };
+  try { diaryRunAiGenerate = window.diaryRunAiGenerate; } catch (err) {}
+
+  window.diaryRegenEntry = async function(entryId) {
+    const entry = (typeof diaryData !== 'undefined' && Array.isArray(diaryData))
+      ? diaryData.find(function(d) { return d.id === entryId; })
+      : null;
+    if (!entry) return;
+    const persona = monoSafePersonas().find(function(item) { return String(item.id) === String(entry.personaId); });
+    if (!persona) return;
+    const contentEl = document.getElementById('diaryPageContent');
+    const origHTML = contentEl ? contentEl.innerHTML : '';
+    if (contentEl) {
+      contentEl.innerHTML = '<div class="diary-regen-overlay"><div class="diary-loading"><div class="diary-loading-dot"><span></span><span></span><span></span></div><div>正在重新生成...</div></div></div>';
+    }
+    try {
+      const relCtx = (typeof _mwBuildRelInjectForChar === 'function') ? (_mwBuildRelInjectForChar(persona.name, null, false) || '') : '';
+      const result = await monoRegenerateDiaryText(persona, relCtx, String(entry.content || '').trim());
+      const diaryLangBundle = await monoMaybeAttachDiaryTranslations(persona, result.lang, result.content);
+      entry.content = result.content;
+      entry.translation = diaryLangBundle.translation;
+      entry.translationLines = diaryLangBundle.translationLines;
+      localStorage.setItem(monoSafeDiaryKey(), JSON.stringify(diaryData));
+      if (typeof _generateCalMemos === 'function') {
+        try { await _generateCalMemos(persona.id, entry); } catch (err) {}
+      }
+      if (typeof _buildDiaryPages === 'function') _buildDiaryPages();
+      if (typeof _renderCurrentPage === 'function') _renderCurrentPage(false);
+      if (typeof renderDiary === 'function') renderDiary();
+      if (typeof renderDiaryShelf === 'function') renderDiaryShelf();
+    } catch (err) {
+      if (contentEl) contentEl.innerHTML = origHTML;
+      alert('重新生成失败：' + err.message);
+    }
+  };
+  try { diaryRegenEntry = window.diaryRegenEntry; } catch (err) {}
+
+  window.generateAutoDiaryOnly = async function(personaId) {
+    const conf = monoSafeApiConfig();
+    if (!conf.url || !conf.key || !conf.model) return;
+    const persona = monoSafePersonas().find(function(item) { return String(item.id) === String(personaId); });
+    if (!persona) return;
+    try {
+      const relCtx = (typeof _mwBuildRelInjectForChar === 'function') ? (_mwBuildRelInjectForChar(persona.name, null, false) || '') : '';
+      const result = await monoGenerateDiaryText(persona, relCtx);
+      const diaryLangBundle = await monoMaybeAttachDiaryTranslations(persona, result.lang, result.content);
+      if (typeof diaryData === 'undefined' || !Array.isArray(diaryData)) window.diaryData = [];
+      diaryData.unshift({
+        id: Date.now(),
+        author: persona.name + ' 的日记',
+        authorType: 'persona',
+        personaId: persona.id,
+        content: result.content,
+        translation: diaryLangBundle.translation,
+        translationLines: diaryLangBundle.translationLines,
+        date: Date.now()
+      });
+      localStorage.setItem(monoSafeDiaryKey(), JSON.stringify(diaryData));
+      if (typeof renderDiaryTabs === 'function') renderDiaryTabs();
+      if (typeof renderDiary === 'function') renderDiary();
+      if (typeof dispatchNotification === 'function') dispatchNotification(persona.id, persona.name, '写了新日记', persona.avatar);
+    } catch (err) {
+      if (typeof _showApiErrorToast === 'function') _showApiErrorToast('自动日记生成失败', err);
+      else console.warn('Auto-diary failed:', err && err.message ? err.message : err);
+    }
+  };
+  try { generateAutoDiaryOnly = window.generateAutoDiaryOnly; } catch (err) {}
+
+  window._confirmMomentsPersona = async function(pid) {
+    const overlay = document.getElementById('_momentsPicker');
+    if (overlay) overlay.remove();
+    const persona = monoSafePersonas().find(function(item) { return String(item.id) === String(pid); });
+    if (!persona) return;
+    const btn = document.querySelector('#momentsPage .moments-pill-btn[onclick="updateMoments()"]');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 生成中...';
+    }
+    if (typeof _showMomentsLoadingCard === 'function') _showMomentsLoadingCard(persona);
+    try {
+      const relCtx = (typeof _mwBuildRelInjectForChar === 'function') ? (_mwBuildRelInjectForChar(persona.name, null, false) || '') : '';
+      const result = await monoGenerateMomentsText(persona, relCtx, '约50-100字');
+      let translation = '';
+      if (result.lang && persona.enableTranslation !== false) {
+        translation = await monoTranslateToZh(result.content);
+      }
+      if (typeof maybeEvolvePersonaMomentsIdentity === 'function') maybeEvolvePersonaMomentsIdentity(persona);
+      if (typeof momentsData === 'undefined' || !Array.isArray(momentsData)) window.momentsData = [];
+      momentsData.unshift({
+        id: Date.now(),
+        author: persona.name,
+        avatar: persona.avatar,
+        authorType: 'persona',
+        personaId: persona.id,
+        authorProfileName: persona.momentsNickname || persona.name,
+        content: result.content,
+        translation: translation,
+        time: Date.now(),
+        comments: [],
+        likes: Math.random() > 0.4 ? [monoSafeUserName()] : []
+      });
+      localStorage.setItem('mono_moments', JSON.stringify(momentsData));
+      if (typeof _hideMomentsLoadingCard === 'function') _hideMomentsLoadingCard();
+      if (typeof renderMoments === 'function') renderMoments();
+      if (typeof dispatchNotification === 'function') {
+        dispatchNotification(persona.id, persona.name, '发布了朋友圈：' + result.content.substring(0, 40), persona.avatar);
+      }
+      alert('朋友圈已根据最近互动更新！');
+    } catch (err) {
+      if (typeof _hideMomentsLoadingCard === 'function') _hideMomentsLoadingCard();
+      alert('更新朋友圈失败: ' + err.message);
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-sparkles"></i> AI动态';
+      }
+    }
+  };
+  try { _confirmMomentsPersona = window._confirmMomentsPersona; } catch (err) {}
+
+  window.generateAutoMomentsPost = async function(personaId) {
+    const conf = monoSafeApiConfig();
+    if (!conf.url || !conf.key || !conf.model) return;
+    const persona = monoSafePersonas().find(function(item) { return String(item.id) === String(personaId); });
+    if (!persona) return;
+    if (typeof _showMomentsLoadingCard === 'function') _showMomentsLoadingCard(persona);
+    try {
+      const relCtx = (typeof _mwBuildRelInjectForChar === 'function') ? (_mwBuildRelInjectForChar(persona.name, null, false) || '') : '';
+      const result = await monoGenerateMomentsText(persona, relCtx, '约30-80字');
+      if (typeof maybeEvolvePersonaMomentsIdentity === 'function') maybeEvolvePersonaMomentsIdentity(persona);
+      if (typeof momentsData === 'undefined' || !Array.isArray(momentsData)) window.momentsData = [];
+      let editedRepost = false;
+      if (Math.random() < 0.16) {
+        const idx = momentsData.findIndex(function(item) { return String(item.personaId || '') === String(persona.id); });
+        if (idx >= 0) {
+          momentsData.splice(idx, 1);
+          editedRepost = true;
+        }
+      }
+      momentsData.unshift({
+        id: Date.now(),
+        author: persona.name,
+        avatar: persona.avatar,
+        authorType: 'persona',
+        personaId: persona.id,
+        authorProfileName: persona.momentsNickname || persona.name,
+        content: result.content,
+        time: Date.now(),
+        comments: [],
+        likes: [],
+        editedRepost: editedRepost
+      });
+      localStorage.setItem('mono_moments', JSON.stringify(momentsData));
+      if (typeof _hideMomentsLoadingCard === 'function') _hideMomentsLoadingCard();
+      if (typeof renderMoments === 'function') renderMoments();
+      if (typeof dispatchNotification === 'function') dispatchNotification(persona.id, persona.name, '发布了新的朋友圈动态', persona.avatar);
+    } catch (err) {
+      if (typeof _hideMomentsLoadingCard === 'function') _hideMomentsLoadingCard();
+      if (typeof _showApiErrorToast === 'function') _showApiErrorToast('自动朋友圈发布失败', err);
+      else console.warn('Auto-moments failed:', err && err.message ? err.message : err);
+    }
+  };
+  try { generateAutoMomentsPost = window.generateAutoMomentsPost; } catch (err) {}
+})();
+</script>
+
 </body>
 </html>

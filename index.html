@@ -1,29 +1,4 @@
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head><base href="https://d16ilfvy4mv02r.cloudfront.net/workspaces/sh0bDVYUIEw8H1dpwjAJvINuiJ6ETxg0/6c9a375e-adcc-44e2-9ec5-2d1ce63bc50b/files/">
@@ -195,18 +170,21 @@ async function bgGenerateAndNotify() {
     if (hasVisibleClient) return;
     for (const p of personaList) {
       if (!p.autoMsg) continue;
+      if (p.offlineActive) continue;
       const minMs = Math.max(5, p.autoMsgMinInterval || 60) * 60 * 1000;
       const maxMs = Math.max(minMs, (p.autoMsgMaxInterval || 120) * 60 * 1000);
-      const lastAutoTime = p.lastAutoMsgTime || 0;
-      if (Date.now() - lastAutoTime < minMs) continue;
+      const lastAutoTime = Number(p.lastAutoMsgTime || 0) || 0;
+      const lastUserTime = Number(p.lastUserMsgTime || 0) || 0;
+      const anchorTime = Math.max(lastAutoTime, lastUserTime);
+      if (anchorTime && (Date.now() - anchorTime) < minMs) continue;
       const recentChat = (p.recentHistory || []).map(m => m.role + ': ' + m.content).join('\n').substring(0, 2000);
       const now = new Date();
       const timeStr = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
       const _h = now.getHours();
       let _period = _h < 5 ? '深夜/凌晨' : _h < 9 ? '清晨/早上' : _h < 12 ? '上午' : _h < 14 ? '中午' : _h < 18 ? '下午' : _h < 20 ? '傍晚' : _h < 23 ? '晚上' : '深夜';
       let _timeSince = '';
-      if (lastAutoTime) {
-        const diffMin = Math.floor((Date.now() - lastAutoTime) / 60000);
+      if (anchorTime) {
+        const diffMin = Math.floor((Date.now() - anchorTime) / 60000);
         if (diffMin < 60) _timeSince = `距上次对话约${diffMin}分钟`;
         else if (diffMin < 1440) _timeSince = `距上次对话约${Math.floor(diffMin/60)}小时`;
         else _timeSince = `距上次对话已过${Math.floor(diffMin/1440)}天`;
@@ -19785,8 +19763,14 @@ body.editor-modal-open #chatPage .app-back-bar {
     <!-- 情感连贯性 Heart Voice -->
     <div class="custom-section" style="border-top:1px solid #eee;padding-top:20px;">
       <div class="custom-section-title"><i class="fas fa-heartbeat" style="margin-right:6px;color:#e91e63;"></i>情感连贯性 Heart Voice</div>
-      <p style="font-size:10px;color:#999;margin-bottom:6px;">已自动启用：每次回复后 AI 会记录内心状态（情绪、心率、心声），下次对话时从上次停下的情绪自然延续，不再每次"重置情绪"。</p>
+      <p style="font-size:10px;color:#999;margin-bottom:6px;">可分别控制“是否生成心声”和“是否显示心声”。关闭生成后，将不再向 API 请求心声内容。</p>
       <div id="lastHeartVoicePreview" style="background:#fff0f5;border:1px solid #fcc;border-radius:8px;padding:10px;font-size:11px;color:#c0567a;display:none;"></div>
+      <div style="margin-top:10px;display:flex;align-items:flex-start;gap:8px;">
+        <input type="checkbox" id="pHeartVoiceGenerateEnabled" style="width:16px;height:16px;accent-color:#e91e63;">
+        <label for="pHeartVoiceGenerateEnabled" style="font-size:11px;color:#555;cursor:pointer;">启用角色心声生成
+          <span style="display:block;font-size:10px;color:#999;margin-top:2px;">关闭后不会再额外生成读消息心声，也不会在正常回复请求里要求 AI 产出心声。</span>
+        </label>
+      </div>
       <div style="margin-top:10px;display:flex;align-items:center;gap:8px;">
         <input type="checkbox" id="pShowHeartVoiceInHeader" style="width:16px;height:16px;accent-color:#e91e63;" onchange="_updateHeartVoiceModeUI()">
         <label for="pShowHeartVoiceInHeader" style="font-size:11px;color:#555;cursor:pointer;">启用角色心声显示</label>
@@ -20204,6 +20188,9 @@ function clearLastHeartVoice() {
   if (hvPreview) hvPreview.style.display = 'none';
   _clearHeartVoicePopup();
   updateHeadHeartVoice(p);
+}
+function _isHeartVoiceGenerationEnabled(p) {
+  return !!(!p || p.heartVoiceGenerateEnabled !== false);
 }
 function _normalizePersonaHeartVoiceSettings(p) {
   var enabled = !!(p && (p.heartVoiceEnabled != null ? p.heartVoiceEnabled : p.showHeartVoiceInHeader));
@@ -22730,6 +22717,7 @@ function _queueHeartVoicePopupLines(p, lines, opts) {
 async function maybeGenerateReadHeartVoicePopup(personaId, userText) {
   var p = personas.find(function(item) { return String(item.id) === String(personaId); });
   if (!p || !_heartVoicePopupContextMatches(p, {})) return;
+  if (!_isHeartVoiceGenerationEnabled(p)) return;
   if (!apiConfig.url || !apiConfig.key) return;
   var cleanUserText = String(userText || '').trim();
   if (!cleanUserText) return;
@@ -24078,6 +24066,8 @@ function sendMessage() {
     } catch(e) { p.history = []; }
   }
   p.history.push(newMsg);
+  p._lastUserChatTs = newMsg.timestamp;
+  p.lastUserMessageTime = newMsg.timestamp;
   input.value = '';
   cancelQuote();
   saveData();
@@ -24088,11 +24078,10 @@ function sendMessage() {
   if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
   // Track chat message for task system
   if (typeof taskTrackChatMessage === 'function') taskTrackChatMessage(currentId, newMsg.timestamp);
-  // 侦测用戶是否要求角色转帳
   checkUserTransferIntent(text, p);
   // 根据角色回复模式决定是否自动回复
   if (typeof _handleAutoReplyAfterSend === "function") _handleAutoReplyAfterSend(currentId);
-  if (_heartVoiceModeAllowsPopup(p) && _isHeartVoiceUiVisible()) {
+  if (_isHeartVoiceGenerationEnabled(p) && (p.replyMode || 'manual') === 'manual' && _heartVoiceModeAllowsPopup(p) && _isHeartVoiceUiVisible()) {
     maybeGenerateReadHeartVoicePopup(currentId, text);
   }
 }
@@ -24163,6 +24152,7 @@ function saveCurrentPersona() {
     memoryCount: p.memoryCount,
     memoryCore: p.memoryCore || [],
     lastHeartVoice: p.lastHeartVoice || null,
+    heartVoiceGenerateEnabled: _isHeartVoiceGenerationEnabled(p),
     showHeartVoiceInHeader: !!p.showHeartVoiceInHeader,
     heartVoiceEnabled: !!(p.heartVoiceEnabled != null ? p.heartVoiceEnabled : p.showHeartVoiceInHeader),
     heartVoiceMode: (p.heartVoiceMode === 'popup' ? 'popup' : 'header'),
@@ -24237,6 +24227,7 @@ function openEditor(isEdit=false) {
     if (document.getElementById('monoMomentsOfflineSetting')) document.getElementById('monoMomentsOfflineSetting').checked = true;
     document.getElementById('pAutoSummary').checked = false;
     document.getElementById('pAutoSummaryInterval').value = 20;
+    document.getElementById('pHeartVoiceGenerateEnabled').checked = true;
     document.getElementById('pShowHeartVoiceInHeader').checked = false;
     document.getElementById('pHeartVoiceModeHeader').checked = true;
     document.getElementById('pHeartVoiceModePopup').checked = false;
@@ -24319,6 +24310,7 @@ function openEditor(isEdit=false) {
     document.getElementById('pAutoSummary').checked = !!p.autoSummary;
     document.getElementById('pAutoSummaryInterval').value = p.autoSummaryInterval || 20;
     var _hvSettings = _normalizePersonaHeartVoiceSettings(p);
+    document.getElementById('pHeartVoiceGenerateEnabled').checked = _isHeartVoiceGenerationEnabled(p);
     document.getElementById('pShowHeartVoiceInHeader').checked = !!_hvSettings.enabled;
     document.getElementById('pHeartVoiceModeHeader').checked = (_hvSettings.mode === 'header');
     document.getElementById('pHeartVoiceModePopup').checked = (_hvSettings.mode === 'popup');
@@ -24429,17 +24421,18 @@ function savePersona() {
   const _saveOshiBlue = (document.getElementById('pOshiGlowBlue') || {}).value || '#cfd3d8';
   const _saveOshiPink = (document.getElementById('pOshiGlowPink') || {}).value || '#e5e5e5';
   const _saveOshiShowHeart = !document.getElementById('pOshiGlowShowHeart') || document.getElementById('pOshiGlowShowHeart').checked;
+  const heartVoiceGenerateEnabled = !!document.getElementById('pHeartVoiceGenerateEnabled').checked;
   const heartVoiceEnabled = !!document.getElementById('pShowHeartVoiceInHeader').checked;
   const heartVoiceMode = _getSelectedHeartVoiceMode();
   if (currentId && !document.getElementById('delBtn').classList.contains('hidden')) {
     const p = personas.find(x=>x.id==currentId);
     const _saveAiColor = document.getElementById('pBubbleAiFontColorEnabled').checked ? (document.getElementById('pBubbleAiFontColor').value||'') : '';
     const _saveUserColor = document.getElementById('pBubbleUserFontColorEnabled').checked ? (document.getElementById('pBubbleUserFontColor').value||'') : '';
-    if(p){ p.name=name; p.nickname=document.getElementById('pNick').value.trim(); p.persona=document.getElementById('pPersona').value.trim()||'一个简单的角色设定'; p.avatar=avatar; p.minReplyCount=minReply; p.maxReplyCount=maxReply; p.temperature=temperature; p.timeAwareness=timeAwareness; p.allowSticker=allowSticker; p.stickerLibraryIds=stickerLibraryIds; p.allowVoice=allowVoice; p.voiceId=voiceId; p.voiceSpeed=voiceSpeed; p.voiceLang=voiceLang; p.outputLang=outputLang; p.enableTranslation=enableTranslation; p.translateLang=translateLang; p.voiceFreq=voiceFreq; p.memoryCount=parseInt(document.getElementById('pMemoryCount').value)||100; p.autoMsg=document.getElementById('pAutoMsg').checked; p.autoMsgMinInterval=Math.max(5,parseInt(document.getElementById('pAutoMsgMinInterval').value)||60); p.autoMsgMaxInterval=Math.max(p.autoMsgMinInterval,parseInt(document.getElementById('pAutoMsgMaxInterval').value)||120); p.autoDiary=document.getElementById('pAutoDiary').checked; p.autoDiaryTime=document.getElementById('pAutoDiaryTime').value||'21:00'; p.diaryIncludeOfflineMemory=!document.getElementById('monoDiaryOfflineSetting') || document.getElementById('monoDiaryOfflineSetting').checked; p.autoMoments=document.getElementById('pAutoMoments').checked; p.autoMomentsTime=document.getElementById('pAutoMomentsTime').value||'20:00'; p.momentsIncludeOfflineMemory=!document.getElementById('monoMomentsOfflineSetting') || document.getElementById('monoMomentsOfflineSetting').checked; p.autoSummary=document.getElementById('pAutoSummary').checked; p.autoSummaryInterval=parseInt(document.getElementById('pAutoSummaryInterval').value)||20; p.bubbleAiCss=document.getElementById('pBubbleAiCss').value.trim(); p.bubbleUserCss=document.getElementById('pBubbleUserCss').value.trim(); p.chatRoomCustomCss=(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(); p.bubbleAiFontColor=_saveAiColor; p.bubbleUserFontColor=_saveUserColor; p.bubblePreset=(document.getElementById('pBubblePreset')||{}).value||'none'; p.oshiGlowBlue=_saveOshiBlue; p.oshiGlowPink=_saveOshiPink; p.oshiGlowShowHeart=_saveOshiShowHeart; p.metaTimeColor=(document.getElementById('pMetaTimeColor')||{}).value||''; p.metaNameColor=(document.getElementById('pMetaNameColor')||{}).value||''; p.metaReadColor=(document.getElementById('pMetaReadColor')||{}).value||''; p.metaUnreadColor=(document.getElementById('pMetaUnreadColor')||{}).value||''; if(document.getElementById('pChatBgImg').src && document.getElementById('pChatBgImg').style.display!=='none') p.chatBgImage=document.getElementById('pChatBgImg').src; else p.chatBgImage=''; p.replyMode=_getSelectedReplyMode(); var _spd=document.querySelector('input[name="pReplySpeed"]:checked'); p.replySpeed=_spd?_spd.value:'fast'; p.replySpeedCustomMin=parseInt(document.getElementById('pReplySpeedCustomMin').value)||0; p.replySpeedCustomMax=parseInt(document.getElementById('pReplySpeedCustomMax').value)||10; p.showHeartVoiceInHeader=heartVoiceEnabled; p.heartVoiceEnabled=heartVoiceEnabled; p.heartVoiceMode=heartVoiceMode; p.allowCallTts=document.getElementById('pAllowCallTts').checked; if (p.momentsNickname == null || !String(p.momentsNickname).trim()) p.momentsNickname = name; if (p.momentsSignature == null) p.momentsSignature = ''; if (p.momentsBanner == null) p.momentsBanner = ''; }
+    if(p){ p.name=name; p.nickname=document.getElementById('pNick').value.trim(); p.persona=document.getElementById('pPersona').value.trim()||'一个简单的角色设定'; p.avatar=avatar; p.minReplyCount=minReply; p.maxReplyCount=maxReply; p.temperature=temperature; p.timeAwareness=timeAwareness; p.allowSticker=allowSticker; p.stickerLibraryIds=stickerLibraryIds; p.allowVoice=allowVoice; p.voiceId=voiceId; p.voiceSpeed=voiceSpeed; p.voiceLang=voiceLang; p.outputLang=outputLang; p.enableTranslation=enableTranslation; p.translateLang=translateLang; p.voiceFreq=voiceFreq; p.memoryCount=parseInt(document.getElementById('pMemoryCount').value)||100; p.autoMsg=document.getElementById('pAutoMsg').checked; p.autoMsgMinInterval=Math.max(5,parseInt(document.getElementById('pAutoMsgMinInterval').value)||60); p.autoMsgMaxInterval=Math.max(p.autoMsgMinInterval,parseInt(document.getElementById('pAutoMsgMaxInterval').value)||120); p.autoDiary=document.getElementById('pAutoDiary').checked; p.autoDiaryTime=document.getElementById('pAutoDiaryTime').value||'21:00'; p.diaryIncludeOfflineMemory=!document.getElementById('monoDiaryOfflineSetting') || document.getElementById('monoDiaryOfflineSetting').checked; p.autoMoments=document.getElementById('pAutoMoments').checked; p.autoMomentsTime=document.getElementById('pAutoMomentsTime').value||'20:00'; p.momentsIncludeOfflineMemory=!document.getElementById('monoMomentsOfflineSetting') || document.getElementById('monoMomentsOfflineSetting').checked; p.autoSummary=document.getElementById('pAutoSummary').checked; p.autoSummaryInterval=parseInt(document.getElementById('pAutoSummaryInterval').value)||20; p.bubbleAiCss=document.getElementById('pBubbleAiCss').value.trim(); p.bubbleUserCss=document.getElementById('pBubbleUserCss').value.trim(); p.chatRoomCustomCss=(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(); p.bubbleAiFontColor=_saveAiColor; p.bubbleUserFontColor=_saveUserColor; p.bubblePreset=(document.getElementById('pBubblePreset')||{}).value||'none'; p.oshiGlowBlue=_saveOshiBlue; p.oshiGlowPink=_saveOshiPink; p.oshiGlowShowHeart=_saveOshiShowHeart; p.metaTimeColor=(document.getElementById('pMetaTimeColor')||{}).value||''; p.metaNameColor=(document.getElementById('pMetaNameColor')||{}).value||''; p.metaReadColor=(document.getElementById('pMetaReadColor')||{}).value||''; p.metaUnreadColor=(document.getElementById('pMetaUnreadColor')||{}).value||''; if(document.getElementById('pChatBgImg').src && document.getElementById('pChatBgImg').style.display!=='none') p.chatBgImage=document.getElementById('pChatBgImg').src; else p.chatBgImage=''; p.replyMode=_getSelectedReplyMode(); var _spd=document.querySelector('input[name="pReplySpeed"]:checked'); p.replySpeed=_spd?_spd.value:'fast'; p.replySpeedCustomMin=parseInt(document.getElementById('pReplySpeedCustomMin').value)||0; p.replySpeedCustomMax=parseInt(document.getElementById('pReplySpeedCustomMax').value)||10; p.heartVoiceGenerateEnabled=heartVoiceGenerateEnabled; p.showHeartVoiceInHeader=heartVoiceEnabled; p.heartVoiceEnabled=heartVoiceEnabled; p.heartVoiceMode=heartVoiceMode; p.allowCallTts=document.getElementById('pAllowCallTts').checked; if (p.momentsNickname == null || !String(p.momentsNickname).trim()) p.momentsNickname = name; if (p.momentsSignature == null) p.momentsSignature = ''; if (p.momentsBanner == null) p.momentsBanner = ''; }
   } else {
     const _saveAiColor = document.getElementById('pBubbleAiFontColorEnabled').checked ? (document.getElementById('pBubbleAiFontColor').value||'') : '';
     const _saveUserColor = document.getElementById('pBubbleUserFontColorEnabled').checked ? (document.getElementById('pBubbleUserFontColor').value||'') : '';
-    const newP = { id:Date.now(), name, nickname:document.getElementById('pNick').value.trim()||name, momentsNickname:name, momentsSignature:'', momentsBanner:'', persona:document.getElementById('pPersona').value.trim()||'一个简单的角色设定', avatar, history:[], memoryCore:[], lastHeartVoice:null, autoSummary:document.getElementById('pAutoSummary').checked, autoSummaryInterval:parseInt(document.getElementById('pAutoSummaryInterval').value)||20, minReplyCount:minReply, maxReplyCount:maxReply, temperature:temperature, timeAwareness:timeAwareness, allowSticker:allowSticker, stickerLibraryIds:stickerLibraryIds, allowVoice:allowVoice, voiceId:voiceId, voiceSpeed:voiceSpeed, voiceLang:voiceLang, outputLang:outputLang, enableTranslation:enableTranslation, translateLang:translateLang, voiceFreq:voiceFreq, memoryCount:parseInt(document.getElementById('pMemoryCount').value)||100, autoMsg:document.getElementById('pAutoMsg').checked, autoMsgMinInterval:Math.max(5,parseInt(document.getElementById('pAutoMsgMinInterval').value)||60), autoMsgMaxInterval:Math.max(5,parseInt(document.getElementById('pAutoMsgMaxInterval').value)||120), autoDiary:document.getElementById('pAutoDiary').checked, autoDiaryTime:document.getElementById('pAutoDiaryTime').value||'21:00', diaryIncludeOfflineMemory:!document.getElementById('monoDiaryOfflineSetting') || document.getElementById('monoDiaryOfflineSetting').checked, autoMoments:document.getElementById('pAutoMoments').checked, autoMomentsTime:document.getElementById('pAutoMomentsTime').value||'20:00', momentsIncludeOfflineMemory:!document.getElementById('monoMomentsOfflineSetting') || document.getElementById('monoMomentsOfflineSetting').checked, bubbleAiCss:document.getElementById('pBubbleAiCss').value.trim(), bubbleUserCss:document.getElementById('pBubbleUserCss').value.trim(), chatRoomCustomCss:(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(), bubbleAiFontColor:_saveAiColor, bubbleUserFontColor:_saveUserColor, bubblePreset:(document.getElementById('pBubblePreset')||{}).value||'none', oshiGlowBlue:_saveOshiBlue, oshiGlowPink:_saveOshiPink, oshiGlowShowHeart:_saveOshiShowHeart, metaTimeColor:(document.getElementById('pMetaTimeColor')||{}).value||'', metaNameColor:(document.getElementById('pMetaNameColor')||{}).value||'', metaReadColor:(document.getElementById('pMetaReadColor')||{}).value||'', metaUnreadColor:(document.getElementById('pMetaUnreadColor')||{}).value||'', chatBgImage:(document.getElementById('pChatBgImg').style.display!=='none'?document.getElementById('pChatBgImg').src:''), replyMode:_getSelectedReplyMode(), replySpeed:(document.querySelector('input[name="pReplySpeed"]:checked')||{}).value||'fast', replySpeedCustomMin:parseInt(document.getElementById('pReplySpeedCustomMin').value)||0, replySpeedCustomMax:parseInt(document.getElementById('pReplySpeedCustomMax').value)||10, showHeartVoiceInHeader:heartVoiceEnabled, heartVoiceEnabled:heartVoiceEnabled, heartVoiceMode:heartVoiceMode, allowCallTts:document.getElementById('pAllowCallTts').checked };
+    const newP = { id:Date.now(), name, nickname:document.getElementById('pNick').value.trim()||name, momentsNickname:name, momentsSignature:'', momentsBanner:'', persona:document.getElementById('pPersona').value.trim()||'一个简单的角色设定', avatar, history:[], memoryCore:[], lastHeartVoice:null, autoSummary:document.getElementById('pAutoSummary').checked, autoSummaryInterval:parseInt(document.getElementById('pAutoSummaryInterval').value)||20, minReplyCount:minReply, maxReplyCount:maxReply, temperature:temperature, timeAwareness:timeAwareness, allowSticker:allowSticker, stickerLibraryIds:stickerLibraryIds, allowVoice:allowVoice, voiceId:voiceId, voiceSpeed:voiceSpeed, voiceLang:voiceLang, outputLang:outputLang, enableTranslation:enableTranslation, translateLang:translateLang, voiceFreq:voiceFreq, memoryCount:parseInt(document.getElementById('pMemoryCount').value)||100, autoMsg:document.getElementById('pAutoMsg').checked, autoMsgMinInterval:Math.max(5,parseInt(document.getElementById('pAutoMsgMinInterval').value)||60), autoMsgMaxInterval:Math.max(5,parseInt(document.getElementById('pAutoMsgMaxInterval').value)||120), autoDiary:document.getElementById('pAutoDiary').checked, autoDiaryTime:document.getElementById('pAutoDiaryTime').value||'21:00', diaryIncludeOfflineMemory:!document.getElementById('monoDiaryOfflineSetting') || document.getElementById('monoDiaryOfflineSetting').checked, autoMoments:document.getElementById('pAutoMoments').checked, autoMomentsTime:document.getElementById('pAutoMomentsTime').value||'20:00', momentsIncludeOfflineMemory:!document.getElementById('monoMomentsOfflineSetting') || document.getElementById('monoMomentsOfflineSetting').checked, bubbleAiCss:document.getElementById('pBubbleAiCss').value.trim(), bubbleUserCss:document.getElementById('pBubbleUserCss').value.trim(), chatRoomCustomCss:(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(), bubbleAiFontColor:_saveAiColor, bubbleUserFontColor:_saveUserColor, bubblePreset:(document.getElementById('pBubblePreset')||{}).value||'none', oshiGlowBlue:_saveOshiBlue, oshiGlowPink:_saveOshiPink, oshiGlowShowHeart:_saveOshiShowHeart, metaTimeColor:(document.getElementById('pMetaTimeColor')||{}).value||'', metaNameColor:(document.getElementById('pMetaNameColor')||{}).value||'', metaReadColor:(document.getElementById('pMetaReadColor')||{}).value||'', metaUnreadColor:(document.getElementById('pMetaUnreadColor')||{}).value||'', chatBgImage:(document.getElementById('pChatBgImg').style.display!=='none'?document.getElementById('pChatBgImg').src:''), replyMode:_getSelectedReplyMode(), replySpeed:(document.querySelector('input[name="pReplySpeed"]:checked')||{}).value||'fast', replySpeedCustomMin:parseInt(document.getElementById('pReplySpeedCustomMin').value)||0, replySpeedCustomMax:parseInt(document.getElementById('pReplySpeedCustomMax').value)||10, heartVoiceGenerateEnabled:heartVoiceGenerateEnabled, showHeartVoiceInHeader:heartVoiceEnabled, heartVoiceEnabled:heartVoiceEnabled, heartVoiceMode:heartVoiceMode, allowCallTts:document.getElementById('pAllowCallTts').checked };
     personas.push(newP); currentId=newP.id;
   }
   saveData(); renderContactList(); if(currentId) selectPersona(currentId); closeEditor(); renderDiaryTabs();
@@ -32030,7 +32023,7 @@ async function tryPersonaSendSticker(p) {
     const s = stickerCandidates[Math.floor(Math.random() * stickerCandidates.length)];
     await new Promise(r => setTimeout(r, 600 + Math.random() * 1000));
     const stickerDesc = s._visionDesc || s.caption || '无描述';
-    p.history.push({ role: 'assistant', msgType: 'sticker', stickerSrc: s.src, caption: s.caption, content: '[角色发送了表情包: ' + stickerDesc + ']' });
+    p.history.push({ role: 'assistant', msgType: 'sticker', stickerSrc: s.src, caption: s.caption, content: '[角色发送了表情包: ' + stickerDesc + ']', timestamp: Date.now() });
     saveData(); if (currentId == p.id) renderMessages();
     return;
   }
@@ -32060,7 +32053,7 @@ ${recentChat}
     const s = stickerCandidates[idx];
     const stickerDesc = s._visionDesc || s.caption || '无描述';
     await new Promise(res => setTimeout(res, 700 + Math.random() * 1000));
-    p.history.push({ role: 'assistant', msgType: 'sticker', stickerSrc: s.src, caption: s.caption, content: '[角色发送了表情包: ' + stickerDesc + ']' });
+    p.history.push({ role: 'assistant', msgType: 'sticker', stickerSrc: s.src, caption: s.caption, content: '[角色发送了表情包: ' + stickerDesc + ']', timestamp: Date.now() });
     saveData(); if (currentId == p.id) renderMessages();
   } catch(e) { console.warn('tryPersonaSendSticker error:', e); }
 }
@@ -33233,10 +33226,14 @@ async function sendImageMessage(base64DataUrl) {
     }
   }
   const _imageMsgTs = Date.now();
-  _pushChatImageMessage(p, 'user', base64DataUrl, {
+  const _imageMsg = _pushChatImageMessage(p, 'user', base64DataUrl, {
     imageDesc: imageDesc,
     timestamp: _imageMsgTs
   });
+  if (_imageMsg && _imageMsg.timestamp) {
+    p._lastUserChatTs = _imageMsg.timestamp;
+    p.lastUserMessageTime = _imageMsg.timestamp;
+  }
   saveData();
   renderMessages();
   renderContactList();
@@ -33280,6 +33277,8 @@ function sendChatTextImageMessage() {
     textImagePrompt: desc,
     timestamp: ts
   });
+  p._lastUserChatTs = ts;
+  p.lastUserMessageTime = ts;
   saveData();
   renderMessages();
   renderContactList();
@@ -33330,6 +33329,8 @@ function sendChatSimVoiceMessage() {
     simulated: true,
     timestamp: ts
   });
+  p._lastUserChatTs = ts;
+  p.lastUserMessageTime = ts;
   saveData();
   renderMessages();
   renderContactList();
@@ -33389,6 +33390,8 @@ function sendChatTakeoutCard() {
     content: _buildTakeoutHistoryText(takeoutData),
     timestamp: ts
   });
+  p._lastUserChatTs = ts;
+  p.lastUserMessageTime = ts;
   saveData();
   renderMessages();
   renderContactList();
@@ -33984,7 +33987,10 @@ function sendStickerFromLibrary(idx) {
   const s = stickers[idx];
   if (!s) return;
   const p = personas.find(x => x.id == currentId);
-  p.history.push({ role: 'user', msgType: 'sticker', stickerSrc: s.src, caption: s.caption, content: '[表情包' + (s.caption ? '（' + s.caption + '）' : '') + ']' });
+  const ts = Date.now();
+  p.history.push({ role: 'user', msgType: 'sticker', stickerSrc: s.src, caption: s.caption, content: '[表情包' + (s.caption ? '（' + s.caption + '）' : '') + ']', timestamp: ts });
+  p._lastUserChatTs = ts;
+  p.lastUserMessageTime = ts;
   saveData(); renderMessages(); renderContactList();
   closeStickerModal();
   // 根据角色回复模式决定是否自动回复
@@ -34744,12 +34750,55 @@ function _abortOngoingAutoReply() {
   var typing = document.getElementById('typingArea');
   if (typing) typing.classList.add('hidden');
 }
+function _markPersonaUserActivity(p, ts) {
+  if (!p) return;
+  var safeTs = Number(ts) || Date.now();
+  p._lastUserChatTs = safeTs;
+  p.lastUserMessageTime = safeTs;
+}
+function _getPersonaLastUserActivityTs(p) {
+  if (!p) return 0;
+  var latest = Math.max(Number(p._lastUserChatTs || 0), Number(p.lastUserMessageTime || 0));
+  if (Array.isArray(p.history)) {
+    for (var i = p.history.length - 1; i >= 0; i--) {
+      var msg = p.history[i];
+      if (msg && msg.role === 'user' && msg.timestamp) {
+        latest = Math.max(latest, Number(msg.timestamp) || 0);
+        break;
+      }
+    }
+  }
+  return latest;
+}
+function _getPersonaLastAutoMessageTs(p) {
+  if (!p || !Array.isArray(p.history)) return 0;
+  if (p._lastAutoMsgTime) return Number(p._lastAutoMsgTime) || 0;
+  for (var i = p.history.length - 1; i >= 0; i--) {
+    var msg = p.history[i];
+    if (msg && msg._autoMsgTime) return Number(msg._autoMsgTime) || 0;
+  }
+  return 0;
+}
+function _getPersonaAutoMsgAnchorTs(p) {
+  return Math.max(_getPersonaLastUserActivityTs(p), _getPersonaLastAutoMessageTs(p));
+}
+function _isOfflineModeActiveForPersona(personaId) {
+  try {
+    var offlinePage = document.getElementById('offlinePage');
+    if (!offlinePage || !offlinePage.classList.contains('active')) return false;
+    if (typeof _offlineState === 'undefined' || !_offlineState) return false;
+    return String(_offlineState.personaId || '') === String(personaId || '');
+  } catch(e) {
+    return false;
+  }
+}
 // Called after user sends a message - handles auto reply based on mode
 var _lastUserSendTime = 0; // Track when user last sent a message
 var _noInterruptMinWait = 2000; // Minimum wait time (ms) in no-interrupt mode to detect if user will send more messages
 function _handleAutoReplyAfterSend(personaId) {
   var p = personas.find(function(x) { return x.id == personaId; });
   if (!p) return;
+  _markPersonaUserActivity(p, _getPersonaLastUserActivityTs(p) || Date.now());
   var mode = p.replyMode || 'manual';
   if (mode === 'manual') return; // manual mode: do nothing
   var delay = _getReplyDelay(p);
@@ -34764,7 +34813,7 @@ function _handleAutoReplyAfterSend(personaId) {
     // Abort any ongoing reply — user sent a new message, so cancel current generation
     _abortOngoingAutoReply();
     // Record the time of this user message send
-    _lastUserSendTime = Date.now();
+    _lastUserSendTime = _getPersonaLastUserActivityTs(p) || Date.now();
     // Use the larger of configured delay or minimum wait to avoid interrupting user
     var effectiveDelay = Math.max(delay, _noInterruptMinWait);
     // Auto reply after effective delay, but also debounce: reset timer on each new message
@@ -35011,6 +35060,7 @@ function _buildGcMemoryInjection(personaId) {
 async function triggerAutoReply() {
   var _replyPersonaId = currentId;
   if (!_replyPersonaId) return;
+  if (_isOfflineModeActiveForPersona(_replyPersonaId)) return;
   if (!apiConfig.url || !apiConfig.key || !apiConfig.model) return;
   const p = personas.find(x => x.id == _replyPersonaId);
   if (!p) return;
@@ -35269,7 +35319,7 @@ ${followUps ? `\n${userProfile.name} 转发后还补充说了：${followUps}` : 
   const memoryCoreContext = buildMemoryCoreContext(p);
   // ── 构建上次心声注入（情感连贯性）──
   let lastHeartVoiceInject = '';
-  if (p.lastHeartVoice) {
+  if (_isHeartVoiceGenerationEnabled(p) && p.lastHeartVoice) {
     const hv = p.lastHeartVoice;
     lastHeartVoiceInject = `\n\n# 角色的最新心声 (Your Last Recorded Heart Voice)\n---\n这是你上次回复时的内心状态，请参考此状态以保持情感连贯性：\n${JSON.stringify(hv)}\n---`;
   }
@@ -35346,7 +35396,7 @@ ${_buildPersonaIdentityPrompt(p)}
    - 大部分情况下不需要引用，直接自然回复即可
 11. 【自刻记忆】当发生了里程碑式的事件（如第一次表白、确认关系、解开误会、说了让你极度触动的话）时，你可以在回复末尾另起一行使用 \`[memory: 内容]\` 指令将这段经历永久刻入你的记忆核心。例如：\`[memory: 2025/06/01，TA第一次对我说了"我喜欢你"]\`
 12. 【消息撤回】如果你觉得有充分理由撤回你刚才说的话（如说错了、太冲动、想收回某句话），可以在下一次回复的第一条消息最前面加 \`[RECALL]\` 标签，系统会自动撤回你上一条消息。例如：\`[RECALL]等等，我刚才那话说重了。\` 不要频繁使用，只在真的需要的时候。
-${modePrompt}${quoteTip}${fwdContext}${timeContext}${transferContext}${wbInjection}${gcMemInjection}${offlineSceneInject}${readStatusInject}${typeof _buildHealthInjection === 'function' ? _buildHealthInjection(p.id) : ''}${HEART_VOICE_INSTRUCTION}`;
+${modePrompt}${quoteTip}${fwdContext}${timeContext}${transferContext}${wbInjection}${gcMemInjection}${offlineSceneInject}${readStatusInject}${typeof _buildHealthInjection === 'function' ? _buildHealthInjection(p.id) : ''}${_isHeartVoiceGenerationEnabled(p) ? HEART_VOICE_INSTRUCTION : ''}`;
   try {
     const historyToSend = p.history.slice(-memCount)
       .filter(m => !m._transferContext)
@@ -35434,7 +35484,9 @@ ${modePrompt}${quoteTip}${fwdContext}${timeContext}${transferContext}${wbInjecti
     // ── 处理角色撤回指令 [RECALL] ──
     rawContent = _processCharRecall(p, rawContent);
     // ── 解析并剥离 [heart_voice] ──
-    const hvMatch = rawContent.match(/\[heart_voice\]\s*(\{[\s\S]*?\})\s*(?:\[\/heart_voice\]|$)/);
+    const hvMatch = _isHeartVoiceGenerationEnabled(p)
+      ? rawContent.match(/\[heart_voice\]\s*(\{[\s\S]*?\})\s*(?:\[\/heart_voice\]|$)/)
+      : null;
     if (hvMatch && hvMatch[1]) {
       try {
         const hvData = _normalizeHeartVoicePayload(JSON.parse(hvMatch[1].trim()));
@@ -35472,7 +35524,8 @@ ${modePrompt}${quoteTip}${fwdContext}${timeContext}${transferContext}${wbInjecti
       throw new Error('角色回复为空，请重试。可能是API返回了无效内容。');
     }
     if (typing) typing.classList.add('hidden');
-    for (let msg of messages) {
+    for (let idx = 0; idx < messages.length; idx++) {
+      let msg = messages[idx];
       // Check if reply was cancelled (user started typing in no-interrupt mode)
       if (_autoReplyCancelled) {
         if (typing) typing.classList.add('hidden');
@@ -35492,20 +35545,17 @@ ${modePrompt}${quoteTip}${fwdContext}${timeContext}${transferContext}${wbInjecti
       }
       saveData();
     }
-    // Check if persona should send stickers
-    if (p.allowSticker) {
-      await tryPersonaSendSticker(p);
+    const normalizedReplyMessages = messages.map(function(m) { return String(m || '').trim(); }).filter(Boolean);
+    if (!_autoReplyCancelled) {
+      const latestRecentChat = p.history.slice(-(p.memoryCount || 100)).map(function(m) {
+        return `${m.role === 'user' ? userProfile.name : p.name}：${m.content || ''}`;
+      }).join('\n');
+      if (p.allowVoice) await tryPersonaSendVoice(p, normalizedReplyMessages);
+      if (p.allowSticker) await tryPersonaSendSticker(p);
+      await tryPersonaSendTextImage(p, latestRecentChat);
+      await tryPersonaInitiateTransfer(p, latestRecentChat);
+      await tryPersonaInitiateTakeout(p, latestRecentChat);
     }
-    await tryPersonaSendTextImage(p, p.history.slice(-(p.memoryCount||100)).map(m => `${m.role==='user'?userProfile.name:p.name}：${m.content||''}`).join('\n'));
-    // Check if persona should send voice
-    if (p.allowVoice) {
-      await tryPersonaSendVoice(p, messages.map(m => String(m || '').trim()));
-    }
-
-    // Check if persona wants to transfer
-    const recentChatForTransfer = p.history.slice(-(p.memoryCount||100)).map(m => `${m.role==='user'?userProfile.name:p.name}：${m.content||''}`).join('\n');
-    await tryPersonaInitiateTransfer(p, recentChatForTransfer);
-    await tryPersonaInitiateTakeout(p, recentChatForTransfer);
     spyDataCache = {};
     try { renderContactList(); } catch(e) {}
     // Black Box: generate thought record (async, non-blocking)
@@ -36195,6 +36245,7 @@ function normalizeImportData(raw) {
     if (np.autoDiaryTime == null) np.autoDiaryTime = '21:00';
     if (np.autoMoments == null) np.autoMoments = false;
     if (np.autoMomentsTime == null) np.autoMomentsTime = '20:00';
+    if (np.heartVoiceGenerateEnabled == null) np.heartVoiceGenerateEnabled = true;
     if (np.showHeartVoiceInHeader == null) np.showHeartVoiceInHeader = false;
     if (np.heartVoiceEnabled == null) np.heartVoiceEnabled = !!np.showHeartVoiceInHeader;
     if (np.heartVoiceMode !== 'header' && np.heartVoiceMode !== 'popup') np.heartVoiceMode = 'header';
@@ -38039,7 +38090,6 @@ function shouldRecordBbThought(userMsg, charReply) {
   const combined = (userMsg + charReply).toLowerCase();
   const isEmotional = emotionalKeywords.some(kw => combined.includes(kw));
   if (isEmotional) return true;
-  // Random 30% chance for normal messages
   return Math.random() < 0.3;
 }
 // ---- Feature 2: Deep Secrets ----
@@ -40301,6 +40351,8 @@ function scriptDeleteArchive(idx) {
 let notifHistory = _safeParse('mono_notif_history', []);
 let notifSettings = _safeParse('mono_notif_settings', {});
 let _autoMsgTimers = {};
+let _autoMsgLocks = {};
+let _autoMsgLastAttemptAt = {};
 let _autoDiaryTimers = {};
 let _notifToastQueue = [];
 let _notifToastShowing = false;
@@ -41198,14 +41250,11 @@ function triggerPendingAutoMessages() {
   if (typeof personas === 'undefined' || !personas) return;
   personas.forEach(function(p) {
     if (!p.autoMsg) return;
-    var minMs = Math.max(5, p.autoMsgMinInterval || 60) * 60 * 1000;
-    var lastAutoTime = 0;
-    if (p.history && p.history.length > 0) {
-      for (var i = p.history.length - 1; i >= 0; i--) {
-        if (p.history[i]._autoMsgTime) { lastAutoTime = p.history[i]._autoMsgTime; break; }
-      }
-    }
-    if (lastAutoTime > 0 && Date.now() - lastAutoTime >= minMs) {
+    if (_isOfflineModeActiveForPersona(p.id)) return;
+    var minMs = _getAutoMsgMinDelayMs(p);
+    var anchorTs = _getPersonaAutoMsgAnchorTs(p);
+    if (!anchorTs && p.history && p.history.length > 0) return;
+    if (!anchorTs || Date.now() - anchorTs >= minMs) {
       try { triggerAutoMessage(p.id); } catch(e) {}
     }
   });
@@ -41360,6 +41409,25 @@ function initNotifTracking() {
   });
 }
 // ---- Auto-message sending system ----
+function _getAutoMsgMinDelayMs(p) {
+  return Math.max(5, p && p.autoMsgMinInterval || 60) * 60 * 1000;
+}
+function _getAutoMsgMaxDelayMs(p) {
+  const minMs = _getAutoMsgMinDelayMs(p);
+  return Math.max(minMs, (p && p.autoMsgMaxInterval || 120) * 60 * 1000);
+}
+function _computeNextAutoMsgDelay(p) {
+  const minMs = _getAutoMsgMinDelayMs(p);
+  const maxMs = _getAutoMsgMaxDelayMs(p);
+  const anchorTs = _getPersonaAutoMsgAnchorTs(p);
+  if (!anchorTs) return minMs + Math.random() * (maxMs - minMs);
+  const now = Date.now();
+  const earliest = anchorTs + minMs;
+  const latest = anchorTs + maxMs;
+  if (now >= latest) return 1500 + Math.random() * 2500;
+  if (now <= earliest) return (earliest - now) + Math.random() * Math.max(0, latest - earliest);
+  return Math.random() * Math.max(1000, latest - now);
+}
 var _autoMsgTimersRunning = false;
 function startAutoMsgTimers() {
   // Prevent concurrent re-entrant calls (DOMContentLoaded safety timeout race)
@@ -41372,28 +41440,13 @@ function startAutoMsgTimers() {
   personas.forEach(p => {
     if (p.autoMsg) {
       _scheduleNextAutoMsg(p.id);
-      // Also check if we should send immediately based on last message time
-      const minMs = (p.autoMsgMinInterval || 60) * 60 * 1000;
-      const lastMsg = p.history && p.history.length > 0 ? p.history[p.history.length - 1] : null;
-      const lastAutoTime = (() => {
-        if (!p.history) return 0;
-        for (let i = p.history.length - 1; i >= 0; i--) {
-          if (p.history[i]._autoMsgTime) return p.history[i]._autoMsgTime;
-        }
-        return 0;
-      })();
-      if (lastAutoTime && (Date.now() - lastAutoTime) >= minMs) {
-        setTimeout(() => triggerAutoMessage(p.id), 3000 + Math.random() * 5000);
-      }
     }
   });
 }
 function _scheduleNextAutoMsg(personaId) {
   const p = personas.find(x => x.id == personaId);
   if (!p || !p.autoMsg) return;
-  const minMs = Math.max(5, p.autoMsgMinInterval || 60) * 60 * 1000;
-  const maxMs = Math.max(minMs, (p.autoMsgMaxInterval || 120) * 60 * 1000);
-  const intervalMs = minMs + Math.random() * (maxMs - minMs);
+  const intervalMs = _computeNextAutoMsgDelay(p);
   _autoMsgTimers[personaId] = setTimeout(async () => {
     await triggerAutoMessage(personaId);
     _scheduleNextAutoMsg(personaId);
@@ -41403,6 +41456,14 @@ async function triggerAutoMessage(personaId) {
   if (!apiConfig.url || !apiConfig.key || !apiConfig.model) return;
   const p = personas.find(x => x.id == personaId);
   if (!p || !p.autoMsg) return;
+  if (_isOfflineModeActiveForPersona(personaId)) return;
+  if (_autoMsgLocks[personaId]) return;
+  if (_autoMsgLastAttemptAt[personaId] && (Date.now() - _autoMsgLastAttemptAt[personaId]) < 15000) return;
+  const minMs = _getAutoMsgMinDelayMs(p);
+  const anchorTs = _getPersonaAutoMsgAnchorTs(p);
+  if (anchorTs && (Date.now() - anchorTs) < minMs) return;
+  _autoMsgLocks[personaId] = true;
+  _autoMsgLastAttemptAt[personaId] = Date.now();
   const memCount = p.memoryCount || 100;
   const recentChat = p.history.slice(-memCount).map(m => `${m.role==='user'?userProfile.name:p.name}：${m.content}`).join('\n');
   const now = new Date();
@@ -41459,6 +41520,7 @@ async function triggerAutoMessage(personaId) {
       const replyMessages = _normalizeChatReplyMessages(rawReply, { maxParts: maxAutoReply, isWechatMode: isWechatMode, styleContext: [p.persona || '', _autoMsgWbInject || ''].join('\n'), langCode: typeof _detectPersonaLang === 'function' ? _detectPersonaLang(p) : '' });
       const limitedMessages = replyMessages.slice(0, maxAutoReply);
       const firstMsgTime = Date.now();
+      p._lastAutoMsgTime = firstMsgTime;
       for (let i = 0; i < limitedMessages.length; i++) {
         let msg = String(limitedMessages[i] || '').trim();
         if (i > 0) await new Promise(res => setTimeout(res, 120 + Math.random() * 220));
@@ -41471,7 +41533,12 @@ async function triggerAutoMessage(personaId) {
       try { renderContactList(); } catch(e) {}
       // Notification is handled by saveData hook
     }
-  } catch(e) { console.warn('Auto-message failed:', e.message); _showApiErrorToast('自动消息发送失败', e); }
+  } catch(e) {
+    console.warn('Auto-message failed:', e.message);
+    _showApiErrorToast('自动消息发送失败', e);
+  } finally {
+    delete _autoMsgLocks[personaId];
+  }
 }
 // ---- Auto-diary system ----
 let _autoMomentsTimers = {};
@@ -41752,23 +41819,11 @@ function catchUpMissedGenerations() {
 }
 function catchUpAutoMessage(p) {
   if (!p || !p.autoMsg) return;
-  const minMs = Math.max(5, p.autoMsgMinInterval || 60) * 60 * 1000;
-  // 查找最后一条自动消息的时間
-  var lastAutoTime = 0;
-  if (p.history && p.history.length > 0) {
-    for (var i = p.history.length - 1; i >= 0; i--) {
-      if (p.history[i]._autoMsgTime) {
-        lastAutoTime = p.history[i]._autoMsgTime;
-        break;
-      }
-    }
-  }
-  // 如果没找到自动消息时間戳，不补发（避免重复）
-  if (!lastAutoTime && p.history && p.history.length > 0) {
-    return;
-  }
-  var elapsed = Date.now() - lastAutoTime;
-  if (elapsed >= minMs) {
+  if (_isOfflineModeActiveForPersona(p.id)) return;
+  const minMs = _getAutoMsgMinDelayMs(p);
+  const anchorTs = _getPersonaAutoMsgAnchorTs(p);
+  if (!anchorTs && p.history && p.history.length > 0) return;
+  if (!anchorTs || (Date.now() - anchorTs) >= minMs) {
     // 错过了至少一个最小間隔，补发一条自动消息（只补一条，避免刷屏）
     setTimeout(function() {
       triggerAutoMessage(p.id);
@@ -41791,13 +41846,9 @@ function syncBgConfigToSW() {
       autoMsg: p.autoMsg,
       autoMsgMinInterval: p.autoMsgMinInterval || 60,
       autoMsgMaxInterval: p.autoMsgMaxInterval || 120,
-      lastAutoMsgTime: (() => {
-        if (!p.history || !p.history.length) return 0;
-        for (let i = p.history.length - 1; i >= 0; i--) {
-          if (p.history[i]._autoMsgTime) return p.history[i]._autoMsgTime;
-        }
-        return 0;
-      })(),
+      offlineActive: _isOfflineModeActiveForPersona(p.id),
+      lastAutoMsgTime: _getPersonaLastAutoMessageTs(p),
+      lastUserMsgTime: _getPersonaLastUserActivityTs(p),
       recentHistory: (p.history || []).slice(-20).map(m => ({
         role: m.role, content: (m.content || '').substring(0, 200)
       }))
@@ -41836,7 +41887,8 @@ async function syncBgMessagesToPage() {
               if (!p.history) p.history = [];
               p.history.push({
                 role: 'assistant', content: msg.content,
-                _autoMsgTime: msg._autoMsgTime, _notified: true
+                _autoMsgTime: msg._autoMsgTime, _notified: true,
+                timestamp: msg.timestamp || msg._autoMsgTime || Date.now()
               });
             }
           }
@@ -51448,6 +51500,7 @@ var _offlineState = {
     saveToMemory: true,
     locationShare: false,
     bgmMode: false,
+    heartVoiceGenerate: true,
     heartVoicePopup: true,
     worldBookEntries: {},
     style: 0,  // 0=细膩写实 1=浪漫唯美 2=日常轻松 3=紧张刺激
@@ -51524,6 +51577,14 @@ function _normalizeOfflineSummaryItem(item, idx) {
 }
 function _normalizeOfflineSettings(settings) {
   var next = Object.assign({}, _offlineState.settings, settings || {});
+  var hasLegacyGenerate = next.heartVoiceGenerate != null;
+  var hasLegacyPopup = next.heartVoicePopup != null;
+  var mergedOfflineHeartVoice = true;
+  if (hasLegacyGenerate || hasLegacyPopup) {
+    mergedOfflineHeartVoice = (next.heartVoiceGenerate !== false) && (next.heartVoicePopup !== false);
+  }
+  next.heartVoiceGenerate = mergedOfflineHeartVoice;
+  next.heartVoicePopup = mergedOfflineHeartVoice;
   next.worldBookEntries = next.worldBookEntries && typeof next.worldBookEntries === 'object' ? next.worldBookEntries : {};
   next.theme = next.theme || 'dark';
   next.narrativePov = (function(raw) {
@@ -53167,7 +53228,13 @@ function hideOfflineSettings() {
   if (panel) panel.style.display = 'none';
 }
 function toggleOfflineSetting(key) {
-  _offlineState.settings[key] = !_offlineState.settings[key];
+  var nextValue = !_offlineState.settings[key];
+  if (key === 'heartVoiceGenerate' || key === 'heartVoicePopup') {
+    _offlineState.settings.heartVoiceGenerate = nextValue;
+    _offlineState.settings.heartVoicePopup = nextValue;
+  } else {
+    _offlineState.settings[key] = nextValue;
+  }
   _persistOfflineSettings();
   _syncOfflineSettingsUI();
 }
@@ -53901,8 +53968,8 @@ window.addEventListener('beforeunload', function() {
       </div>
       <div class="offline-setting-row" onclick="toggleOfflineSetting('heartVoicePopup')">
         <div>
-          <div class="offline-setting-label">线下弹出心声</div>
-          <div class="offline-setting-value">离线剧情回复后，也像线上聊天一样弹出心声通知</div>
+          <div class="offline-setting-label">线下心声</div>
+          <div class="offline-setting-value">关闭后不会弹出，也不会向 API 请求心声内容</div>
         </div>
         <div class="offline-toggle" id="offlineToggleHeartVoice"></div>
       </div>
@@ -82208,8 +82275,9 @@ function _monoMsgDateLabel(key) {
 }
 function _monoCollectChatDateOptions(p) {
   const seen = new Set();
-  return (Array.isArray(p.history) ? p.history : []).map(function(m) {
-    return _monoMsgDateKey(m && m.timestamp);
+  const history = Array.isArray(p.history) ? p.history : [];
+  return history.map(function(m, index) {
+    return _monoResolveHistoryDateKey(history, index);
   }).filter(function(key) {
     if (seen.has(key)) return false;
     seen.add(key);
@@ -82231,13 +82299,28 @@ function _monoGetChatMessagesByDateRange(p, range) {
   const start = range && range.start ? range.start : '';
   const end = range && range.end ? range.end : '';
   const includeUndated = !!(range && range.includeUndated);
-  return p.history.filter(function(m) {
-    const key = _monoMsgDateKey(m && m.timestamp);
+  return p.history.filter(function(m, index, history) {
+    const key = _monoResolveHistoryDateKey(history, index);
     if (key === 'undated') return includeUndated;
     if (start && key < start) return false;
     if (end && key > end) return false;
     return !!key;
   });
+}
+function _monoResolveHistoryDateKey(history, index) {
+  const list = Array.isArray(history) ? history : [];
+  const current = list[index];
+  const directKey = _monoMsgDateKey(current && current.timestamp);
+  if (directKey && directKey !== 'undated') return directKey;
+  for (let i = index - 1; i >= 0; i--) {
+    const prevKey = _monoMsgDateKey(list[i] && list[i].timestamp);
+    if (prevKey && prevKey !== 'undated') return prevKey;
+  }
+  for (let i = index + 1; i < list.length; i++) {
+    const nextKey = _monoMsgDateKey(list[i] && list[i].timestamp);
+    if (nextKey && nextKey !== 'undated') return nextKey;
+  }
+  return 'undated';
 }
 function _monoGetChatRangeSummaryText(p, range) {
   const list = _monoGetChatMessagesByDateRange(p, range);
@@ -82248,8 +82331,10 @@ function _monoGetChatRangeSummaryText(p, range) {
   } else {
     const first = list[0];
     const last = list[list.length - 1];
-    const firstLabel = _monoMsgDateLabel(_monoMsgDateKey(first.timestamp));
-    const lastLabel = _monoMsgDateLabel(_monoMsgDateKey(last.timestamp));
+    const firstIndex = Array.isArray(p.history) ? p.history.indexOf(first) : -1;
+    const lastIndex = Array.isArray(p.history) ? p.history.indexOf(last) : -1;
+    const firstLabel = _monoMsgDateLabel(_monoResolveHistoryDateKey(p.history, firstIndex));
+    const lastLabel = _monoMsgDateLabel(_monoResolveHistoryDateKey(p.history, lastIndex));
     labelEl.textContent = '将处理 ' + list.length + ' 条消息 · ' + firstLabel + ' 至 ' + lastLabel;
   }
   return list;
@@ -82752,7 +82837,7 @@ function _monoPersonaExportBase(p) {
       allowSticker: p.allowSticker, stickerLibraryIds: Array.isArray(p.stickerLibraryIds) ? p.stickerLibraryIds : [],
       allowVoice: p.allowVoice, voiceId: p.voiceId, voiceSpeed: p.voiceSpeed, voiceLang: p.voiceLang, outputLang: p.outputLang,
       enableTranslation: p.enableTranslation, translateLang: p.translateLang, voiceFreq: p.voiceFreq, memoryCount: p.memoryCount,
-      memoryCore: p.memoryCore || [], lastHeartVoice: p.lastHeartVoice || null, heartVoiceEnabled: !!(p.heartVoiceEnabled != null ? p.heartVoiceEnabled : p.showHeartVoiceInHeader),
+      memoryCore: p.memoryCore || [], lastHeartVoice: p.lastHeartVoice || null, heartVoiceGenerateEnabled: _isHeartVoiceGenerationEnabled(p), heartVoiceEnabled: !!(p.heartVoiceEnabled != null ? p.heartVoiceEnabled : p.showHeartVoiceInHeader),
       heartVoiceMode: p.heartVoiceMode || 'header', autoSummary: !!p.autoSummary, autoSummaryInterval: p.autoSummaryInterval || 20,
       autoMsg: !!p.autoMsg, autoMsgMinInterval: p.autoMsgMinInterval || 60, autoMsgMaxInterval: p.autoMsgMaxInterval || 120,
       autoDiary: !!p.autoDiary, autoDiaryTime: p.autoDiaryTime || '21:00', autoMoments: !!p.autoMoments, autoMomentsTime: p.autoMomentsTime || '20:00',
@@ -82822,7 +82907,8 @@ function monoImportPersonaPackage(event) {
         memoryCore: settings.memoryCore || [],
         diaryIncludeOfflineMemory: settings.diaryIncludeOfflineMemory !== false,
         momentsIncludeOfflineMemory: settings.momentsIncludeOfflineMemory !== false,
-        lastHeartVoice: settings.lastHeartVoice || null
+        lastHeartVoice: settings.lastHeartVoice || null,
+        heartVoiceGenerateEnabled: settings.heartVoiceGenerateEnabled !== false
       }, settings);
       newPersona.id = newId;
       if (!Array.isArray(newPersona.history)) newPersona.history = [];
@@ -83303,6 +83389,7 @@ if (document.readyState === 'loading') {
         memoryCount: persona.memoryCount || 100,
         memoryCore: Array.isArray(persona.memoryCore) ? persona.memoryCore : [],
         lastHeartVoice: persona.lastHeartVoice || null,
+        heartVoiceGenerateEnabled: persona.heartVoiceGenerateEnabled !== false,
         heartVoiceEnabled: !!(persona.heartVoiceEnabled != null ? persona.heartVoiceEnabled : persona.showHeartVoiceInHeader),
         heartVoiceMode: persona.heartVoiceMode || 'header',
         autoSummary: !!persona.autoSummary,
@@ -83385,6 +83472,7 @@ if (document.readyState === 'loading') {
       history: Array.isArray(data.history) ? data.history : [],
       memoryCore: Array.isArray(settings.memoryCore) ? settings.memoryCore : [],
       lastHeartVoice: settings.lastHeartVoice || null,
+      heartVoiceGenerateEnabled: settings.heartVoiceGenerateEnabled !== false,
       diaryIncludeOfflineMemory: settings.diaryIncludeOfflineMemory !== false,
       momentsIncludeOfflineMemory: settings.momentsIncludeOfflineMemory !== false,
       minReplyCount: settings.minReplyCount || 1,
@@ -83604,13 +83692,28 @@ if (document.readyState === 'loading') {
 
   function monoGetMessagesByRange(persona, range) {
     if (!persona || !Array.isArray(persona.history)) return [];
-    return persona.history.filter(function(message) {
-      const key = monoDateKey(message && message.timestamp);
+    return persona.history.filter(function(message, index, history) {
+      const key = monoResolveMessageDateKey(history, index);
       if (key === 'undated') return !!range.includeUndated;
       if (range.start && key < range.start) return false;
       if (range.end && key > range.end) return false;
       return true;
     });
+  }
+  function monoResolveMessageDateKey(history, index) {
+    const list = Array.isArray(history) ? history : [];
+    const current = list[index];
+    const directKey = monoDateKey(current && current.timestamp);
+    if (directKey && directKey !== 'undated') return directKey;
+    for (let i = index - 1; i >= 0; i--) {
+      const prevKey = monoDateKey(list[i] && list[i].timestamp);
+      if (prevKey && prevKey !== 'undated') return prevKey;
+    }
+    for (let i = index + 1; i < list.length; i++) {
+      const nextKey = monoDateKey(list[i] && list[i].timestamp);
+      if (nextKey && nextKey !== 'undated') return nextKey;
+    }
+    return 'undated';
   }
 
   function monoUpdateChatRangeSummary() {
@@ -83629,8 +83732,9 @@ if (document.readyState === 'loading') {
 
   function monoCollectDateOptions(persona) {
     const keys = new Set();
-    (Array.isArray(persona && persona.history) ? persona.history : []).forEach(function(message) {
-      keys.add(monoDateKey(message && message.timestamp));
+    const history = Array.isArray(persona && persona.history) ? persona.history : [];
+    history.forEach(function(message, index) {
+      keys.add(monoResolveMessageDateKey(history, index));
     });
     return Array.from(keys).sort();
   }

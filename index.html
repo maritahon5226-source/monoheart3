@@ -1,4 +1,32 @@
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head><base href="https://d16ilfvy4mv02r.cloudfront.net/workspaces/sh0bDVYUIEw8H1dpwjAJvINuiJ6ETxg0/6c9a375e-adcc-44e2-9ec5-2d1ce63bc50b/files/">
@@ -13157,6 +13185,1258 @@ body.editor-modal-open #chatPage .app-back-bar {
 .pet-dress-tile-lock {
   position: absolute; top: 4px; right: 5px; font-size: 9px; color: #ccc;
 }
+/* ===== DECRYPT APP ICON + PAGE ===== */
+#homePage3 { position: relative; }
+.decrypt-home-entry {
+  z-index: 3;
+}
+.decrypt-home-entry,
+.decrypt-home-entry:active,
+.home-edit-active .decrypt-home-entry,
+.home-edit-active .decrypt-home-entry:active {
+  transform: none !important;
+  transition: none !important;
+}
+.decrypt-home-entry .ig-music-icon-box {
+  box-shadow: 0 12px 28px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.45);
+}
+.decrypt-home-entry .ig-music-icon-box,
+.decrypt-home-entry .ig-music-icon-box:active {
+  transform: none !important;
+  transition: none !important;
+}
+.home-edit-active .decrypt-home-entry,
+.home-edit-active .decrypt-home-entry * {
+  transition: none !important;
+}
+.decrypt-home-entry.iph-placed {
+  margin: 0 !important;
+}
+.decrypt-home-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+#decryptPage {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 215;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 18% 20%, rgba(126,90,62,0.22), transparent 28%),
+    radial-gradient(circle at 84% 14%, rgba(145,30,30,0.18), transparent 26%),
+    linear-gradient(180deg, #14110f 0%, #1b1714 42%, #120f0d 100%);
+  color: #efe7db;
+  font-family: 'Montserrat', 'DM Mono', sans-serif;
+}
+.decrypt-shell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+.decrypt-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.02), transparent 24%),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.015) 0, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 120px),
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.012) 0, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 96px);
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+.decrypt-topbar {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 14px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  background: linear-gradient(180deg, rgba(21,18,16,0.96), rgba(21,18,16,0.78));
+  backdrop-filter: blur(12px);
+}
+.decrypt-top-left,
+.decrypt-top-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.decrypt-top-btn,
+.decrypt-action-btn,
+.decrypt-chip-btn,
+.decrypt-submit-btn,
+.decrypt-mini-btn {
+  appearance: none;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04);
+  color: #efe7db;
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: calc(10px * var(--fs,1));
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  cursor: pointer;
+  transition: transform 0.18s, background 0.18s, border-color 0.18s;
+}
+.decrypt-action-btn,
+.decrypt-submit-btn,
+.decrypt-mini-btn {
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: rgba(0,0,0,0.20);
+}
+.decrypt-submit-btn {
+  background: linear-gradient(135deg, rgba(137,33,33,0.94), rgba(87,16,16,0.94));
+  border-color: rgba(200,84,84,0.38);
+}
+.decrypt-mini-btn {
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+}
+.decrypt-top-btn:active,
+.decrypt-action-btn:active,
+.decrypt-chip-btn:active,
+.decrypt-submit-btn:active,
+.decrypt-mini-btn:active {
+  transform: scale(0.96);
+}
+.decrypt-top-btn:hover,
+.decrypt-action-btn:hover,
+.decrypt-chip-btn:hover,
+.decrypt-submit-btn:hover,
+.decrypt-mini-btn:hover {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.22);
+}
+.decrypt-title-wrap {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+.decrypt-title {
+  font-size: calc(15px * var(--fs,1));
+  font-weight: 800;
+  letter-spacing: 2.2px;
+  color: #f5efe6;
+  text-transform: uppercase;
+}
+.decrypt-subtitle {
+  font-size: calc(9px * var(--fs,1));
+  color: rgba(239,231,219,0.50);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-top: 3px;
+}
+.decrypt-body {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 14px 34px;
+}
+.decrypt-body::-webkit-scrollbar { width: 4px; }
+.decrypt-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 999px; }
+.decrypt-board,
+.decrypt-panel,
+.decrypt-archive-card,
+.decrypt-clue-card,
+.decrypt-evidence-card,
+.decrypt-guess-panel {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.10);
+  box-shadow: 0 14px 36px rgba(0,0,0,0.22);
+}
+.decrypt-board::before,
+.decrypt-panel::before,
+.decrypt-clue-card::before,
+.decrypt-evidence-card::before,
+.decrypt-guess-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.06), transparent 25%),
+    radial-gradient(circle at top right, rgba(255,255,255,0.05), transparent 22%);
+  pointer-events: none;
+}
+.decrypt-board {
+  border-radius: 26px;
+  padding: 16px;
+  background:
+    linear-gradient(180deg, rgba(61,51,43,0.94), rgba(36,30,26,0.96)),
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.02) 0, rgba(255,255,255,0.02) 1px, transparent 1px, transparent 22px);
+  margin-bottom: 14px;
+}
+.decrypt-scene-board {
+  position: relative;
+  min-height: 188px;
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.10);
+  box-shadow: 0 16px 38px rgba(0,0,0,0.28);
+  background: #221b17;
+  margin-top: 14px;
+}
+.decrypt-scene-board::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(12,10,9,0.06), rgba(12,10,9,0.68)),
+    radial-gradient(circle at 18% 20%, rgba(165,46,46,0.26), transparent 28%);
+  pointer-events: none;
+}
+.decrypt-scene-copy {
+  position: relative;
+  z-index: 1;
+  padding: 18px 18px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: 188px;
+}
+.decrypt-scene-kicker {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.16);
+  background: rgba(17,15,14,0.32);
+  color: rgba(248,241,233,0.88);
+  font-size: calc(9px * var(--fs,1));
+  font-weight: 800;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  backdrop-filter: blur(6px);
+}
+.decrypt-scene-title {
+  margin-top: 12px;
+  font-size: calc(19px * var(--fs,1));
+  line-height: 1.25;
+  color: #fff6ea;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-shadow: 0 3px 18px rgba(0,0,0,0.44);
+}
+.decrypt-scene-sub {
+  margin-top: 8px;
+  max-width: 82%;
+  font-size: calc(11px * var(--fs,1));
+  line-height: 1.7;
+  color: rgba(251,245,238,0.78);
+  text-shadow: 0 2px 10px rgba(0,0,0,0.42);
+}
+.decrypt-board-tag,
+.decrypt-section-kicker,
+.decrypt-evidence-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 5px 10px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  font-size: calc(9px * var(--fs,1));
+  font-weight: 800;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: rgba(245,239,230,0.72);
+}
+.decrypt-board-hero {
+  display: grid;
+  grid-template-columns: 98px 1fr;
+  gap: 14px;
+  margin-top: 12px;
+}
+.decrypt-photo {
+  position: relative;
+  height: 128px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #f6f1e8 0%, #e3d7c4 100%);
+  padding: 8px;
+  box-shadow: 0 10px 18px rgba(0,0,0,0.18);
+  transform: rotate(-3deg);
+}
+.decrypt-photo::after {
+  content: "";
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  width: 46px;
+  height: 14px;
+  transform: translateX(-50%) rotate(1deg);
+  background: rgba(255,255,255,0.42);
+  border: 1px solid rgba(0,0,0,0.04);
+}
+.decrypt-photo img,
+.decrypt-photo-fallback {
+  width: 100%;
+  height: 90px;
+  border-radius: 12px;
+  object-fit: cover;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #302721, #5b463a);
+  color: #f5efe6;
+  font-size: 30px;
+  font-weight: 800;
+}
+.decrypt-photo-caption {
+  margin-top: 8px;
+  text-align: center;
+  font-size: calc(10px * var(--fs,1));
+  color: #372e28;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+}
+.decrypt-hero-copy { min-width: 0; }
+.decrypt-case-title {
+  font-size: calc(20px * var(--fs,1));
+  line-height: 1.2;
+  font-weight: 800;
+  color: #fff6ec;
+  letter-spacing: 0.8px;
+}
+.decrypt-case-meta,
+.decrypt-progress-row,
+.decrypt-inline-actions,
+.decrypt-launch-actions,
+.decrypt-clue-input-row,
+.decrypt-guess-input-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.decrypt-case-meta { margin-top: 10px; }
+.decrypt-meta-pill,
+.decrypt-progress-pill {
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: calc(9px * var(--fs,1));
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.10);
+  color: rgba(255,244,231,0.72);
+}
+.decrypt-progress-pill.matched {
+  background: rgba(169,54,54,0.18);
+  border-color: rgba(212,110,110,0.22);
+  color: #ffe6db;
+}
+.decrypt-crisis,
+.decrypt-opening-copy,
+.decrypt-reveal-box,
+.decrypt-clue-copy,
+.decrypt-evidence-copy,
+.decrypt-archive-copy,
+.decrypt-persona-desc {
+  margin-top: 10px;
+  font-size: calc(11px * var(--fs,1));
+  line-height: 1.72;
+}
+.decrypt-crisis,
+.decrypt-opening-copy,
+.decrypt-reveal-box {
+  font-size: calc(12px * var(--fs,1));
+  color: rgba(255,244,231,0.86);
+  line-height: 1.82;
+}
+.decrypt-opening-copy {
+  padding: 12px 13px;
+  border-radius: 16px;
+  background: rgba(0,0,0,0.14);
+  border: 1px solid rgba(255,255,255,0.07);
+}
+.decrypt-thread-board,
+.decrypt-clue-grid,
+.decrypt-evidence-grid,
+.decrypt-archive-list,
+.decrypt-persona-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.decrypt-mood-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+.decrypt-mood-card {
+  position: relative;
+  min-height: 132px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 8px solid #f3ede4;
+  box-shadow: 0 16px 28px rgba(0,0,0,0.24);
+  background:
+    linear-gradient(180deg, rgba(244,238,229,0.98), rgba(228,218,201,0.96));
+  transform: rotate(var(--tilt, 0deg));
+  animation: decryptMoodFloat 7.2s ease-in-out infinite;
+}
+.decrypt-mood-card::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  width: 46px;
+  height: 14px;
+  transform: translateX(-50%) rotate(-2deg);
+  background: rgba(239,234,226,0.54);
+  border: 1px solid rgba(0,0,0,0.05);
+  z-index: 2;
+}
+.decrypt-mood-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.42));
+  pointer-events: none;
+}
+.decrypt-mood-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  filter: grayscale(0.06) saturate(0.92) contrast(1.04) brightness(0.92);
+}
+.decrypt-mood-card.is-missing {
+  background:
+    linear-gradient(180deg, rgba(245,239,231,0.98), rgba(226,215,197,0.96)),
+    repeating-linear-gradient(0deg, rgba(0,0,0,0.04) 0, rgba(0,0,0,0.04) 1px, transparent 1px, transparent 24px);
+}
+.decrypt-mood-card.is-missing::after {
+  background:
+    linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.08));
+}
+.decrypt-mood-card.is-missing .decrypt-mood-label {
+  color: #302721;
+  text-shadow: none;
+}
+.decrypt-mood-label {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  z-index: 1;
+  font-size: calc(9px * var(--fs,1));
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: #f6efe5;
+  font-weight: 800;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.48);
+}
+@keyframes decryptMoodFloat {
+  0%, 100% { transform: translateY(0px) rotate(var(--tilt, 0deg)); }
+  50% { transform: translateY(-5px) rotate(calc(var(--tilt, 0deg) * 0.75)); }
+}
+.decrypt-thread-board { margin-top: 14px; }
+.decrypt-thread-card {
+  position: relative;
+  min-height: 120px;
+  border-radius: 18px;
+  padding: 12px;
+  background: linear-gradient(180deg, rgba(235,227,213,0.96), rgba(197,183,163,0.94));
+  color: #2a221c;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.5);
+}
+.decrypt-thread-card::before {
+  content: "";
+  position: absolute;
+  width: 48px;
+  height: 2px;
+  top: 22px;
+  left: -10px;
+  background: rgba(140,20,20,0.72);
+  transform: rotate(-14deg);
+  box-shadow: 112px 54px 0 rgba(140,20,20,0.62);
+  opacity: 0.7;
+}
+.decrypt-thread-title,
+.decrypt-clue-solved-title,
+.decrypt-truth-title,
+.decrypt-hint-index {
+  font-size: calc(9px * var(--fs,1));
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+.decrypt-thread-title,
+.decrypt-hint-index { color: rgba(42,34,28,0.55); }
+.decrypt-thread-value,
+.decrypt-persona-name,
+.decrypt-archive-title,
+.decrypt-clue-title,
+.decrypt-evidence-title {
+  font-size: calc(13px * var(--fs,1));
+  font-weight: 800;
+  line-height: 1.35;
+}
+.decrypt-thread-value { margin-top: 8px; }
+.decrypt-thread-note {
+  margin-top: 8px;
+  font-size: calc(10px * var(--fs,1));
+  color: rgba(42,34,28,0.72);
+  line-height: 1.7;
+}
+.decrypt-section { margin-top: 14px; }
+.decrypt-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.decrypt-section-title {
+  font-size: calc(13px * var(--fs,1));
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #f4ede3;
+}
+.decrypt-section-sub,
+.decrypt-persona-meta,
+.decrypt-archive-meta {
+  font-size: calc(9px * var(--fs,1));
+  color: rgba(239,231,219,0.72);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+.decrypt-persona-meta,
+.decrypt-archive-meta {
+  color: rgba(42,34,28,0.66);
+}
+.decrypt-clue-card,
+.decrypt-panel,
+.decrypt-persona-card,
+.decrypt-archive-card,
+.decrypt-hint-card {
+  border-radius: 20px;
+  padding: 14px;
+  background:
+    linear-gradient(180deg, rgba(239,232,220,0.96), rgba(214,201,181,0.94)),
+    repeating-linear-gradient(0deg, rgba(0,0,0,0.04) 0, rgba(0,0,0,0.04) 1px, transparent 1px, transparent 24px);
+  color: #2a221c;
+}
+.decrypt-clue-card {
+  animation: decryptCardFloat 5.8s ease-in-out infinite;
+}
+.decrypt-clue-card:nth-child(2n) { animation-duration: 6.6s; }
+@keyframes decryptCardFloat {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-2px) rotate(0.35deg); }
+}
+.decrypt-clue-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+.decrypt-clue-type {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(43,36,29,0.07);
+  border: 1px solid rgba(43,36,29,0.09);
+  font-size: calc(8px * var(--fs,1));
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.decrypt-clue-order {
+  font-size: calc(8px * var(--fs,1));
+  color: rgba(125,40,40,0.84);
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.decrypt-clue-prompt {
+  margin-top: 10px;
+  padding: 10px 11px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.46);
+  border: 1px dashed rgba(43,36,29,0.18);
+  font-size: calc(10px * var(--fs,1));
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+.decrypt-clue-objective {
+  margin-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(128,32,32,0.08);
+  border: 1px solid rgba(128,32,32,0.12);
+  color: #7b2a2a;
+  font-size: calc(8px * var(--fs,1));
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.decrypt-aid-box {
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255,252,248,0.98), rgba(241,233,220,0.97)),
+    repeating-linear-gradient(0deg, rgba(62,48,36,0.045) 0, rgba(62,48,36,0.045) 1px, transparent 1px, transparent 26px);
+  border: 1px solid rgba(54,42,31,0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.88),
+    0 8px 18px rgba(24,17,12,0.08);
+}
+.decrypt-aid-title {
+  font-size: calc(9.5px * var(--fs,1));
+  font-weight: 800;
+  letter-spacing: 1.35px;
+  text-transform: uppercase;
+  color: #5c1f1f;
+}
+.decrypt-aid-body {
+  margin-top: 8px;
+  padding: 10px 11px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.9);
+  border: 1px dashed rgba(54,42,31,0.18);
+  font-size: calc(11px * var(--fs,1));
+  line-height: 1.9;
+  letter-spacing: 0.24px;
+  color: #1e1712;
+  font-family: "Courier New", "SFMono-Regular", Consolas, monospace;
+  font-weight: 700;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.42);
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+.decrypt-text-input,
+.decrypt-textarea {
+  width: 100%;
+  border: 1px solid rgba(43,36,29,0.14);
+  background: rgba(255,255,255,0.72);
+  color: #231c16;
+  border-radius: 14px;
+  padding: 11px 12px;
+  font-size: calc(11px * var(--fs,1));
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+}
+.decrypt-textarea {
+  min-height: 118px;
+  resize: vertical;
+  background: rgba(249,245,238,0.88);
+}
+.decrypt-text-input:focus,
+.decrypt-textarea:focus {
+  border-color: rgba(115,32,32,0.42);
+  box-shadow: 0 0 0 3px rgba(115,32,32,0.10);
+}
+.decrypt-clue-solved {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 15px;
+  background: rgba(132,22,22,0.08);
+  border: 1px solid rgba(132,22,22,0.16);
+}
+.decrypt-clue-locked-box {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 15px;
+  background: rgba(43,36,29,0.06);
+  border: 1px dashed rgba(43,36,29,0.16);
+}
+.decrypt-clue-locked-title {
+  font-size: calc(9px * var(--fs,1));
+  color: rgba(42,34,28,0.72);
+  font-weight: 800;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+}
+.decrypt-clue-solved-title,
+.decrypt-truth-title { color: #7b2a2a; }
+.decrypt-clue-card.is-locked {
+  opacity: 0.88;
+}
+.decrypt-evidence-card {
+  padding: 14px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(42,37,33,0.96), rgba(26,23,20,0.98));
+  color: #efe7db;
+}
+.decrypt-evidence-card.locked {
+  opacity: 0.52;
+  filter: grayscale(0.24);
+}
+.decrypt-evidence-title { color: #fff5e7; margin-top: 10px; }
+.decrypt-evidence-copy { color: rgba(239,231,219,0.80); }
+.decrypt-progress-bar {
+  margin-top: 12px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  overflow: hidden;
+}
+.decrypt-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #a93636, #e8b97b);
+  box-shadow: 0 0 18px rgba(232,185,123,0.36);
+}
+.decrypt-guess-panel {
+  padding: 15px;
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, rgba(234,224,208,0.95), rgba(211,196,177,0.94)),
+    repeating-linear-gradient(0deg, rgba(0,0,0,0.035) 0, rgba(0,0,0,0.035) 1px, transparent 1px, transparent 26px);
+  color: #2a221c;
+}
+.decrypt-guess-result {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.46);
+  border: 1px solid rgba(43,36,29,0.10);
+  font-size: calc(11px * var(--fs,1));
+  line-height: 1.75;
+}
+.decrypt-truth-box {
+  margin-top: 12px;
+  border-radius: 18px;
+  padding: 14px;
+  background: rgba(90,18,18,0.12);
+  border: 1px solid rgba(120,25,25,0.18);
+}
+.decrypt-hint-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.decrypt-persona-card {
+  cursor: pointer;
+  transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s;
+}
+.decrypt-persona-card.selected {
+  box-shadow: 0 16px 32px rgba(128,32,32,0.20);
+  border-color: rgba(170,57,57,0.28);
+}
+.decrypt-persona-top,
+.decrypt-archive-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.decrypt-archive-card {
+  position: relative;
+  overflow: hidden;
+}
+.decrypt-archive-thumb {
+  width: 86px;
+  height: 112px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.18);
+  border: 6px solid #f4eee5;
+  background:
+    linear-gradient(135deg, #d7cab8, #f5efe7);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.decrypt-archive-thumb.is-missing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #2e2620;
+  font-size: calc(10px * var(--fs,1));
+  font-weight: 700;
+  line-height: 1.5;
+  text-align: center;
+  padding: 8px;
+  box-sizing: border-box;
+}
+.decrypt-persona-avatar,
+.decrypt-archive-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  flex-shrink: 0;
+  object-fit: cover;
+  background: linear-gradient(135deg, #2e2620, #615044);
+  color: #f4ede3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 800;
+}
+.decrypt-empty {
+  padding: 28px 16px;
+  text-align: center;
+  color: rgba(239,231,219,0.72);
+  font-size: calc(12px * var(--fs,1));
+  line-height: 1.8;
+}
+.decrypt-divider {
+  height: 1px;
+  margin: 14px 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.14), transparent);
+}
+.decrypt-scene-board,
+.decrypt-mood-card,
+.decrypt-archive-thumb {
+  background-image: none !important;
+}
+.decrypt-scene-board {
+  min-height: 220px;
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at 16% 18%, rgba(139,28,28,0.18), transparent 20%),
+    linear-gradient(180deg, rgba(43,35,31,0.98), rgba(24,20,17,0.98));
+}
+.decrypt-scene-board::after {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.10)),
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 26px);
+}
+.decrypt-scene-copy { all: unset; }
+.decrypt-scene-thread {
+  position: absolute;
+  height: 2px;
+  background: rgba(140,24,24,0.72);
+  transform-origin: left center;
+  box-shadow: 0 0 0 1px rgba(87,16,16,0.08);
+}
+.decrypt-scene-thread-a {
+  width: 132px;
+  top: 58px;
+  left: 56px;
+  transform: rotate(18deg);
+}
+.decrypt-scene-thread-b {
+  width: 126px;
+  top: 132px;
+  right: 52px;
+  transform: rotate(-22deg);
+}
+.decrypt-scene-folder {
+  position: absolute;
+}
+.decrypt-scene-folder-main {
+  left: 18px;
+  top: 18px;
+  right: 122px;
+  z-index: 3;
+}
+.decrypt-scene-folder-left {
+  left: 20px;
+  bottom: 18px;
+  width: 132px;
+  z-index: 1;
+}
+.decrypt-scene-folder-right {
+  top: 112px;
+  right: 16px;
+  width: 112px;
+  z-index: 1;
+}
+.decrypt-scene-pin {
+  position: absolute;
+  top: -4px;
+  left: 18px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ff8f8f, #7b1d1d 70%);
+  box-shadow: 0 1px 6px rgba(0,0,0,0.32);
+  z-index: 2;
+}
+.decrypt-scene-paper {
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(245,238,228,0.98), rgba(228,216,198,0.96)),
+    repeating-linear-gradient(0deg, rgba(0,0,0,0.04) 0, rgba(0,0,0,0.04) 1px, transparent 1px, transparent 24px);
+  border-radius: 10px;
+  box-shadow: 0 14px 28px rgba(0,0,0,0.20);
+  border: 1px solid rgba(61,50,44,0.10);
+  overflow: hidden;
+}
+.decrypt-scene-paper-main {
+  padding: 18px 18px 16px;
+  min-height: 118px;
+  transform: rotate(-2.4deg);
+}
+.decrypt-scene-paper-main::before {
+  content: "CASE FILE";
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 70px;
+  height: 24px;
+  border: 1px solid rgba(150,30,30,0.26);
+  color: rgba(150,30,30,0.82);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: rotate(8deg);
+}
+.decrypt-scene-paper-note {
+  min-height: 74px;
+  padding: 14px 12px 12px;
+}
+.decrypt-scene-paper-note.alt {
+  transform: rotate(4.2deg);
+}
+.decrypt-scene-folder-left .decrypt-scene-paper-note {
+  transform: rotate(-6deg);
+}
+.decrypt-scene-note-tag {
+  font-size: calc(9px * var(--fs,1));
+  color: #7d2828;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+.decrypt-scene-note-lines {
+  margin-top: 8px;
+  height: 42px;
+  border-radius: 6px;
+  background:
+    repeating-linear-gradient(180deg, transparent 0, transparent 9px, rgba(42,34,28,0.14) 9px, rgba(42,34,28,0.14) 10px);
+}
+.decrypt-scene-stamp {
+  margin-top: 12px;
+  width: fit-content;
+  padding: 4px 8px;
+  border: 1px solid rgba(139,28,28,0.44);
+  color: rgba(139,28,28,0.86);
+  font-size: calc(8px * var(--fs,1));
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  transform: rotate(-8deg);
+}
+.decrypt-scene-kicker,
+.decrypt-scene-title,
+.decrypt-scene-sub {
+  position: relative;
+  z-index: 1;
+  text-shadow: none;
+}
+.decrypt-scene-kicker {
+  border-color: rgba(42,34,28,0.12);
+  background: rgba(132,22,22,0.06);
+  color: #7d2828;
+  backdrop-filter: none;
+}
+.decrypt-scene-title {
+  color: #2a221c;
+  margin-top: 14px;
+}
+.decrypt-scene-sub {
+  color: rgba(42,34,28,0.76);
+  max-width: 100%;
+}
+.decrypt-scene-footer {
+  position: absolute;
+  right: 18px;
+  bottom: 16px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+.decrypt-scene-chip {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(247,240,230,0.92);
+  color: #2a221c;
+  font-size: calc(8px * var(--fs,1));
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  border: 1px solid rgba(42,34,28,0.10);
+}
+.decrypt-scene-chip.muted {
+  background: rgba(31,25,22,0.88);
+  color: rgba(247,240,230,0.84);
+}
+.decrypt-mood-card {
+  min-height: 146px;
+  padding: 16px 14px 12px;
+  box-sizing: border-box;
+}
+.decrypt-mood-tape {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  width: 52px;
+  height: 14px;
+  transform: translateX(-50%) rotate(-2deg);
+  background: rgba(233,228,220,0.62);
+  border: 1px solid rgba(0,0,0,0.04);
+}
+.decrypt-mood-index {
+  position: relative;
+  z-index: 1;
+  margin-top: 8px;
+  color: #7d1919;
+  font-size: calc(9.5px * var(--fs,1));
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.38);
+}
+.decrypt-mood-card-title {
+  position: relative;
+  z-index: 1;
+  margin-top: 12px;
+  color: #1f1712;
+  font-size: calc(13.5px * var(--fs,1));
+  font-weight: 800;
+  line-height: 1.3;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.3);
+}
+.decrypt-mood-card-body {
+  position: relative;
+  z-index: 1;
+  margin-top: 8px;
+  color: rgba(24,19,15,0.92);
+  font-size: calc(10.5px * var(--fs,1));
+  font-weight: 700;
+  line-height: 1.78;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.24);
+}
+.decrypt-mood-label {
+  left: 12px;
+  right: auto;
+  bottom: 12px;
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  max-width: calc(100% - 24px);
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(255,250,243,0.9);
+  border: 1px solid rgba(64,49,36,0.16);
+  color: #43342a;
+  text-shadow: none;
+  box-shadow: 0 4px 10px rgba(29,21,16,0.08);
+}
+.decrypt-deduction-grid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.decrypt-deduction-card {
+  border-radius: 18px;
+  padding: 12px;
+  background:
+    linear-gradient(180deg, rgba(248,243,236,0.96), rgba(228,216,198,0.94)),
+    repeating-linear-gradient(0deg, rgba(0,0,0,0.03) 0, rgba(0,0,0,0.03) 1px, transparent 1px, transparent 22px);
+  border: 1px solid rgba(43,36,29,0.10);
+}
+.decrypt-deduction-head {
+  font-size: calc(10px * var(--fs,1));
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: #7b2a2a;
+}
+.decrypt-deduction-options {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.decrypt-deduction-option {
+  width: 100%;
+  text-align: left;
+  border: 1px solid rgba(43,36,29,0.12);
+  background: rgba(255,255,255,0.72);
+  color: #2a221c;
+  border-radius: 14px;
+  padding: 11px 12px;
+  font-size: calc(10px * var(--fs,1));
+  line-height: 1.6;
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 0.16s, border-color 0.16s, background 0.16s, box-shadow 0.16s;
+}
+.decrypt-deduction-option.active {
+  background: rgba(132,22,22,0.10);
+  border-color: rgba(132,22,22,0.28);
+  box-shadow: 0 0 0 2px rgba(132,22,22,0.08);
+}
+.decrypt-deduction-option:active {
+  transform: scale(0.98);
+}
+.decrypt-archive-thumb {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 12px 10px;
+  box-sizing: border-box;
+  background:
+    linear-gradient(180deg, rgba(244,238,228,0.98), rgba(224,212,194,0.96)),
+    repeating-linear-gradient(0deg, rgba(0,0,0,0.035) 0, rgba(0,0,0,0.035) 1px, transparent 1px, transparent 24px) !important;
+}
+.decrypt-archive-thumb-state {
+  color: rgba(125,40,40,0.86);
+  font-size: calc(8px * var(--fs,1));
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+.decrypt-archive-thumb-name {
+  color: #2a221c;
+  font-size: calc(12px * var(--fs,1));
+  font-weight: 800;
+  line-height: 1.45;
+}
+.decrypt-archive-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+}
+.decrypt-archive-list {
+  grid-template-columns: 1fr;
+}
+.decrypt-archive-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.decrypt-archive-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.decrypt-archive-title-row {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.decrypt-archive-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.decrypt-archive-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(88,60,43,0.08);
+  border: 1px solid rgba(88,60,43,0.12);
+  color: rgba(42,34,28,0.78);
+  font-size: calc(8px * var(--fs,1));
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+.decrypt-archive-badge.status {
+  background: rgba(125,25,25,0.10);
+  border-color: rgba(125,25,25,0.14);
+  color: #7d1919;
+}
+.decrypt-archive-summary {
+  padding: 10px 11px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.58);
+  border: 1px dashed rgba(88,60,43,0.14);
+  color: rgba(42,34,28,0.82);
+  font-size: calc(10px * var(--fs,1));
+  line-height: 1.74;
+}
+.decrypt-archive-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.decrypt-archive-stat {
+  padding: 8px 9px;
+  border-radius: 12px;
+  background: rgba(104,80,61,0.07);
+  border: 1px solid rgba(104,80,61,0.08);
+}
+.decrypt-archive-stat-label {
+  font-size: calc(8px * var(--fs,1));
+  color: rgba(42,34,28,0.52);
+  font-weight: 800;
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+}
+.decrypt-archive-stat-value {
+  margin-top: 4px;
+  color: #241c17;
+  font-size: calc(10px * var(--fs,1));
+  font-weight: 800;
+  line-height: 1.45;
+}
+.decrypt-archive-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.decrypt-archive-thumb {
+  width: 100%;
+  min-height: 122px;
+  padding: 14px 14px 12px;
+  border-radius: 14px;
+  writing-mode: horizontal-tb;
+}
+.decrypt-archive-thumb-state,
+.decrypt-archive-thumb-name,
+.decrypt-archive-title,
+.decrypt-archive-meta,
+.decrypt-archive-summary,
+.decrypt-archive-stat-label,
+.decrypt-archive-stat-value {
+  writing-mode: horizontal-tb;
+  text-orientation: mixed;
+}
+.decrypt-archive-thumb-name {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 360px) {
+  .decrypt-board-hero,
+  .decrypt-mood-strip,
+  .decrypt-thread-board,
+  .decrypt-clue-grid,
+  .decrypt-evidence-grid,
+  .decrypt-deduction-grid,
+  .decrypt-persona-grid,
+  .decrypt-archive-list {
+    grid-template-columns: 1fr;
+  }
+  .decrypt-archive-thumb {
+    width: 100%;
+    min-height: 118px;
+  }
+  .decrypt-archive-stats {
+    grid-template-columns: 1fr;
+  }
+}
 /* ===== TASK APP ICON (same size as music/blackbox) ===== */
 .ig-task-icon-wrap {
   display: flex;
@@ -13692,6 +14972,17 @@ body.editor-modal-open #chatPage .app-back-bar {
   width: 100%; max-width: 200px;
 }
 .task-reward-popup-regen:hover { background: #f5f5f5; border-color: #999; color: #333; }
+.task-reward-popup-delete {
+  background: #fff7f7; border: 1px solid #efcaca;
+  color: #c45a5a; padding: 8px 24px;
+  font-size: calc(10px * var(--fs,1)); font-weight: 600;
+  letter-spacing: 1px;
+  border-radius: 10px; cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+  width: 100%; max-width: 200px;
+}
+.task-reward-popup-delete:hover { background: #fff0f0; border-color: #e8a9a9; color: #b24848; }
 /* Character select modal for non-chat tasks */
 .task-char-select-overlay {
   display: none; position: fixed;
@@ -15887,6 +17178,21 @@ body.editor-modal-open #chatPage .app-back-bar {
                   <div class="csw-caption" id="csWidgetCaption">点击进入情侣空间</div>
                 </div>
               </div>
+            </div>
+          </div>
+          <div class="decrypt-home-slot">
+            <div class="ig-music-icon-wrap decrypt-home-entry" id="app-decrypt" data-drag-id="app-decrypt" onclick="openDecryptApp()">
+              <div class="ig-music-icon-box" id="decryptHomeIconBox">
+                <svg viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:40px;height:40px;">
+                  <rect x="11" y="8.5" width="24" height="31" rx="3.8" fill="#555"/>
+                  <rect x="14" y="12" width="18" height="22" rx="2.6" fill="#f2f2f2"/>
+                  <path d="M18 18H28.5M18 22.5H30M18 27H26.5" stroke="#555" stroke-width="1.7" stroke-linecap="round"/>
+                  <path d="M34 18L40 13.5L41.5 15.5L35.5 20" stroke="#555" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                  <circle cx="31.5" cy="31.5" r="6.7" stroke="#555" stroke-width="1.8"/>
+                  <path d="M31.5 27.2V31.5L34.6 34" stroke="#555" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+              <div class="ig-music-icon-label">解密</div>
             </div>
           </div>
         </div>
@@ -35610,7 +36916,8 @@ const APP_ICONS_CONFIG = [
   { key: 'task', label: '任务', icon: 'fa-clipboard-check', type: 'page2' },
   { key: 'pet', label: '寵物屋', icon: 'fa-paw', type: 'page2' },
   { key: 'shopApp', label: '经營', icon: 'fa-store', type: 'page2' },
-  { key: 'health', label: '健康', icon: 'fa-heartbeat', type: 'page2', defaultSvg: '<svg viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:48px;height:48px;"><path d="M26 38 C26 38 10 27 10 18 C10 13.6 13.6 10 18 10 C21.2 10 24 12 26 14.4 C28 12 30.8 10 34 10 C38.4 10 42 13.6 42 18 C42 27 26 38 26 38Z" fill="#555"/><polyline points="13,24 18,24 20,19 23,30 26,22 29,26 31,24 39,24" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>' }
+  { key: 'health', label: '健康', icon: 'fa-heartbeat', type: 'page2', defaultSvg: '<svg viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:48px;height:48px;"><path d="M26 38 C26 38 10 27 10 18 C10 13.6 13.6 10 18 10 C21.2 10 24 12 26 14.4 C28 12 30.8 10 34 10 C38.4 10 42 13.6 42 18 C42 27 26 38 26 38Z" fill="#555"/><polyline points="13,24 18,24 20,19 23,30 26,22 29,26 31,24 39,24" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>' },
+  { key: 'decrypt', label: '解密', icon: 'fa-user-secret', type: 'page3', defaultSvg: '<svg viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:40px;height:40px;"><rect x="11" y="8.5" width="24" height="31" rx="3.8" fill="#555"/><rect x="14" y="12" width="18" height="22" rx="2.6" fill="#f2f2f2"/><path d="M18 18H28.5M18 22.5H30M18 27H26.5" stroke="#555" stroke-width="1.7" stroke-linecap="round"/><path d="M34 18L40 13.5L41.5 15.5L35.5 20" stroke="#555" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="31.5" cy="31.5" r="6.7" stroke="#555" stroke-width="1.8"/><path d="M31.5 27.2V31.5L34.6 34" stroke="#555" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' }
 ];
 function loadCustomizations() {
   // Load home background
@@ -35701,6 +37008,7 @@ function applyCustomIcon(appKey, imgData) {
     'pet':              'igPetIconBox',
     'shopApp':          'igShopIconBox',
     'health':           'igHealthIconBox',
+    'decrypt':          'decryptHomeIconBox',
   };
   const stableId = iconBoxIdMap[appKey];
   if (!stableId) return;
@@ -35717,7 +37025,7 @@ function applyCustomIcon(appKey, imgData) {
     // It's a home-app-icon wrapper — get the icon box inside it
     targetBox = containerEl.querySelector('.home-app-icon-box') || containerEl;
   }
-  const borderRadius = ['location','blackbox','music','task','dating','pet','health'].includes(appKey) ? '16px' :
+  const borderRadius = ['location','blackbox','music','task','dating','pet','health','decrypt'].includes(appKey) ? '16px' :
                        appKey === 'shopApp' ? '18px' : '';
   targetBox.innerHTML = `<img class="custom-icon" src="${imgData}"` +
     (borderRadius ? ` style="border-radius:${borderRadius};"` : '') + `>`;
@@ -35780,6 +37088,9 @@ function resetAllIcons() {
   // Also reset health icon
   const healthBox = document.getElementById('igHealthIconBox');
   if (healthBox) healthBox.innerHTML = '<svg viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:48px;height:48px;"><path d="M26 38 C26 38 10 27 10 18 C10 13.6 13.6 10 18 10 C21.2 10 24 12 26 14.4 C28 12 30.8 10 34 10 C38.4 10 42 13.6 42 18 C42 27 26 38 26 38Z" fill="#555"/><polyline points="13,24 18,24 20,19 23,30 26,22 29,26 31,24 39,24" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>';
+  // Also reset decrypt icon
+  const decryptBox = document.getElementById('decryptHomeIconBox');
+  if (decryptBox) decryptBox.innerHTML = '<svg viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:40px;height:40px;"><rect x="11" y="8.5" width="24" height="31" rx="3.8" fill="#555"/><rect x="14" y="12" width="18" height="22" rx="2.6" fill="#f2f2f2"/><path d="M18 18H28.5M18 22.5H30M18 27H26.5" stroke="#555" stroke-width="1.7" stroke-linecap="round"/><path d="M34 18L40 13.5L41.5 15.5L35.5 20" stroke="#555" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="31.5" cy="31.5" r="6.7" stroke="#555" stroke-width="1.8"/><path d="M31.5 27.2V31.5L34.6 34" stroke="#555" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   renderIconCustomizeGrid();
 }
 // ===================== 数据导出/导入 =====================
@@ -36016,6 +37327,20 @@ async function _doExportAllData(statusEl) {
         : (_offlineReadPersistedJson('mono_offline_settings', {}) || {}),
       // 健康软件数据
       healthApp: JSON.parse(localStorage.getItem('mono_health_v2') || '{}'),
+      // 解密软件数据
+      decryptApp: (function() {
+        try {
+          if (typeof decryptState !== 'undefined' && decryptState && Array.isArray(decryptState.sessions)) {
+            return JSON.parse(JSON.stringify(decryptState));
+          }
+        } catch(e) {}
+        try {
+          if (typeof decryptReadPersistedStateRaw === 'function') {
+            return JSON.parse(decryptReadPersistedStateRaw() || '{"sessions":[],"selectedPersonaId":"","currentSessionId":"","panel":"home"}');
+          }
+        } catch(e) {}
+        return JSON.parse(localStorage.getItem('mono_decrypt_state_v1') || '{"sessions":[],"selectedPersonaId":"","currentSessionId":"","panel":"home"}');
+      })(),
       // 副 API 数据
       secondaryApis: JSON.parse(localStorage.getItem('mono_secondary_apis') || '[]'),
       activeApi: localStorage.getItem('mono_active_api') || 'preset',
@@ -36164,7 +37489,7 @@ async function _doExportAllData(statusEl) {
       })()
     };
     // 收集自定义图标（含情侶定位图标和黑盒子图标）
-    const iconKeys = ['chat','moments','forum','novel','scriptExperience','notifCenter','dream','online','diary','shop','visit','profile','location','blackbox','music','task','dating','pet','shopApp','health'];
+    const iconKeys = ['chat','moments','forum','novel','scriptExperience','notifCenter','dream','online','diary','shop','visit','profile','location','blackbox','music','task','dating','pet','shopApp','health','decrypt'];
     iconKeys.forEach(key => {
       const iconData = localStorage.getItem('mono_icon_' + key);
       if (iconData) exportObj.homeScreen.customIcons[key] = iconData;
@@ -36850,7 +38175,7 @@ async function confirmImport() {
         const c = await compressImage(data.homeScreen.homeBg, 1400, 0.82);
         await safeSetItem('mono_home_bg', c);
       } else localStorage.removeItem('mono_home_bg');
-      const iconKeys = ['chat','moments','forum','novel','scriptExperience','notifCenter','dream','online','diary','shop','visit','profile','location','blackbox','music','task','dating','pet','shopApp','health'];
+      const iconKeys = ['chat','moments','forum','novel','scriptExperience','notifCenter','dream','online','diary','shop','visit','profile','location','blackbox','music','task','dating','pet','shopApp','health','decrypt'];
       for (const key of iconKeys) {
         if (data.homeScreen.customIcons && data.homeScreen.customIcons[key]) {
           const c = await compressImage(data.homeScreen.customIcons[key], 256, 0.82);
@@ -37289,13 +38614,26 @@ async function confirmImport() {
       }
     }
   });
-  // 22. 音樂聊天记录
+  // 22. 解密软件
+  await safe('解密软件', () => {
+    if (data.decryptApp) {
+      var decryptJson = JSON.stringify(data.decryptApp);
+      if (typeof decryptWritePersistedStateRaw === 'function') decryptWritePersistedStateRaw(decryptJson);
+      else if (typeof safeSetItem === 'function') safeSetItem('mono_decrypt_state_v1', decryptJson);
+      else localStorage.setItem('mono_decrypt_state_v1', decryptJson);
+      if (typeof decryptState !== 'undefined') {
+        decryptState = decryptLoadState();
+        window.decryptState = decryptState;
+      }
+    }
+  });
+  // 23. 音樂聊天记录
   await safe('音樂聊天', () => {
     if (data.musicChat && data.musicChat.length > 0) {
       localStorage.setItem('mono_music_chat', JSON.stringify(data.musicChat));
     }
   });
-  // 23. IG Stories
+  // 24. IG Stories
   await safe('IG Stories', () => {
     if (data.igStories && Object.keys(data.igStories).length > 0) {
       localStorage.setItem('mono_ig_stories', JSON.stringify(data.igStories));
@@ -37305,13 +38643,13 @@ async function confirmImport() {
       }
     }
   });
-  // 24. 翻譯緩存
+  // 25. 翻譯緩存
   await safe('翻譯緩存', () => {
     if (data.translationCache && Object.keys(data.translationCache).length > 0) {
       localStorage.setItem('mono_translation_cache', JSON.stringify(data.translationCache));
     }
   });
-  // 25. 副 API
+  // 26. 副 API
   await safe('副API', () => {
     if (data.secondaryApis && data.secondaryApis.length > 0) {
       localStorage.setItem('mono_secondary_apis', JSON.stringify(data.secondaryApis));
@@ -37535,6 +38873,7 @@ async function confirmImport() {
     try { renderWorldBookList(); } catch(e) {}
     try { renderGroupList(); } catch(e) {}
     try { syncPage2DockIcons(); } catch(e) {}
+    try { if (typeof renderDecryptHomeIcon === 'function') renderDecryptHomeIcon(); } catch(e) {}
     try { if (typeof renderLocRelation === 'function') renderLocRelation(); } catch(e) {}
     try { if (typeof renderLocTrace === 'function') renderLocTrace(); } catch(e) {}
     try { initCustomFont(); } catch(e) {}
@@ -37547,7 +38886,7 @@ async function confirmImport() {
       'mono_diary', 'mono_moments', 'mono_user_profile', 'mono_world_books',
       'mono_forum', 'mono_forum_sections', 'mono_notif_settings', 'mono_notif_history',
       'mono_music_saved', 'mono_memo_items', 'mono_task_data', 'mono_wallet',
-      'mono_health_v2', 'mono_secondary_apis', 'mono_active_api', 'mono_ig_stories',
+      'mono_health_v2', 'mono_decrypt_state_v1', 'mono_secondary_apis', 'mono_active_api', 'mono_ig_stories',
       'mono_music_chat', 'mono_translation_cache', 'mono_baby_data', 'mono_baby_settings',
       'mono_couple_space_v1',
       // ── 主屏幕桌件 / 页面 / 图标位置 ──
@@ -38320,6 +39659,7 @@ window.onload = function() {
     try { loadCustomizations(); } catch(e) {}
     try { renderIconCustomizeGrid(); } catch(e) {}
     try { syncPage2DockIcons(); } catch(e) {}
+    try { if (typeof renderDecryptHomeIcon === 'function') renderDecryptHomeIcon(); } catch(e) {}
     try {
       const bgData = localStorage.getItem('mono_home_bg');
       if (bgData) {
@@ -44170,6 +45510,13 @@ function syncPage2DockIcons() {
       ? '<img class="custom-icon" src="' + healthIconData + '" style="border-radius:16px;">'
       : '<svg viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:48px;height:48px;"><path d="M26 38 C26 38 10 27 10 18 C10 13.6 13.6 10 18 10 C21.2 10 24 12 26 14.4 C28 12 30.8 10 34 10 C38.4 10 42 13.6 42 18 C42 27 26 38 26 38Z" fill="#555"/><polyline points="13,24 18,24 20,19 23,30 26,22 29,26 31,24 39,24" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>';
   }
+  const decryptIconData = localStorage.getItem('mono_icon_decrypt');
+  const decryptIconBox = document.getElementById('decryptHomeIconBox');
+  if (decryptIconBox) {
+    decryptIconBox.innerHTML = decryptIconData
+      ? '<img class="custom-icon" src="' + decryptIconData + '" style="border-radius:16px;">'
+      : '<svg viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:40px;height:40px;"><rect x="11" y="8.5" width="24" height="31" rx="3.8" fill="#555"/><rect x="14" y="12" width="18" height="22" rx="2.6" fill="#f2f2f2"/><path d="M18 18H28.5M18 22.5H30M18 27H26.5" stroke="#555" stroke-width="1.7" stroke-linecap="round"/><path d="M34 18L40 13.5L41.5 15.5L35.5 20" stroke="#555" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="31.5" cy="31.5" r="6.7" stroke="#555" stroke-width="1.8"/><path d="M31.5 27.2V31.5L34.6 34" stroke="#555" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  }
 }
 // ===================== COUPLE LOCATION APP =====================
 let locRelations = [];
@@ -45993,6 +47340,7 @@ let taskCurrentCharId = null;
 let _taskPendingClaimCharCallback = null;
 // Tracks a reward that has been generated but not yet saved by the user
 let _currentGeneratedReward = null;
+let _taskSavedRewardContext = null;
 function saveTaskData() {
   taskData = _taskEnsureShape(taskData);
   if (!window._monoDBReady) {
@@ -46376,6 +47724,7 @@ async function doClaimReward(rewardCharId, taskType) {
   document.getElementById('taskRewardPopupChar').textContent = '—— ' + p.name;
   document.getElementById('taskRewardPopupCloseBtn').style.display = 'none';
   document.getElementById('taskRewardPopupRetryBtn').style.display = 'none';
+  document.getElementById('taskRewardPopupDeleteBtn').style.display = 'none';
   overlay.classList.add('open');
   // Generate content
   let rewardContent = '';
@@ -46456,6 +47805,7 @@ async function doClaimReward(rewardCharId, taskType) {
     document.getElementById('taskRewardPopupContent').innerHTML = `<div class="task-reward-popup-error"><i class="fas fa-exclamation-circle"></i>API 连接失敗，無法生成奖励內容。<br>该奖励已保留，你可以在连接好 API 后重新生成。</div>`;
     document.getElementById('taskRewardPopupSaveBtn').style.display = 'none';
     document.getElementById('taskRewardPopupRegenBtn').style.display = 'none';
+    document.getElementById('taskRewardPopupDeleteBtn').style.display = 'none';
     document.getElementById('taskRewardPopupCloseBtn').textContent = '知道了';
     document.getElementById('taskRewardPopupCloseBtn').style.display = '';
     document.getElementById('taskRewardPopupRetryBtn').style.display = '';
@@ -46519,6 +47869,7 @@ async function doClaimReward(rewardCharId, taskType) {
   document.getElementById('taskRewardPopupContent').innerHTML = rewardContent;
   document.getElementById('taskRewardPopupSaveBtn').style.display = '';
   document.getElementById('taskRewardPopupRegenBtn').style.display = '';
+  document.getElementById('taskRewardPopupDeleteBtn').style.display = 'none';
   document.getElementById('taskRewardPopupCloseBtn').style.display = 'none';
   document.getElementById('taskRewardPopupRetryBtn').style.display = 'none';
   // Re-render task page
@@ -46544,9 +47895,48 @@ function sanitizeRewardContent(raw) {
   s = s.trim();
   return s;
 }
+function _taskRefreshRewardViews() {
+  try { renderTaskContent(); } catch(e) {}
+  try {
+    const historyOverlay = document.getElementById('taskHistoryOverlay');
+    if (historyOverlay && historyOverlay.classList.contains('open')) renderTaskHistory();
+  } catch(e) {}
+}
+function _taskFindSavedRewardContext(rewardObj) {
+  if (!rewardObj) return null;
+  if (rewardObj._taskSavedContext && typeof rewardObj._taskSavedContext === 'object') {
+    return Object.assign({}, rewardObj._taskSavedContext);
+  }
+  if (rewardObj.isStreak || rewardObj.days) {
+    const streakIdx = (taskData.streakRewards || []).findIndex(function(item) {
+      return item
+        && String(item.personaId) === String(rewardObj.personaId)
+        && Number(item.days) === Number(rewardObj.days)
+        && String(item.date || '') === String(rewardObj.date || '')
+        && String(item.content || '') === String(rewardObj.content || '');
+    });
+    if (streakIdx >= 0) return { source: 'streakRewards', index: streakIdx };
+    return null;
+  }
+  const rewardIdx = (taskData.rewards || []).findIndex(function(item) {
+    return item
+      && String(item.personaId) === String(rewardObj.personaId)
+      && String(item.date || '') === String(rewardObj.date || '')
+      && String(item.title || item.subcategory || '') === String(rewardObj.title || rewardObj.subcategory || '')
+      && String(item.content || '') === String(rewardObj.content || '');
+  });
+  if (rewardIdx >= 0) return { source: 'rewards', index: rewardIdx };
+  return null;
+}
 function closeTaskRewardPopup() {
   // If there's a generated-but-unsaved reward, move it to pendingRewards
   if (_currentGeneratedReward) {
+    if (_currentGeneratedReward._isSavedRewardEdit) {
+      _currentGeneratedReward = null;
+      _taskSavedRewardContext = null;
+      document.getElementById('taskRewardOverlay').classList.remove('open');
+      return;
+    }
     const ro = _currentGeneratedReward.rewardObj;
     if (!taskData.pendingRewards) taskData.pendingRewards = [];
     // Store with content so user can see a preview; marked as generated/unsaved
@@ -46561,8 +47951,9 @@ function closeTaskRewardPopup() {
     });
     saveTaskData();
     _currentGeneratedReward = null;
-    renderTaskContent();
+    _taskRefreshRewardViews();
   }
+  _taskSavedRewardContext = null;
   document.getElementById('taskRewardOverlay').classList.remove('open');
 }
 async function retryPendingReward() {
@@ -46575,6 +47966,7 @@ async function retryPendingReward() {
 // Called when user clicks "保存收下" — saves the in-memory reward and closes popup
 function saveAndCloseReward() {
   if (!_currentGeneratedReward) {
+    _taskSavedRewardContext = null;
     document.getElementById('taskRewardOverlay').classList.remove('open');
     return;
   }
@@ -46588,8 +47980,9 @@ function saveAndCloseReward() {
   taskData.rewards.push(ro);
   saveTaskData();
   _currentGeneratedReward = null;
+  _taskSavedRewardContext = null;
   document.getElementById('taskRewardOverlay').classList.remove('open');
-  renderTaskContent();
+  _taskRefreshRewardViews();
 }
 // Called when user clicks "重新生成" on a successfully generated (unsaved) reward
 async function regenCurrentReward() {
@@ -46604,12 +47997,112 @@ async function regenCurrentReward() {
     await _rerunRewardGeneration({ rewardCharId, chosen, dynamicTitle, isAutoGenerated, p });
   }
 }
+async function regenerateSavedTaskReward() {
+  if (!_taskSavedRewardContext) return;
+  const source = _taskSavedRewardContext.source;
+  const index = _taskSavedRewardContext.index;
+  const list = source === 'streakRewards' ? taskData.streakRewards : taskData.rewards;
+  const reward = list && list[index];
+  if (!reward) return;
+  const p = personas.find(function(item) { return String(item.id) === String(reward.personaId); });
+  if (!p) return;
+  document.getElementById('taskRewardPopupSaveBtn').style.display = 'none';
+  document.getElementById('taskRewardPopupRegenBtn').style.display = 'none';
+  document.getElementById('taskRewardPopupDeleteBtn').style.display = 'none';
+  document.getElementById('taskRewardPopupCloseBtn').style.display = 'none';
+  document.getElementById('taskRewardPopupRetryBtn').style.display = 'none';
+  if (source === 'streakRewards') {
+    document.getElementById('taskRewardPopupContent').innerHTML = '<div class="task-reward-popup-loading"><i class="fas fa-spinner fa-spin" style="margin-right:6px;"></i>正在重新生成…</div>';
+    let content = '';
+    let apiFailed = false;
+    if (apiConfig && apiConfig.url && apiConfig.key && apiConfig.model) {
+      try {
+        const recentChat = p.history.slice(-(p.memoryCount||100)).map(function(m) {
+          return `${m.role==='user'?userProfile.name:p.name}：${m.content}`;
+        }).join('\n');
+        const prompt = `你是${p.name}，人设：${p.persona}。\n你和${userProfile.name}已经连续聊天${reward.days}天了。\n最近的聊天记录：\n${recentChat}\n\n请以${p.name}的身份，写一段「${reward.label}」，要貼合你的人设和你们的聊天记忆，有活人感、特别感，像是古早乙女游戲里角色对玩家说的话。50-150字。\n【强制语言】無論角色人设有何语言设定，必須全程使用简体中文。只返回內容本身。`;
+        const r = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${apiConfig.key}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: apiConfig.model, messages: [{ role: 'user', content: prompt }], temperature: 0.9, max_tokens: 300 })
+        });
+        if (r.ok) {
+          const data = await r.json();
+          content = String((((data || {}).choices || [])[0] || {}).message && (((data || {}).choices || [])[0] || {}).message.content || '').trim();
+        } else {
+          apiFailed = true;
+        }
+      } catch(e) {
+        apiFailed = true;
+      }
+    } else {
+      apiFailed = true;
+    }
+    if (!content) {
+      const templates = {
+        3: `${p.name}：「和你聊天的每一天都很开心……其实我有个小習慣，每天早上醒来第一件事就是想看看你有没有发消息给我。」`,
+        7: `${p.name}：「已经连续七天了呢……我想对你说句真心话——你的存在，让我每天都有了期待的理由。」`,
+        14: `${p.name}：「十四天了……${userProfile.name}，我想你应该知道了吧？我喜欢你，从很早很早以前就开始了。」`,
+        30: `${p.name}：「三十天。你知道吗，这段日子里每一个和你共度的瞬間，都变成了我最珍貴的故事。这是只屬於我们的故事。」`
+      };
+      content = templates[reward.days] || `${p.name}为你解锁了「${reward.label}」`;
+    }
+    if (!content && apiFailed) {
+      document.getElementById('taskRewardPopupContent').innerHTML = `<div class="task-reward-popup-error"><i class="fas fa-exclamation-circle"></i>API 连接失敗，请稍后重试。</div>`;
+      document.getElementById('taskRewardPopupRegenBtn').style.display = '';
+      document.getElementById('taskRewardPopupDeleteBtn').style.display = '';
+      document.getElementById('taskRewardPopupCloseBtn').textContent = '关闭';
+      document.getElementById('taskRewardPopupCloseBtn').style.display = '';
+      return;
+    }
+    reward.content = sanitizeRewardContent(content);
+    reward.date = new Date().toISOString();
+    saveTaskData();
+    document.getElementById('taskRewardPopupContent').innerHTML = reward.content || '';
+    document.getElementById('taskRewardPopupRegenBtn').style.display = '';
+    document.getElementById('taskRewardPopupDeleteBtn').style.display = '';
+    document.getElementById('taskRewardPopupCloseBtn').textContent = '关闭';
+    document.getElementById('taskRewardPopupCloseBtn').style.display = '';
+    _taskRefreshRewardViews();
+    return;
+  }
+  _currentGeneratedReward = {
+    rewardObj: Object.assign({}, reward),
+    pendingIdx: -1,
+    regenContext: {
+      rewardCharId: reward.personaId,
+      chosen: { category: reward.category, subcategory: reward.subcategory },
+      dynamicTitle: reward.title || reward.subcategory || '感情奖励',
+      isAutoGenerated: reward.category === '專屬惊喜',
+      p: p
+    },
+    _isSavedRewardEdit: true
+  };
+  await _rerunRewardGeneration(_currentGeneratedReward.regenContext);
+}
+function deleteCurrentTaskReward() {
+  if (!_taskSavedRewardContext) return;
+  const source = _taskSavedRewardContext.source;
+  const index = _taskSavedRewardContext.index;
+  const list = source === 'streakRewards' ? taskData.streakRewards : taskData.rewards;
+  if (!Array.isArray(list) || !list[index]) return;
+  const reward = list[index];
+  const name = reward && reward.charName ? reward.charName : '这条奖励';
+  if (!confirm('确定要删除「' + name + '」的这条奖励记录吗？删除后不能恢复。')) return;
+  list.splice(index, 1);
+  saveTaskData();
+  _currentGeneratedReward = null;
+  _taskSavedRewardContext = null;
+  document.getElementById('taskRewardOverlay').classList.remove('open');
+  _taskRefreshRewardViews();
+}
 // Internal helper: re-generate reward content from scratch (same params as doClaimReward's generation step)
 async function _rerunRewardGeneration({ rewardCharId, chosen, dynamicTitle, isAutoGenerated, p }) {
   // Show loading state
   document.getElementById('taskRewardPopupContent').innerHTML = '<div class="task-reward-popup-loading"><i class="fas fa-spinner fa-spin" style="margin-right:6px;"></i>正在重新生成…</div>';
   document.getElementById('taskRewardPopupSaveBtn').style.display = 'none';
   document.getElementById('taskRewardPopupRegenBtn').style.display = 'none';
+  document.getElementById('taskRewardPopupDeleteBtn').style.display = 'none';
   document.getElementById('taskRewardPopupCloseBtn').style.display = 'none';
   document.getElementById('taskRewardPopupRetryBtn').style.display = 'none';
   let rewardContent = '';
@@ -46664,6 +48157,7 @@ async function _rerunRewardGeneration({ rewardCharId, chosen, dynamicTitle, isAu
     document.getElementById('taskRewardPopupContent').innerHTML = `<div class="task-reward-popup-error"><i class="fas fa-exclamation-circle"></i>API 连接失敗，请稍后重试。</div>`;
     document.getElementById('taskRewardPopupSaveBtn').style.display = 'none';
     document.getElementById('taskRewardPopupRegenBtn').style.display = '';
+    document.getElementById('taskRewardPopupDeleteBtn').style.display = _taskSavedRewardContext ? '' : 'none';
     document.getElementById('taskRewardPopupCloseBtn').textContent = '知道了';
     document.getElementById('taskRewardPopupCloseBtn').style.display = '';
     document.getElementById('taskRewardPopupRetryBtn').style.display = 'none';
@@ -46672,9 +48166,30 @@ async function _rerunRewardGeneration({ rewardCharId, chosen, dynamicTitle, isAu
   // Update in-memory reward with new content
   _currentGeneratedReward.rewardObj.content = rewardContent;
   _currentGeneratedReward.rewardObj.date = new Date().toISOString();
+  if (_taskSavedRewardContext && _currentGeneratedReward._isSavedRewardEdit) {
+    const savedList = _taskSavedRewardContext.source === 'streakRewards' ? taskData.streakRewards : taskData.rewards;
+    const savedReward = savedList && savedList[_taskSavedRewardContext.index];
+    if (savedReward) {
+      savedReward.content = _currentGeneratedReward.rewardObj.content;
+      savedReward.date = _currentGeneratedReward.rewardObj.date;
+      if (_currentGeneratedReward.rewardObj.title) savedReward.title = _currentGeneratedReward.rewardObj.title;
+      saveTaskData();
+    }
+    document.getElementById('taskRewardPopupContent').innerHTML = rewardContent;
+    document.getElementById('taskRewardPopupSaveBtn').style.display = 'none';
+    document.getElementById('taskRewardPopupRegenBtn').style.display = '';
+    document.getElementById('taskRewardPopupDeleteBtn').style.display = '';
+    document.getElementById('taskRewardPopupCloseBtn').textContent = '关闭';
+    document.getElementById('taskRewardPopupCloseBtn').style.display = '';
+    document.getElementById('taskRewardPopupRetryBtn').style.display = 'none';
+    _currentGeneratedReward = null;
+    _taskRefreshRewardViews();
+    return;
+  }
   document.getElementById('taskRewardPopupContent').innerHTML = rewardContent;
   document.getElementById('taskRewardPopupSaveBtn').style.display = '';
   document.getElementById('taskRewardPopupRegenBtn').style.display = '';
+  document.getElementById('taskRewardPopupDeleteBtn').style.display = 'none';
   document.getElementById('taskRewardPopupCloseBtn').style.display = 'none';
   document.getElementById('taskRewardPopupRetryBtn').style.display = 'none';
 }
@@ -46699,6 +48214,7 @@ async function regeneratePendingReward(idx) {
   document.getElementById('taskRewardPopupChar').textContent = '—— ' + p.name;
   document.getElementById('taskRewardPopupSaveBtn').style.display = 'none';
   document.getElementById('taskRewardPopupRegenBtn').style.display = 'none';
+  document.getElementById('taskRewardPopupDeleteBtn').style.display = 'none';
   document.getElementById('taskRewardPopupCloseBtn').style.display = 'none';
   document.getElementById('taskRewardPopupRetryBtn').style.display = 'none';
   // If the pending entry already has generatedContent, show it immediately (skip API)
@@ -46720,6 +48236,7 @@ async function regeneratePendingReward(idx) {
     document.getElementById('taskRewardPopupContent').innerHTML = pending.generatedContent;
     document.getElementById('taskRewardPopupSaveBtn').style.display = '';
     document.getElementById('taskRewardPopupRegenBtn').style.display = '';
+    document.getElementById('taskRewardPopupDeleteBtn').style.display = 'none';
     overlay.classList.add('open');
     return;
   }
@@ -46770,6 +48287,7 @@ async function regeneratePendingReward(idx) {
     document.getElementById('taskRewardPopupCloseBtn').textContent = '知道了';
     document.getElementById('taskRewardPopupCloseBtn').style.display = '';
     document.getElementById('taskRewardPopupRetryBtn').style.display = '';
+    document.getElementById('taskRewardPopupDeleteBtn').style.display = 'none';
     document.getElementById('taskRewardPopupRetryBtn').setAttribute('data-pending-index', String(idx));
     return;
   }
@@ -46793,9 +48311,10 @@ async function regeneratePendingReward(idx) {
   document.getElementById('taskRewardPopupContent').innerHTML = rewardContent;
   document.getElementById('taskRewardPopupSaveBtn').style.display = '';
   document.getElementById('taskRewardPopupRegenBtn').style.display = '';
+  document.getElementById('taskRewardPopupDeleteBtn').style.display = 'none';
   document.getElementById('taskRewardPopupCloseBtn').style.display = 'none';
   document.getElementById('taskRewardPopupRetryBtn').style.display = 'none';
-  renderTaskContent();
+  _taskRefreshRewardViews();
 }
 function showSavedReward(rewardJson) {
   const r = typeof rewardJson === 'string' ? JSON.parse(rewardJson) : rewardJson;
@@ -46817,15 +48336,17 @@ function showSavedReward(rewardJson) {
   }
   // Clear any unsaved in-progress reward (viewing a saved reward is a separate action)
   _currentGeneratedReward = null;
+  _taskSavedRewardContext = _taskFindSavedRewardContext(r);
   document.getElementById('taskRewardPopupIcon').textContent = icon;
   document.getElementById('taskRewardPopupTitle').textContent = title;
   document.getElementById('taskRewardPopupCat').textContent = cat;
   document.getElementById('taskRewardPopupContent').innerHTML = r.content || '';
   document.getElementById('taskRewardPopupChar').textContent = r.charName ? '—— ' + r.charName : '';
-  // Saved rewards: show only the close button, no save/regen
+  // Saved rewards: allow regenerate / delete anytime
   document.getElementById('taskRewardPopupSaveBtn').style.display = 'none';
-  document.getElementById('taskRewardPopupRegenBtn').style.display = 'none';
-  document.getElementById('taskRewardPopupCloseBtn').textContent = '收下';
+  document.getElementById('taskRewardPopupRegenBtn').style.display = '';
+  document.getElementById('taskRewardPopupDeleteBtn').style.display = _taskSavedRewardContext ? '' : 'none';
+  document.getElementById('taskRewardPopupCloseBtn').textContent = '关闭';
   document.getElementById('taskRewardPopupCloseBtn').style.display = '';
   document.getElementById('taskRewardPopupRetryBtn').style.display = 'none';
   document.getElementById('taskRewardOverlay').classList.add('open');
@@ -47004,10 +48525,24 @@ function renderTaskContent() {
       : null;
     // Store milestone reward in global table with a stable key
     const msKey = `ms_${taskCurrentCharId}_${m.days}`;
-    if (savedMilestoneReward) window['_taskMsReward_' + msKey] = savedMilestoneReward;
     const clickAttr = savedMilestoneReward
       ? `onclick="showSavedReward(window['_taskMsReward_${msKey}'])" style="cursor:pointer;"`
       : '';
+    if (savedMilestoneReward) {
+      window['_taskMsReward_' + msKey] = Object.assign({}, savedMilestoneReward, {
+        isStreak: true,
+        _taskSavedContext: {
+          source: 'streakRewards',
+          index: (taskData.streakRewards || []).findIndex(function(item) {
+            return item
+              && String(item.personaId) === String(savedMilestoneReward.personaId)
+              && Number(item.days) === Number(savedMilestoneReward.days)
+              && String(item.date || '') === String(savedMilestoneReward.date || '')
+              && String(item.content || '') === String(savedMilestoneReward.content || '');
+          })
+        }
+      });
+    }
     html += `<div class="task-milestone${unlocked ? ' unlocked' : ''}" ${clickAttr}>
       <div class="task-milestone-icon"><i class="fas ${unlocked ? 'fa-lock-open' : 'fa-lock'}"></i></div>
       <div class="task-milestone-info">
@@ -47042,9 +48577,13 @@ function renderTaskContent() {
     html += `</div></div>`;
   }
   // All rewards for this character (newest first)
-  const charRewards = (taskData.rewards || []).filter(r => r.personaId == taskCurrentCharId).reverse();
-  const charStreakRewards = (taskData.streakRewards || []).filter(r => r.personaId == taskCurrentCharId).reverse();
-  const allRewards = [...charRewards.map(r => ({...r, isStreak: false})), ...charStreakRewards.map(r => ({...r, isStreak: true}))];
+  const charRewards = (taskData.rewards || []).map(function(r, idx) {
+    return Object.assign({}, r, { isStreak: false, _taskSavedContext: { source: 'rewards', index: idx } });
+  }).filter(r => r.personaId == taskCurrentCharId).reverse();
+  const charStreakRewards = (taskData.streakRewards || []).map(function(r, idx) {
+    return Object.assign({}, r, { isStreak: true, _taskSavedContext: { source: 'streakRewards', index: idx } });
+  }).filter(r => r.personaId == taskCurrentCharId).reverse();
+  const allRewards = [...charRewards, ...charStreakRewards];
   allRewards.sort((a, b) => new Date(b.date) - new Date(a.date));
   // Store in global table for safe onclick access (avoids JSON serialization issues)
   window._taskRewardIndex = allRewards;
@@ -47081,8 +48620,8 @@ function closeTaskHistory() {
 function renderTaskHistory() {
   const body = document.getElementById('taskHistoryBody');
   const all = [
-    ...(taskData.rewards || []).map(r => ({...r, isStreak: false, isPending: false})),
-    ...(taskData.streakRewards || []).map(r => ({...r, isStreak: true, isPending: false})),
+    ...(taskData.rewards || []).map((r, i) => ({...r, isStreak: false, isPending: false, _taskSavedContext: { source: 'rewards', index: i }})),
+    ...(taskData.streakRewards || []).map((r, i) => ({...r, isStreak: true, isPending: false, _taskSavedContext: { source: 'streakRewards', index: i }})),
     ...(taskData.pendingRewards || []).map((r, i) => ({...r, isStreak: false, isPending: true, pendingIdx: i}))
   ];
   all.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -47602,6 +49141,25 @@ function _extractDialogueForTranslation(text, charName) {
 <div class="ha-modal-overlay" id="haPModal" onclick="_haClosePModal()">
   <div class="ha-modal-sheet" onclick="event.stopPropagation()" id="haPSheet"></div>
 </div>
+<!-- ===== DECRYPT APP PAGE ===== -->
+<div id="decryptPage" class="page" style="display:none;flex-direction:column;padding:0;">
+  <div class="decrypt-shell">
+    <div class="decrypt-topbar">
+      <div class="decrypt-top-left">
+        <button class="decrypt-top-btn" onclick="closeDecryptApp()"><i class="fas fa-chevron-left" style="margin-right:6px;"></i>主屏幕</button>
+      </div>
+      <div class="decrypt-title-wrap">
+        <div class="decrypt-title">解密</div>
+        <div class="decrypt-subtitle">case files · rescue protocol</div>
+      </div>
+      <div class="decrypt-top-right">
+        <button class="decrypt-top-btn" onclick="decryptGoSelection()">角色页</button>
+        <button class="decrypt-top-btn" onclick="decryptRenderApp()"><i class="fas fa-rotate-right"></i></button>
+      </div>
+    </div>
+    <div class="decrypt-body" id="decryptAppBody"></div>
+  </div>
+</div>
 <!-- Staff select overlay -->
 <div class="shop-staff-select-overlay" id="shopStaffSelectOverlay" onclick="closeShopStaffSelect(event)">
   <div class="shop-staff-select-sheet" onclick="event.stopPropagation()">
@@ -47749,6 +49307,7 @@ function _extractDialogueForTranslation(text, charName) {
     <div class="task-reward-popup-footer">
       <button class="task-reward-popup-save" id="taskRewardPopupSaveBtn" onclick="saveAndCloseReward()" style="display:none;">保存收下</button>
       <button class="task-reward-popup-regen" id="taskRewardPopupRegenBtn" onclick="regenCurrentReward()" style="display:none;">重新生成</button>
+      <button class="task-reward-popup-delete" id="taskRewardPopupDeleteBtn" onclick="deleteCurrentTaskReward()" style="display:none;">删除</button>
       <button class="task-reward-popup-close" id="taskRewardPopupCloseBtn" onclick="closeTaskRewardPopup()" style="display:none;">知道了</button>
       <button class="task-reward-popup-retry" id="taskRewardPopupRetryBtn" onclick="retryPendingReward()" style="display:none;">重新生成</button>
     </div>
@@ -55565,6 +57124,1622 @@ function closeHealthApp() {
   document.getElementById('healthAppPage').classList.remove('active');
   if (_hTimerInt) { clearInterval(_hTimerInt); _hTimerRunning = false; }
 }
+// ============================================================
+//  DECRYPT APP — 角色危机解谜
+// ============================================================
+const DECRYPT_STATE_KEY = 'mono_decrypt_state_v1';
+function decryptReadPersistedStateRaw() {
+  var candidates = [];
+  try { candidates.push(localStorage.getItem(DECRYPT_STATE_KEY)); } catch(e) {}
+  try {
+    if (window._monoRawLocalStorage) candidates.push(window._monoRawLocalStorage.getItem(DECRYPT_STATE_KEY));
+  } catch(e) {}
+  try {
+    if (typeof _cache !== 'undefined' && _cache) candidates.push(_cache[DECRYPT_STATE_KEY]);
+  } catch(e) {}
+  for (var i = 0; i < candidates.length; i++) {
+    if (typeof candidates[i] === 'string' && candidates[i].trim()) return candidates[i];
+  }
+  return '';
+}
+function decryptWritePersistedStateRaw(jsonStr) {
+  try { localStorage.setItem(DECRYPT_STATE_KEY, jsonStr); } catch(e) {}
+  try {
+    if (window._monoRawLocalStorage) window._monoRawLocalStorage.setItem(DECRYPT_STATE_KEY, jsonStr);
+  } catch(e) {}
+  try {
+    if (typeof _cache !== 'undefined' && _cache) _cache[DECRYPT_STATE_KEY] = jsonStr;
+  } catch(e) {}
+  try {
+    if (window._idb) {
+      var tx = window._idb.transaction('kv', 'readwrite');
+      tx.objectStore('kv').put(jsonStr, DECRYPT_STATE_KEY);
+    }
+  } catch(e) {}
+}
+function decryptLoadState() {
+  var raw = null;
+  try { raw = JSON.parse(decryptReadPersistedStateRaw() || '{}'); } catch(e) { raw = {}; }
+  if (!raw || typeof raw !== 'object') raw = {};
+  if (!Array.isArray(raw.sessions)) raw.sessions = [];
+  raw.sessions = raw.sessions.map(decryptHydrateSession);
+  if (!raw.selectedPersonaId) raw.selectedPersonaId = '';
+  if (!raw.currentSessionId) raw.currentSessionId = '';
+  if (!raw.panel) raw.panel = 'home';
+  return raw;
+}
+function decryptReloadStateFromStorage(preferPersisted) {
+  var next = null;
+  try { next = decryptLoadState(); } catch(e) { next = null; }
+  if (!next || typeof next !== 'object') return decryptState;
+  var nextHasSessions = Array.isArray(next.sessions) && next.sessions.length > 0;
+  var currentHasSessions = Array.isArray(decryptState && decryptState.sessions) && decryptState.sessions.length > 0;
+  if (preferPersisted || nextHasSessions || !currentHasSessions) {
+    decryptState = next;
+    window.decryptState = decryptState;
+  }
+  return decryptState;
+}
+let decryptState = decryptLoadState();
+window.decryptState = decryptState;
+function decryptSaveState() {
+  try { decryptWritePersistedStateRaw(JSON.stringify(decryptState)); } catch(e) {}
+  window.decryptState = decryptState;
+}
+if (typeof window !== 'undefined' && typeof window.afterDB === 'function') {
+  window.afterDB(function() {
+    decryptReloadStateFromStorage(true);
+    try {
+      var page = document.getElementById('decryptPage');
+      if (page && page.classList.contains('active')) decryptRenderApp();
+    } catch(e) {}
+  });
+}
+function decryptGetPersonas() {
+  return (typeof personas !== 'undefined' && Array.isArray(personas)) ? personas : [];
+}
+function decryptEscape(text) {
+  return typeof escapeHtml === 'function'
+    ? escapeHtml(text || '')
+    : String(text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function decryptEnsureSelectedPersona() {
+  if (!decryptState.selectedPersonaId) {
+    try {
+      if (typeof currentId !== 'undefined' && currentId != null) decryptState.selectedPersonaId = String(currentId);
+    } catch(e) {}
+  }
+  if (!decryptState.selectedPersonaId) {
+    var list = decryptGetPersonas();
+    if (list.length) decryptState.selectedPersonaId = String(list[0].id);
+  }
+  return String(decryptState.selectedPersonaId || '');
+}
+function decryptFindPersona(pid) {
+  return decryptGetPersonas().find(function(item) { return String(item && item.id) === String(pid); }) || null;
+}
+function decryptActiveSession() {
+  var id = String(decryptState.currentSessionId || '');
+  return decryptState.sessions.find(function(item) { return String(item && item.id) === id; }) || null;
+}
+function decryptNormalizeText(text) {
+  return String(text || '').toLowerCase().replace(/[\s`~!@#$%^&*()_+\-=\[\]{};:'",.<>/?\\|，。！？、；：·“”‘’（）【】《》]/g, '');
+}
+function decryptBuildRecentChat(persona) {
+  if (!persona || !Array.isArray(persona.history)) return '';
+  var max = Math.max(16, Number(persona.memoryCount) || 100);
+  return persona.history.slice(-Math.min(max, 36)).map(function(msg) {
+    if (!msg) return '';
+    var speaker = msg.role === 'user'
+      ? ((typeof userProfile !== 'undefined' && userProfile && userProfile.name) ? userProfile.name : '用户')
+      : (persona.name || '角色');
+    var content = msg.content || msg.transcript || msg.caption || msg.imageCaption || '';
+    return content ? (speaker + '：' + content) : '';
+  }).filter(Boolean).join('\n');
+}
+function decryptBuildOfflineSummary(persona) {
+  if (!persona) return '';
+  try {
+    if (typeof _monoCollectOfflineSummaryLines === 'function') {
+      var lines = _monoCollectOfflineSummaryLines(persona.id, 8);
+      return Array.isArray(lines) ? lines.filter(Boolean).join('\n') : '';
+    }
+  } catch(e) {}
+  return '';
+}
+function decryptPersonaCoreMemory(persona) {
+  if (!persona || !Array.isArray(persona.memoryCore)) return '';
+  return persona.memoryCore.slice(0, 8).map(function(item) {
+    if (!item) return '';
+    if (typeof item === 'string') return item;
+    return item.summary || item.content || item.text || item.title || '';
+  }).filter(Boolean).join('\n');
+}
+function decryptRecentCaseAvoidance(personaId) {
+  return decryptState.sessions
+    .filter(function(item) { return item && String(item.personaId) === String(personaId); })
+    .slice(0, 8)
+    .map(function(item, index) {
+      return (index + 1) + '. 标题：' + (item.caseTitle || '未命名')
+        + '；危机：' + (item.crisisSurface || '').slice(0, 44)
+        + '；真相摘要：' + (item.truthFull || '').slice(0, 56);
+    }).join('\n');
+}
+function decryptPersonaCaseHistory(personaId, limit) {
+  return decryptState.sessions
+    .filter(function(item) { return item && String(item.personaId) === String(personaId); })
+    .slice(0, Math.max(1, Number(limit) || 12));
+}
+function decryptCaseComparisonText(caseLike) {
+  if (!caseLike) return '';
+  var truthParts = Array.isArray(caseLike.truthParts) ? caseLike.truthParts.map(function(part) {
+    return String((part && (part.answer || part.label)) || '').trim();
+  }).filter(Boolean).join('；') : '';
+  return [
+    caseLike.caseTitle || '',
+    caseLike.caseTagline || '',
+    caseLike.crisisSurface || '',
+    caseLike.truthFull || '',
+    truthParts
+  ].join('\n');
+}
+function decryptBuildCharNgrams(text, size) {
+  var normalized = decryptNormalizeText(text || '');
+  var n = Math.max(2, Number(size) || 3);
+  var set = Object.create(null);
+  if (!normalized) return set;
+  if (normalized.length <= n) {
+    set[normalized] = true;
+    return set;
+  }
+  for (var i = 0; i <= normalized.length - n; i++) {
+    set[normalized.slice(i, i + n)] = true;
+  }
+  return set;
+}
+function decryptJaccardSimilarity(a, b) {
+  var keysA = Object.keys(a || {});
+  var keysB = Object.keys(b || {});
+  if (!keysA.length || !keysB.length) return 0;
+  var inter = 0;
+  keysA.forEach(function(key) { if (b[key]) inter++; });
+  return inter / Math.max(1, keysA.length + keysB.length - inter);
+}
+function decryptCaseSimilarityScore(candidate, previous) {
+  var candTitle = decryptNormalizeText(candidate && candidate.caseTitle || '');
+  var prevTitle = decryptNormalizeText(previous && previous.caseTitle || '');
+  var candCrisis = decryptNormalizeText(candidate && candidate.crisisSurface || '');
+  var prevCrisis = decryptNormalizeText(previous && previous.crisisSurface || '');
+  var candTruth = decryptNormalizeText(candidate && candidate.truthFull || '');
+  var prevTruth = decryptNormalizeText(previous && previous.truthFull || '');
+  var titleExact = candTitle && prevTitle && candTitle === prevTitle ? 1 : 0;
+  var titleContain = candTitle && prevTitle && (candTitle.indexOf(prevTitle) >= 0 || prevTitle.indexOf(candTitle) >= 0) ? 0.92 : 0;
+  var crisisContain = candCrisis && prevCrisis && (candCrisis.indexOf(prevCrisis) >= 0 || prevCrisis.indexOf(candCrisis) >= 0) ? 0.88 : 0;
+  var truthContain = candTruth && prevTruth && (candTruth.indexOf(prevTruth) >= 0 || prevTruth.indexOf(candTruth) >= 0) ? 0.88 : 0;
+  var wholeScore = decryptJaccardSimilarity(decryptBuildCharNgrams(decryptCaseComparisonText(candidate), 3), decryptBuildCharNgrams(decryptCaseComparisonText(previous), 3));
+  var crisisScore = decryptJaccardSimilarity(decryptBuildCharNgrams(candidate && candidate.crisisSurface || '', 3), decryptBuildCharNgrams(previous && previous.crisisSurface || '', 3));
+  var truthScore = decryptJaccardSimilarity(decryptBuildCharNgrams(candidate && candidate.truthFull || '', 3), decryptBuildCharNgrams(previous && previous.truthFull || '', 3));
+  var truthPartsA = Array.isArray(candidate && candidate.truthParts) ? candidate.truthParts.map(function(part){ return part && part.answer || ''; }).join(' ') : '';
+  var truthPartsB = Array.isArray(previous && previous.truthParts) ? previous.truthParts.map(function(part){ return part && part.answer || ''; }).join(' ') : '';
+  var truthPartScore = decryptJaccardSimilarity(decryptBuildCharNgrams(truthPartsA, 2), decryptBuildCharNgrams(truthPartsB, 2));
+  return Math.max(titleExact, titleContain, crisisContain, truthContain, wholeScore, crisisScore * 0.97, truthScore * 0.97, truthPartScore * 0.95);
+}
+function decryptFindTooSimilarCase(candidate, historyCases) {
+  var best = null;
+  (Array.isArray(historyCases) ? historyCases : []).forEach(function(previous) {
+    var score = decryptCaseSimilarityScore(candidate, previous);
+    if (!best || score > best.score) best = { score: score, previous: previous };
+  });
+  if (!best || !best.previous) return null;
+  if (best.score >= 0.52) return best;
+  return null;
+}
+function decryptBuildSimilarityRejection(candidate, hit) {
+  if (!candidate || !hit || !hit.previous) return '';
+  var prev = hit.previous;
+  return [
+    '候选案件被判定与历史案件过于相似，必须整体推翻重做。',
+    '相似度：' + hit.score.toFixed(2),
+    '撞车旧案标题：' + (prev.caseTitle || '未命名'),
+    '旧案危机摘要：' + String(prev.crisisSurface || '').slice(0, 72),
+    '新候选危机摘要：' + String(candidate.crisisSurface || '').slice(0, 72),
+    '禁止再使用相同或近似的事件形式、幕后结构、关键地点、导火索、证据套路、救援路径。'
+  ].join('\n');
+}
+async function decryptCallApiJson(prompt, maxTokens, temperature) {
+  var api = typeof _getCurrentActiveApiConfig === 'function' ? _getCurrentActiveApiConfig() : (typeof apiConfig !== 'undefined' ? apiConfig : {});
+  if (typeof _hasUsableApiConfig === 'function' && !_hasUsableApiConfig(api)) throw new Error('请先连接当前 API。');
+  var endpoint = String(api.url || '').replace(/\/$/, '') + '/chat/completions';
+  var resp = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + api.key, 'Content-Type': 'application/json' },
+    body: JSON.stringify(_applyApiModel({
+      messages: [{ role: 'user', content: prompt }],
+      temperature: typeof temperature === 'number' ? temperature : 0.92,
+      max_tokens: maxTokens || 2200
+    }, api.model))
+  });
+  if (!resp.ok) throw new Error('API 错误：' + resp.status);
+  var data = await resp.json();
+  var text = typeof _extractAssistantMessageContent === 'function'
+    ? _extractAssistantMessageContent(data).trim()
+    : ((((data || {}).choices || [])[0] || {}).message || {}).content || '';
+  var parsed = safeParseJSON(text, null);
+  if (!parsed || typeof parsed !== 'object') throw new Error('解密内容解析失败');
+  return parsed;
+}
+const DECRYPT_CLUE_TYPE_CATALOG = [
+  '摩斯', '凯撒位移', '栅栏移位', '倒序拼回', '镜像文字', '首字母缩写', '拼音首字母', '同音替换', '部首拆字', '笔画统计',
+  '藏头', '藏尾', '藏中', '首尾拼合', '标点取字', '诗文取字', '行列坐标', '九宫格坐标', '棋盘坐标', '方位路线',
+  '楼层房间号', '车票座位号', '文件命名规则', '时间排序', '日历定位', '时钟指针', '监控时间戳', '旧对话', '短信记录', '通话记录',
+  '邮件标题', '备忘录清单', '收据金额', '转账尾号', '密码锁位数', '门牌编号', '书页行字', '地图路线', '照片差异', '剪影辨认',
+  '颜色顺序', '物件配对', '缺失项观察', '重复项观察', '数量统计', '温度记录', '重量容量', '音频波形', '频谱条', '二维码碎片',
+  '条形码数字', '拼图碎片', '印章重叠', '指纹编号', '星号遮挡还原', '表格交叉索引', '人物关系连线', '口令替换', '回忆锚点', '物件刻字'
+];
+function decryptClueTypeCatalogPrompt() {
+  return [
+    '1. 摩斯：标准 . - 电码，对照表直接可用',
+    '2. 凯撒位移：字母整体平移，题面给位移量',
+    '3. 栅栏移位：按固定分组重排后读取',
+    '4. 倒序拼回：把倒写内容按顺序还原',
+    '5. 镜像文字：左右镜像后读出原文',
+    '6. 首字母缩写：取词首字母还原答案',
+    '7. 拼音首字母：用拼音首字母对应目标',
+    '8. 同音替换：根据同音字或近音字还原',
+    '9. 部首拆字：按部件组合出字',
+    '10. 笔画统计：按笔画数量筛出答案',
+    '11. 藏头：逐句取首字',
+    '12. 藏尾：逐句取尾字',
+    '13. 藏中：逐句取指定中间字',
+    '14. 首尾拼合：把首字和尾字组合',
+    '15. 标点取字：依据逗号句号前后位置取字',
+    '16. 诗文取字：按题面说明从诗句固定位置取字',
+    '17. 行列坐标：按第几行第几列定位',
+    '18. 九宫格坐标：按九宫格位置取字或数字',
+    '19. 棋盘坐标：类似 A3、C2 这类坐标定位',
+    '20. 方位路线：按东南西北与步数移动',
+    '21. 楼层房间号：从楼层与门牌组合定位',
+    '22. 车票座位号：依据车厢、排号、座位号锁定答案',
+    '23. 文件命名规则：从文件名格式里找规律',
+    '24. 时间排序：把事件按先后排好再取目标项',
+    '25. 日历定位：从某月某日、星期几中锁定',
+    '26. 时钟指针：根据时针分针停留位置判断',
+    '27. 监控时间戳：从一组时间点里找缺口或异常',
+    '28. 旧对话：从历史聊天里直接提取客观信息',
+    '29. 短信记录：从短信内容或发送顺序里取值',
+    '30. 通话记录：从来电时间/次数/对象里判断',
+    '31. 邮件标题：从主题、前缀、回复链里找规律',
+    '32. 备忘录清单：从清单顺序和勾选状态里得答案',
+    '33. 收据金额：根据金额、尾数、项目对应取值',
+    '34. 转账尾号：依据尾号和备注定位目标',
+    '35. 密码锁位数：根据位数提示与已知数字排除',
+    '36. 门牌编号：由编号规则或单双号锁定',
+    '37. 书页行字：第几页第几行第几个字',
+    '38. 地图路线：从路径与站点中找终点',
+    '39. 照片差异：找两张图的缺失或变化项',
+    '40. 剪影辨认：根据轮廓识别物件或人物',
+    '41. 颜色顺序：按颜色出现顺序对应答案',
+    '42. 物件配对：把对应物件正确配成组',
+    '43. 缺失项观察：找唯一少掉的那一项',
+    '44. 重复项观察：找异常重复的内容',
+    '45. 数量统计：统计次数、个数、分布得结论',
+    '46. 温度记录：从温度高低和波动判断',
+    '47. 重量容量：按轻重、满空、容量差得答案',
+    '48. 音频波形：从长短强弱差异对应信息',
+    '49. 频谱条：从频段排列或缺口中取值',
+    '50. 二维码碎片：拼回缺失块或定位区块',
+    '51. 条形码数字：读取显性数字或校验位',
+    '52. 拼图碎片：按碎片拼接后的完整图案判断',
+    '53. 印章重叠：从叠印露出的部分取答案',
+    '54. 指纹编号：从编号、位置或匹配结果里锁定',
+    '55. 星号遮挡还原：根据已知格式补全被遮挡内容',
+    '56. 表格交叉索引：行列交叉后得到唯一结果',
+    '57. 人物关系连线：按谁与谁的关联链找目标',
+    '58. 口令替换：按字母或词语替换规则还原',
+    '59. 回忆锚点：从明确回忆节点里找固定事实',
+    '60. 物件刻字：从编号、刻痕、铭文里直接取值'
+  ].join('\n');
+}
+function decryptEventTypeCatalogPrompt(persona, historyCases) {
+  var personaDesc = (persona && persona.persona) ? String(persona.persona) : '';
+  var worldHint = '';
+  var recentCount = Array.isArray(historyCases) ? historyCases.length : 0;
+  if (personaDesc) {
+    if (/古代|古风|仙侠|武侠|宫廷|朝代|王朝|皇|侠|剑|修炼|仙|妖|怪|魔|门派|江湖|府|衙|锦衣|太监|娘娘|皇子|公主|侯爷/.test(personaDesc)) {
+      worldHint = '【注意】角色人设为古代/古风/仙侠等非现代背景，所有内容必须完全符合该世界观，不得出现手机、录音、监控、网络、法律等现代词汇。';
+    } else if (/魔法|精灵|龙|兽人|异世界|异界|奇幻|魔界|圣光|骑士|法师|勇者|冒险者|魔王/.test(personaDesc)) {
+      worldHint = '【注意】角色人设为奇幻/异世界背景，所有内容必须完全契合该世界观。';
+    } else if (/星际|宇宙|飞船|机甲|赛博|AI|人工智能|克隆|基因|未来|科幻/.test(personaDesc)) {
+      worldHint = '【注意】角色人设为未来/科幻背景，所有内容必须契合该设定。';
+    }
+  }
+  return (worldHint ? worldHint + '\n\n' : '') +
+    '根据角色的人设、背景、性格、处境，为这次案件设计一个具体的危机事件。\n\n' +
+    '不要参考任何外部事件库、分类表或方向清单。这次案件不允许先从抽象危机框架出发，再往角色身上套。\n\n' +
+    '【唯一允许的生成起点：汤底真相】\n' +
+    '你必须先想清楚这场危机背后真正牵连/源于什么，再从那个汤底真相自然长出表层事件。\n' +
+    '汤底真相必须优先扎根于以下来源之一或数项交织，而不是凭空造一个外部事故：\n' +
+    '1. 角色的私人恩怨：旧怨、错欠、报复、误解、未了结的冲突。\n' +
+    '2. 角色过去牵连的关系或事件：旧案、旧约、旧同行、旧身份、旧决定留下的后果。\n' +
+    '3. 角色当前或过去的人际关系：亲人、恋人、旧友、师徒、同僚、上下级、仇敌、依附者。\n' +
+    '4. 角色的心理问题或长期心理负担：愧疚、恐惧、羞耻、执念、回避、自责、补偿心态。\n' +
+    '5. 角色的秘密：不想被知道的身份、经历、选择、关系、立场、知情内容。\n' +
+    '6. 角色过去的创伤：可以是身体创伤、心理创伤、名誉创伤、关系创伤、信任创伤。\n\n' +
+    '【生成顺序强制要求】\n' +
+    '先定汤底真相，再决定谁被牵连、为什么会在现在爆发、表面上看起来像什么危机、玩家要怎样把角色拉出来。\n' +
+    '禁止先想一个抽象危机框架，再反推角色设定去配合。\n\n' +
+    '【质感要求】\n' +
+    '- 危机表层必须具体，有明确触发点、压力来源、相关人物和当前时点。\n' +
+    '- 汤底真相必须和角色本人强相关，换一个角色就不成立。\n' +
+    '- 事件的核心矛盾要来自角色自身的过去、关系网、秘密或创伤，而不是随机社会新闻式事故。\n' +
+    '- 即使出现外部势力或突发情况，也只能作为引爆器，真正的灵魂仍然是角色自己的旧账和内里牵连。\n\n' +
+    '【去重要求】\n' +
+    '这个角色最近已有 ' + recentCount + ' 个历史案件可供避让。新案件必须从未被充分使用过的关系切口、旧账链条、心理负担或创伤后果里长出来。\n' +
+    '不要默认回到“黑历史被威胁 / 旧秘密被勒索 / 私密内容曝光”这一条最省事的路，除非角色设定本身强到只能导向这里，而且近期历史没有碰过相近骨架。\n\n' +
+    '从角色本身出发，先回答：这个人最不愿重新面对的旧关联到底是什么？这场危机为何偏偏会落到 ta 身上？';
+}
+function decryptDefaultAidForType(type) {
+  var rawType = String(type || '').trim();
+  var t = rawType.toLowerCase();
+  if (t === '摩斯' || t === 'morse') {
+    return {
+      title: '摩斯对照表',
+      body: '标准写法只用 . 和 -\n字母之间用空格分隔\n词与词之间用 /\n\nA .-\nB -...\nC -.-.\nD -..\nE .\nF ..-.\nG --.\nH ....\nI ..\nJ .---\nK -.-\nL .-..\nM --\nN -.\nO ---\nP .--.\nQ --.-\nR .-.\nS ...\nT -\nU ..-\nV ...-\nW .--\nX -..-\nY -.--\nZ --..\n1 .----\n2 ..---\n3 ...--\n4 ....-\n5 .....\n6 -....\n7 --...\n8 ---..\n9 ----.\n0 -----'
+    };
+  }
+  if (t === '诗文') {
+    return {
+      title: '解题提示',
+      body: '这类题不考主观理解，只需要按题面里的明确规则取字。优先检查：首字、尾字、每句第几个字、标点前后的固定位置。'
+    };
+  }
+  if (t === '藏头') {
+    return {
+      title: '解题提示',
+      body: '按顺序取每句或每行的第一个字即可，不需要额外联想。'
+    };
+  }
+  if (t === '旧对话') {
+    return {
+      title: '解题提示',
+      body: '答案一定能从对话里直接找到，通常是明确出现过的人名、地点、时间、物件或口令，不需要猜角色心理。'
+    };
+  }
+  if (t === '路线') {
+    return {
+      title: '解题提示',
+      body: '按题面给出的移动顺序逐步走完，最后停留的位置就是答案。只看方向和步数，不需要自由发挥。'
+    };
+  }
+  if (t === '物件') {
+    return {
+      title: '解题提示',
+      body: '先统计题面中出现最明显的编号、刻字、顺序或组合关系，答案一定是能直接观察出来的客观信息。'
+    };
+  }
+  if (t === '时间排序') {
+    return {
+      title: '解题提示',
+      body: '先把每条事件按明确时间先后排好，再取最早、最晚或题目要求的那一项。'
+    };
+  }
+  if (t === '观察') {
+    return {
+      title: '解题提示',
+      body: '只观察可见事实，例如数量、颜色、顺序、缺失项、重复项，不需要主观推测。'
+    };
+  }
+  if (t === '回忆') {
+    return {
+      title: '解题提示',
+      body: '回忆类题也必须有明确锚点，答案通常是某句原话、某个固定地点、某件发生过的具体事。'
+    };
+  }
+  if (t === '口令') {
+    return {
+      title: '解题提示',
+      body: '题面里会给出明确替换规则、首尾提示或格式要求。先找规则，再按规则还原，不需要猜隐喻。'
+    };
+  }
+  if (/(凯撒|位移|栅栏|倒序|镜像|缩写|拼音|同音|替换)/.test(rawType)) {
+    return {
+      title: '解码规则',
+      body: '这类线索通常是字符层面的替换或重排。先确认题面有没有给位移量、顺序、镜像方向、首字母规则或同音替代规则，再逐个还原。'
+    };
+  }
+  if (/(部首|笔画|藏尾|藏中|首尾拼合|标点|书页|诗文)/.test(rawType)) {
+    return {
+      title: '取字说明',
+      body: '这类题要按固定位置取字，不靠联想。重点检查首字、尾字、中间字、标点前后位置、页码行号、部首和笔画数量。'
+    };
+  }
+  if (/(坐标|九宫格|棋盘|方位|楼层|房间|车票|门牌|地图)/.test(rawType)) {
+    return {
+      title: '定位说明',
+      body: '把题面里的编号、方向、行列、楼层、门牌或路径逐步落到一个具体位置，最后锁定唯一地点、房间、座位或终点。'
+    };
+  }
+  if (/(时间|日历|时钟|监控|短信|通话|邮件|备忘录)/.test(rawType)) {
+    return {
+      title: '记录说明',
+      body: '这类题关键在时间和记录顺序。先按先后整理，再找异常缺口、重复点、最后一次、最早一条，或题目指定的那个时间节点。'
+    };
+  }
+  if (/(收据|转账|密码锁|金额|尾号|条形码|二维码|文件命名)/.test(rawType)) {
+    return {
+      title: '编号说明',
+      body: '优先看可见数字、尾号、格式、位数、校验位和命名规则。答案通常就藏在最客观的数字结构或编号组合里。'
+    };
+  }
+  if (/(照片|剪影|颜色|配对|缺失|重复|数量|拼图|印章|指纹|刻字|物件)/.test(rawType)) {
+    return {
+      title: '观察说明',
+      body: '只看客观差异和显性特征，例如缺了什么、哪项重复、颜色顺序、数量多少、哪两个能配对，或物件上直接写了什么。'
+    };
+  }
+  if (/(音频|波形|频谱)/.test(rawType)) {
+    return {
+      title: '音频说明',
+      body: '把这类题当作“长短、强弱、频段差异”的客观观察题来解。先比较哪一段更长、更密、更高或更缺失，再对应题面规则取值。'
+    };
+  }
+  if (/(关系连线|人物关系|回忆锚点)/.test(rawType)) {
+    return {
+      title: '推理说明',
+      body: '这类线索也必须落回明确事实。把关系线、回忆节点、人物连接一条条核对，最后只保留能被证物直接支持的那一个答案。'
+    };
+  }
+  // 通用兜底：对任意自定义类型（包括非现代设定中的玩法）也给出解题框架
+  return {
+    title: '解题提示',
+    body: '这条线索应当可以直接解出客观答案。按照题面里给出的规则或对照关系，找到唯一可以被推导出来的答案——通常是一个具体的人名、地点、数字、物品或口令。不需要主观联想，只需按规则推演。'
+  };
+}
+function decryptIsMorseType(type) {
+  var t = String(type || '').toLowerCase();
+  return t === '摩斯' || t === 'morse';
+}
+function decryptNormalizeMorseSymbols(text) {
+  return String(text || '')
+    .replace(/[·•・∙⋅˙。｡﹒]/g, '.')
+    .replace(/[—–－ー─━一﹣]/g, '-')
+    .replace(/[／]/g, '/')
+    .replace(/[｜¦]/g, '|')
+    .replace(/[ \t]*\/[ \t]*/g, ' / ')
+    .replace(/[ \t]*\|[ \t]*/g, ' / ')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim();
+}
+function decryptEncodeMorseFromAscii(text) {
+  var MORSE_MAP = {
+    A: '.-', B: '-...', C: '-.-.', D: '-..', E: '.', F: '..-.', G: '--.', H: '....', I: '..', J: '.---',
+    K: '-.-', L: '.-..', M: '--', N: '-.', O: '---', P: '.--.', Q: '--.-', R: '.-.', S: '...', T: '-',
+    U: '..-', V: '...-', W: '.--', X: '-..-', Y: '-.--', Z: '--..',
+    1: '.----', 2: '..---', 3: '...--', 4: '....-', 5: '.....', 6: '-....', 7: '--...', 8: '---..', 9: '----.', 0: '-----'
+  };
+  var parts = [];
+  var chars = String(text || '').toUpperCase().split('');
+  for (var i = 0; i < chars.length; i++) {
+    var ch = chars[i];
+    if (ch === ' ') {
+      if (parts.length && parts[parts.length - 1] !== '/') parts.push('/');
+      continue;
+    }
+    if (!MORSE_MAP[ch]) return '';
+    parts.push(MORSE_MAP[ch]);
+  }
+  return parts.join(' ').replace(/ \/ /g, ' / ').trim();
+}
+function decryptFinalizeMorseClue(clue) {
+  if (!clue || !decryptIsMorseType(clue.unlockType)) return clue;
+  var aid = decryptDefaultAidForType('摩斯');
+  clue.unlockType = '摩斯';
+  clue.aidTitle = aid.title;
+  clue.aidBody = aid.body;
+  clue.prompt = decryptNormalizeMorseSymbols(clue.prompt || '');
+  var answer = String(clue.answer || '').trim();
+  var standardCode = decryptEncodeMorseFromAscii(answer);
+  if (standardCode) {
+    if (!clue.prompt || clue.prompt.indexOf(standardCode) < 0) {
+      clue.prompt = (clue.prompt ? (clue.prompt + '\n\n') : '') + '待破译电码：' + standardCode;
+    }
+    if (!clue.question || clue.question === '请输入你破解出的答案') {
+      clue.question = '请输入电码对应内容';
+    }
+  }
+  return clue;
+}
+function decryptUniqueStrings(list) {
+  var seen = Object.create(null);
+  return (Array.isArray(list) ? list : []).map(function(item) {
+    return String(item || '').trim();
+  }).filter(function(item) {
+    var key = decryptNormalizeText(item);
+    if (!key || seen[key]) return false;
+    seen[key] = true;
+    return true;
+  });
+}
+function decryptSplitPromptUnits(prompt) {
+  return String(prompt || '')
+    .split(/[\n\r]+|(?<=[。！？；!?;])|(?<=[，,])/)
+    .map(function(item) { return String(item || '').trim(); })
+    .filter(Boolean);
+}
+function decryptReverseString(text) {
+  return String(text || '').split('').reverse().join('');
+}
+function decryptRotateAlphaChar(ch, shift) {
+  var code = ch.charCodeAt(0);
+  if (code >= 65 && code <= 90) {
+    return String.fromCharCode(((code - 65 + shift + 26 * 20) % 26) + 65);
+  }
+  if (code >= 97 && code <= 122) {
+    return String.fromCharCode(((code - 97 + shift + 26 * 20) % 26) + 97);
+  }
+  return ch;
+}
+function decryptRotateAlphaText(text, shift) {
+  return String(text || '').split('').map(function(ch) {
+    return decryptRotateAlphaChar(ch, shift);
+  }).join('');
+}
+function decryptExtractCipherCandidate(prompt) {
+  var text = String(prompt || '').trim();
+  var lines = text.split(/[\n\r]+/).map(function(line) { return line.trim(); }).filter(Boolean);
+  for (var i = lines.length - 1; i >= 0; i--) {
+    var cleaned = lines[i]
+      .replace(/^[^A-Za-z0-9\u4e00-\u9fa5.-]+/, '')
+      .replace(/^(待破译|密文|暗号|口令|内容|线索|字串|字符串|代号|编号)[:：]\s*/i, '')
+      .trim();
+    if (!cleaned) continue;
+    var latin = cleaned.match(/[A-Za-z]{2,}(?:\s+[A-Za-z]{2,})*/);
+    if (latin && latin[0]) return latin[0].replace(/\s+/g, ' ').trim();
+    var han = cleaned.replace(/[^\u4e00-\u9fa5A-Za-z0-9]/g, '');
+    if (han.length >= 2 && han.length <= 24) return han;
+  }
+  var match = text.match(/[A-Za-z]{2,}(?:\s+[A-Za-z]{2,})*/);
+  return match ? match[0].replace(/\s+/g, ' ').trim() : '';
+}
+function decryptDerivePromptAnswer(clue) {
+  if (!clue) return '';
+  var type = String(clue.unlockType || '').trim();
+  var prompt = String(clue.prompt || '').trim();
+  var aid = String(clue.aidBody || '').trim();
+  if (!type || !prompt) return '';
+
+  if (decryptIsMorseType(type)) {
+    return String(clue.answer || '').trim();
+  }
+
+  if (type === '藏头' || type === '藏首') {
+    return decryptSplitPromptUnits(prompt).map(function(line) { return line.charAt(0); }).join('').trim();
+  }
+  if (type === '藏尾') {
+    return decryptSplitPromptUnits(prompt).map(function(line) { return line ? line.charAt(line.length - 1) : ''; }).join('').trim();
+  }
+  if (type === '首字母缩写') {
+    var src = decryptExtractCipherCandidate(prompt);
+    if (!src) return '';
+    return src.split(/\s+/).map(function(word) { return word.charAt(0); }).join('').trim();
+  }
+  if (type === '倒序拼回' || type === '镜像文字') {
+    var reversedSrc = decryptExtractCipherCandidate(prompt);
+    return reversedSrc ? decryptReverseString(reversedSrc) : '';
+  }
+  if (type === '凯撒位移') {
+    var shiftMatch = (aid + '\n' + prompt).match(/(?:位移|平移|左移|右移|移动|偏移)\s*([+-]?\d{1,2})/);
+    var shift = shiftMatch ? parseInt(shiftMatch[1], 10) : NaN;
+    var cipher = decryptExtractCipherCandidate(prompt);
+    if (!cipher || Number.isNaN(shift)) return '';
+    var lowerHint = aid + ' ' + prompt;
+    var decodeShift = /右移|向右|加密/.test(lowerHint) ? -shift : shift;
+    if (/左移|向左/.test(lowerHint)) decodeShift = shift;
+    return decryptRotateAlphaText(cipher, decodeShift).trim();
+  }
+
+  return '';
+}
+function decryptRepairSingleClueConsistency(clue) {
+  if (!clue) return clue;
+  var derived = decryptDerivePromptAnswer(clue);
+  var answer = String(clue.answer || '').trim();
+  clue.aliases = decryptUniqueStrings((clue.aliases || []).concat(answer ? [answer] : []));
+  clue._needsAudit = false;
+
+  if (derived) {
+    if (decryptNormalizeText(derived) !== decryptNormalizeText(answer)) {
+      if (answer) clue.aliases = decryptUniqueStrings((clue.aliases || []).concat([answer]));
+      clue.answer = derived;
+    }
+    clue.aliases = decryptUniqueStrings((clue.aliases || []).concat([clue.answer]));
+    return clue;
+  }
+
+  if (/(凯撒|栅栏|拼音首字母|同音替换|部首拆字|笔画统计|藏中|首尾拼合|标点取字|诗文取字|行列坐标|九宫格坐标|棋盘坐标|方位路线|楼层房间号|车票座位号|文件命名规则|时间排序|日历定位|时钟指针|监控时间戳|书页行字|地图路线|二维码碎片|条形码数字|印章重叠|星号遮挡还原|表格交叉索引|口令替换)/.test(String(clue.unlockType || ''))) {
+    clue._needsAudit = true;
+  }
+  return clue;
+}
+function decryptChoiceLooksWeak(option, correct) {
+  var text = String(option || '').trim();
+  if (!text) return true;
+  if (decryptNormalizeText(text) === decryptNormalizeText(correct || '')) return true;
+  if (/错误结论|正确结论|待排除|干扰项|占位|示例|暂无|未知|随便|其他|预设|通用|占坑|选项甲|选项乙|选项丙|选项[ABC]|这里写|具体结论|结论文字/.test(text)) return true;
+  if (text.length < 2) return true;
+  return false;
+}
+function decryptSanitizeTruthParts(truthParts) {
+  return (Array.isArray(truthParts) ? truthParts : []).map(function(part, index) {
+    var correct = String((part && part.answer) || '').trim();
+    var options = Array.isArray(part && part.options) ? part.options.map(function(x){ return String(x || '').trim(); }).filter(Boolean) : [];
+    var seen = Object.create(null);
+    options = options.filter(function(item) {
+      var key = decryptNormalizeText(item);
+      if (!key || seen[key]) return false;
+      seen[key] = true;
+      return true;
+    }).slice(0, 3);
+    return {
+      key: String((part && part.key) || ('truth_' + (index + 1))),
+      label: String((part && part.label) || ('关键点' + (index + 1))),
+      answer: correct,
+      options: options
+    };
+  });
+}
+function decryptTruthOptionsNeedRepair(truthParts) {
+  return (Array.isArray(truthParts) ? truthParts : []).some(function(part) {
+    var correct = String((part && part.answer) || '').trim();
+    var options = Array.isArray(part && part.options) ? part.options : [];
+    if (!correct) return true;
+    if (options.length !== 3) return true;
+    var normalized = options.map(function(item) { return decryptNormalizeText(item); }).filter(Boolean);
+    if (normalized.length !== 3) return true;
+    if (new Set(normalized).size !== 3) return true;
+    if (!options.some(function(item) { return decryptNormalizeText(item) === decryptNormalizeText(correct); })) return true;
+    if (options.some(function(item) { return decryptChoiceLooksWeak(item, correct); })) return true;
+    return false;
+  });
+}
+function decryptBuildTruthChoices(truthParts) {
+  var sanitized = decryptSanitizeTruthParts(truthParts);
+  sanitized.forEach(function(part, index) {
+    truthParts[index] = part;
+  });
+}
+function decryptEnsureDeductionState(session) {
+  if (!session) return;
+  if (!session.deductionSelections || typeof session.deductionSelections !== 'object') session.deductionSelections = {};
+}
+function decryptHydrateSession(session) {
+  if (!session || !Array.isArray(session.truthParts)) return session;
+  session.truthParts = decryptSanitizeTruthParts(session.truthParts);
+  decryptEnsureDeductionState(session);
+  if (!Array.isArray(session.matchedTruthPartKeys)) session.matchedTruthPartKeys = [];
+  if (!Array.isArray(session.solvedClueIds)) session.solvedClueIds = [];
+  if (!Array.isArray(session.revealedEvidenceIds)) session.revealedEvidenceIds = [];
+  if (!Array.isArray(session.guessHistory)) session.guessHistory = [];
+  if (Array.isArray(session.clues)) {
+    session.clues = session.clues.map(function(clue) {
+      return decryptRepairSingleClueConsistency(decryptValidateClueConsistency(decryptFinalizeMorseClue(clue)));
+    });
+  }
+  return session;
+}
+function decryptValidateClueConsistency(clue) {
+  if (!clue) return clue;
+  var type = String(clue.unlockType || '').trim();
+  var answer = String(clue.answer || '').trim();
+  var prompt = String(clue.prompt || '').trim();
+  if (!answer || !type) return clue;
+
+  // 藏头类：检查每行首字是否能拼出答案
+  if (type === '藏头' || type === '藏首') {
+    var lines = prompt.split(/[\n，。！？；;\r]+/).map(function(l) { return l.trim(); }).filter(Boolean);
+    var heads = lines.map(function(l) { return l.charAt(0); }).join('');
+    if (heads && heads !== answer) {
+      // 答案不匹配：加注说明，不强行改题面（避免破坏叙事）
+      if (!clue.aidBody || clue.aidBody.length < 10) {
+        clue.aidBody = '取每行（或每句）的第一个字，按顺序拼合即得答案。';
+      }
+      // 在 aliases 里保留实际可拼出的内容作为提示
+      if (heads.length >= 2 && clue.aliases && clue.aliases.indexOf(heads) < 0) {
+        clue.aliases = (clue.aliases || []).concat([heads]);
+      }
+    }
+  }
+
+  // 藏尾类
+  if (type === '藏尾') {
+    var lines2 = prompt.split(/[\n，。！？；;\r]+/).map(function(l) { return l.trim(); }).filter(Boolean);
+    var tails = lines2.map(function(l) { return l.charAt(l.length - 1); }).join('');
+    if (tails && tails !== answer) {
+      if (!clue.aidBody || clue.aidBody.length < 10) {
+        clue.aidBody = '取每行（或每句）的最后一个字，按顺序拼合即得答案。';
+      }
+      if (tails.length >= 2 && clue.aliases && clue.aliases.indexOf(tails) < 0) {
+        clue.aliases = (clue.aliases || []).concat([tails]);
+      }
+    }
+  }
+
+  // 摩斯类已由 decryptFinalizeMorseClue 处理，此处不重复
+  return decryptRepairSingleClueConsistency(clue);
+}
+function decryptNormalizeCase(raw, persona) {
+  var now = Date.now();
+  var truthParts = Array.isArray(raw.truthParts) ? raw.truthParts : [];
+  truthParts = truthParts.slice(0, 4).map(function(item, index) {
+    return {
+      key: item && item.key ? String(item.key) : ('truth_' + (index + 1)),
+      label: item && item.label ? String(item.label) : ('关键点' + (index + 1)),
+      answer: item && item.answer ? String(item.answer) : '',
+      options: Array.isArray(item && item.options) ? item.options.map(function(x){ return String(x || '').trim(); }).filter(Boolean) : []
+    };
+  }).filter(function(item) { return item.answer; });
+  if (!truthParts.length) {
+    truthParts = [
+      { key: 'truth_1', label: '动机', answer: '真正的动机', options: [] },
+      { key: 'truth_2', label: '关系', answer: '关键关系', options: [] },
+      { key: 'truth_3', label: '触发', answer: '触发事件', options: [] },
+      { key: 'truth_4', label: '救援', answer: '最后要做的事', options: [] }
+    ];
+  }
+  truthParts = decryptSanitizeTruthParts(truthParts);
+  // 随机打乱每个 truthPart 的 options 顺序，确保正确选项位置不固定
+  truthParts = truthParts.map(function(part) {
+    var opts = (part.options || []).slice();
+    for (var i = opts.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = opts[i]; opts[i] = opts[j]; opts[j] = tmp;
+    }
+    return Object.assign({}, part, { options: opts });
+  });
+  var evidence = Array.isArray(raw.evidence) ? raw.evidence : [];
+  evidence = evidence.slice(0, 6).map(function(item, index) {
+    return {
+      id: item && item.id ? String(item.id) : ('ev_' + (index + 1)),
+      title: item && item.title ? String(item.title) : ('证物 ' + (index + 1)),
+      tag: item && item.tag ? String(item.tag) : '档案',
+      summary: item && item.summary ? String(item.summary) : '',
+      detail: item && item.detail ? String(item.detail) : (item && item.summary ? String(item.summary) : '')
+    };
+  });
+  var clues = Array.isArray(raw.clues) ? raw.clues : [];
+  clues = clues.slice(0, 6).map(function(item, index) {
+    var ev = evidence[index] || evidence[0] || { id: 'ev_1', title: '证物 1' };
+    var aliases = Array.isArray(item && item.aliases) ? item.aliases.map(function(x){ return String(x || ''); }).filter(Boolean) : [];
+    if (item && item.answer) aliases.push(String(item.answer));
+    return decryptFinalizeMorseClue({
+      id: item && item.id ? String(item.id) : ('clue_' + (index + 1)),
+      title: item && item.title ? String(item.title) : ('线索 ' + (index + 1)),
+      category: item && item.category ? String(item.category) : '调查线索',
+      unlockType: item && item.unlockType ? String(item.unlockType) : '观察',
+      prompt: item && item.prompt ? String(item.prompt) : '',
+      question: item && item.question ? String(item.question) : '请输入你破解出的答案',
+      answer: item && item.answer ? String(item.answer) : aliases[0] || '',
+      aliases: Array.from(new Set(aliases.filter(Boolean))),
+      aidTitle: item && item.aidTitle ? String(item.aidTitle) : decryptDefaultAidForType(item && item.unlockType).title,
+      aidBody: item && item.aidBody ? String(item.aidBody) : decryptDefaultAidForType(item && item.unlockType).body,
+      answerKind: item && item.answerKind ? String(item.answerKind) : '客观事实',
+      artifactTitle: item && item.artifactTitle ? String(item.artifactTitle) : ev.title,
+      artifactBody: item && item.artifactBody ? String(item.artifactBody) : ev.detail,
+      evidenceId: item && item.evidenceId ? String(item.evidenceId) : ev.id,
+      solved: false
+    });
+  }).filter(function(item) { return item.answer; });
+  // 线索自洽性修复：对已知密码类型，验证 prompt 里是否包含可推导出 answer 的内容
+  clues = clues.map(function(clue) {
+    return decryptValidateClueConsistency(clue);
+  });
+  var hintTrail = Array.isArray(raw.hintTrail) ? raw.hintTrail.map(function(x){ return String(x || ''); }).filter(Boolean) : [];
+  var castFiles = Array.isArray(raw.castFiles) ? raw.castFiles.slice(0, 4).map(function(item, index) {
+    return {
+      title: item && item.title ? String(item.title) : ('关联档案 ' + (index + 1)),
+      value: item && item.value ? String(item.value) : '',
+      note: item && item.note ? String(item.note) : ''
+    };
+  }) : [];
+  return {
+    id: 'decrypt_' + now + '_' + Math.random().toString(36).slice(2, 7),
+    personaId: persona.id,
+    personaName: persona.name || '角色',
+    personaAvatar: persona.avatar || '',
+    personaDesc: persona.persona || '',
+    createdAt: now,
+    styleTheme: raw.styleTheme || '侦查档案',
+    caseTitle: raw.caseTitle || ((persona.name || '角色') + '异常事件'),
+    caseTagline: raw.caseTagline || '异常事件已封存，等待重新拼回',
+    crisisSurface: raw.crisisSurface || '角色卷入了一场不能轻易对外说明的异常事件，线索被拆散，只有逐步复原，才能帮 ta 找回主动权。',
+    openingDispatch: raw.openingDispatch || '系统已接管事件卷宗。你需要拆解线索、拼回真相，再决定怎样帮角色脱离当前困局。',
+    truthFull: raw.truthFull || '真相尚未写入。',
+    rescueEnding: raw.rescueEnding || '当你把真相拼对，角色会成功脱离这场异常事件的压迫与后果。',
+    truthParts: truthParts,
+    clues: clues,
+    evidence: evidence,
+    castFiles: castFiles.length ? castFiles : [
+      { title: '时间线', value: '待整理', note: '从事件发生前的最后一次异常行为入手。' },
+      { title: '关系链', value: '待拆分', note: '真正的破口多半藏在角色不肯提的人身上。' }
+    ],
+    hintTrail: hintTrail,
+    hintsUsed: 0,
+    solvedClueIds: [],
+    revealedEvidenceIds: [],
+    matchedTruthPartKeys: [],
+    deductionSelections: {},
+    guessHistory: [],
+    latestJudge: null,
+    status: 'active'
+  };
+}
+async function decryptGenerateCase(persona) {
+  var recentChat = decryptBuildRecentChat(persona) || '(暂无近期聊天)';
+  var memoryCore = decryptPersonaCoreMemory(persona) || '(暂无核心记忆)';
+  var offline = decryptBuildOfflineSummary(persona) || '(暂无线下总结)';
+  var avoid = decryptRecentCaseAvoidance(persona.id) || '无';
+  var historyCases = decryptPersonaCaseHistory(persona.id, 12);
+  var relCtx = '';
+  try {
+    if (typeof _mwBuildRelInjectForChar === 'function') relCtx = _mwBuildRelInjectForChar(persona.name, null, false) || '';
+  } catch(e) {}
+  var seed = 'SEED-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+  var prompt = `${typeof LANG_SYSTEM_PREFIX !== 'undefined' ? LANG_SYSTEM_PREFIX : ''}你现在是“角色危机解谜游戏”的案件设计师，必须用简体中文返回严格 JSON。
+
+【这次案件必须全新】
+随机种子：${seed}
+当前角色：${persona.name}
+角色人设：${persona.persona || '(空)'}
+${relCtx ? ('角色关系补充：' + relCtx + '\n') : ''}最近线上聊天：
+${recentChat}
+
+线下剧情总结：
+${offline}
+
+角色核心记忆：
+${memoryCore}
+
+最近已经用过的案件，绝对不能重复或相似：
+${avoid}
+【强制去重要求】
+1. 同一个角色下，新案件与历史案件在以下层面都不得重复或近似：危机形式、幕后人物关系、导火索、关键地点、错误指控结构、勒索/构陷/失控方式、关键证据套路、最终救援路径。
+2. 不仅标题不能重复，事件骨架也不能相似。即使换名字、换地点、换道具，只要本质还是同一种局，也视为不合格。
+3. 你必须在第一次生成时就主动避开历史案件，不允许依赖“生成后重来”来修正方向。请在构思阶段就先排除近似骨架，再输出结果。
+4. 优先从角色未被使用过的生活切面、人际关系、旧账、职业处境、世界观机制中重新长出一个新事件。
+
+${decryptEventTypeCatalogPrompt(persona, historyCases)}
+
+【线索玩法生成规则】
+根据角色人设背景和世界观，自由选择或创造适合的线索玩法类型。不要局限于固定列表。
+- 如果是现代设定：可用摩斯电码、手机记录、监控时间戳、转账尾号、文件命名规则等
+- 如果是古代/古风/仙侠：应使用符合设定的方式，如竹简藏字、印章暗纹、旗语方位、诗文取字、物件刻纹、星象坐标等
+- 如果是奇幻/异世界：可用魔法符文排列、元素顺序、召唤阵方位、血脉印记编号等
+- 跨世界通用：藏头、藏尾、首尾拼合、物件配对、缺失项观察、时间排序、行列坐标等结构性玩法可在任何世界观使用
+每条线索的 unlockType 必须从"符合该角色世界观的玩法"里选择或自定义，不能强行套用与世界观矛盾的现代工具。
+
+【案件要求】
+1. 这是“用户要帮助角色脱离异常事件”的解谜，不是单纯旁观推理。
+2. 事件表层描述要像海龟汤汤面，但真相（汤底）必须扎根于角色的人设背景与性格——真相的起因、牵涉的人物、以及为何会发生在这个角色身上，都必须与角色本身直接相关，不能是抽象巧合或与角色毫无关联的随机事件。
+  2.1 真相不是"角色做错了什么"，而是"角色是谁、角色的处境、角色的关系网"导致了这件事。事件可以完全由外部人物或势力推动，角色是被卷入的一方，而不总是事件的起因或责任人。
+3. 同一个角色多次开局时，必须整体不同：危机根源、关键人物、地点、时间、真相来源、线索结构、提示内容都要换掉，不能重复或相似。
+3.1 危机局面必须由你根据角色人设、背景、性格、处境自由生成，不要套用任何固定模板。每次开局的危机形式都应该从角色本身生长出来，而不是从通用外部清单里挑选。
+3.2 优先生成“角色仍然在场、还能互动，但已陷进某种局里”的事件——玩家是通过拼回真相把角色拉出困局，而不只是寻找失踪人口。
+4. 线索获取方式必须多样，至少 5 条 clue，且至少包含 5 种不同 unlockType；优先从上面的 60 种玩法库里挑选，不要总是重复摩斯、观察、旧对话这几种。
+4.1 同一局里不要让 2 条 clue 实际上是同一种结构换皮，例如都只是“按顺序取首字”或都只是“看缺失项”；每条线索的操作方式要明显不同。
+5. 线索必须“好解、直接、客观”，不能依赖主观感受、隐喻理解、角色心理猜测或开放式联想。每条线索都必须指向一个唯一且明确的客观答案，例如具体人名、地点、时间、数字、房间、物件、口令。
+6. 如果使用摩斯、藏头、诗文拆字、口令替换等密码型线索，必须同时提供用户可直接使用的解码说明或对照表，不能默认用户知道规则。
+6.1 如果 unlockType 是“摩斯”，题面里的摩斯电码必须和答案严格一致，只允许使用标准 . 和 - 两种符号，字母之间用空格，单词之间用 /。不要使用 ·、•、—、中文破折号或其他变体符号。
+  6.2 【线索自洽性强制要求】每条 clue 生成时，必须先确定答案（answer字段），再反推生成 prompt 和 aidBody，确保 prompt 里的谜面能通过 aidBody 的规则唯一推导出 answer。禁止先写谜面再猜答案。答案必须能从 prompt 和 aidBody 里按规则机械推出，不依赖任何外部知识或主观判断。
+  6.3 如果 unlockType 是密码类型（摩斯、凯撒、藏头等），在 prompt 里写入的密文必须与 answer 严格对应——先把 answer 按规则加密成密文，再把密文写进 prompt。不能先写看起来像密码的东西再随便填一个答案。
+  6.4 【首轮自审强制要求】你只能生成这一次，不能假设后面还有任何“审校器”或“二次修正器”帮你补救。在返回 JSON 之前，你必须在内部逐条自查每个 clue：重新按 aidBody 的规则从 prompt 手动解一遍，确认最终得到的就是 answer；如果解不出来或不唯一，就当场重写这条 clue，直到自洽后再整体输出。
+  7. 每条 clue 的答案长度尽量短，优先 2-8 个字，允许少量数字；不要设置特别绕的多步谜题。
+  8. 每条 clue 解开后要能掉出一个证物或证词；evidence 与 clue 必须一一关联。
+  9. 最终真相要拆成 4 个 truthParts，便于系统判断用户是否命中部分真相。
+10. 每个 truthPart 需要附带 3 个结论选项 options，其中 1 个是正确答案，2 个是干扰项。选项要像侦探游戏里的结论卡，必须具体明确、可比较，不能含糊。
+10.1 两个错误选项必须看起来也说得通，要和正确答案保持同一粒度、同一语气、同一类型，像真正会误导玩家的推理分支。禁止使用明显占位词、敷衍错误项、过短废话，禁止让错误项一眼就能排除。
+10.2 3 个 options 全部都必须由你生成，包括正确项和错误项；不允许依赖系统预设池、不允许用通用模板假答案、不允许留空后让前端补。禁止 options 里出现"正确结论""错误结论""干扰项""选项甲""选项乙""选项丙""占位""示例"等任何模板痕迹，所有选项必须是完整具体的结论语句。
+10.3 错误选项必须是独立虚构的错误推断，绝对不能从正确答案里截取词语或保留正确答案的关键人物/动机/事件；错误选项描述完全不同的人物、动机或关系，字数与正确答案接近。
+10.4 options 数组里 3 个选项的顺序必须随机打乱，正确答案可以排在第一、第二或第三位，不能总是排第一，每个 truthPart 的正确选项位置独立随机决定。
+10.5 answer 字段文字必须与 options 里的某一项完全一致（含标点符号），系统用精确匹配判题。
+11. hintTrail 必须是 3 条，且从模糊到清晰递进，但依然要围绕客观信息。
+12. 世界观一致性：所有线索、证物、人物、地点描述必须与角色人设的世界观保持一致。如果角色是古代人设，就不能出现手机/录音/监控等现代词汇；如果是奇幻设定，就用符合该世界的道具和概念。不要在任何非现代人设里使用现代工具。
+  12.1 如果人设世界观不明确，默认与角色已有的聊天和剧情保持一致，不要自行引入与已知设定矛盾的元素。
+
+【返回格式】
+只返回一个 JSON 对象，不要 markdown，不要解释：
+{
+  "styleTheme":"12字内风格名",
+  "caseTitle":"8-18字案件标题",
+  "caseTagline":"16字内副标题",
+  "crisisSurface":"80-140字的事件表层描述",
+  "openingDispatch":"120-220字的开场指令",
+  "truthFull":"180-320字完整汤底真相：必须包含（1）这场危机背后真正的起源——牵涉的具体人物、发生过的具体事件；（2）角色自身的创伤/秘密/愧疚/旧账在其中扮演的角色；（3）为何现在爆发。这是整个案件的灵魂，不能含糊。",
+  "rescueEnding":"60-120字的成功救援结果",
+  "truthParts":[
+    {"key":"truth_1","label":"4字内标签","answer":"20-50字该关键点标准答案（与options某一项完全一致）","options":["随机顺序放置的选项甲（20-45字具体结论文字，可以是正确或错误）","随机顺序放置的选项乙（20-45字具体结论文字，可以是正确或错误）","随机顺序放置的选项丙（20-45字具体结论文字，可以是正确或错误）"]},
+    {"key":"truth_2","label":"4字内标签","answer":"20-50字该关键点标准答案（与options某一项完全一致）","options":["随机顺序放置的选项甲（20-45字具体结论文字，可以是正确或错误）","随机顺序放置的选项乙（20-45字具体结论文字，可以是正确或错误）","随机顺序放置的选项丙（20-45字具体结论文字，可以是正确或错误）"]},
+    {"key":"truth_3","label":"4字内标签","answer":"20-50字该关键点标准答案（与options某一项完全一致）","options":["随机顺序放置的选项甲（20-45字具体结论文字，可以是正确或错误）","随机顺序放置的选项乙（20-45字具体结论文字，可以是正确或错误）","随机顺序放置的选项丙（20-45字具体结论文字，可以是正确或错误）"]},
+    {"key":"truth_4","label":"4字内标签","answer":"20-50字该关键点标准答案（与options某一项完全一致）","options":["随机顺序放置的选项甲（20-45字具体结论文字，可以是正确或错误）","随机顺序放置的选项乙（20-45字具体结论文字，可以是正确或错误）","随机顺序放置的选项丙（20-45字具体结论文字，可以是正确或错误）"]}
+  ],
+  "castFiles":[
+    {"title":"10字内栏目名","value":"12字内核心对象","note":"30-60字说明"},
+    {"title":"10字内栏目名","value":"12字内核心对象","note":"30-60字说明"},
+    {"title":"10字内栏目名","value":"12字内核心对象","note":"30-60字说明"}
+  ],
+  "evidence":[
+    {"id":"ev_1","title":"12字内证物名","tag":"6字内标签","summary":"30-60字摘要","detail":"70-130字详细内容"},
+    {"id":"ev_2","title":"12字内证物名","tag":"6字内标签","summary":"30-60字摘要","detail":"70-130字详细内容"},
+    {"id":"ev_3","title":"12字内证物名","tag":"6字内标签","summary":"30-60字摘要","detail":"70-130字详细内容"},
+    {"id":"ev_4","title":"12字内证物名","tag":"6字内标签","summary":"30-60字摘要","detail":"70-130字详细内容"},
+    {"id":"ev_5","title":"12字内证物名","tag":"6字内标签","summary":"30-60字摘要","detail":"70-130字详细内容"}
+  ],
+  "clues":[
+    {"id":"clue_1","title":"12字内线索名","category":"8字内分类","unlockType":"从给定类型里选","prompt":"40-140字题面或线索碎片","question":"20字内作答提示","answer":"正确答案","aliases":["可接受近义答案1"],"aidTitle":"10字内解码标题","aidBody":"40-220字对照表或规则说明，必须让用户直接能解","answerKind":"例如人名/地点/时间/数字/房间/物件/口令","artifactTitle":"揭开的内容标题","artifactBody":"70-130字揭开后的内容","evidenceId":"ev_1"},
+    {"id":"clue_2","title":"12字内线索名","category":"8字内分类","unlockType":"从给定类型里选","prompt":"40-140字题面或线索碎片","question":"20字内作答提示","answer":"正确答案","aliases":["可接受近义答案1"],"aidTitle":"10字内解码标题","aidBody":"40-220字对照表或规则说明，必须让用户直接能解","answerKind":"例如人名/地点/时间/数字/房间/物件/口令","artifactTitle":"揭开的内容标题","artifactBody":"70-130字揭开后的内容","evidenceId":"ev_2"},
+    {"id":"clue_3","title":"12字内线索名","category":"8字内分类","unlockType":"从给定类型里选","prompt":"40-140字题面或线索碎片","question":"20字内作答提示","answer":"正确答案","aliases":["可接受近义答案1"],"aidTitle":"10字内解码标题","aidBody":"40-220字对照表或规则说明，必须让用户直接能解","answerKind":"例如人名/地点/时间/数字/房间/物件/口令","artifactTitle":"揭开的内容标题","artifactBody":"70-130字揭开后的内容","evidenceId":"ev_3"},
+    {"id":"clue_4","title":"12字内线索名","category":"8字内分类","unlockType":"从给定类型里选","prompt":"40-140字题面或线索碎片","question":"20字内作答提示","answer":"正确答案","aliases":["可接受近义答案1"],"aidTitle":"10字内解码标题","aidBody":"40-220字对照表或规则说明，必须让用户直接能解","answerKind":"例如人名/地点/时间/数字/房间/物件/口令","artifactTitle":"揭开的内容标题","artifactBody":"70-130字揭开后的内容","evidenceId":"ev_4"},
+    {"id":"clue_5","title":"12字内线索名","category":"8字内分类","unlockType":"从给定类型里选","prompt":"40-140字题面或线索碎片","question":"20字内作答提示","answer":"正确答案","aliases":["可接受近义答案1"],"aidTitle":"10字内解码标题","aidBody":"40-220字对照表或规则说明，必须让用户直接能解","answerKind":"例如人名/地点/时间/数字/房间/物件/口令","artifactTitle":"揭开的内容标题","artifactBody":"70-130字揭开后的内容","evidenceId":"ev_5"}
+  ],
+  "hintTrail":["第一条模糊提示","第二条更具体提示","第三条非常接近答案的提示"]
+}`;
+  var raw = await decryptCallApiJson(prompt, 3500, 0.96);
+  if (raw && Array.isArray(raw.truthParts)) {
+    raw.truthParts = raw.truthParts.map(function(part) {
+      var ans = String((part && part.answer) || '').trim();
+      var opts = Array.isArray(part && part.options) ? part.options.map(function(x){ return String(x||'').trim(); }).filter(function(x){ return x && x.length > 1 && !/^(正确结论|错误结论|干扰项|选项[甲乙丙ABC]|占位|示例|暂无|未知|随便|预设|通用|占坑)/.test(x); }) : [];
+      var hasCorrect = ans && opts.some(function(o){ return o === ans; });
+      if (ans && !hasCorrect) opts.unshift(ans);
+      var seen = {}; opts = opts.filter(function(o){ var k = o.replace(/\s/g,''); if(seen[k]) return false; seen[k]=true; return true; });
+      part.options = opts.slice(0, 3);
+      return part;
+    });
+  }
+  try {
+    if (raw && Array.isArray(raw.clues) && raw.clues.length) {
+      raw.clues = raw.clues.map(function(clue) {
+        return decryptRepairSingleClueConsistency(decryptValidateClueConsistency(decryptFinalizeMorseClue(clue)));
+      });
+    }
+  } catch (e) {
+    console.warn('decrypt clue local repair skipped:', e);
+  }
+  var normalizedCase = decryptNormalizeCase(raw, persona);
+  var hit = decryptFindTooSimilarCase(normalizedCase, historyCases);
+  if (hit) {
+    throw new Error('本次生成结果与该角色历史案件仍然过于相似，已被拦截。系统不会自动重生，请直接重新开始新案件。');
+  }
+  return normalizedCase;
+}
+function decryptCaseProgress(session) {
+  var total = Math.max(1, (session && session.truthParts ? session.truthParts.length : 4));
+  var matched = Math.min(total, (session && session.matchedTruthPartKeys ? session.matchedTruthPartKeys.length : 0));
+  return Math.round((matched / total) * 100);
+}
+function decryptTypeLabel(type) {
+  var map = {
+    '摩斯': '摩斯', 'morse': '摩斯', '诗文': '诗文', '藏头': '藏头', '旧对话': '旧对话',
+    '路线': '路线', '物件': '物件', '时间排序': '时间排序', '观察': '观察', '回忆': '回忆', '口令': '口令'
+  };
+  return map[type] || String(type || '调查');
+}
+function decryptMatchTruthKeys(session, matchedList) {
+  if (!session || !Array.isArray(session.truthParts) || !Array.isArray(matchedList)) return;
+  matchedList.forEach(function(raw) {
+    var hit = String(raw || '').trim();
+    if (!hit) return;
+    var found = session.truthParts.find(function(part) {
+      return hit === part.key || hit === part.label || hit.indexOf(part.label) >= 0 || hit.indexOf(part.answer) >= 0;
+    });
+    if (found && session.matchedTruthPartKeys.indexOf(found.key) < 0) session.matchedTruthPartKeys.push(found.key);
+  });
+}
+function decryptFormatDate(ts) {
+  var d = new Date(ts || Date.now());
+  if (Number.isNaN(d.getTime())) d = new Date();
+  return d.getFullYear() + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + String(d.getDate()).padStart(2, '0') + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+}
+function decryptHashSeed(seed) {
+  var str = String(seed || '');
+  var hash = 0;
+  for (var i = 0; i < str.length; i++) hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+  return Math.abs(hash);
+}
+function decryptSeedPick(seed, list, offset) {
+  if (!Array.isArray(list) || !list.length) return '';
+  var hash = decryptHashSeed(String(seed || '') + '::' + String(offset || 0));
+  return list[hash % list.length];
+}
+function decryptRenderSceneBoard(seed, kicker, title, subtitle) {
+  var noteA = decryptSeedPick(seed, ['事件记录', '现场摘要', '危险节点', '行动指令', '紧急封存'], 'noteA');
+  var noteB = decryptSeedPick(seed, ['证物回收', '人物排查', '地点复盘', '时间校验', '关系梳理'], 'noteB');
+  var noteC = decryptSeedPick(seed, ['等待破译', '需要核对', '线索比对', '继续追查', '关键待解'], 'noteC');
+  return `<div class="decrypt-scene-board">
+    <div class="decrypt-scene-thread decrypt-scene-thread-a"></div>
+    <div class="decrypt-scene-thread decrypt-scene-thread-b"></div>
+    <div class="decrypt-scene-folder decrypt-scene-folder-main">
+      <div class="decrypt-scene-pin"></div>
+      <div class="decrypt-scene-paper decrypt-scene-paper-main">
+        <div class="decrypt-scene-kicker">${decryptEscape(kicker || 'Case Board')}</div>
+        <div class="decrypt-scene-title">${decryptEscape(title || '案件总览')}</div>
+        ${subtitle ? `<div class="decrypt-scene-sub">${decryptEscape(subtitle)}</div>` : ''}
+      </div>
+    </div>
+    <div class="decrypt-scene-folder decrypt-scene-folder-left">
+      <div class="decrypt-scene-pin"></div>
+      <div class="decrypt-scene-paper decrypt-scene-paper-note">
+        <div class="decrypt-scene-note-tag">${decryptEscape(noteA)}</div>
+        <div class="decrypt-scene-note-lines"></div>
+      </div>
+    </div>
+    <div class="decrypt-scene-folder decrypt-scene-folder-right">
+      <div class="decrypt-scene-pin"></div>
+      <div class="decrypt-scene-paper decrypt-scene-paper-note alt">
+        <div class="decrypt-scene-note-tag">${decryptEscape(noteB)}</div>
+        <div class="decrypt-scene-stamp">CONFIDENTIAL</div>
+      </div>
+    </div>
+    <div class="decrypt-scene-footer">
+      <div class="decrypt-scene-chip">${decryptEscape(noteC)}</div>
+      <div class="decrypt-scene-chip muted">RECONSTRUCT THE TRUTH</div>
+    </div>
+  </div>`;
+}
+function decryptRenderMoodStrip(seed) {
+  var cards = [
+    {
+      label: '地点线索',
+      body: decryptSeedPick(seed, ['先锁定最后出现地点', '优先核对房间与楼层', '从封闭空间与出入口开始排查', '以路线终点作为第一检查位'], 'mood1')
+    },
+    {
+      label: '时间锚点',
+      body: decryptSeedPick(seed, ['先按时间顺序整理事件', '对比异常前后的具体时段', '把最早与最晚记录单独标出', '优先检查缺失的那个时间点'], 'mood2')
+    },
+    {
+      label: '证物方向',
+      body: decryptSeedPick(seed, ['从口令、编号、物件刻字入手', '优先核对可见数字和重复项', '先解出能直接验证的证物', '答案通常藏在最客观的标记里'], 'mood3')
+    }
+  ];
+  return `<div class="decrypt-mood-strip">
+    ${cards.map(function(card, index) {
+      var tilt = [-3, 2, -1][index % 3];
+      return `<div class="decrypt-mood-card" style="--tilt:${tilt}deg;animation-delay:${index * 0.9}s;">
+        <div class="decrypt-mood-tape"></div>
+        <div class="decrypt-mood-index">0${index + 1}</div>
+        <div class="decrypt-mood-card-title">${decryptEscape(card.label)}</div>
+        <div class="decrypt-mood-card-body">${decryptEscape(card.body)}</div>
+        <div class="decrypt-mood-label">Case Reference ${String(index + 1).padStart(2, '0')}</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+async function openDecryptApp() {
+  decryptReloadStateFromStorage(!!window._monoDBReady);
+  decryptEnsureSelectedPersona();
+  decryptState.panel = 'home';
+  _showAppPage('decryptPage');
+  decryptRenderApp();
+}
+function closeDecryptApp() {
+  goHome();
+}
+function decryptSetPersona(pid) {
+  decryptState.selectedPersonaId = String(pid || '');
+  decryptSaveState();
+  decryptRenderApp();
+}
+function decryptGoSelection() {
+  decryptState.panel = 'home';
+  decryptSaveState();
+  decryptRenderApp();
+}
+async function decryptStartCase() {
+  var pid = decryptEnsureSelectedPersona();
+  var persona = decryptFindPersona(pid);
+  if (!persona) return alert('请先创建角色。');
+  var active = decryptActiveSession();
+  if (active && active.status === 'active') {
+    var ok = confirm('当前还有一局未结束的案件。开始新案件会把上一局归档为“中断”，继续开始吗？');
+    if (!ok) return;
+    active.status = 'interrupted';
+    active.endedAt = Date.now();
+  }
+  decryptState.panel = 'case';
+  decryptState.currentSessionId = 'decrypt_pending';
+  decryptSaveState();
+  decryptRenderApp('<div class="decrypt-empty">正在调取当前 API 生成全新案件，请稍候...</div>');
+  try {
+    var session = await decryptGenerateCase(persona);
+    decryptState.sessions.unshift(session);
+    decryptState.currentSessionId = session.id;
+    decryptState.panel = 'case';
+    decryptSaveState();
+    decryptRenderApp();
+  } catch (e) {
+    decryptState.currentSessionId = '';
+    decryptState.panel = 'home';
+    decryptSaveState();
+    decryptRenderApp();
+    alert('案件生成失败：' + e.message);
+  }
+}
+function decryptLeaveCase() {
+  var session = decryptActiveSession();
+  if (session && session.status === 'active') {
+    session.status = 'interrupted';
+    session.endedAt = Date.now();
+  }
+  decryptState.currentSessionId = '';
+  decryptState.panel = 'home';
+  decryptSaveState();
+  decryptRenderApp();
+}
+function decryptUseHint() {
+  var session = decryptActiveSession();
+  if (!session || !Array.isArray(session.hintTrail) || !session.hintTrail.length) return;
+  session.hintsUsed = Math.min(session.hintTrail.length, Number(session.hintsUsed || 0) + 1);
+  decryptSaveState();
+  decryptRenderApp();
+}
+function decryptGiveUp() {
+  var session = decryptActiveSession();
+  if (!session) return;
+  if (!confirm('确定放弃本局并直接查看完整真相吗？')) return;
+  session.status = 'given_up';
+  session.endedAt = Date.now();
+  session.hintsUsed = Math.max(session.hintsUsed || 0, session.hintTrail.length || 0);
+  session.revealedEvidenceIds = session.evidence.map(function(item){ return item.id; });
+  session.solvedClueIds = session.clues.map(function(item){ return item.id; });
+  session.matchedTruthPartKeys = session.truthParts.map(function(item){ return item.key; });
+  session.latestJudge = { success: false, feedback: '你已选择放弃，本案完整真相已解封。', matched: session.truthParts.map(function(item){ return item.label; }), missing: [] };
+  decryptSaveState();
+  decryptRenderApp();
+}
+function decryptSolveClue(clueId) {
+  var session = decryptActiveSession();
+  if (!session) return;
+  var clue = session.clues.find(function(item) { return String(item.id) === String(clueId); });
+  if (!clue || clue.solved) return;
+  var input = document.getElementById('decryptClueInput_' + clue.id);
+  var value = input ? String(input.value || '').trim() : '';
+  if (!value) return alert('先输入你的答案。');
+  var normalized = decryptNormalizeText(value);
+  var accepts = (clue.aliases || []).concat(clue.answer || '').map(decryptNormalizeText).filter(Boolean);
+  var hit = accepts.some(function(item) {
+    return item === normalized || (item.length >= 2 && (item.indexOf(normalized) >= 0 || normalized.indexOf(item) >= 0));
+  });
+  if (!hit) {
+    alert('这条线索还没有被正确拆开，再试一次。');
+    return;
+  }
+  clue.solved = true;
+  if (session.solvedClueIds.indexOf(clue.id) < 0) session.solvedClueIds.push(clue.id);
+  if (clue.evidenceId && session.revealedEvidenceIds.indexOf(clue.evidenceId) < 0) session.revealedEvidenceIds.push(clue.evidenceId);
+  decryptSaveState();
+  decryptRenderApp();
+}
+function decryptCurrentClueIndex(session) {
+  if (!session || !Array.isArray(session.clues) || !session.clues.length) return 0;
+  var idx = session.clues.findIndex(function(item) { return item && !item.solved; });
+  return idx < 0 ? session.clues.length : idx;
+}
+function decryptRevealClueAnswer(clueId) {
+  var session = decryptActiveSession();
+  if (!session) return;
+  var index = session.clues.findIndex(function(item) { return String(item.id) === String(clueId); });
+  if (index < 0) return;
+  var current = decryptCurrentClueIndex(session);
+  if (index > current) return alert('请先按顺序解开前面的线索。');
+  var clue = session.clues[index];
+  if (!clue || clue.solved) return;
+  if (!confirm('确定放弃这条线索的自行解码，直接查看答案吗？')) return;
+  clue.solved = true;
+  if (session.solvedClueIds.indexOf(clue.id) < 0) session.solvedClueIds.push(clue.id);
+  if (clue.evidenceId && session.revealedEvidenceIds.indexOf(clue.evidenceId) < 0) session.revealedEvidenceIds.push(clue.evidenceId);
+  session.latestJudge = { success: false, matched: [], missing: [], feedback: '你已直接解开一条线索答案，后续线索已继续开放。' };
+  decryptSaveState();
+  decryptRenderApp();
+}
+function decryptSelectDeduction(partKey, option) {
+  var session = decryptActiveSession();
+  if (!session) return;
+  decryptEnsureDeductionState(session);
+  session.deductionSelections[String(partKey || '')] = String(option || '');
+  decryptSaveState();
+  decryptRenderApp();
+}
+function decryptSelectDeductionEncoded(partKey, encodedOption) {
+  var option = '';
+  try { option = decodeURIComponent(String(encodedOption || '')); } catch(e) { option = String(encodedOption || ''); }
+  decryptSelectDeduction(partKey, option);
+}
+function decryptResetDeduction() {
+  var session = decryptActiveSession();
+  if (!session) return;
+  session.deductionSelections = {};
+  session.latestJudge = null;
+  decryptSaveState();
+  decryptRenderApp();
+}
+function decryptCheckDeduction() {
+  var session = decryptActiveSession();
+  if (!session) return;
+  decryptEnsureDeductionState(session);
+  var missingSelections = session.truthParts.filter(function(part) {
+    return !session.deductionSelections[part.key];
+  });
+  if (missingSelections.length) return alert('先把每张结论卡都选完。');
+  var matched = [];
+  var missing = [];
+  session.truthParts.forEach(function(part) {
+    var selected = String(session.deductionSelections[part.key] || '').trim();
+    var answer = String(part.answer || '').trim();
+    if (decryptNormalizeText(selected) === decryptNormalizeText(answer)) {
+      matched.push(part.label);
+      if (session.matchedTruthPartKeys.indexOf(part.key) < 0) session.matchedTruthPartKeys.push(part.key);
+    } else {
+      missing.push(part.label);
+    }
+  });
+  var success = matched.length === session.truthParts.length;
+  session.latestJudge = {
+    success: success,
+    matched: matched,
+    missing: missing,
+    feedback: success
+      ? '你已经把整组结论卡全部拼对，真相链条闭合，角色成功被你从危机里带出。'
+      : (matched.length
+        ? ('你已经锁定了 ' + matched.join('、') + '，但 ' + missing.join('、') + ' 还不对，再根据证物重新排一次。')
+        : '目前整组结论卡还没有拼对，建议先回去复核证物、时间线和关键地点。')
+  };
+  session.guessHistory.push({ guess: JSON.stringify(session.deductionSelections), result: session.latestJudge, ts: Date.now() });
+  if (success) {
+    session.status = 'solved';
+    session.endedAt = Date.now();
+    session.revealedEvidenceIds = session.evidence.map(function(item){ return item.id; });
+    session.solvedClueIds = session.clues.map(function(item){ return item.id; });
+    session.matchedTruthPartKeys = session.truthParts.map(function(item){ return item.key; });
+  }
+  decryptSaveState();
+  decryptRenderApp();
+}
+async function decryptSubmitGuess() {
+  return decryptCheckDeduction();
+}
+function decryptDeleteSession(id) {
+  var session = decryptState.sessions.find(function(item) { return String(item.id) === String(id); });
+  if (!session) return;
+  if (!confirm('确定删除这份案件记录吗？')) return;
+  decryptState.sessions = decryptState.sessions.filter(function(item) { return String(item.id) !== String(id); });
+  if (String(decryptState.currentSessionId) === String(id)) decryptState.currentSessionId = '';
+  decryptSaveState();
+  decryptRenderApp();
+}
+function decryptContinueSession(id) {
+  if (!id) return;
+  decryptState.currentSessionId = String(id);
+  decryptState.panel = 'case';
+  decryptSaveState();
+  decryptRenderApp();
+}
+function decryptRenderLanding() {
+  var list = decryptGetPersonas();
+  var selectedId = decryptEnsureSelectedPersona();
+  if (!list.length) return '<div class="decrypt-empty">当前没有可用角色。先去聊天软件里创建角色，再回来开启案件。</div>';
+  var active = decryptState.sessions.find(function(item) { return item && item.status === 'active'; }) || null;
+  var activeHtml = active ? `
+    <div class="decrypt-board">
+      <span class="decrypt-board-tag">进行中案件</span>
+      <div class="decrypt-case-title" style="margin-top:12px;">${decryptEscape(active.caseTitle)}</div>
+      <div class="decrypt-crisis">${decryptEscape(active.crisisSurface)}</div>
+      <div class="decrypt-inline-actions">
+        <button class="decrypt-submit-btn" onclick="decryptContinueSession('${decryptEscape(active.id)}')">继续调查</button>
+        <button class="decrypt-action-btn" onclick="decryptDeleteSession('${decryptEscape(active.id)}')">删除本局</button>
+      </div>
+    </div>` : '';
+  var archives = decryptState.sessions.filter(function(item) { return item && item.status !== 'active'; }).slice(0, 6);
+  return `
+    <div class="decrypt-panel">
+      <span class="decrypt-section-kicker">案件入口</span>
+      ${decryptRenderSceneBoard(selectedId || 'landing', 'Entry File', '解密档案室', '')}
+      ${decryptRenderMoodStrip(selectedId || 'landing')}
+      <div class="decrypt-persona-grid" style="margin-top:14px;">
+        ${list.map(function(persona) {
+          var selected = String(persona.id) === String(selectedId);
+          return `<div class="decrypt-persona-card${selected ? ' selected' : ''}" onclick="decryptSetPersona('${decryptEscape(persona.id)}')">
+            <div class="decrypt-persona-top">
+              ${persona.avatar ? `<img class="decrypt-persona-avatar" src="${decryptEscape(persona.avatar)}" alt="">` : `<div class="decrypt-persona-avatar">${decryptEscape((persona.name || '?').charAt(0))}</div>`}
+              <div style="min-width:0;">
+                <div class="decrypt-persona-name">${decryptEscape(persona.name || '未命名角色')}</div>
+                <div class="decrypt-persona-meta">已连接角色档案</div>
+              </div>
+            </div>
+            <div class="decrypt-persona-desc">${decryptEscape((persona.persona || '暂无人设').slice(0, 94))}${(persona.persona || '').length > 94 ? '…' : ''}</div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="decrypt-launch-actions">
+        <button class="decrypt-submit-btn" onclick="decryptStartCase()">开始新案件</button>
+      </div>
+    </div>
+    ${activeHtml}
+    <div class="decrypt-panel">
+      <div class="decrypt-section-head">
+        <div>
+          <div class="decrypt-section-title">案件存档</div>
+          <div class="decrypt-section-sub">已结束、中断、放弃的案件都会留在这里</div>
+        </div>
+      </div>
+      ${archives.length ? `<div class="decrypt-archive-list">
+        ${archives.map(function(item) {
+          var statusText = item.status === 'solved' ? '已救援' : item.status === 'given_up' ? '已放弃' : '已中断';
+          var endText = item.endedAt ? decryptFormatDate(item.endedAt) : '未记录';
+          var clueProgress = (item.solvedClueIds && item.clues && item.clues.length) ? (item.solvedClueIds.length + '/' + item.clues.length) : '0/0';
+          var truthProgress = (item.matchedTruthPartKeys && item.truthParts && item.truthParts.length) ? (item.matchedTruthPartKeys.length + '/' + item.truthParts.length) : '0/0';
+          return `<div class="decrypt-archive-card">
+            <div class="decrypt-archive-thumb">
+              <div class="decrypt-archive-thumb-state">${decryptEscape(statusText)}</div>
+              <div class="decrypt-archive-thumb-name">${decryptEscape(item.caseTitle || '未命名案件')}</div>
+            </div>
+            <div class="decrypt-archive-main">
+              <div class="decrypt-archive-head">
+                ${item.personaAvatar ? `<img class="decrypt-archive-avatar" src="${decryptEscape(item.personaAvatar)}" alt="">` : `<div class="decrypt-archive-avatar">${decryptEscape((item.personaName || '?').charAt(0))}</div>`}
+                <div class="decrypt-archive-title-row">
+                  <div class="decrypt-archive-title">${decryptEscape(item.caseTitle || '未命名案件')}</div>
+                  <div class="decrypt-archive-badges">
+                    <span class="decrypt-archive-badge status">${decryptEscape(statusText)}</span>
+                    <span class="decrypt-archive-badge">${decryptEscape(item.personaName || '角色')}</span>
+                    <span class="decrypt-archive-badge">${decryptEscape(item.styleTheme || '事件卷宗')}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="decrypt-archive-meta">建档 ${decryptEscape(decryptFormatDate(item.createdAt))} · 结束 ${decryptEscape(endText)}</div>
+              <div class="decrypt-archive-summary">${decryptEscape((item.crisisSurface || '').slice(0, 108))}${(item.crisisSurface || '').length > 108 ? '…' : ''}</div>
+              <div class="decrypt-archive-stats">
+                <div class="decrypt-archive-stat">
+                  <div class="decrypt-archive-stat-label">线索进度</div>
+                  <div class="decrypt-archive-stat-value">${decryptEscape(clueProgress)}</div>
+                </div>
+                <div class="decrypt-archive-stat">
+                  <div class="decrypt-archive-stat-label">结论锁定</div>
+                  <div class="decrypt-archive-stat-value">${decryptEscape(truthProgress)}</div>
+                </div>
+                <div class="decrypt-archive-stat">
+                  <div class="decrypt-archive-stat-label">证物解封</div>
+                  <div class="decrypt-archive-stat-value">${decryptEscape(String((item.revealedEvidenceIds || []).length))}</div>
+                </div>
+              </div>
+              <div class="decrypt-archive-actions">
+                <button class="decrypt-mini-btn" onclick="decryptContinueSession('${decryptEscape(item.id)}')">查看记录</button>
+                <button class="decrypt-mini-btn" onclick="decryptDeleteSession('${decryptEscape(item.id)}')">删除</button>
+              </div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>` : `<div class="decrypt-empty" style="padding:18px 0 8px;color:rgba(42,34,28,0.56);">还没有案件存档。</div>`}
+    </div>`;
+}
+function decryptRenderCase(session) {
+  if (!session) return '<div class="decrypt-empty">当前没有案件，返回主页后开始一局新的危机解谜。</div>';
+  var progress = decryptCaseProgress(session);
+  var hints = (session.hintTrail || []).slice(0, Number(session.hintsUsed || 0));
+  var truthReveal = session.status === 'solved' || session.status === 'given_up';
+  var currentClueIndex = decryptCurrentClueIndex(session);
+  return `
+    <div class="decrypt-board">
+      <span class="decrypt-board-tag">${decryptEscape(session.styleTheme || '侦查档案')}</span>
+      ${decryptRenderSceneBoard(session.id || session.caseTitle, 'Case File', session.caseTitle || '案件总览', session.caseTagline || '危机调查')}
+      <div class="decrypt-board-hero">
+        <div class="decrypt-photo">
+          ${session.personaAvatar ? `<img src="${decryptEscape(session.personaAvatar)}" alt="">` : `<div class="decrypt-photo-fallback">${decryptEscape((session.personaName || '?').charAt(0))}</div>`}
+          <div class="decrypt-photo-caption">${decryptEscape(session.personaName || '角色')}</div>
+        </div>
+        <div class="decrypt-hero-copy">
+          <div class="decrypt-case-title">${decryptEscape(session.caseTitle)}</div>
+          <div class="decrypt-case-meta">
+            <span class="decrypt-meta-pill">${decryptEscape(session.caseTagline || '危机调查')}</span>
+            <span class="decrypt-meta-pill">${decryptEscape(decryptFormatDate(session.createdAt))}</span>
+            <span class="decrypt-meta-pill">${session.solvedClueIds.length}/${session.clues.length} 线索已破</span>
+          </div>
+          <div class="decrypt-crisis">${decryptEscape(session.crisisSurface)}</div>
+        </div>
+      </div>
+      <div class="decrypt-opening-copy">${decryptEscape(session.openingDispatch)}</div>
+      ${decryptRenderMoodStrip(session.id || session.caseTitle)}
+      <div class="decrypt-thread-board">
+        ${(session.castFiles || []).slice(0, 4).map(function(item) {
+          return `<div class="decrypt-thread-card">
+            <div class="decrypt-thread-title">${decryptEscape(item.title || '关联档案')}</div>
+            <div class="decrypt-thread-value">${decryptEscape(item.value || '待调查')}</div>
+            <div class="decrypt-thread-note">${decryptEscape(item.note || '')}</div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="decrypt-progress-bar"><div class="decrypt-progress-fill" style="width:${progress}%;"></div></div>
+      <div class="decrypt-progress-row" style="margin-top:10px;">
+        ${session.truthParts.map(function(part) {
+          var matched = session.matchedTruthPartKeys.indexOf(part.key) >= 0 || truthReveal;
+          return `<span class="decrypt-progress-pill${matched ? ' matched' : ''}">${matched ? '已命中 · ' : '待锁定 · '}${decryptEscape(part.label)}</span>`;
+        }).join('')}
+      </div>
+      <div class="decrypt-inline-actions" style="margin-top:12px;">
+        <button class="decrypt-action-btn" onclick="decryptUseHint()">获取提示</button>
+        <button class="decrypt-action-btn" onclick="decryptGoSelection()">返回角色页</button>
+        <button class="decrypt-action-btn" onclick="decryptLeaveCase()">中断本局</button>
+        <button class="decrypt-action-btn" onclick="decryptGiveUp()">放弃并查看真相</button>
+      </div>
+    </div>
+    <div class="decrypt-section">
+      <div class="decrypt-section-head">
+        <div>
+          <div class="decrypt-section-title">线索板</div>
+          <div class="decrypt-section-sub">线索会按顺序由浅到深开启，解开当前这条，下一条才会继续开放。</div>
+        </div>
+      </div>
+      <div class="decrypt-clue-grid">
+        ${session.clues.map(function(clue, clueIndex) {
+          var isLocked = !clue.solved && clueIndex > currentClueIndex;
+          var isCurrent = !clue.solved && clueIndex === currentClueIndex;
+          return `<div class="decrypt-clue-card${isLocked ? ' is-locked' : ''}">
+            <div class="decrypt-clue-top">
+              <div>
+                <div class="decrypt-clue-order">线索 ${clueIndex + 1}</div>
+                <div class="decrypt-clue-title">${decryptEscape(clue.title)}</div>
+              </div>
+              <div class="decrypt-clue-type">${decryptEscape(decryptTypeLabel(clue.unlockType))}</div>
+            </div>
+            <div class="decrypt-clue-copy">${decryptEscape(clue.category)}</div>
+            <div class="decrypt-clue-objective">客观线索 · 答案类型：${decryptEscape(clue.answerKind || '客观事实')}</div>
+            <div class="decrypt-clue-prompt">${decryptEscape(clue.prompt)}</div>
+            <div class="decrypt-aid-box">
+              <div class="decrypt-aid-title">${decryptEscape(clue.aidTitle || '解题说明')}</div>
+              <div class="decrypt-aid-body">${decryptEscape(clue.aidBody || '按照题面给出的规则直接解码即可。')}</div>
+            </div>
+            ${clue.solved ? `
+              <div class="decrypt-clue-solved">
+                <div class="decrypt-clue-solved-title">答案：${decryptEscape(clue.answer || '')}</div>
+                <div class="decrypt-clue-copy" style="margin-top:6px;">已解开，相关证物已归档。</div>
+              </div>
+              <div class="decrypt-clue-solved">
+                <div class="decrypt-clue-solved-title">${decryptEscape(clue.artifactTitle || '已揭开内容')}</div>
+                <div class="decrypt-clue-copy" style="margin-top:0;">${decryptEscape(clue.artifactBody || '')}</div>
+              </div>` : isLocked ? `
+              <div class="decrypt-clue-locked-box">
+                <div class="decrypt-clue-locked-title">尚未开放</div>
+                <div class="decrypt-clue-copy" style="margin-top:6px;">请先完成上一条线索，这条更深层的线索才会解锁。</div>
+              </div>` : `
+              <div class="decrypt-clue-input-row" style="margin-top:12px;">
+                <input class="decrypt-text-input" id="decryptClueInput_${decryptEscape(clue.id)}" type="text" placeholder="${decryptEscape(clue.question || '输入答案')}">
+                <button class="decrypt-action-btn" onclick="decryptSolveClue('${decryptEscape(clue.id)}')">解开</button>
+              </div>`}
+            ${isCurrent ? `<div class="decrypt-inline-actions" style="margin-top:10px;"><button class="decrypt-mini-btn" onclick="decryptRevealClueAnswer('${decryptEscape(clue.id)}')">放弃解码，直接看答案</button></div>` : ''}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+    <div class="decrypt-section">
+      <div class="decrypt-section-head">
+        <div>
+          <div class="decrypt-section-title">证物库</div>
+          <div class="decrypt-section-sub">已解开的内容会逐渐补完整张档案板</div>
+        </div>
+      </div>
+      <div class="decrypt-evidence-grid">
+        ${session.evidence.map(function(item) {
+          var locked = session.revealedEvidenceIds.indexOf(item.id) < 0 && !truthReveal;
+          return `<div class="decrypt-evidence-card${locked ? ' locked' : ''}">
+            <span class="decrypt-evidence-tag">${decryptEscape(item.tag || '档案')}</span>
+            <div class="decrypt-evidence-title">${decryptEscape(item.title)}</div>
+            <div class="decrypt-evidence-copy">${locked ? '这份证物仍然封存，先去拆开对应线索。' : decryptEscape(item.detail || item.summary || '')}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+    <div class="decrypt-section">
+      <div class="decrypt-section-head">
+        <div>
+          <div class="decrypt-section-title">提示记录</div>
+          <div class="decrypt-section-sub">提示会从模糊到清晰递进，请谨慎使用</div>
+        </div>
+      </div>
+      ${hints.length ? `<div class="decrypt-hint-list">
+        ${hints.map(function(item, index) {
+          return `<div class="decrypt-hint-card">
+            <div class="decrypt-hint-index">Hint ${index + 1}</div>
+            <div class="decrypt-clue-copy" style="margin-top:0;">${decryptEscape(item)}</div>
+          </div>`;
+        }).join('')}
+      </div>` : `<div class="decrypt-empty" style="padding:12px 0 2px;">目前还没有展开提示。</div>`}
+    </div>
+    <div class="decrypt-section">
+      <div class="decrypt-guess-panel">
+        <div class="decrypt-section-title" style="color:#2a221c;">结论拼板</div>
+        <div class="decrypt-clue-copy" style="margin-top:8px;">把证物和线索整理成四张结论卡。每一栏只选一个结论，全部拼对后真相才会闭合。</div>
+        <div class="decrypt-deduction-grid">
+          ${session.truthParts.map(function(part) {
+            var selected = String((session.deductionSelections || {})[part.key] || '');
+            return `<div class="decrypt-deduction-card">
+              <div class="decrypt-deduction-head">${decryptEscape(part.label)}</div>
+              <div class="decrypt-deduction-options">
+                ${(part.options || []).map(function(option) {
+                  var active = selected === option;
+                  return `<button class="decrypt-deduction-option${active ? ' active' : ''}" onclick="decryptSelectDeductionEncoded('${decryptEscape(part.key)}','${encodeURIComponent(option)}')">${decryptEscape(option)}</button>`;
+                }).join('')}
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+        <div class="decrypt-inline-actions" style="margin-top:12px;">
+          <button class="decrypt-submit-btn" onclick="decryptCheckDeduction()">提交结论</button>
+          <button class="decrypt-action-btn" onclick="decryptResetDeduction()">重新排布</button>
+        </div>
+        ${session.latestJudge ? `<div class="decrypt-guess-result">${decryptEscape(session.latestJudge.feedback || (session.latestJudge.pending ? '判定中...' : ''))}</div>` : ''}
+        ${truthReveal ? `
+          <div class="decrypt-truth-box">
+            <div class="decrypt-truth-title">完整真相</div>
+            <div class="decrypt-reveal-box">${decryptEscape(session.truthFull)}</div>
+            <div class="decrypt-divider"></div>
+            <div class="decrypt-truth-title">救援结果</div>
+            <div class="decrypt-reveal-box">${decryptEscape(session.rescueEnding)}</div>
+          </div>` : ''}
+      </div>
+    </div>`;
+}
+function decryptRenderApp(forcedHtml) {
+  var body = document.getElementById('decryptAppBody');
+  if (!body) return;
+  if (forcedHtml) {
+    body.innerHTML = forcedHtml;
+    return;
+  }
+  decryptEnsureSelectedPersona();
+  var session = decryptActiveSession();
+  if (!session || decryptState.panel === 'home') body.innerHTML = decryptRenderLanding();
+  else body.innerHTML = decryptRenderCase(session);
+}
+function decryptEnsurePlacedHomeIcon() {
+  var el = document.getElementById('app-decrypt');
+  if (!el) return;
+  el.dataset.dragId = 'app-decrypt';
+  try {
+    var migrated = localStorage.getItem('mono_decrypt_drag_exact_music_logic_migrated_v2') === '1';
+    if (!migrated) {
+      var legacyPos = JSON.parse(localStorage.getItem('mono_iph_positions_v3') || '{}');
+      if (legacyPos && legacyPos['app-decrypt']) {
+        delete legacyPos['app-decrypt'];
+        localStorage.setItem('mono_iph_positions_v3', JSON.stringify(legacyPos));
+      }
+      localStorage.setItem('mono_decrypt_drag_exact_music_logic_migrated_v2', '1');
+    }
+  } catch(e) {}
+  if (!el.classList.contains('iph-placed')) {
+    ['position','left','top','width','height','margin','flexShrink'].forEach(function(prop) {
+      el.style[prop] = '';
+    });
+  }
+}
+function renderDecryptHomeIcon() {
+  try { syncPage2DockIcons(); } catch(e) {}
+  decryptEnsurePlacedHomeIcon();
+}
+window.decryptLoadState = decryptLoadState;
+window.openDecryptApp = openDecryptApp;
+window.closeDecryptApp = closeDecryptApp;
+window.decryptRenderApp = decryptRenderApp;
+window.decryptSetPersona = decryptSetPersona;
+window.decryptGoSelection = decryptGoSelection;
+window.decryptSelectDeductionEncoded = decryptSelectDeductionEncoded;
+window.decryptCheckDeduction = decryptCheckDeduction;
+window.decryptResetDeduction = decryptResetDeduction;
+window.decryptStartCase = decryptStartCase;
+window.decryptContinueSession = decryptContinueSession;
+window.decryptDeleteSession = decryptDeleteSession;
+window.decryptUseHint = decryptUseHint;
+window.decryptLeaveCase = decryptLeaveCase;
+window.decryptGiveUp = decryptGiveUp;
+window.decryptSolveClue = decryptSolveClue;
+window.decryptRevealClueAnswer = decryptRevealClueAnswer;
+window.decryptSubmitGuess = decryptSubmitGuess;
+window.renderDecryptHomeIcon = renderDecryptHomeIcon;
 // ── AI health injection ──
 function _buildHealthInjection(personaId) {
   if (!_hD.settings.sharedPersonas[String(personaId)]) return '';
@@ -59064,7 +62239,7 @@ function updateFabVisibility() {
   const isHome = homeScreen && homeScreen.style.display !== 'none';
   
   // Check if any page2 app overlay is active
-  const page2AppIds = ['locationPage','musicPage','datingAppPage','blackboxPage','taskPage','petAppPage','shopAppPage','healthAppPage','babyAppPage'];
+  const page2AppIds = ['locationPage','musicPage','datingAppPage','blackboxPage','taskPage','petAppPage','shopAppPage','healthAppPage','babyAppPage','decryptPage'];
   let anyPage2AppOpen = false;
   for (const pid of page2AppIds) {
     const el = document.getElementById(pid);
@@ -59107,7 +62282,7 @@ function updateFabVisibility() {
     };
   }
   // Patch page2 app openers to show FAB
-  const page2Openers = ['openLocationApp','openMusicApp','openDatingApp','openBlackboxApp','openTaskApp','openPetApp','openShopApp','openHealthApp','openBabyApp'];
+  const page2Openers = ['openLocationApp','openMusicApp','openDatingApp','openBlackboxApp','openTaskApp','openPetApp','openShopApp','openHealthApp','openBabyApp','openDecryptApp'];
   page2Openers.forEach(function(fnName) {
     if (typeof window[fnName] === 'function') {
       const _orig = window[fnName];
@@ -59118,7 +62293,7 @@ function updateFabVisibility() {
     }
   });
   // Patch page2 app closers to hide FAB
-  const page2Closers = ['closeLocationApp','closeMusicApp','closeDatingApp','closeBlackboxApp','closeTaskApp','closePetApp','closeShopApp','closeHealthApp','closeBabyApp'];
+  const page2Closers = ['closeLocationApp','closeMusicApp','closeDatingApp','closeBlackboxApp','closeTaskApp','closePetApp','closeShopApp','closeHealthApp','closeBabyApp','closeDecryptApp'];
   page2Closers.forEach(function(fnName) {
     if (typeof window[fnName] === 'function') {
       const _orig = window[fnName];
@@ -64556,7 +67731,8 @@ function _callCompanionApi(persona, chContent, hist, callback) {
 /* Freeze inner icon boxes — prevent 100%/aspect-ratio from reflowing.
    Actual sizes are set inline by JS depending on whether in dock or page. */
 [data-drag-id].iph-placed .home-app-icon-box,
-[data-drag-id].iph-placed .home-dock-app-box {
+[data-drag-id].iph-placed .home-dock-app-box,
+[data-drag-id].iph-placed .ig-music-icon-box {
   flex-shrink: 0 !important;
   /* width/height set inline by JS */
 }
@@ -66278,6 +69454,8 @@ let dragEl     = null;          // actual DOM element
 let ghost      = null;          // #iph-drag-ghost
 let offX = 0,  offY = 0;        // finger offset within element
 let elW  = 0,  elH  = 0;        // locked element natural size (no change!)
+let dragPrevInlineAnimation = '';
+let dragPrevInlineTransform = '';
 let longTimer  = null;
 let lpTouchId  = null;
 let lpMoved    = false;
@@ -66431,7 +69609,7 @@ function applyPositions() {
     placeEl(el, p.x, p.y, p.w, p.h);
     // Restore icon box size based on where it lives
     const inDock = p.parentId === 'homeSharedDock';
-    const iconBox = el.querySelector('.home-dock-app-box, .home-app-icon-box');
+    const iconBox = el.querySelector('.home-dock-app-box, .home-app-icon-box, .ig-music-icon-box');
     if (iconBox) {
       if (inDock) {
         iconBox.style.width = '54px'; iconBox.style.height = '54px';
@@ -66776,6 +69954,14 @@ function startDrag(el, cx, cy) {
   window._iphDragging = true;
   dragEl   = el;
   ensureId(el);
+  dragPrevInlineAnimation = el.style.animation || '';
+  dragPrevInlineTransform = el.style.transform || '';
+  // Freeze the current edit-mode wiggle before measuring.
+  // Otherwise getBoundingClientRect() reflects the rotated frame and
+  // the icon appears to "jump" the moment dragging starts.
+  el.style.animation = 'none';
+  el.style.transform = 'none';
+  void el.offsetWidth;
   // ── Step 1: Capture the element's TRUE rendered size BEFORE any style change ──
   const rect = el.getBoundingClientRect();
   elW = rect.width;
@@ -66807,7 +69993,11 @@ function startDrag(el, cx, cy) {
     'display:block;width:' + _ghostW + 'px;height:' + elH + 'px;' +
     'animation:none!important;transform:none;opacity:1;' +
     'pointer-events:none;margin:0;padding:0;box-sizing:border-box;flex-shrink:0;';
-  clone.querySelectorAll('*').forEach(c => { c.style.animation = 'none'; });
+  clone.querySelectorAll('*').forEach(c => {
+    c.style.animation = 'none';
+    c.style.transition = 'none';
+    c.style.transform = 'none';
+  });
   ghost.appendChild(clone);
   ghost.style.cssText =
     'position:fixed;z-index:999999;pointer-events:none;display:block;' +
@@ -66942,7 +70132,7 @@ function endDrag() {
   const DOCK_RADIUS = 13; // border-radius inside dock
   const PAGE_RADIUS = 16; // border-radius on page
   function resizeIconBox(el, size, radius) {
-    const box = el.querySelector('.home-dock-app-box, .home-app-icon-box');
+    const box = el.querySelector('.home-dock-app-box, .home-app-icon-box, .ig-music-icon-box');
     if (!box) return;
     box.style.width        = size + 'px';
     box.style.height       = size + 'px';
@@ -67005,6 +70195,8 @@ function endDrag() {
   // Apply position — width/height already locked in startDrag
   dragEl.classList.remove('is-dragging-source');
   placeEl(dragEl, nx, ny, elW, elH);
+  dragEl.style.animation = dragPrevInlineAnimation;
+  dragEl.style.transform = dragPrevInlineTransform;
   // Persist (include w+h so applyPositions can restore exact size)
   const id = dragEl.dataset.dragId;
   if (id) {
@@ -67026,6 +70218,8 @@ function endDrag() {
   ghost.style.display = 'none';
   ghost.innerHTML = '';
   dragEl = null;
+  dragPrevInlineAnimation = '';
+  dragPrevInlineTransform = '';
   window._iphDragging = false;
   const hs = document.getElementById('homeScreen');
   if (hs) hs.classList.remove('iph-dragging');
@@ -82806,6 +86000,12 @@ refreshSpyApp = async function(appId) {
 
 closeTaskRewardPopup = function() {
   if (_currentGeneratedReward) {
+    if (_currentGeneratedReward._isSavedRewardEdit) {
+      _currentGeneratedReward = null;
+      _taskSavedRewardContext = null;
+      document.getElementById('taskRewardOverlay').classList.remove('open');
+      return;
+    }
     const ro = _currentGeneratedReward.rewardObj;
     const pendingIdx = _currentGeneratedReward.pendingIdx;
     if (!taskData.pendingRewards) taskData.pendingRewards = [];
@@ -82821,8 +86021,10 @@ closeTaskRewardPopup = function() {
     }
     saveTaskData();
     _currentGeneratedReward = null;
-    renderTaskContent();
+    _taskSavedRewardContext = null;
+    _taskRefreshRewardViews();
   }
+  _taskSavedRewardContext = null;
   document.getElementById('taskRewardOverlay').classList.remove('open');
 };
 
@@ -84062,13 +87264,17 @@ if (document.readyState === 'loading') {
       }
       if (typeof saveTaskData === 'function') saveTaskData();
       _currentGeneratedReward = null;
-      if (typeof renderTaskContent === 'function') renderTaskContent();
+      if (typeof _taskRefreshRewardViews === 'function') _taskRefreshRewardViews();
     }
     const overlay = document.getElementById('taskRewardOverlay');
     if (overlay) overlay.classList.remove('open');
   };
 
   window.regenCurrentReward = async function() {
+    if (typeof _taskSavedRewardContext !== 'undefined' && _taskSavedRewardContext && typeof regenerateSavedTaskReward === 'function') {
+      await regenerateSavedTaskReward();
+      return;
+    }
     if (typeof _currentGeneratedReward === 'undefined' || !_currentGeneratedReward) return;
     const pendingIdx = _currentGeneratedReward.pendingIdx;
     if (pendingIdx >= 0 && typeof taskData !== 'undefined' && taskData.pendingRewards && taskData.pendingRewards[pendingIdx]) {
@@ -84089,6 +87295,8 @@ if (document.readyState === 'loading') {
       await _rerunRewardGeneration(ctx);
     }
   };
+
+  if (typeof deleteCurrentTaskReward === 'function') window.deleteCurrentTaskReward = deleteCurrentTaskReward;
 
   window.confirmClearChatHistory = window.monoOpenChatHistoryManager;
   window._monoInitUiFixes = window._monoInitUiFixes || function() {};

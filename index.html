@@ -29814,6 +29814,83 @@ async function generatePersonaComment(postContent, postAuthor) {
     return comment;
   } catch(e) { return null; }
 }
+function _mwGetDirectlyRelatedPersonasForMoments(postPersona) {
+  if (!postPersona || typeof mwGetRelEntries !== 'function') return [];
+  var entries = [];
+  try {
+    entries = mwGetRelEntries().filter(function(e) { return e && e.a && e.b; });
+  } catch(e) { entries = []; }
+  if (!entries.length) return [];
+  var seen = {};
+  return personas.filter(function(p) {
+    if (!p || p.id === postPersona.id || !p.name) return false;
+    var linked = entries.some(function(e) {
+      return (e.a === postPersona.name && e.b === p.name) || (e.b === postPersona.name && e.a === p.name);
+    });
+    if (!linked || seen[p.name]) return false;
+    seen[p.name] = true;
+    return true;
+  });
+}
+async function _generateRelatedPersonaMomentComment(commenterPersona, postPersona, item, imageDesc, existingComments) {
+  if (!commenterPersona || !postPersona || !apiConfig.url || !apiConfig.key || !apiConfig.model) return null;
+  try {
+    const _cLang = _detectPersonaLang(commenterPersona);
+    const _cLangOv = _langOverridePrompt(_cLang);
+    const relCtx = (typeof _mwBuildRelInjectForChar === 'function')
+      ? (_mwBuildRelInjectForChar(commenterPersona.name, [postPersona.name], false) || '')
+      : '';
+    const recentChat = Array.isArray(commenterPersona.history)
+      ? commenterPersona.history.slice(-20).map(function(m) {
+          return (m.role === 'user' ? userProfile.name : commenterPersona.name) + '：' + (m.content || '');
+        }).join('\n')
+      : '';
+    const threadCtx = Array.isArray(existingComments) && existingComments.length
+      ? '\n评论区已有留言：\n' + existingComments.slice(-8).map(function(c) {
+          return (c.author || '') + '：' + (c.content || c.text || '');
+        }).join('\n')
+      : '';
+    const imageCtx = imageDesc ? ('\n[这条朋友圈还附带图片，图片内容：' + imageDesc + ']') : '';
+    const prompt = `${LANG_SYSTEM_PREFIX}你是${commenterPersona.name}，人设：${commenterPersona.persona}。${relCtx}
+你最近和${userProfile.name}的聊天记录（供参考）：
+${recentChat || '（暂无）'}
+${postPersona.name}刚刚发了一条朋友圈：
+"${item.content || ''}"${imageCtx}${threadCtx}${_cLangOv}
+请以${commenterPersona.name}的身份，用${_cLang ? '你的语言设定' : '简体中文'}，给${postPersona.name}写一条20字以内的朋友圈留言。
+要求：
+1. 语气必须符合你和${postPersona.name}在关系图里的关系设定。
+2. 留言必须直接回应这条朋友圈内容或图片，不要泛泛而谈。
+3. 像真实熟人会留下的话，不要解释，不要加引号。
+只返回留言内容本身。`;
+    const r = await fetch(apiConfig.url.replace(/\/$/, '') + '/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + apiConfig.key, 'Content-Type': 'application/json' },
+      body: JSON.stringify(_applyApiModel({ messages: [{ role: 'user', content: prompt }], temperature: commenterPersona.temperature || 1.0, max_tokens: 80 }, apiConfig.model))
+    });
+    if (!r.ok) return null;
+    const data = await r.json();
+    let comment = _extractAssistantMessageContent(data).trim().replace(/^["'「」]|["'「」]$/g, '');
+    if (!comment) return null;
+    let translation = '';
+    if (_cLang && comment && commenterPersona.enableTranslation !== false) {
+      try {
+        const _tr = await fetch(apiConfig.url.replace(/\/$/, '') + '/chat/completions', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + apiConfig.key, 'Content-Type': 'application/json' },
+          body: JSON.stringify(_applyApiModel({ messages: [{ role: 'user', content: '將以下文字翻譯成简体中文，只返回翻譯结果：\n' + comment }], max_tokens: 100, temperature: 0.2 }, apiConfig.model))
+        });
+        if (_tr.ok) {
+          const _td = await _tr.json();
+          translation = _extractAssistantMessageContent(_td).trim();
+        }
+      } catch(e) {}
+    }
+    return { text: comment, translation: translation || '', avatar: commenterPersona.avatar || '' };
+  } catch(e) {
+    console.warn('related persona moment comment err:', e && e.message ? e.message : e);
+    return null;
+  }
+}
 // ===================== 朋友圈自动留言生成 =====================
 async function autoGenerateMomentsComments(itemId) {
   if (!apiConfig.url || !apiConfig.key || !apiConfig.model) {
@@ -29879,7 +29956,7 @@ async function autoGenerateMomentsComments(itemId) {
         } catch(e) { console.warn('Auto comment err for ' + p.name + ':', e.message); }
       }
     } else {
-      // 角色的朋友圈：只由该角色的人际圈NPC留言，绝不拉用户设定的其他角色，绝不模拟用户
+      // 角色的朋友圈：优先让关系图中与该角色直接有关联的其他角色留言，再补少量NPC留言
       const postPersona = personas.find(p => p.name === item.author);
       if (!postPersona) {
         if (btn) { btn.classList.remove('loading'); btn.innerHTML = '<i class="fas fa-magic"></i>自动留言'; }
@@ -29887,10 +29964,37 @@ async function autoGenerateMomentsComments(itemId) {
       }
       // 收集已留言人名，避免重复
       const existingCommenters = new Set((item.comments || []).map(c => c.author));
-      // 排除所有用户设定的角色名和用户名
+      const relatedPersonas = _mwGetDirectlyRelatedPersonasForMoments(postPersona).filter(function(p) {
+        return !existingCommenters.has(p.name);
+      });
+      for (const relatedPersona of relatedPersonas) {
+        await new Promise(function(res) { setTimeout(res, 320 + Math.random() * 520); });
+        const freshBefore = momentsData.find(function(m) { return m.id === itemId; });
+        const currentComments = freshBefore && Array.isArray(freshBefore.comments) ? freshBefore.comments.slice() : [];
+        const relatedComment = await _generateRelatedPersonaMomentComment(relatedPersona, postPersona, item, _imageDescForComment, currentComments);
+        if (!relatedComment || !relatedComment.text) continue;
+        const freshItem = momentsData.find(function(m) { return m.id === itemId; });
+        if (!freshItem) continue;
+        if (!freshItem.comments) freshItem.comments = [];
+        if (freshItem.comments.some(function(c) { return c.author === relatedPersona.name; })) continue;
+        freshItem.comments.push({
+          author: relatedPersona.name,
+          content: relatedComment.text,
+          text: relatedComment.text,
+          translation: relatedComment.translation || '',
+          avatar: relatedComment.avatar || '',
+          time: Date.now()
+        });
+        existingCommenters.add(relatedPersona.name);
+        localStorage.setItem('mono_moments', JSON.stringify(momentsData));
+        renderMoments();
+        const boxRelated = document.getElementById('momentsComments_' + itemId);
+        if (boxRelated) boxRelated.classList.add('open');
+      }
+      // 排除所有用户设定的角色名和用户名，NPC只补充剩余社交圈
       const allPersonaNames = new Set(personas.map(p => p.name));
       allPersonaNames.add(userProfile.name);
-      const numNPC = 2 + Math.floor(Math.random() * 3); // 2~4 条NPC留言
+      const numNPC = relatedPersonas.length > 0 ? (1 + Math.floor(Math.random() * 2)) : (2 + Math.floor(Math.random() * 3)); // 有关联角色时少补一点NPC
       try {
         // 一次性让AI生成角色人际圈NPC列表及其留言，NPC需知道自己在给该角色留言
         const npcPrompt = LANG_SYSTEM_PREFIX +

@@ -28,6 +28,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head><base href="https://d16ilfvy4mv02r.cloudfront.net/workspaces/sh0bDVYUIEw8H1dpwjAJvINuiJ6ETxg0/6c9a375e-adcc-44e2-9ec5-2d1ce63bc50b/files/">
@@ -16936,12 +16937,12 @@ body.editor-modal-open #chatPage .app-back-bar {
   border: 1px solid rgba(184,168,144,0.40) !important;
   box-shadow: inset 0 1px 0 rgba(255,254,250,0.98) !important;
 }
-/* ── LAYOUT FIX: both panels visible ── */
-.dw-frame { height: 170px !important; }
+/* ── LAYOUT FIX: give cipher and answer more vertical room ── */
+.dw-frame { height: 226px !important; }
 .dw-monitor { overflow: hidden !important; }
-.dw-main-sheet.dw-card-main { flex: 1 1 0 !important; min-height: 0 !important; overflow: hidden !important; }
+.dw-main-sheet.dw-card-main { flex: 1.08 1 0 !important; min-height: 0 !important; overflow: hidden !important; }
 .dw-card-body { overflow-y: auto !important; }
-.dw-sub-sheet.dw-card-sub { flex: 1 1 0 !important; min-height: 0 !important; overflow: hidden !important; }
+.dw-sub-sheet.dw-card-sub { flex: 0.92 1 0 !important; min-height: 72px !important; overflow: hidden !important; }
 .dw-sub-body { overflow-y: auto !important; }
 .dw-answer { overflow: visible !important; overflow-wrap: anywhere !important; word-break: break-word !important; color: #2c211a !important; }
 .dw-answer small { overflow-wrap: anywhere !important; white-space: normal !important; color: #6c584a !important; }
@@ -17269,20 +17270,18 @@ body.editor-modal-open #chatPage .app-back-bar {
               </div>
             </div>
           </div>
-          <div class="decrypt-home-slot">
-            <div class="ig-music-icon-wrap decrypt-home-entry" id="app-decrypt" data-drag-id="app-decrypt" onclick="openDecryptApp()">
-              <div class="ig-music-icon-box" id="decryptHomeIconBox">
-                <svg viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:40px;height:40px;">
-                  <rect x="11" y="8.5" width="24" height="31" rx="3.8" fill="#555"/>
-                  <rect x="14" y="12" width="18" height="22" rx="2.6" fill="#f2f2f2"/>
-                  <path d="M18 18H28.5M18 22.5H30M18 27H26.5" stroke="#555" stroke-width="1.7" stroke-linecap="round"/>
-                  <path d="M34 18L40 13.5L41.5 15.5L35.5 20" stroke="#555" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                  <circle cx="31.5" cy="31.5" r="6.7" stroke="#555" stroke-width="1.8"/>
-                  <path d="M31.5 27.2V31.5L34.6 34" stroke="#555" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </div>
-              <div class="ig-music-icon-label">解密</div>
+          <div class="ig-music-icon-wrap decrypt-home-entry" id="app-decrypt" data-drag-id="app-decrypt" onclick="openDecryptApp()">
+            <div class="ig-music-icon-box" id="decryptHomeIconBox">
+              <svg viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:40px;height:40px;">
+                <rect x="11" y="8.5" width="24" height="31" rx="3.8" fill="#555"/>
+                <rect x="14" y="12" width="18" height="22" rx="2.6" fill="#f2f2f2"/>
+                <path d="M18 18H28.5M18 22.5H30M18 27H26.5" stroke="#555" stroke-width="1.7" stroke-linecap="round"/>
+                <path d="M34 18L40 13.5L41.5 15.5L35.5 20" stroke="#555" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="31.5" cy="31.5" r="6.7" stroke="#555" stroke-width="1.8"/>
+                <path d="M31.5 27.2V31.5L34.6 34" stroke="#555" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
             </div>
+            <div class="ig-music-icon-label">解密</div>
           </div>
         </div>
       </div><!-- end homePage3 -->
@@ -45523,26 +45522,12 @@ function closeIgStoryViewer() {
   document.getElementById('igStoryViewer').classList.remove('open');
   renderIgStories();
 }
-// Auto-generate stories every 1-2 hours
+// Story generation is manual-only:
+// 1. Click the refresh button in the Instagram widget
+// 2. Click a character's story avatar when that character has no cached story yet
 function startIgStoryAutoRefresh() {
-  function scheduleNext() {
-    const delay = (60 + Math.random() * 60) * 60 * 1000; // 60-120 min
-    setTimeout(async () => {
-      if (!personas || personas.length === 0) { scheduleNext(); return; }
-      if (!apiConfig || !apiConfig.url) { scheduleNext(); return; }
-      igStories = {};
-      igSeenStories = {}; // auto-refresh resets read state
-      for (const p of personas) {
-        const s = await generateIgStoryForPersona(p);
-        if (s) igStories[p.id] = s.map(t => ({ text: t, time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }) }));
-      }
-      renderIgStories();
-      scheduleNext();
-    }, delay);
-  }
-  scheduleNext();
+  return;
 }
-window.afterDB(startIgStoryAutoRefresh);
 // Load saved custom icons into the single shared dock
 function syncPage2DockIcons() {
   const dockIdMap = [
@@ -58789,6 +58774,7 @@ function decryptEnsurePlacedHomeIcon() {
   var el = document.getElementById('app-decrypt');
   if (!el) return;
   el.dataset.dragId = 'app-decrypt';
+  var defaultPos = { x: 180, y: 16, parentId: 'homePage3' };
   try {
     var migrated = localStorage.getItem('mono_decrypt_drag_exact_music_logic_migrated_v2') === '1';
     if (!migrated) {
@@ -58800,6 +58786,24 @@ function decryptEnsurePlacedHomeIcon() {
       localStorage.setItem('mono_decrypt_drag_exact_music_logic_migrated_v2', '1');
     }
   } catch(e) {}
+  try {
+    var savedPos = JSON.parse(localStorage.getItem('mono_iph_positions_v3') || '{}');
+    var decryptPos = savedPos['app-decrypt'];
+    if (!decryptPos) {
+      decryptPos = defaultPos;
+      savedPos['app-decrypt'] = decryptPos;
+      localStorage.setItem('mono_iph_positions_v3', JSON.stringify(savedPos));
+    }
+    if (!el.classList.contains('iph-placed')) {
+      var parent = document.getElementById(decryptPos.parentId || defaultPos.parentId);
+      if (parent && el.parentElement !== parent) parent.appendChild(el);
+      el.classList.add('iph-placed');
+      el.style.left = (typeof decryptPos.x === 'number' ? decryptPos.x : defaultPos.x) + 'px';
+      el.style.top = (typeof decryptPos.y === 'number' ? decryptPos.y : defaultPos.y) + 'px';
+      el.style.margin = '0';
+      el.style.flexShrink = '0';
+    }
+  } catch(e2) {}
   if (!el.classList.contains('iph-placed')) {
     ['position','left','top','width','height','margin','flexShrink'].forEach(function(prop) {
       el.style[prop] = '';
@@ -68847,7 +68851,7 @@ function _callCompanionApi(persona, chContent, hist, callback) {
    ═══════════════════════════════════════════════════════ */
 .photo-widget-decrypt-secret {
   width: 320px;
-  height: 320px;
+  height: 380px;
   position: relative;
   background: transparent;
   border-radius: 26px;
@@ -68860,7 +68864,7 @@ function _callCompanionApi(persona, chContent, hist, callback) {
   left: 0;
   top: 0;
   width: 320px;
-  height: 320px;
+  height: 380px;
   transform-origin: top left;
   border-radius: 26px;
   overflow: hidden;
@@ -68964,7 +68968,7 @@ function _callCompanionApi(persona, chContent, hist, callback) {
   left: 34px;
   top: 54px;
   width: 234px;
-  height: 150px;
+  height: 206px;
   border-radius: 12px 12px 18px 18px;
   background:
     linear-gradient(180deg, #f2e7cd 0%, #e9dbc0 100%);
@@ -69034,11 +69038,11 @@ function _callCompanionApi(persona, chContent, hist, callback) {
   display: none;
 }
 .dw-card-main {
-  min-height: 82px;
+  min-height: 112px;
   padding: 10px 12px;
 }
 .dw-card-sub {
-  min-height: 44px;
+  min-height: 68px;
   padding: 8px 10px;
 }
 .dw-card-kicker {
@@ -70357,6 +70361,7 @@ function boot() {
 function loadPositions() {
   try { positions = JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); }
   catch(e) { positions = {}; }
+  var positionsChanged = false;
   try {
     var migrated = localStorage.getItem('mono_couple_widget_page3_migrated_v1') === '1';
     if (!migrated) {
@@ -70367,20 +70372,33 @@ function loadPositions() {
         h: 152,
         parentId: 'homePage3'
       };
-      localStorage.setItem(STORE_KEY, JSON.stringify(positions));
+      positionsChanged = true;
       localStorage.setItem('mono_couple_widget_page3_migrated_v1', '1');
     }
   } catch(e2) {}
   try {
+    if (!positions['app-decrypt']) {
+      positions['app-decrypt'] = {
+        x: 180,
+        y: 16,
+        parentId: 'homePage3'
+      };
+      positionsChanged = true;
+    }
+  } catch(e4) {}
+  try {
     if (positions['app-channel']) {
       delete positions['app-channel'];
-      localStorage.setItem(STORE_KEY, JSON.stringify(positions));
+      positionsChanged = true;
     }
     localStorage.removeItem('mono_channel_icon_page3_migrated_v1');
     localStorage.removeItem('mono_icon_channel');
     localStorage.removeItem('mono_channel_settings_v1');
     localStorage.removeItem('mono_channel_custom_v1');
   } catch(e3) {}
+  if (positionsChanged) {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(positions)); } catch(e5) {}
+  }
 }
 function savePositions() {
   // Scan ALL currently placed elements and capture their live positions
@@ -72709,11 +72727,28 @@ function dwExtractJson(raw) {
   if (start >= 0 && end > start) txt = txt.slice(start, end + 1);
   return JSON.parse(txt);
 }
+function dwEnsureWidgetHeight(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  var targetH = 380;
+  var currentH = parseFloat(el.style.height) || el.offsetHeight || 0;
+  if (currentH > 320.5) return;
+  el.style.height = targetH + 'px';
+  try {
+    var pos = JSON.parse(localStorage.getItem(POS_STORE) || '{}');
+    if (!pos[id]) pos[id] = {};
+    pos[id].h = targetH;
+    if (!pos[id].w) pos[id].w = 320;
+    localStorage.setItem(POS_STORE, JSON.stringify(pos));
+  } catch(e) {}
+}
 function dwApplyScale(id) {
   var el = document.getElementById(id);
   var stage = document.getElementById(id + '_stage');
   if (!el || !stage) return;
-  var scale = Math.min((el.clientWidth || 320) / 320, (el.clientHeight || 320) / 320);
+  var baseW = stage.offsetWidth || 320;
+  var baseH = stage.offsetHeight || 380;
+  var scale = Math.min((el.clientWidth || baseW) / baseW, (el.clientHeight || baseH) / baseH);
   stage.style.transform = 'scale(' + Math.max(scale, 0.35).toFixed(4) + ')';
   requestAnimationFrame(function() { dwFitText(id); });
 }
@@ -73088,6 +73123,7 @@ window.dwMountWidget = function(id) {
   if (!_dwRuntime[id]) _dwRuntime[id] = {};
   var el = document.getElementById(id);
   if (!el) return;
+  dwEnsureWidgetHeight(id);
   if (typeof ResizeObserver !== 'undefined' && !_dwRuntime[id].ro) {
     _dwRuntime[id].ro = new ResizeObserver(function() { dwApplyScale(id); });
     _dwRuntime[id].ro.observe(el);
@@ -73255,7 +73291,7 @@ window.addNewPhotoWidget = function(type) {
   container.appendChild(el);
   // Default size
   var defaultW = type === 'airdrop' ? 240 : type === 'tv' ? 258 : type === 'kodak' ? 160 : type === 'spotify' ? 320 : type === 'custom-image' ? 200 : type === 'couple-calendar' ? 224 : type === 'livechat' ? 250 : type === 'decrypt-secret' ? 320 : 200;
-  var defaultH = type === 'airdrop' ? 290 : type === 'tv' ? 220 : type === 'kodak' ? 360 : type === 'spotify' ? 140 : type === 'custom-image' ? 200 : type === 'couple-calendar' ? 224 : type === 'livechat' ? 460 : type === 'decrypt-secret' ? 320 : 290;
+  var defaultH = type === 'airdrop' ? 290 : type === 'tv' ? 220 : type === 'kodak' ? 360 : type === 'spotify' ? 140 : type === 'custom-image' ? 200 : type === 'couple-calendar' ? 224 : type === 'livechat' ? 460 : type === 'decrypt-secret' ? 380 : 290;
   // Center on page
   var cRect = container.getBoundingClientRect();
   var nx = Math.max(0, Math.round((cRect.width - defaultW) / 2));

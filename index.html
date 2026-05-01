@@ -17781,6 +17781,7 @@ body.editor-modal-open #chatPage .app-back-bar {
         </button>
       </div>
     </div>
+    <div id="truthDareGameHost" style="display:none;padding:10px 14px 0;background:#f4f4f4;"></div>
     <div id="chatBox" class="chat-messages no-scrollbar">
       <div class="empty-state">
         <i class="fas fa-comment-dots"></i>
@@ -17879,6 +17880,70 @@ body.editor-modal-open #chatPage .app-back-bar {
         <div class="plus-panel-btn" onclick="closePlusPanel(); openIntimatePayFromChat('chat');">
           <i class="fas fa-hand-holding-heart"></i>
           <span>親密付</span>
+        </div>
+        <div class="plus-panel-btn" onclick="openTruthDareInviteModal()">
+          <i class="fas fa-dice"></i>
+          <span>真心话大冒险</span>
+        </div>
+      </div>
+      <div id="truthDareInviteModal" class="cc-sheet-modal">
+        <div class="cc-sheet-card">
+          <div class="cc-sheet-head">
+            <div class="cc-sheet-title">邀请玩真心话大冒险</div>
+            <button class="cc-sheet-close" onclick="closeTruthDareInviteModal()">✕</button>
+          </div>
+          <div class="cc-sheet-body">
+            <div>
+              <div class="cc-field-label">邀请对象</div>
+              <div class="cc-media-pill" id="tdInvitePersonaName">当前角色</div>
+            </div>
+            <div>
+              <div class="cc-field-label">卡片小字</div>
+              <textarea id="tdInviteNoteInput" class="cc-field-textarea" placeholder="可以写一句氛围感小字，留空会自动用默认文案…"></textarea>
+            </div>
+            <div class="cc-media-hint">发送后会在当前聊天室里投递一张韩系黑白灰邀请卡，角色会接受邀请，并把这件事记进自己的记忆里。</div>
+            <div class="cc-sheet-actions">
+              <button class="cc-sheet-secondary" onclick="closeTruthDareInviteModal()">取消</button>
+              <button class="cc-sheet-primary" onclick="sendTruthDareInviteCard()">发送邀请</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="truthDareDareModal" class="cc-sheet-modal">
+        <div class="cc-sheet-card">
+          <div class="cc-sheet-head">
+            <div class="cc-sheet-title">设置角色的大冒险</div>
+            <button class="cc-sheet-close" onclick="closeTruthDareDareModal()">✕</button>
+          </div>
+          <div class="cc-sheet-body">
+            <div>
+              <div class="cc-field-label">执行类型</div>
+              <select id="tdDareModeSelect" class="cc-field-select" onchange="tdSyncDareModalFields()">
+                <option value="simulate">模拟执行</option>
+                <option value="moments">真实执行 · 发朋友圈</option>
+                <option value="chat">真实执行 · 发消息给其他角色 / NPC</option>
+              </select>
+            </div>
+            <div id="tdDareChatFields" style="display:none;">
+              <div class="cc-field-label">目标对象</div>
+              <select id="tdDareChatTargetType" class="cc-field-select" onchange="tdSyncDareModalFields()">
+                <option value="persona">关系图里的角色</option>
+                <option value="npc">自定义 NPC</option>
+              </select>
+              <select id="tdDareChatPersonaSelect" class="cc-field-select" style="margin-top:8px;"></select>
+              <input id="tdDareNpcNameInput" class="cc-field-input" type="text" placeholder="NPC 名字" style="display:none;margin-top:8px;">
+              <textarea id="tdDareNpcIdentityInput" class="cc-field-textarea" placeholder="NPC 身份，例如：便利店夜班店员 / 前同学 / 乐队鼓手" style="display:none;margin-top:8px;"></textarea>
+            </div>
+            <div>
+              <div class="cc-field-label">大冒险内容</div>
+              <textarea id="tdDareInstructionInput" class="cc-field-textarea" placeholder="输入你要让角色做的大冒险内容，支持写具体文案或大概要求…"></textarea>
+            </div>
+            <div class="cc-media-hint" id="tdDareHintText">角色会先在聊天室里读到这条指令，表达一下自己的情绪，再由你决定是否让 TA 真正执行。</div>
+            <div class="cc-sheet-actions">
+              <button class="cc-sheet-secondary" onclick="closeTruthDareDareModal()">取消</button>
+              <button class="cc-sheet-primary" onclick="submitTruthDarePersonaDare()">发送指令</button>
+            </div>
+          </div>
         </div>
       </div>
       <div id="chatSimVoiceModal" class="cc-sheet-modal">
@@ -23392,6 +23457,7 @@ function _showAppPage(pageId) {
     if (!currentId && personas && personas.length > 0) {
       try { selectPersona(personas[0].id); } catch(e) {}
     }
+    try { tdRenderGamePanel(); } catch(e) {}
     setTimeout(function() {
       var chatBox = document.getElementById('chatBox');
       if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
@@ -23879,6 +23945,7 @@ function selectPersona(id) {
     }
   }
   try { renderContactList(); } catch(e) { console.error('[chat] renderContactList failed:', e); }
+  try { tdRenderGamePanel(); } catch(e) { console.warn('[chat] tdRenderGamePanel failed:', e); }
   // Auto-scroll to latest messages
   setTimeout(function() {
     var chatBox = document.getElementById('chatBox');
@@ -24817,6 +24884,15 @@ function renderMessages(opts) {
         <div class="msg-meta"><img src="${avatarSrc}" class="msg-avatar"><span class="msg-name">${authorName.substring(0,4)}</span></div>
       </div>`;
     }
+    if (m.msgType === 'truth_dare_invite') {
+      return renderTruthDareInviteBubble(m, idx, isUser, avatarSrc, authorName, isSelected);
+    }
+    if (m.msgType === 'truth_dare_event') {
+      return renderTruthDareEventBubble(m, idx, isUser, avatarSrc, authorName, isSelected);
+    }
+    if (m.msgType === 'truth_dare_exec') {
+      return renderTruthDareExecBubble(m, idx, isUser, avatarSrc, authorName, isSelected);
+    }
     // 图片消息
     if (m.msgType === 'image') {
       const _imgSrc = _escapeAttrText(m.imageSrc || '');
@@ -25441,7 +25517,7 @@ async function triggerPersonaReplyToOrder(persona, situation, orderData) {
   }
 }
 // ===================== 发送消息 =====================
-function sendMessage() {
+async function sendMessage() {
   const input = document.getElementById('userInput');
   const text = input.value.trim();
   if (!text || !currentId) return;
@@ -25467,14 +25543,19 @@ function sendMessage() {
   saveData();
   renderMessages();
   renderContactList();
+  try { tdRenderGamePanel(); } catch(e) {}
   // Scroll to bottom
   var chatBox = document.getElementById('chatBox');
   if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
   // Track chat message for task system
   if (typeof taskTrackChatMessage === 'function') taskTrackChatMessage(currentId, newMsg.timestamp);
   checkUserTransferIntent(text, p);
+  var _tdOutcome = { skipDefaultAutoReply: false };
+  if (typeof tdHandleUserMessageInActiveGame === 'function') {
+    try { _tdOutcome = await tdHandleUserMessageInActiveGame(p, newMsg) || _tdOutcome; } catch(e) { console.warn('[td game send hook]', e); }
+  }
   // 根据角色回复模式决定是否自动回复
-  if (typeof _handleAutoReplyAfterSend === "function") _handleAutoReplyAfterSend(currentId);
+  if (!_tdOutcome.skipDefaultAutoReply && typeof _handleAutoReplyAfterSend === "function") _handleAutoReplyAfterSend(currentId);
   if (_isHeartVoiceGenerationEnabled(p) && (p.replyMode || 'manual') === 'manual' && _heartVoiceModeAllowsPopup(p) && _isHeartVoiceUiVisible()) {
     maybeGenerateReadHeartVoicePopup(currentId, text);
   }
@@ -26977,6 +27058,12 @@ function renderCcRoomDrawer() {
           : `<div style="width:19px;height:19px;border-radius:4px;background:#888;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;">${name.charAt(0)}</div>`;
       }).join('');
       return `<div style="width:42px;height:42px;border-radius:8px;background:#e0e0e0;display:grid;grid-template-columns:1fr 1fr;gap:2px;padding:2px;flex-shrink:0;overflow:hidden;">${avatarImgs}</div>`;
+    } else if ((r.members || []).length === 1) {
+      const nameSolo = (r.members || [])[0] || '？';
+      const pSolo = personas.find(x => x.name === nameSolo);
+      return pSolo && pSolo.avatar
+        ? `<img src="${pSolo.avatar}" style="width:42px;height:42px;border-radius:12px;object-fit:cover;flex-shrink:0;">`
+        : `<div style="width:42px;height:42px;border-radius:12px;background:#8b8b8b;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;">${nameSolo.charAt(0)}</div>`;
     } else {
       const [nameA, nameB] = r.members;
       const pA = personas.find(x => x.name === nameA);
@@ -27180,7 +27267,7 @@ function openCcChatRoom(roomId) {
   document.getElementById('ccChatRoomTitle').textContent = room.name || room.members.join(' & ');
   document.getElementById('ccChatRoomSubtitle').textContent = isGroup
     ? `群聊 · ${room.members.length} 位成员`
-    : `私聊 · ${room.members.join(' 与 ')}`;
+    : ((room.members.length === 1) ? `你与 ${room.members[0]} 的聊天` : `私聊 · ${room.members.join(' 与 ')}`);
   ccRenderChatMessages(roomId);
   _ccSetComposerParticipants(roomId, CC_USER_SENDER);
   const composer = document.getElementById('ccComposerInput');
@@ -27196,6 +27283,29 @@ function closeCcChatRoom() {
   closeCcPlusPanel();
   closeCcVoiceModal();
   closeCcTakeoutModal();
+  var _tdReturnPersonaId = '';
+  if (window._tdExternalCcSession && String(window._tdExternalCcSession.roomId || '') === String(_ccCurrentRoomId || '')) {
+    try {
+      const sess = window._tdExternalCcSession;
+      const ownerPersona = personas.find(function(x) { return String(x.id) === String(sess.personaId || ''); });
+      if (ownerPersona) {
+        _tdReturnPersonaId = ownerPersona.id;
+        const summary = tdBuildRoomSummary(sess.roomId);
+        if (summary) {
+          _tdPushContext(ownerPersona.id, `【真心话大冒险记忆】你通过外部聊天室完整看到了这一轮大冒险的执行内容。相关对话摘要如下：\n${summary}`, { _tdContext: true });
+        }
+        const state = tdGetState(ownerPersona.id);
+        state.phase = 'ready_next';
+        state.lastSummary = '外部聊天室的大冒险已经结束，可以继续下一轮。';
+        tdSetState(ownerPersona.id, state);
+      }
+    } catch(e) { console.warn('[td close cc room]', e); }
+    window._tdExternalCcSession = null;
+    setTimeout(function() {
+      try { openApp('chatPage'); } catch(e) {}
+      try { if (_tdReturnPersonaId) selectPersona(_tdReturnPersonaId); } catch(e) {}
+    }, 20);
+  }
   _ccCurrentRoomId = null;
 }
 function _ccRenderMessageBubble(msg, isRight) {
@@ -27458,9 +27568,19 @@ function _ccGetCharUserChatSummary(charName, maxMsgs = 15) {
   }).join('\n');
 }
 // ── 辅助：为单个角色构建完整的记忆/人设注入块 ──
-function _ccBuildCharacterContext(name, personas, relEntries, roomMembers) {
+function _ccBuildCharacterContext(name, personas, relEntries, roomMembers, room) {
   const p = personas.find(x => x.name === name);
-  if (!p) return `【${name}】：（无人设信息）\n`;
+  if (!p) {
+    const npcMeta = room && room.npcMeta && room.npcMeta[name] ? room.npcMeta[name] : null;
+    if (!npcMeta) return `【${name}】：（无人设信息）\n`;
+    return `═══ ${name} 的完整人设 ═══
+姓名：${npcMeta.name || name}
+身份：${npcMeta.identity || '当前世界中的 NPC'}
+人设设定：
+${npcMeta.persona || (name + '是当前世界中一个自然存在的 NPC，请按其身份作出真实回应。')}
+═══ END ${name} ═══
+`;
+  }
   let block = '';
   // 1. 完整人设（不截断）
   block += `═══ ${name} 的完整人设 ═══\n`;
@@ -27551,7 +27671,7 @@ async function _ccGenerateOneTurn(room) {
   // Build each member's persona + relationship block with other members
   let allCharContext = '';
   room.members.forEach(name => {
-    allCharContext += _ccBuildCharacterContext(name, personas, relEntries, room.members) + '\n';
+    allCharContext += _ccBuildCharacterContext(name, personas, relEntries, room.members, room) + '\n';
   });
   // Build a concise cross-relationship summary for quick reference
   let relSummary = '';
@@ -27581,7 +27701,7 @@ async function _ccGenerateOneTurn(room) {
 【聊天室成员】：${membersStr}
 【聊天室类型】：${chatType}
 【用户（${userName}）是否在场】：${userHasJoined ? '✅ 最近历史里出现过用户消息，说明用户现在也在群里/串门发言过' : '❌ 最近历史里没有用户消息，当前主要是角色们私下聊天'}
-${relSummary}═══════════════════════════════════
+${room && room.tdContext ? '【额外场景】' + room.tdContext + '\n' : ''}${relSummary}═══════════════════════════════════
 ${allCharContext}
 ═══════════════════════════════════
 【铁律规则 · 必须100%遵守】：
@@ -28916,6 +29036,9 @@ function _buildMomentsCard(item, compact) {
         </div>
         ${userControls}
       </div>
+      ${item.truthDareTag ? `<div style="display:flex;align-items:center;gap:6px;margin:2px 0 10px;">
+        <span style="display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:999px;background:#111;color:#fff;font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;"><i class="fas fa-dice" style="font-size:10px;"></i>${_escapeHtml(item.truthDareTag)}</span>
+      </div>` : ''}
       ${item.content ? `<div class="moments-weibo-content" id="momentContent_${item.id}">${_escapeHtml(item.content)}</div>` : ''}
       ${imagesHtml}
       ${(item.translation && _momentTrEnabled) ? _buildKoreanTranslation(item.translation) : ''}
@@ -35377,6 +35500,936 @@ function togglePlusPanel() {
 function closePlusPanel() {
   document.getElementById('plusPanel').classList.remove('show');
   document.getElementById('chatPlusBtn').classList.remove('active');
+}
+function _tdWorldKey() {
+  try { return 'mono_truth_dare_' + (typeof mwGetActiveId === 'function' ? (mwGetActiveId() || 'default') : 'default'); } catch(e) { return 'mono_truth_dare_default'; }
+}
+function _tdLoadStore() {
+  try { return JSON.parse(localStorage.getItem(_tdWorldKey()) || '{}'); } catch(e) { return {}; }
+}
+function _tdSaveStore(store) {
+  try { localStorage.setItem(_tdWorldKey(), JSON.stringify(store || {})); } catch(e) {}
+}
+function _tdDefaultState(personaId) {
+  return {
+    active: false,
+    personaId: String(personaId || ''),
+    phase: 'idle',
+    accepted: false,
+    mode: 'turns',
+    round: 0,
+    turnOwner: '',
+    turnCursor: 'user',
+    lastSummary: '',
+    usedTruthPrompts: [],
+    usedDarePrompts: [],
+    currentQuestion: '',
+    currentTruthQuestion: '',
+    currentTask: null,
+    userDare: null,
+    updatedAt: 0
+  };
+}
+function tdGetState(personaId) {
+  const key = String(personaId || '');
+  const store = _tdLoadStore();
+  return Object.assign(_tdDefaultState(key), store[key] || {});
+}
+function tdSetState(personaId, nextState) {
+  const key = String(personaId || '');
+  const store = _tdLoadStore();
+  store[key] = Object.assign(_tdDefaultState(key), nextState || {}, { personaId: key, updatedAt: Date.now() });
+  _tdSaveStore(store);
+  if (String(currentId || '') === key) tdRenderGamePanel();
+}
+function tdClearState(personaId) {
+  const key = String(personaId || '');
+  const store = _tdLoadStore();
+  delete store[key];
+  _tdSaveStore(store);
+  if (String(currentId || '') === key) tdRenderGamePanel();
+}
+function _tdEnsurePersonaHistory(p) {
+  if (!p) return [];
+  if (!Array.isArray(p.history)) {
+    try {
+      const raw = localStorage.getItem('mono_hist_' + p.id);
+      p.history = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(p.history)) p.history = [];
+    } catch(e) { p.history = []; }
+  }
+  return p.history;
+}
+function _tdPushContext(personaId, text, extras) {
+  const p = personas.find(function(x) { return String(x.id) === String(personaId); });
+  if (!p) return;
+  const hist = _tdEnsurePersonaHistory(p);
+  hist.push(Object.assign({
+    role: 'assistant',
+    content: String(text || ''),
+    _hiddenContext: true,
+    timestamp: Date.now()
+  }, extras || {}));
+  saveData();
+}
+function _tdPushChatMessage(personaId, msg) {
+  const p = personas.find(function(x) { return String(x.id) === String(personaId); });
+  if (!p) return -1;
+  const hist = _tdEnsurePersonaHistory(p);
+  hist.push(Object.assign({ timestamp: Date.now() }, msg || {}));
+  saveData();
+  if (String(currentId || '') === String(personaId)) renderMessages();
+  try { renderContactList(); } catch(e) {}
+  return hist.length - 1;
+}
+function _tdUpdateLatestInviteStatus(personaId, status) {
+  const p = personas.find(function(x) { return String(x.id) === String(personaId); });
+  if (!p) return;
+  const hist = _tdEnsurePersonaHistory(p);
+  for (let i = hist.length - 1; i >= 0; i--) {
+    const m = hist[i];
+    if (m && m.msgType === 'truth_dare_invite' && m.role === 'user') {
+      m.tdInviteStatus = status;
+      break;
+    }
+  }
+  saveData();
+  if (String(currentId || '') === String(personaId)) renderMessages();
+}
+function _tdGetApiConfigSafe() {
+  try {
+    if (typeof _getApiConfig === 'function') {
+      const cfg = _getApiConfig();
+      if (cfg && cfg.url && cfg.key) return cfg;
+    }
+  } catch(e) {}
+  try {
+    if (typeof _getCurrentActiveApiConfig === 'function') {
+      const cfg = _getCurrentActiveApiConfig();
+      if (cfg && cfg.url && cfg.key) return cfg;
+    }
+  } catch(e) {}
+  try {
+    if (apiConfig && apiConfig.url && apiConfig.key) return apiConfig;
+  } catch(e) {}
+  return null;
+}
+function _tdRecentChatText(p, maxCount) {
+  const hist = _tdEnsurePersonaHistory(p).slice(-(maxCount || (p.memoryCount || 60)));
+  return hist.filter(function(m) { return !m._hiddenContext && !m._systemNote && !m._transferContext; }).map(function(m) {
+    return (m.role === 'user' ? (userProfile.name || '用户') : p.name) + '：' + (m.content || '');
+  }).join('\n');
+}
+function _tdCoreMemoryText(p) {
+  if (!p || !Array.isArray(p.memoryCore) || p.memoryCore.length === 0) return '（无）';
+  return p.memoryCore.map(function(item, idx) {
+    const content = typeof item === 'string' ? item : (item.content || '');
+    return (idx + 1) + '. ' + content;
+  }).join('\n');
+}
+function _tdBuildPersonaPromptBase(p, state) {
+  const relCtx = typeof _mwBuildRelInjectForChar === 'function' ? (_mwBuildRelInjectForChar(p.name, null, false) || '') : '';
+  const wbCtx = typeof buildWorldBookInjection === 'function' ? (buildWorldBookInjection((p.persona || '') + '\n' + _tdRecentChatText(p, 24), p.id) || '') : '';
+  const usedTruth = (state && state.usedTruthPrompts || []).slice(-16).join(' / ');
+  const usedDare = (state && state.usedDarePrompts || []).slice(-16).join(' / ');
+  return `${typeof LANG_SYSTEM_PREFIX !== 'undefined' ? LANG_SYSTEM_PREFIX : ''}你是${p.name}。人设：${p.persona || '（无）'}。
+你和用户 ${userProfile.name || '用户'} 正在当前这个私聊聊天室里玩「真心话大冒险」。
+你已经接受了这场游戏，这件事对你来说是真实发生过的。
+
+【必须遵守】
+1. 语气必须完全符合你的人设、关系设定、聊天上下文与记忆。
+2. 你清楚知道现在是在和用户玩真心话大冒险，所以要能理解邀请、轮次、真心话问题、大冒险指令这些上下文。
+3. 真心话问题不要油腻、不要空泛、不要问既定事实，也不要重复过去问过的内容。
+4. 大冒险要有趣、刺激、带一点点尴尬或暧昧，但不要侮辱性、不要恶意羞辱。
+5. 如果关系是情侣、夫妻、暧昧等亲密关系，可以更偏向暧昧、试探、情感推进、亲密隐私。
+6. 如果是朋友圈相关内容，绝对不要在文案里提到这是大冒险、被要求发的、配合游戏发的。
+
+【你的核心记忆】
+${_tdCoreMemoryText(p)}
+
+【你和用户最近的聊天】
+${_tdRecentChatText(p, 32) || '（暂无）'}
+
+【关系图 / 世界关系】
+${relCtx || '（无）'}
+
+【世界书补充】
+${wbCtx || '（无）'}
+
+【避免重复】
+过去已经出现过的真心话关键词：${usedTruth || '（暂无）'}
+过去已经出现过的大冒险关键词：${usedDare || '（暂无）'}`;
+}
+async function _tdFetchModelCompletion(messages, persona, maxTokens, temperature) {
+  const cfg = _tdGetApiConfigSafe();
+  if (!cfg) throw new Error('NO_API');
+  const r = await fetch(`${cfg.url.replace(/\/$/, '')}/chat/completions`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${cfg.key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: cfg.model || apiConfig.model,
+      messages: messages,
+      max_tokens: maxTokens || 260,
+      temperature: temperature == null ? (persona && persona.temperature) || 0.95 : temperature
+    })
+  });
+  if (!r.ok) throw new Error('API Error ' + r.status);
+  const data = await r.json();
+  return (((data || {}).choices || [])[0] || {}).message ? ((((data || {}).choices || [])[0] || {}).message.content || '').trim() : '';
+}
+async function _tdPersonaAskText(p, state, ask, fallbackText) {
+  try {
+    const base = _tdBuildPersonaPromptBase(p, state);
+    const raw = await _tdFetchModelCompletion([{ role: 'user', content: base + '\n\n' + ask }], p, 260, 0.95);
+    return String(raw || '').replace(/^["'“”「」]|["'“”「」]$/g, '').trim() || fallbackText || '';
+  } catch(e) {
+    return fallbackText || '';
+  }
+}
+async function _tdPersonaAskJson(p, state, ask, fallbackObj) {
+  try {
+    const base = _tdBuildPersonaPromptBase(p, state);
+    let raw = await _tdFetchModelCompletion([{ role: 'user', content: base + '\n\n' + ask }], p, 420, 0.9);
+    raw = String(raw || '').replace(/```json|```/gi, '').trim();
+    return Object.assign({}, fallbackObj || {}, JSON.parse(raw));
+  } catch(e) {
+    return Object.assign({}, fallbackObj || {});
+  }
+}
+function _tdPersonaFallbackAcceptReply(p) {
+  return (p && p.name ? p.name : '角色') + '轻轻笑了一下，说可以，陪你玩。';
+}
+function _tdRelatedPersonas(personaId) {
+  const p = personas.find(function(x) { return String(x.id) === String(personaId); });
+  if (!p) return [];
+  const rels = typeof mwGetRelEntries === 'function' ? (mwGetRelEntries() || []) : [];
+  const names = [];
+  rels.forEach(function(rel) {
+    if (rel.a === p.name && rel.b) names.push(rel.b);
+    if (rel.b === p.name && rel.a) names.push(rel.a);
+  });
+  const uniq = Array.from(new Set(names));
+  const mapped = uniq.map(function(name) { return personas.find(function(px) { return px.name === name; }); }).filter(Boolean);
+  if (mapped.length > 0) return mapped;
+  return personas.filter(function(px) { return String(px.id) !== String(personaId); }).slice(0, 8);
+}
+function tdSyncDareModalFields() {
+  const mode = (document.getElementById('tdDareModeSelect') || {}).value || 'simulate';
+  const targetType = (document.getElementById('tdDareChatTargetType') || {}).value || 'persona';
+  const chatFields = document.getElementById('tdDareChatFields');
+  const personaSelect = document.getElementById('tdDareChatPersonaSelect');
+  const npcName = document.getElementById('tdDareNpcNameInput');
+  const npcIdentity = document.getElementById('tdDareNpcIdentityInput');
+  const hint = document.getElementById('tdDareHintText');
+  if (chatFields) chatFields.style.display = mode === 'chat' ? 'block' : 'none';
+  if (personaSelect) personaSelect.style.display = (mode === 'chat' && targetType === 'persona') ? 'block' : 'none';
+  if (npcName) npcName.style.display = (mode === 'chat' && targetType === 'npc') ? 'block' : 'none';
+  if (npcIdentity) npcIdentity.style.display = (mode === 'chat' && targetType === 'npc') ? 'block' : 'none';
+  if (hint) {
+    hint.textContent = mode === 'simulate'
+      ? '角色会先在聊天室里读到这条指令，表达一下自己的情绪，再由你决定是否让 TA 真正执行。'
+      : (mode === 'moments'
+        ? '执行时会直接跳到朋友圈页面，由角色真实发出相关动态，并打上大冒险标签。'
+        : '执行时会跳到对应的角色聊天室，由角色真实把这条信息发给目标对象。');
+  }
+}
+function openTruthDareInviteModal() {
+  if (!currentId) return;
+  closePlusPanel();
+  const p = personas.find(function(x) { return String(x.id) === String(currentId); });
+  if (!p) return;
+  const state = tdGetState(p.id);
+  if (state.active && state.accepted) {
+    alert('这个聊天室已经在玩真心话大冒险了。');
+    return;
+  }
+  const nameEl = document.getElementById('tdInvitePersonaName');
+  const noteEl = document.getElementById('tdInviteNoteInput');
+  if (nameEl) nameEl.textContent = p.name;
+  if (noteEl) noteEl.value = '';
+  const modal = document.getElementById('truthDareInviteModal');
+  if (modal) modal.style.display = 'flex';
+}
+function closeTruthDareInviteModal() {
+  const modal = document.getElementById('truthDareInviteModal');
+  if (modal) modal.style.display = 'none';
+}
+function openTruthDareDareModal() {
+  if (!currentId) return;
+  const p = personas.find(function(x) { return String(x.id) === String(currentId); });
+  if (!p) return;
+  const related = _tdRelatedPersonas(p.id);
+  const select = document.getElementById('tdDareChatPersonaSelect');
+  if (select) {
+    select.innerHTML = related.length
+      ? related.map(function(item) { return '<option value="' + _escapeAttrText(item.name) + '">' + _escapeHtml(item.name) + '</option>'; }).join('')
+      : '<option value="">暂无可选角色</option>';
+  }
+  const modeSelect = document.getElementById('tdDareModeSelect');
+  const targetTypeSelect = document.getElementById('tdDareChatTargetType');
+  const textInput = document.getElementById('tdDareInstructionInput');
+  const npcName = document.getElementById('tdDareNpcNameInput');
+  const npcIdentity = document.getElementById('tdDareNpcIdentityInput');
+  if (modeSelect) modeSelect.value = 'simulate';
+  if (targetTypeSelect) targetTypeSelect.value = 'persona';
+  if (textInput) textInput.value = '';
+  if (npcName) npcName.value = '';
+  if (npcIdentity) npcIdentity.value = '';
+  tdSyncDareModalFields();
+  const modal = document.getElementById('truthDareDareModal');
+  if (modal) modal.style.display = 'flex';
+}
+function closeTruthDareDareModal() {
+  const modal = document.getElementById('truthDareDareModal');
+  if (modal) modal.style.display = 'none';
+}
+function renderTruthDareInviteBubble(m, idx, isUser, avatarSrc, authorName, isSelected) {
+  const status = m.tdInviteStatus || 'pending';
+  const statusMap = {
+    pending: { text: '等待接受', bg: '#f3f3f3', color: '#666' },
+    accepted: { text: '已接受', bg: '#101010', color: '#fff' },
+    ended: { text: '已结束', bg: '#d8d8d8', color: '#444' }
+  };
+  const meta = statusMap[status] || statusMap.pending;
+  const note = _formatChatBubbleHtml((m.tdInviteNote || '今晚要不要陪我玩一轮真心话大冒险。').slice(0, 120));
+  const bubbleHtml = `<div style="width:min(320px,78vw);background:linear-gradient(180deg,#fcfcfc 0%,#f1f1f1 100%);border:1px solid #dadada;border-radius:22px;padding:16px 16px 14px;box-shadow:0 14px 38px rgba(0,0,0,0.08);position:relative;overflow:hidden;">
+    <div style="position:absolute;inset:0;background:radial-gradient(circle at top right,rgba(0,0,0,0.07),transparent 45%);pointer-events:none;"></div>
+    <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#848484;font-weight:700;">Truth Or Dare</div>
+    <div style="margin-top:8px;font-size:20px;font-weight:900;letter-spacing:-0.5px;color:#101010;">真心话大冒险</div>
+    <div style="margin-top:6px;font-size:12px;line-height:1.75;color:#3d3d3d;">${note}</div>
+    <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+      <div style="font-size:11px;color:#777;line-height:1.6;">邀请对象：${_escapeHtml(m.tdInviteTargetName || authorName || 'TA')}</div>
+      <span style="display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:6px 10px;background:${meta.bg};color:${meta.color};font-size:10px;font-weight:800;letter-spacing:1px;">${meta.text}</span>
+    </div>
+  </div>`;
+  if (isUser) {
+    return `<div class="msg-row user ${isSelected?'selected':''}" data-idx="${idx}"><div class="msg-content" style="align-items:flex-end;">${bubbleHtml}</div><div class="msg-meta"><img src="${avatarSrc}" class="msg-avatar"><span class="msg-name">${authorName.substring(0,4)}</span></div></div>`;
+  }
+  return `<div class="msg-row ai ${isSelected?'selected':''}" data-idx="${idx}"><div class="msg-meta"><img src="${avatarSrc}" class="msg-avatar"><span class="msg-name">${authorName.substring(0,4)}</span></div><div class="msg-content" style="align-items:flex-start;">${bubbleHtml}</div></div>`;
+}
+function renderTruthDareEventBubble(m, idx, isUser, avatarSrc, authorName, isSelected) {
+  const td = m.tdData || {};
+  const bubbleHtml = `<div style="width:min(320px,78vw);background:#fff;border:1px solid #e3e3e3;border-radius:20px;padding:14px 15px;box-shadow:0 10px 26px rgba(0,0,0,0.06);">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+      <span style="font-size:10px;letter-spacing:1.8px;text-transform:uppercase;color:#919191;font-weight:800;">${_escapeHtml(td.kicker || 'Game Update')}</span>
+      ${td.badge ? `<span style="font-size:10px;font-weight:800;color:#111;background:#f1f1f1;border-radius:999px;padding:5px 9px;">${_escapeHtml(td.badge)}</span>` : ''}
+    </div>
+    <div style="margin-top:7px;font-size:15px;font-weight:900;color:#111;letter-spacing:-0.2px;">${_escapeHtml(td.title || '真心话大冒险')}</div>
+    ${td.body ? `<div style="margin-top:7px;font-size:12px;line-height:1.75;color:#4b4b4b;">${_formatChatBubbleHtml(td.body)}</div>` : ''}
+  </div>`;
+  if (isUser) {
+    return `<div class="msg-row user ${isSelected?'selected':''}" data-idx="${idx}"><div class="msg-content" style="align-items:flex-end;">${bubbleHtml}</div><div class="msg-meta"><img src="${avatarSrc}" class="msg-avatar"><span class="msg-name">${authorName.substring(0,4)}</span></div></div>`;
+  }
+  return `<div class="msg-row ai ${isSelected?'selected':''}" data-idx="${idx}"><div class="msg-meta"><img src="${avatarSrc}" class="msg-avatar"><span class="msg-name">${authorName.substring(0,4)}</span></div><div class="msg-content" style="align-items:flex-start;">${bubbleHtml}</div></div>`;
+}
+function renderTruthDareExecBubble(m, idx, isUser, avatarSrc, authorName, isSelected) {
+  const td = m.tdExec || {};
+  const bubbleHtml = `<div style="width:min(330px,80vw);background:linear-gradient(180deg,#ffffff 0%,#f4f4f4 100%);border:1px solid #d7d7d7;border-radius:22px;padding:15px 15px 16px;box-shadow:0 16px 36px rgba(0,0,0,0.07);">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+      <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#8b8b8b;font-weight:800;">Dare Execution</div>
+      <span style="font-size:10px;font-weight:800;color:#fff;background:#111;border-radius:999px;padding:6px 10px;">${_escapeHtml(td.badge || '已执行')}</span>
+    </div>
+    <div style="margin-top:8px;font-size:15px;font-weight:900;color:#111;letter-spacing:-0.2px;">${_escapeHtml(td.title || '角色执行了大冒险')}</div>
+    ${td.summary ? `<div style="margin-top:7px;font-size:11px;line-height:1.7;color:#777;border-top:1px solid rgba(0,0,0,0.07);padding-top:8px;">${_formatChatBubbleHtml(td.summary)}</div>` : ''}
+    ${td.content ? `<div style="margin-top:9px;font-size:12px;line-height:1.82;color:#333;">${_formatChatBubbleHtml(td.content)}</div>` : ''}
+  </div>`;
+  if (isUser) {
+    return `<div class="msg-row user ${isSelected?'selected':''}" data-idx="${idx}"><div class="msg-content" style="align-items:flex-end;">${bubbleHtml}</div><div class="msg-meta"><img src="${avatarSrc}" class="msg-avatar"><span class="msg-name">${authorName.substring(0,4)}</span></div></div>`;
+  }
+  return `<div class="msg-row ai ${isSelected?'selected':''}" data-idx="${idx}"><div class="msg-meta"><img src="${avatarSrc}" class="msg-avatar"><span class="msg-name">${authorName.substring(0,4)}</span></div><div class="msg-content" style="align-items:flex-start;">${bubbleHtml}</div></div>`;
+}
+async function sendTruthDareInviteCard() {
+  if (!currentId) return;
+  const p = personas.find(function(x) { return String(x.id) === String(currentId); });
+  if (!p) return;
+  const note = String((document.getElementById('tdInviteNoteInput') || {}).value || '').trim();
+  closeTruthDareInviteModal();
+  _tdPushChatMessage(p.id, {
+    role: 'user',
+    msgType: 'truth_dare_invite',
+    tdInviteNote: note,
+    tdInviteStatus: 'pending',
+    tdInviteTargetName: p.name,
+    content: '[真心话大冒险邀请]'
+  });
+  tdSetState(p.id, Object.assign(tdGetState(p.id), {
+    active: true,
+    accepted: false,
+    phase: 'invite_pending',
+    mode: 'turns',
+    round: 0,
+    turnCursor: 'user'
+  }));
+  setTimeout(function() { tdHandleInviteAccepted(p.id); }, 700 + Math.random() * 900);
+}
+async function tdHandleInviteAccepted(personaId) {
+  const p = personas.find(function(x) { return String(x.id) === String(personaId); });
+  if (!p) return;
+  const state = tdGetState(p.id);
+  const acceptReply = await _tdPersonaAskText(
+    p,
+    state,
+    '请你用1到2句符合人设的私聊口吻，明确表达你接受了和用户玩真心话大冒险的邀请，并自然接住聊天室当前氛围。只返回消息内容，不要解释。',
+    _tdPersonaFallbackAcceptReply(p)
+  );
+  _tdUpdateLatestInviteStatus(p.id, 'accepted');
+  _tdPushContext(p.id, `【真心话大冒险记忆】你已经接受了${userProfile.name || '用户'}在当前私聊里发来的真心话大冒险邀请。之后发生的轮次、问题、大冒险执行内容，都要当作真实经历来记住。`, { _tdContext: true });
+  _tdPushChatMessage(p.id, { role: 'assistant', content: acceptReply || _tdPersonaFallbackAcceptReply(p) });
+  tdSetState(p.id, Object.assign(state, {
+    active: true,
+    accepted: true,
+    phase: 'awaiting_start',
+    lastSummary: '对方已经接受邀请，随时可以开始游戏。'
+  }));
+}
+function tdRenderGamePanel() {
+  const host = document.getElementById('truthDareGameHost');
+  if (!host || !currentId) return;
+  const p = personas.find(function(x) { return String(x.id) === String(currentId); });
+  if (!p) { host.style.display = 'none'; host.innerHTML = ''; return; }
+  const state = tdGetState(p.id);
+  if (!state.active || !state.accepted) {
+    host.style.display = 'none';
+    host.innerHTML = '';
+    return;
+  }
+  const currentTask = state.currentTask || {};
+  const userDare = state.userDare || {};
+  let controls = '';
+  if (state.phase === 'awaiting_start') {
+    controls = `<div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button onclick="tdSetMode('${p.id}','turns')" style="border:none;border-radius:999px;padding:8px 12px;font-size:11px;font-weight:800;cursor:pointer;background:${state.mode === 'turns' ? '#111' : '#ececec'};color:${state.mode === 'turns' ? '#fff' : '#555'};">轮流模式</button>
+      <button onclick="tdSetMode('${p.id}','random')" style="border:none;border-radius:999px;padding:8px 12px;font-size:11px;font-weight:800;cursor:pointer;background:${state.mode === 'random' ? '#111' : '#ececec'};color:${state.mode === 'random' ? '#fff' : '#555'};">随机轮盘</button>
+      <button onclick="tdStartGame('${p.id}')" style="margin-left:auto;border:none;border-radius:12px;padding:10px 14px;font-size:12px;font-weight:900;background:#111;color:#fff;cursor:pointer;">开始游戏</button>
+    </div>`;
+  } else if (state.phase === 'awaiting_user_turn_choice') {
+    controls = `<div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button onclick="tdChooseUserTurn('${p.id}','truth')" style="flex:1;min-width:120px;border:none;border-radius:12px;padding:10px 12px;font-size:12px;font-weight:900;background:#111;color:#fff;cursor:pointer;">我选真心话</button>
+      <button onclick="tdChooseUserTurn('${p.id}','dare')" style="flex:1;min-width:120px;border:1px solid #cfcfcf;border-radius:12px;padding:10px 12px;font-size:12px;font-weight:900;background:#f6f6f6;color:#222;cursor:pointer;">我选大冒险</button>
+    </div>`;
+  } else if (state.phase === 'awaiting_user_truth_answer') {
+    controls = `<div style="font-size:11px;line-height:1.7;color:#666;">在下方聊天室直接回答就可以。回答完之后，你可以继续和 TA 聊，也可以直接点「下一轮」。</div>
+      <div style="display:flex;justify-content:flex-end;margin-top:8px;"><button onclick="tdNextRound('${p.id}')" style="border:none;border-radius:12px;padding:10px 14px;font-size:12px;font-weight:900;background:#111;color:#fff;cursor:pointer;">直接下一轮</button></div>`;
+  } else if (state.phase === 'awaiting_persona_truth_question') {
+    controls = `<div style="font-size:11px;line-height:1.7;color:#666;">这一轮轮到 ${_escapeHtml(p.name)} 说真心话。你可以直接在下方输入问题发给 TA。</div>`;
+  } else if (state.phase === 'awaiting_persona_dare_config') {
+    controls = `<div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button onclick="openTruthDareDareModal()" style="border:none;border-radius:12px;padding:10px 14px;font-size:12px;font-weight:900;background:#111;color:#fff;cursor:pointer;">设置角色的大冒险</button>
+    </div>`;
+  } else if (state.phase === 'persona_dare_pending_execute') {
+    controls = `<div style="font-size:11px;line-height:1.7;color:#666;">${_escapeHtml(p.name)} 已经看到了你的指令，也做出了反应。你现在可以让 TA 真正执行。</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+        <button onclick="tdExecutePersonaDare('${p.id}')" style="flex:1;min-width:140px;border:none;border-radius:12px;padding:10px 14px;font-size:12px;font-weight:900;background:#111;color:#fff;cursor:pointer;">让角色执行</button>
+      </div>`;
+  } else if (state.phase === 'awaiting_user_dare_execute') {
+    controls = `<div style="font-size:11px;line-height:1.7;color:#666;">${_escapeHtml(p.name)} 给你的大冒险已经出了。执行完成后回来点「我完成了」或直接开下一轮。</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+        <button onclick="tdExecuteUserDare('${p.id}')" style="flex:1;min-width:140px;border:none;border-radius:12px;padding:10px 14px;font-size:12px;font-weight:900;background:#111;color:#fff;cursor:pointer;">开始大冒险</button>
+        <button onclick="tdMarkUserDareDone('${p.id}')" style="flex:1;min-width:140px;border:1px solid #cfcfcf;border-radius:12px;padding:10px 14px;font-size:12px;font-weight:900;background:#f6f6f6;color:#222;cursor:pointer;">我完成了</button>
+      </div>`;
+  } else if (state.phase === 'external_room_active') {
+    controls = `<div style="font-size:11px;line-height:1.7;color:#666;">你现在正在外部聊天室执行这一轮的大冒险。关闭那个聊天室后，会自动回到这里继续游戏。</div>`;
+  } else {
+    controls = `<div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button onclick="tdNextRound('${p.id}')" style="border:none;border-radius:12px;padding:10px 14px;font-size:12px;font-weight:900;background:#111;color:#fff;cursor:pointer;">下一轮</button>
+    </div>`;
+  }
+  const summary = state.phase === 'awaiting_user_turn_choice'
+    ? (state.mode === 'random' ? `第 ${state.round} 轮随机抽到了你。` : `第 ${state.round} 轮轮到你选择。`)
+    : state.phase === 'awaiting_user_truth_answer'
+      ? `第 ${state.round} 轮 · 你选了真心话。`
+      : state.phase === 'awaiting_persona_truth_question'
+        ? `第 ${state.round} 轮 · ${p.name} 选了真心话。`
+        : state.phase === 'awaiting_persona_dare_config'
+          ? `第 ${state.round} 轮 · ${p.name} 选了大冒险。`
+          : state.phase === 'persona_dare_pending_execute'
+            ? `第 ${state.round} 轮 · ${p.name} 的大冒险待执行。`
+            : state.phase === 'awaiting_user_dare_execute'
+              ? `第 ${state.round} 轮 · 轮到你执行大冒险。`
+              : (state.lastSummary || '游戏进行中');
+  const detail = currentTask.instruction || currentTask.generatedMessage || userDare.instruction || state.currentQuestion || state.currentTruthQuestion || '';
+  host.style.display = 'block';
+  host.innerHTML = `<div style="position:relative;background:linear-gradient(180deg,#ffffff 0%,#f3f3f3 100%);border:1px solid #dbdbdb;border-radius:24px;padding:14px 14px 15px;box-shadow:0 12px 34px rgba(0,0,0,0.07);overflow:hidden;">
+    <div style="position:absolute;inset:auto -40px -56px auto;width:140px;height:140px;background:radial-gradient(circle,rgba(0,0,0,0.08),transparent 62%);pointer-events:none;"></div>
+    <div style="display:flex;align-items:flex-start;gap:10px;">
+      <div style="width:42px;height:42px;border-radius:16px;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;"><i class="fas fa-dice"></i></div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#8b8b8b;font-weight:800;">Truth Or Dare</span>
+          <span style="font-size:10px;font-weight:800;color:#fff;background:#111;border-radius:999px;padding:5px 10px;">进行中</span>
+        </div>
+        <div style="margin-top:4px;font-size:17px;font-weight:900;color:#101010;letter-spacing:-0.35px;">和 ${_escapeHtml(p.name)} 的真心话大冒险</div>
+        <div style="margin-top:6px;font-size:12px;line-height:1.75;color:#454545;">${_escapeHtml(summary)}</div>
+        ${detail ? `<div style="margin-top:8px;font-size:11px;line-height:1.78;color:#777;border-top:1px solid rgba(0,0,0,0.06);padding-top:8px;">${_formatChatBubbleHtml(detail)}</div>` : ''}
+      </div>
+      <button onclick="tdEndGame('${p.id}', true)" style="border:none;background:transparent;color:#8d8d8d;font-size:18px;cursor:pointer;line-height:1;flex-shrink:0;" title="结束游戏">×</button>
+    </div>
+    <div style="margin-top:12px;">${controls}</div>
+  </div>`;
+}
+function tdSetMode(personaId, mode) {
+  const state = tdGetState(personaId);
+  state.mode = mode === 'random' ? 'random' : 'turns';
+  tdSetState(personaId, state);
+}
+async function tdStartGame(personaId) {
+  const p = personas.find(function(x) { return String(x.id) === String(personaId); });
+  if (!p) return;
+  const state = tdGetState(p.id);
+  state.phase = 'starting';
+  state.round = 0;
+  state.turnCursor = 'user';
+  state.lastSummary = '游戏开始了。';
+  tdSetState(p.id, state);
+  await tdNextRound(p.id);
+}
+async function tdNextRound(personaId) {
+  const p = personas.find(function(x) { return String(x.id) === String(personaId); });
+  if (!p) return;
+  const state = tdGetState(p.id);
+  if (!state.active || !state.accepted) return;
+  state.round = (state.round || 0) + 1;
+  state.currentQuestion = '';
+  state.currentTruthQuestion = '';
+  state.currentTask = null;
+  state.userDare = null;
+  if (state.mode === 'random') {
+    state.turnOwner = Math.random() < 0.5 ? 'user' : 'persona';
+  } else {
+    state.turnOwner = state.turnCursor || 'user';
+    state.turnCursor = state.turnOwner === 'user' ? 'persona' : 'user';
+  }
+  if (state.turnOwner === 'user') {
+    state.phase = 'awaiting_user_turn_choice';
+    state.lastSummary = state.mode === 'random' ? `第 ${state.round} 轮随机抽到了你。` : `第 ${state.round} 轮轮到你。`;
+    tdSetState(p.id, state);
+    return;
+  }
+  const picked = Math.random() < 0.5 ? 'truth' : 'dare';
+  if (picked === 'truth') {
+    state.phase = 'awaiting_persona_truth_question';
+    state.currentTruthQuestion = `${p.name} 这一轮选了真心话。`;
+    state.lastSummary = `${p.name} 这一轮选了真心话。`;
+    tdSetState(p.id, state);
+    _tdPushChatMessage(p.id, {
+      role: 'assistant',
+      msgType: 'truth_dare_event',
+      tdData: {
+        kicker: 'Role Turn',
+        badge: '真心话',
+        title: `${p.name} 选了真心话`,
+        body: '这一轮轮到 TA。你可以直接在下方聊天室里问出你的问题。'
+      },
+      content: '[角色选择了真心话]'
+    });
+  } else {
+    state.phase = 'awaiting_persona_dare_config';
+    state.lastSummary = `${p.name} 这一轮选了大冒险。`;
+    tdSetState(p.id, state);
+    _tdPushChatMessage(p.id, {
+      role: 'assistant',
+      msgType: 'truth_dare_event',
+      tdData: {
+        kicker: 'Role Turn',
+        badge: '大冒险',
+        title: `${p.name} 选了大冒险`,
+        body: '你可以给 TA 设一个模拟大冒险，或者让 TA 真实去发朋友圈 / 给其他角色发消息。'
+      },
+      content: '[角色选择了大冒险]'
+    });
+  }
+}
+async function tdChooseUserTurn(personaId, choice) {
+  const p = personas.find(function(x) { return String(x.id) === String(personaId); });
+  if (!p) return;
+  const state = tdGetState(p.id);
+  if (choice === 'truth') {
+    const question = await _tdPersonaAskText(
+      p,
+      state,
+      '请你向用户提出一个独特的真心话问题。必须具体、贴地、带一点刺激或隐私感，可以问过去经历、感情观、期待、欲望、暧昧试探、关系推进，但不要空泛，不要问“你会永远和我在一起吗”这种油腻问题。只返回一句问句。',
+      '如果要你说一件你一直没对我提过、但其实很在意的过去，你会先想到什么？'
+    );
+    state.phase = 'awaiting_user_truth_answer';
+    state.currentQuestion = question;
+    state.usedTruthPrompts = (state.usedTruthPrompts || []).concat([question]).slice(-40);
+    state.lastSummary = '你选了真心话。';
+    tdSetState(p.id, state);
+    _tdPushChatMessage(p.id, { role: 'assistant', content: question });
+  } else {
+    const related = _tdRelatedPersonas(p.id);
+    const relatedNames = related.map(function(item) { return item.name; }).join('、');
+    const dareObj = await _tdPersonaAskJson(
+      p,
+      state,
+      `请为用户生成一个大冒险，返回 JSON：
+{"type":"moments或chat","instruction":"具体指令","targetName":"如果是chat就给出对象名字，没有就空字符串","targetIdentity":"如果对象是虚构NPC就写身份，否则可空","why":"一句很短的理由"}
+规则：
+1. 要有趣、刺激、略微尴尬，但不侮辱。
+2. 如果是 chat 类型，可以指定关系图里的角色之一，也可以虚构一个符合当前世界感的 NPC。
+3. 如果是 moments 类型，要适合用户去朋友圈发一条动态。
+4. targetName 若使用现有角色，请优先从这些名字里选：${relatedNames || '（暂无）'}
+5. 只返回 JSON。`,
+      {
+        type: 'moments',
+        instruction: '去朋友圈发一条让人一眼看不出来在试探谁，但熟人看了会多想的动态。',
+        targetName: '',
+        targetIdentity: '',
+        why: '看你会不会真的敢。'
+      }
+    );
+    state.phase = 'awaiting_user_dare_execute';
+    state.userDare = {
+      type: dareObj.type === 'chat' ? 'chat' : 'moments',
+      instruction: dareObj.instruction || '去做一件让你自己都会有点不好意思的大冒险。',
+      targetName: dareObj.targetName || '',
+      targetIdentity: dareObj.targetIdentity || '',
+      why: dareObj.why || ''
+    };
+    state.usedDarePrompts = (state.usedDarePrompts || []).concat([state.userDare.instruction]).slice(-40);
+    state.lastSummary = '你选了大冒险。';
+    tdSetState(p.id, state);
+    _tdPushChatMessage(p.id, {
+      role: 'assistant',
+      msgType: 'truth_dare_event',
+      tdData: {
+        kicker: 'Your Dare',
+        badge: state.userDare.type === 'chat' ? '聊天室' : '朋友圈',
+        title: `${p.name} 给你的大冒险`,
+        body: state.userDare.instruction + (state.userDare.targetName ? `\n对象：${state.userDare.targetName}` : '')
+      },
+      content: '[用户大冒险]'
+    });
+  }
+}
+async function tdHandlePersonaTruthQuestion(personaId, questionText) {
+  const p = personas.find(function(x) { return String(x.id) === String(personaId); });
+  if (!p) return;
+  const state = tdGetState(p.id);
+  state.phase = 'persona_truth_answering';
+  state.currentTruthQuestion = questionText;
+  tdSetState(p.id, state);
+  const reply = await _tdPersonaAskText(
+    p,
+    state,
+    `用户在这一轮对你提出的真心话问题是：${questionText}
+请你以当前私聊口吻真实回答，必须像平时聊天一样，不要自我分析，也不要说教。只返回你的回答内容。`,
+    '这个问题我会认真答你。只是答案可能比你想的更直白一点。'
+  );
+  _tdPushChatMessage(p.id, { role: 'assistant', content: reply });
+  _tdPushContext(p.id, `【真心话大冒险记忆】这一轮里，用户问了你：${questionText}。你的回答是：${reply}`, { _tdContext: true });
+  state.phase = 'ready_next';
+  state.lastSummary = '这一轮已经结束，可以进入下一轮。';
+  tdSetState(p.id, state);
+}
+async function submitTruthDarePersonaDare() {
+  if (!currentId) return;
+  const p = personas.find(function(x) { return String(x.id) === String(currentId); });
+  if (!p) return;
+  const state = tdGetState(p.id);
+  const mode = String((document.getElementById('tdDareModeSelect') || {}).value || 'simulate');
+  const instruction = String((document.getElementById('tdDareInstructionInput') || {}).value || '').trim();
+  if (!instruction) { alert('请先输入大冒险内容。'); return; }
+  const targetType = String((document.getElementById('tdDareChatTargetType') || {}).value || 'persona');
+  const personaName = String((document.getElementById('tdDareChatPersonaSelect') || {}).value || '').trim();
+  const npcName = String((document.getElementById('tdDareNpcNameInput') || {}).value || '').trim();
+  const npcIdentity = String((document.getElementById('tdDareNpcIdentityInput') || {}).value || '').trim();
+  if (mode === 'chat' && targetType === 'npc' && !npcName) { alert('请先填写 NPC 名字。'); return; }
+  if (mode === 'chat' && targetType === 'persona' && !personaName) { alert('请先选择角色对象。'); return; }
+  closeTruthDareDareModal();
+  state.currentTask = {
+    kind: mode,
+    instruction: instruction,
+    targetType: mode === 'chat' ? targetType : '',
+    targetName: mode === 'chat' ? (targetType === 'persona' ? personaName : npcName) : '',
+    targetIdentity: mode === 'chat' && targetType === 'npc' ? npcIdentity : ''
+  };
+  state.usedDarePrompts = (state.usedDarePrompts || []).concat([instruction]).slice(-40);
+  state.phase = 'persona_dare_pending_execute';
+  state.lastSummary = `${p.name} 的大冒险已经设置好，等待执行。`;
+  tdSetState(p.id, state);
+  _tdPushChatMessage(p.id, {
+    role: 'user',
+    msgType: 'truth_dare_event',
+    tdData: {
+      kicker: 'Dare Order',
+      badge: mode === 'simulate' ? '模拟' : (mode === 'moments' ? '朋友圈' : '聊天室'),
+      title: `你给 ${p.name} 的大冒险指令`,
+      body: instruction + (state.currentTask.targetName ? `\n对象：${state.currentTask.targetName}${state.currentTask.targetIdentity ? ' · ' + state.currentTask.targetIdentity : ''}` : '')
+    },
+    content: '[角色大冒险指令]'
+  });
+  const reaction = await _tdPersonaAskText(
+    p,
+    state,
+    `用户刚刚给你的这一轮大冒险指令是：${instruction}${state.currentTask.targetName ? '。对象是：' + state.currentTask.targetName + (state.currentTask.targetIdentity ? '（' + state.currentTask.targetIdentity + '）' : '') : ''}
+请你像当前聊天室里真实说话那样，用1到2句表达你看到这个要求后的情绪、吐槽、紧张、害羞、嘴硬或反应。只返回消息内容。`,
+    '你这要求是不是有点太会挑事了。'
+  );
+  _tdPushChatMessage(p.id, { role: 'assistant', content: reaction });
+}
+async function tdExecutePersonaDare(personaId) {
+  const p = personas.find(function(x) { return String(x.id) === String(personaId); });
+  if (!p) return;
+  const state = tdGetState(p.id);
+  const task = state.currentTask || {};
+  if (!task.kind) return;
+  if (task.kind === 'simulate') {
+    const resultText = await _tdPersonaAskText(
+      p,
+      state,
+      `现在请你以第三人称详细描写「${p.name}」执行这条模拟大冒险时的全过程与结果：${task.instruction}
+要求：
+1. 直接写执行画面与细节，不要写“作为AI”。
+2. 用第三人称描述。
+3. 有一点戏剧感，但仍然贴合人设。
+只返回正文。`,
+      `${p.name}最后还是照做了。起初他明显别扭，嘴上还想再挣扎一下，可真开始执行时反而认真得过分。整个过程里他的情绪起伏全写在细节上，到最后连他自己都拿这件事没办法，只能认栽。`
+    );
+    _tdPushChatMessage(p.id, {
+      role: 'assistant',
+      msgType: 'truth_dare_exec',
+      tdExec: {
+        badge: '模拟执行',
+        title: `${p.name} 执行了大冒险`,
+        summary: task.instruction,
+        content: resultText
+      },
+      content: '[角色执行了大冒险]'
+    });
+    _tdPushContext(p.id, `【真心话大冒险记忆】你执行了这样一条模拟大冒险：${task.instruction}。执行细节与结果：${resultText}`, { _tdContext: true });
+    state.phase = 'ready_next';
+    state.lastSummary = '这一轮已经执行完毕。';
+    state.currentTask = null;
+    tdSetState(p.id, state);
+    return;
+  }
+  if (task.kind === 'moments') {
+    const momentsContent = await _tdPersonaAskText(
+      p,
+      state,
+      `请你根据这条朋友圈大冒险要求，生成一条会被 ${p.name} 真实发出去的朋友圈文案：${task.instruction}
+要求：
+1. 不许提到大冒险、游戏、被要求发、配合谁发。
+2. 语气要完全符合人设。
+3. 像真实朋友圈。
+只返回要发的内容。`,
+      task.instruction
+    );
+    maybeEvolvePersonaMomentsIdentity(p);
+    const postId = Date.now();
+    momentsData.unshift({
+      id: postId,
+      author: p.name,
+      avatar: p.avatar,
+      authorType: 'persona',
+      personaId: p.id,
+      authorProfileName: p.momentsNickname || p.name,
+      content: momentsContent,
+      time: Date.now(),
+      comments: [],
+      likes: [],
+      truthDareTag: '大冒险'
+    });
+    try { localStorage.setItem('mono_moments', JSON.stringify(momentsData)); } catch(e) {}
+    if (typeof renderMoments === 'function') renderMoments();
+    _tdPushContext(p.id, `【真心话大冒险记忆】你按照大冒险要求在朋友圈发了一条动态。要求是：${task.instruction}。你实际发出的文案是：${momentsContent}`, { _tdContext: true });
+    _tdPushChatMessage(p.id, {
+      role: 'assistant',
+      msgType: 'truth_dare_exec',
+      tdExec: {
+        badge: '朋友圈',
+        title: `${p.name} 已经把这条大冒险发到朋友圈`,
+        summary: task.instruction,
+        content: momentsContent
+      },
+      content: '[角色朋友圈大冒险已执行]'
+    });
+    if (typeof autoGenerateMomentsComments === 'function') {
+      setTimeout(function() { try { autoGenerateMomentsComments(postId); } catch(e) {} }, 500);
+    }
+    state.phase = 'ready_next';
+    state.lastSummary = '角色已经去朋友圈执行完这一轮大冒险。';
+    state.currentTask = null;
+    tdSetState(p.id, state);
+    try { openApp('momentsPage'); } catch(e) {}
+    return;
+  }
+  if (task.kind === 'chat') {
+    const roomId = tdEnsureDareChatRoomForPersona(p, task);
+    if (!roomId) return;
+    const initialMsg = await _tdPersonaAskText(
+      p,
+      state,
+      `你现在要在另一个聊天室里向「${task.targetName}」发送一条消息，用来执行这条大冒险：${task.instruction}
+请直接生成你真正会发出去的那一条消息内容。只返回消息。`,
+      task.instruction
+    );
+    ccAppendMessage(roomId, {
+      sender: p.name,
+      senderType: 'persona',
+      content: initialMsg,
+      timestamp: Date.now()
+    });
+    window._tdExternalCcSession = { personaId: String(p.id), roomId: roomId, source: 'persona_dare_chat', roomSummaryTitle: `${p.name} 的大冒险聊天室` };
+    state.phase = 'external_room_active';
+    state.lastSummary = `${p.name} 已经去另一个聊天室执行这轮大冒险了。`;
+    tdSetState(p.id, state);
+    openCcChatRoom(roomId);
+  }
+}
+function tdEnsureDareChatRoomForPersona(p, task) {
+  const targetName = task.targetName || '未知对象';
+  const rooms = ccGetRooms();
+  let room = rooms.find(function(item) {
+    const names = item.members || [];
+    return names.length === 2 && names.includes(p.name) && names.includes(targetName) && item._tdRoom === true;
+  });
+  if (!room) {
+    room = {
+      id: 'tdcc_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+      name: `${p.name} · ${targetName}`,
+      members: [p.name, targetName],
+      createdAt: Date.now(),
+      dailyTurns: 0,
+      _tdRoom: true,
+      tdContext: `这是一场由真心话大冒险触发的角色聊天室。${p.name} 需要根据这条大冒险要求主动找 ${targetName} 互动：${task.instruction}`,
+      npcMeta: task.targetType === 'npc' ? {
+        [targetName]: {
+          name: targetName,
+          identity: task.targetIdentity || '当前世界里的 NPC',
+          persona: `${targetName} 是一个存在于当前世界里的 NPC，身份是：${task.targetIdentity || '当前世界里的 NPC'}。请让TA的回复自然、真实、有生活感。`
+        }
+      } : {}
+    };
+    rooms.push(room);
+    ccSaveRooms(rooms);
+  } else {
+    room.tdContext = `这是一场由真心话大冒险触发的角色聊天室。${p.name} 需要根据这条大冒险要求主动找 ${targetName} 互动：${task.instruction}`;
+    if (task.targetType === 'npc') {
+      room.npcMeta = room.npcMeta || {};
+      room.npcMeta[targetName] = {
+        name: targetName,
+        identity: task.targetIdentity || '当前世界里的 NPC',
+        persona: `${targetName} 是一个存在于当前世界里的 NPC，身份是：${task.targetIdentity || '当前世界里的 NPC'}。请让TA的回复自然、真实、有生活感。`
+      };
+    }
+    const idx = rooms.findIndex(function(item) { return item.id === room.id; });
+    if (idx >= 0) { rooms[idx] = room; ccSaveRooms(rooms); }
+  }
+  return room.id;
+}
+function tdEnsureUserDareRoom(p, dare) {
+  const targetName = dare.targetName || '临时对象';
+  const rooms = ccGetRooms();
+  let room = rooms.find(function(item) {
+    const names = item.members || [];
+    return names.length === 1 && names[0] === targetName && item._tdUserRoom === true && item._tdOwnerPersonaId === String(p.id);
+  });
+  if (!room) {
+    room = {
+      id: 'tduser_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+      name: `你 · ${targetName}`,
+      members: [targetName],
+      createdAt: Date.now(),
+      dailyTurns: 0,
+      _tdUserRoom: true,
+      _tdOwnerPersonaId: String(p.id),
+      tdContext: `这是用户执行真心话大冒险时开启的聊天室。发起这场游戏的角色是 ${p.name}。用户正在完成的大冒险要求是：${dare.instruction}。请让 ${targetName} 的回复自然承接用户发来的内容。`,
+      npcMeta: dare.targetIdentity ? {
+        [targetName]: {
+          name: targetName,
+          identity: dare.targetIdentity,
+          persona: `${targetName} 是一个存在于当前世界里的 NPC，身份是：${dare.targetIdentity}。请让TA在这个聊天室里真实回应用户。`
+        }
+      } : {}
+    };
+    rooms.push(room);
+    ccSaveRooms(rooms);
+  } else {
+    room.tdContext = `这是用户执行真心话大冒险时开启的聊天室。发起这场游戏的角色是 ${p.name}。用户正在完成的大冒险要求是：${dare.instruction}。请让 ${targetName} 的回复自然承接用户发来的内容。`;
+    if (dare.targetIdentity) {
+      room.npcMeta = room.npcMeta || {};
+      room.npcMeta[targetName] = {
+        name: targetName,
+        identity: dare.targetIdentity,
+        persona: `${targetName} 是一个存在于当前世界里的 NPC，身份是：${dare.targetIdentity}。请让TA在这个聊天室里真实回应用户。`
+      };
+    }
+    const idx = rooms.findIndex(function(item) { return item.id === room.id; });
+    if (idx >= 0) { rooms[idx] = room; ccSaveRooms(rooms); }
+  }
+  return room.id;
+}
+function tdBuildRoomSummary(roomId) {
+  const hist = ccGetHistory(roomId) || [];
+  return hist.slice(-18).map(function(m) { return (m.sender || '某人') + '：' + _ccMessagePreviewText(m); }).join('\n');
+}
+function tdExecuteUserDare(personaId) {
+  const p = personas.find(function(x) { return String(x.id) === String(personaId); });
+  if (!p) return;
+  const state = tdGetState(p.id);
+  const dare = state.userDare || {};
+  if (!dare.type) return;
+  if (dare.type === 'moments') {
+    state.phase = 'awaiting_user_dare_execute';
+    state.lastSummary = '去朋友圈执行这一轮大冒险，回来后可以点“我完成了”。';
+    tdSetState(p.id, state);
+    try { openApp('momentsPage'); } catch(e) {}
+    alert('已经跳到朋友圈页面了。按这条指令发完之后，回到这个聊天室点“我完成了”就可以继续。');
+    return;
+  }
+  const roomId = tdEnsureUserDareRoom(p, dare);
+  window._tdExternalCcSession = { personaId: String(p.id), roomId: roomId, source: 'user_dare_chat', roomSummaryTitle: '用户大冒险聊天室' };
+  state.phase = 'external_room_active';
+  state.lastSummary = '你正在外部聊天室执行这一轮大冒险。';
+  tdSetState(p.id, state);
+  openCcChatRoom(roomId);
+}
+function tdMarkUserDareDone(personaId) {
+  const p = personas.find(function(x) { return String(x.id) === String(personaId); });
+  if (!p) return;
+  const state = tdGetState(p.id);
+  const dare = state.userDare || {};
+  _tdPushContext(p.id, `【真心话大冒险记忆】用户完成了你给出的这一轮大冒险。指令是：${dare.instruction}`, { _tdContext: true });
+  state.phase = 'ready_next';
+  state.lastSummary = '你已经标记完成这轮大冒险。';
+  tdSetState(p.id, state);
+}
+async function tdEndGame(personaId, fromUser) {
+  const p = personas.find(function(x) { return String(x.id) === String(personaId); });
+  if (!p) return;
+  const state = tdGetState(p.id);
+  if (!state.active) return;
+  if (fromUser) {
+    const reply = await _tdPersonaAskText(
+      p,
+      state,
+      '用户现在主动结束了这场真心话大冒险。请你像平时私聊那样，用1到2句做出真实回应。只返回消息内容。',
+      '行，这轮就先到这里。不过我会记着。'
+    );
+    _tdPushChatMessage(p.id, { role: 'assistant', content: reply });
+  }
+  _tdUpdateLatestInviteStatus(p.id, 'ended');
+  _tdPushContext(p.id, `【真心话大冒险记忆】你和${userProfile.name || '用户'}在当前私聊里结束了这场真心话大冒险。你仍然记得这场游戏里的邀请、问题、回答和所有执行过的大冒险。`, { _tdContext: true });
+  tdClearState(p.id);
+}
+async function tdHandleUserMessageInActiveGame(p, newMsg) {
+  if (!p || !newMsg) return { skipDefaultAutoReply: false };
+  const state = tdGetState(p.id);
+  if (!state.active || !state.accepted) return { skipDefaultAutoReply: false };
+  if (state.phase === 'awaiting_persona_truth_question') {
+    tdHandlePersonaTruthQuestion(p.id, newMsg.content || '');
+    return { skipDefaultAutoReply: true };
+  }
+  if (state.phase === 'awaiting_user_truth_answer') {
+    _tdPushContext(p.id, `【真心话大冒险记忆】用户回答了你刚刚提出的真心话问题。问题：${state.currentQuestion}。用户的回答：${newMsg.content || ''}`, { _tdContext: true });
+    state.phase = 'ready_next';
+    state.lastSummary = '这一轮的真心话已经答完了。';
+    tdSetState(p.id, state);
+    return { skipDefaultAutoReply: false };
+  }
+  return { skipDefaultAutoReply: false };
 }
 // ---- STICKER ----
 function openStickerModal() {

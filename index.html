@@ -1607,6 +1607,10 @@ body {
   0%,100% { opacity:0.3; transform:scale(0.8); }
   50% { opacity:1; transform:scale(1.1); }
 }
+@keyframes tdFadeIn {
+  from { opacity:0; }
+  to   { opacity:1; }
+}
 @keyframes ccFadeSlideIn {
   from { opacity:0; transform:translateY(10px); }
   to   { opacity:1; transform:translateY(0); }
@@ -27438,9 +27442,13 @@ async function ccGenerateConversation() {
   // Dim both generate buttons
   const btnTop = document.getElementById('ccGenerateBtn');
   const btnBot = document.getElementById('ccGenerateBtnBottom');
-  if (btnTop) btnTop.style.opacity = '0.4';
+  if (btnTop) { btnTop.style.opacity = '0.4'; btnTop.disabled = true; }
   if (btnBot) { btnBot.style.opacity = '0.4'; btnBot.disabled = true; }
-  document.getElementById('ccLoadingIndicator').style.display = 'none';
+  // Show loading indicator while waiting for API
+  const ccLoadInd = document.getElementById('ccLoadingIndicator');
+  if (ccLoadInd) ccLoadInd.style.display = 'block';
+  // Scroll to show loading indicator
+  try { const cm = document.getElementById('ccChatMessages'); if (cm) cm.scrollTop = cm.scrollHeight; } catch(e) {}
   const personas = _ccGetPersonas();
   try {
     const newMsgs = await _ccGenerateOneTurn(room);
@@ -27478,7 +27486,7 @@ async function ccGenerateConversation() {
           const chatMsgs = document.getElementById('ccChatMessages');
           if (chatMsgs) chatMsgs.scrollTop = chatMsgs.scrollHeight;
           // Wait for "typing" duration (shorter for shorter msgs)
-          const typingMs = Math.min(1200, 400 + (m.content || '').length * 18);
+          const typingMs = Math.min(700, 300 + (m.content || '').length * 6);
           await new Promise(r => setTimeout(r, typingMs));
           // Replace typing bubble with real message (animate in)
           const bubbleClass = isRight ? 'cc-bubble cc-bubble-right' : 'cc-bubble cc-bubble-left';
@@ -27491,7 +27499,7 @@ async function ccGenerateConversation() {
             </div>`;
           if (chatMsgs) chatMsgs.scrollTop = chatMsgs.scrollHeight;
           // Small gap between messages
-          if (i < newMsgs.length - 1) await new Promise(r => setTimeout(r, 320));
+          if (i < newMsgs.length - 1) await new Promise(r => setTimeout(r, 150));
         }
       }
       // ── 将本轮新消息同步写入各角色的记忆（history）──
@@ -27514,8 +27522,9 @@ async function ccGenerateConversation() {
     alert('生成对话失败：' + e.message);
   } finally {
     _ccGenerating = false;
-    if (btnTop) btnTop.style.opacity = '1';
+    if (btnTop) { btnTop.style.opacity = '1'; btnTop.disabled = false; }
     if (btnBot) { btnBot.style.opacity = '1'; btnBot.disabled = false; }
+    if (ccLoadInd) ccLoadInd.style.display = 'none';
   }
 }
 // ── 更新底部按钮的今日手动生成轮数显示（手动生成无上限）──
@@ -35643,6 +35652,7 @@ function _tdBuildPersonaPromptBase(p, state) {
 4. 大冒险要有趣、刺激、带一点点尴尬或暧昧，但不要侮辱性、不要恶意羞辱。
 5. 如果关系是情侣、夫妻、暧昧等亲密关系，可以更偏向暧昧、试探、情感推进、亲密隐私。
 6. 如果是朋友圈相关内容，绝对不要在文案里提到这是大冒险、被要求发的、配合游戏发的。
+7. 给用户出大冒险时，必须严格遵守关系图里的人物关系逻辑——绝对不能让用户去向你的情敌表白或做暧昧互动。
 
 【你的核心记忆】
 ${_tdCoreMemoryText(p)}
@@ -36043,6 +36053,17 @@ async function tdChooseUserTurn(personaId, choice) {
   const p = personas.find(function(x) { return String(x.id) === String(personaId); });
   if (!p) return;
   const state = tdGetState(p.id);
+  // Disable all buttons in game panel immediately to prevent double-click
+  const host = document.getElementById('truthDareGameHost');
+  if (host) {
+    host.querySelectorAll('button').forEach(function(b) { b.disabled = true; b.style.opacity = '0.45'; });
+    // Show loading text in panel
+    const loadingDiv = document.createElement('div');
+    loadingDiv.id = 'tdChoiceLoadingHint';
+    loadingDiv.style.cssText = 'font-size:11px;color:#888;margin-top:8px;text-align:center;animation:tdFadeIn 0.3s ease;';
+    loadingDiv.innerHTML = '<i class="fas fa-circle-notch fa-spin" style="margin-right:5px;"></i>正在生成…';
+    host.appendChild(loadingDiv);
+  }
   if (choice === 'truth') {
     const question = await _tdPersonaAskText(
       p,
@@ -36059,6 +36080,29 @@ async function tdChooseUserTurn(personaId, choice) {
   } else {
     const related = _tdRelatedPersonas(p.id);
     const relatedNames = related.map(function(item) { return item.name; }).join('、');
+    // Build relationship context: include each related persona's relationship with user
+    const rels = typeof mwGetRelEntries === 'function' ? (mwGetRelEntries() || []) : [];
+    const userName = (typeof userProfile !== 'undefined' && userProfile.name) ? userProfile.name : '用户';
+    // Identify rivals: personas who also have a romantic/competing interest in the user
+    const rivalNames = [];
+    const relDetailLines = [];
+    related.forEach(function(rp) {
+      // find the rel entry between this persona (p) and rp
+      const relWithP = rels.find(function(r) { return (r.a===p.name&&r.b===rp.name)||(r.a===rp.name&&r.b===p.name); });
+      // find if rp also has a romantic/competing rel with user
+      const relWithUser = rels.find(function(r) { return (r.a===userName&&r.b===rp.name)||(r.a===rp.name&&r.b===userName); });
+      const pRelWithUser = rels.find(function(r) { return (r.a===userName&&r.b===p.name)||(r.a===p.name&&r.b===userName); });
+      const isRival = relWithP && (
+        /情敌|竞争|rival|compete|喜欢.*用户|追.*用户|暗恋.*用户|单恋.*用户|喜欢.*${userName}|追.*${userName}/i.test(relWithP.detail||relWithP.label||'') ||
+        (relWithUser && /喜欢|暗恋|追|表白|心动|情侣|恋人|在一起|爱|爱慕/i.test(relWithUser.detail||relWithUser.label||'') &&
+         pRelWithUser && /喜欢|暗恋|追|表白|心动|情侣|恋人|在一起|爱|爱慕/i.test(pRelWithUser.detail||pRelWithUser.label||''))
+      );
+      if (isRival) rivalNames.push(rp.name);
+      if (relWithP) relDetailLines.push('  · ' + p.name + ' 与 ' + rp.name + '：' + (relWithP.label||'') + (relWithP.detail ? '（' + relWithP.detail + '）' : ''));
+      if (relWithUser) relDetailLines.push('  · ' + rp.name + ' 与 ' + userName + '：' + (relWithUser.label||'') + (relWithUser.detail ? '（' + relWithUser.detail + '）' : ''));
+    });
+    const relCtxBlock = relDetailLines.length > 0 ? '\n【关系图参考（关键）】\n' + relDetailLines.join('\n') + '\n' : '';
+    const rivalBlock = rivalNames.length > 0 ? '\n【禁止】以下角色是你的情敌（都对' + userName + '有好感/感情），绝对不能让用户去向他们表白、示爱、或做任何暧昧类的聊天大冒险，也不能以他们为目标：' + rivalNames.join('、') + '\n' : '';
     const dareObj = await _tdPersonaAskJson(
       p,
       state,
@@ -36069,7 +36113,7 @@ async function tdChooseUserTurn(personaId, choice) {
 2. 如果是 chat 类型，可以指定关系图里的角色之一，也可以虚构一个符合当前世界感的 NPC。
 3. 如果是 moments 类型，要适合用户去朋友圈发一条动态。
 4. targetName 若使用现有角色，请优先从这些名字里选：${relatedNames || '（暂无）'}
-5. 只返回 JSON。`,
+5. 只返回 JSON。${relCtxBlock}${rivalBlock}`,
       {
         type: 'moments',
         instruction: '去朋友圈发一条让人一眼看不出来在试探谁，但熟人看了会多想的动态。',

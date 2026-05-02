@@ -2577,7 +2577,7 @@ body {
 }
 .msg-translation-label {
   font-size: 9px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
-  color: #bbb; font-family: 'DM Mono', monospace; display: block;
+  color: #bbb; font-family: 'DM Mono', monospace; display: none;
 }
 .msg-translation-icon { display: none; }
 .msg-translation-text { flex: 1; font-style: italic; }
@@ -17334,7 +17334,7 @@ body.editor-modal-open #chatPage .app-back-bar {
       <div class="ig-story-text-card" id="igStoryTextCard" style="display:none;">
         <p id="igStoryText"></p>
         <div id="igStoryTranslation" style="display:none;margin-top:10px;padding:7px 10px;border-left:2px solid rgba(255,255,255,0.3);font-size:11px;color:rgba(255,255,255,0.65);font-style:italic;letter-spacing:0.3px;line-height:1.6;">
-          <span style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.4);font-family:'DM Mono',monospace;display:block;margin-bottom:3px;">번역 · 译文</span>
+          
           <span id="igStoryTranslationText"></span>
         </div>
       </div>
@@ -21408,7 +21408,6 @@ function _persistCallMemorySummary(persona, msgObj, userName) {
 function _buildKoreanTranslation(text) {
   if (!text) return '';
   return '<div style="margin-top:8px;padding:7px 10px;border-left:2px solid #d0d0d0;font-size:11px;color:#888;font-style:italic;letter-spacing:0.3px;line-height:1.6;">'
-    + '<span style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#bbb;font-family:\'DM Mono\',monospace;display:block;margin-bottom:3px;">번역 · 译文</span>'
     + text
     + '</div>';
 }
@@ -35688,26 +35687,70 @@ async function _tdFetchModelCompletion(messages, persona, maxTokens, temperature
   return (((data || {}).choices || [])[0] || {}).message ? ((((data || {}).choices || [])[0] || {}).message.content || '').trim() : '';
 }
 async function _tdPersonaAskText(p, state, ask, fallbackText) {
+  var _tdTypingEl = document.getElementById('typingArea');
+  if (_tdTypingEl) _tdTypingEl.classList.remove('hidden');
   try {
     const base = _tdBuildPersonaPromptBase(p, state);
-    const raw = await _tdFetchModelCompletion([{ role: 'user', content: base + '\n\n' + ask }], p, 260, 0.95);
-    return String(raw || '').replace(/^["'“”「」]|["'“”「」]$/g, '').trim() || fallbackText || '';
+    const raw = await _tdFetchModelCompletion([{ role: 'user', content: base + '\\n\\n' + ask }], p, 260, 0.95);
+    if (_tdTypingEl) _tdTypingEl.classList.add('hidden');
+    return String(raw || '').replace(/^["'\u201c\u300c]|["'\u201d\u300d]$/g, '').trim() || fallbackText || '';
   } catch(e) {
+    if (_tdTypingEl) _tdTypingEl.classList.add('hidden');
     return fallbackText || '';
   }
 }
 async function _tdPersonaAskJson(p, state, ask, fallbackObj) {
+  var _tdTypingEl = document.getElementById('typingArea');
+  if (_tdTypingEl) _tdTypingEl.classList.remove('hidden');
   try {
     const base = _tdBuildPersonaPromptBase(p, state);
-    let raw = await _tdFetchModelCompletion([{ role: 'user', content: base + '\n\n' + ask }], p, 420, 0.9);
+    let raw = await _tdFetchModelCompletion([{ role: 'user', content: base + '\\n\\n' + ask }], p, 420, 0.9);
+    if (_tdTypingEl) _tdTypingEl.classList.add('hidden');
     raw = String(raw || '').replace(/```json|```/gi, '').trim();
     return Object.assign({}, fallbackObj || {}, JSON.parse(raw));
   } catch(e) {
+    if (_tdTypingEl) _tdTypingEl.classList.add('hidden');
     return Object.assign({}, fallbackObj || {});
   }
 }
 function _tdPersonaFallbackAcceptReply(p) {
   return (p && p.name ? p.name : '角色') + '轻轻笑了一下，说可以，陪你玩。';
+}
+// ── TD Multi-message helper: splits reply on ### and pushes each message separately,
+//    respecting persona's minReplyCount / maxReplyCount settings ──
+async function _tdPersonaAskMulti(p, state, ask, fallbackText, opts) {
+  const minReply = (opts && opts.min != null) ? opts.min : (p.minReplyCount || 1);
+  const maxReply = (opts && opts.max != null) ? opts.max : (p.maxReplyCount || 3);
+  const count = Math.max(minReply, Math.min(maxReply, Math.floor(Math.random() * (maxReply - minReply + 1)) + minReply));
+  const base = _tdBuildPersonaPromptBase(p, state);
+  const multiAsk = ask + '\n【发送格式】请连续发送 ' + count + ' 条消息，消息之间用 "###" 分隔，像平时发消息一样自然连贯，不要把所有内容塞进一条里。只返回消息内容本身，不要解释。';
+  let raw = '';
+  try {
+    raw = await _tdFetchModelCompletion([{ role: 'user', content: base + '\n\n' + multiAsk }], p, Math.max(400, count * 220), 0.95);
+  } catch(e) {}
+  let parts = raw ? raw.split('###').map(function(s) { return s.replace(/^["'"\u201c\u300c]|["'"\u201d\u300d]$/g, '').trim(); }).filter(Boolean) : [];
+  if (parts.length === 0) parts = fallbackText ? [fallbackText] : [];
+  // Clamp to configured range
+  if (parts.length > maxReply) parts = parts.slice(0, maxReply);
+  if (parts.length === 0) return [];
+  // Show typing indicator
+  const typingEl = document.getElementById('typingArea');
+  if (typingEl) typingEl.classList.remove('hidden');
+  const results = [];
+  for (let i = 0; i < parts.length; i++) {
+    const msg = parts[i];
+    if (!msg) continue;
+    // Delay between messages (similar to normal chat)
+    if (i > 0) await new Promise(function(r) { setTimeout(r, 600 + Math.random() * 900); });
+    if (typingEl) typingEl.classList.remove('hidden');
+    // Small typing pause before revealing message
+    await new Promise(function(r) { setTimeout(r, 500 + Math.min(600, msg.length * 8)); });
+    if (typingEl) typingEl.classList.add('hidden');
+    _tdPushChatMessage(p.id, { role: 'assistant', content: msg });
+    results.push(msg);
+  }
+  if (typingEl) typingEl.classList.add('hidden');
+  return results;
 }
 function _tdRelatedPersonas(personaId) {
   const p = personas.find(function(x) { return String(x.id) === String(personaId); });
@@ -35876,11 +35919,12 @@ async function tdHandleInviteAccepted(personaId) {
   const p = personas.find(function(x) { return String(x.id) === String(personaId); });
   if (!p) return;
   const state = tdGetState(p.id);
-  const acceptReply = await _tdPersonaAskText(
+  await _tdPersonaAskMulti(
     p,
     state,
-    '请你用1到2句符合人设的私聊口吻，明确表达你接受了和用户玩真心话大冒险的邀请，并自然接住聊天室当前氛围。只返回消息内容，不要解释。',
-    _tdPersonaFallbackAcceptReply(p)
+    '请你用符合人设的私聊口咑，明确表达你接受了和用户玩真心话大冒险的邀请，并自然接住聊天室当前氛围。',
+    _tdPersonaFallbackAcceptReply(p),
+    { min: 1, max: Math.min(p.maxReplyCount || 3, 3) }
   );
   _tdUpdateLatestInviteStatus(p.id, 'accepted');
   _tdPushContext(p.id, `【真心话大冒险记忆】你已经接受了${userProfile.name || '用户'}在当前私聊里发来的真心话大冒险邀请。之后发生的轮次、问题、大冒险执行内容，都要当作真实经历来记住。`, { _tdContext: true });
@@ -35982,9 +36026,24 @@ function tdSetMode(personaId, mode) {
   state.mode = mode === 'random' ? 'random' : 'turns';
   tdSetState(personaId, state);
 }
+// Immediately disable all buttons in the TD game panel to prevent double-click lag
+function _tdDisablePanelButtons(loadingText) {
+  const host = document.getElementById('truthDareGameHost');
+  if (!host) return;
+  host.querySelectorAll('button').forEach(function(b) { b.disabled = true; b.style.opacity = '0.4'; b.style.pointerEvents = 'none'; });
+  let hint = document.getElementById('tdPanelLoadingHint');
+  if (!hint) {
+    hint = document.createElement('div');
+    hint.id = 'tdPanelLoadingHint';
+    hint.style.cssText = 'font-size:11px;color:#999;text-align:center;padding:6px 0 2px;';
+    host.appendChild(hint);
+  }
+  hint.innerHTML = '<i class="fas fa-circle-notch fa-spin" style="margin-right:5px;"></i>' + (loadingText || '处理中…');
+}
 async function tdStartGame(personaId) {
   const p = personas.find(function(x) { return String(x.id) === String(personaId); });
   if (!p) return;
+  _tdDisablePanelButtons('开始游戏…');  // disable buttons immediately
   const state = tdGetState(p.id);
   state.phase = 'starting';
   state.round = 0;
@@ -36065,18 +36124,20 @@ async function tdChooseUserTurn(personaId, choice) {
     host.appendChild(loadingDiv);
   }
   if (choice === 'truth') {
-    const question = await _tdPersonaAskText(
+    const _truthQParts = await _tdPersonaAskMulti(
       p,
       state,
-      '请你向用户提出一个独特的真心话问题。必须具体、贴地、带一点刺激或隐私感，可以问过去经历、感情观、期待、欲望、暧昧试探、关系推进，但不要空泛，不要问“你会永远和我在一起吗”这种油腻问题。只返回一句问句。',
-      '如果要你说一件你一直没对我提过、但其实很在意的过去，你会先想到什么？'
+      '请你向用户提出一个独特的真心话问题。必须具体、贴地、带一点刺激或隐私感，可以问过去经历、感情观、期待、欲望、曙昧试探、关系推进，但不要空泛，不要问“你会永远和我在一起吗”这种油腻问题。只返回一句问句。',
+      '如果要你说一件你一直没对我提过、但其实很在意的过去，你会先想到什么？',
+      { min: 1, max: 1 }
     );
+    const question = (_truthQParts[0] || '如果要你说一件你一直没对我提过、但其实很在意的过去，你会先想到什么？');
     state.phase = 'awaiting_user_truth_answer';
     state.currentQuestion = question;
     state.usedTruthPrompts = (state.usedTruthPrompts || []).concat([question]).slice(-40);
     state.lastSummary = '你选了真心话。';
     tdSetState(p.id, state);
-    _tdPushChatMessage(p.id, { role: 'assistant', content: question });
+    // message already pushed by _tdPersonaAskMulti
   } else {
     const related = _tdRelatedPersonas(p.id);
     const relatedNames = related.map(function(item) { return item.name; }).join('、');
@@ -36153,15 +36214,15 @@ async function tdHandlePersonaTruthQuestion(personaId, questionText) {
   state.phase = 'persona_truth_answering';
   state.currentTruthQuestion = questionText;
   tdSetState(p.id, state);
-  const reply = await _tdPersonaAskText(
+  const _truthParts = await _tdPersonaAskMulti(
     p,
     state,
     `用户在这一轮对你提出的真心话问题是：${questionText}
-请你以当前私聊口吻真实回答，必须像平时聊天一样，不要自我分析，也不要说教。只返回你的回答内容。`,
+请你以当前私聊口咑真实回答，必须像平时聊天一样，不要自我分析，也不要说教。`,
     '这个问题我会认真答你。只是答案可能比你想的更直白一点。'
   );
-  _tdPushChatMessage(p.id, { role: 'assistant', content: reply });
-  _tdPushContext(p.id, `【真心话大冒险记忆】这一轮里，用户问了你：${questionText}。你的回答是：${reply}`, { _tdContext: true });
+  const _truthReply = _truthParts.join(' ');
+  _tdPushContext(p.id, `【真心话大冒险记忆】这一轮里，用户问了你：${questionText}。你的回答是：${_truthReply}`, { _tdContext: true });
   state.phase = 'ready_next';
   state.lastSummary = '这一轮已经结束，可以进入下一轮。';
   tdSetState(p.id, state);
@@ -36203,14 +36264,14 @@ async function submitTruthDarePersonaDare() {
     },
     content: '[角色大冒险指令]'
   });
-  const reaction = await _tdPersonaAskText(
+  await _tdPersonaAskMulti(
     p,
     state,
     `用户刚刚给你的这一轮大冒险指令是：${instruction}${state.currentTask.targetName ? '。对象是：' + state.currentTask.targetName + (state.currentTask.targetIdentity ? '（' + state.currentTask.targetIdentity + '）' : '') : ''}
-请你像当前聊天室里真实说话那样，用1到2句表达你看到这个要求后的情绪、吐槽、紧张、害羞、嘴硬或反应。只返回消息内容。`,
-    '你这要求是不是有点太会挑事了。'
+请你像当前聊天室里真实说话那样，表达你看到这个要求后的情绪、吐槽、紧张、害羞、嘴硬或反应。`,
+    '你这要求是不是有点太会挑事了。',
+    { min: 1, max: Math.min(p.maxReplyCount || 3, 3) }
   );
-  _tdPushChatMessage(p.id, { role: 'assistant', content: reaction });
 }
 async function tdExecutePersonaDare(personaId) {
   const p = personas.find(function(x) { return String(x.id) === String(personaId); });
@@ -36218,18 +36279,26 @@ async function tdExecutePersonaDare(personaId) {
   const state = tdGetState(p.id);
   const task = state.currentTask || {};
   if (!task.kind) return;
+  _tdDisablePanelButtons('执行中…');  // disable buttons immediately
   if (task.kind === 'simulate') {
-    const resultText = await _tdPersonaAskText(
-      p,
-      state,
-      `现在请你以第三人称详细描写「${p.name}」执行这条模拟大冒险时的全过程与结果：${task.instruction}
+    // Use higher token limit for simulate dare to prevent truncation
+    const _simTypingEl = document.getElementById('typingArea');
+    if (_simTypingEl) _simTypingEl.classList.remove('hidden');
+    const _simBase = _tdBuildPersonaPromptBase(p, state);
+    const _simAsk = `现在请你以第三人称详细描写「${p.name}」执行这条模拟大冒险时的全过程与结果：${task.instruction}
 要求：
-1. 直接写执行画面与细节，不要写“作为AI”。
+1. 直接写执行画面与细节，不要写"作为AI"。
 2. 用第三人称描述。
-3. 有一点戏剧感，但仍然贴合人设。
-只返回正文。`,
-      `${p.name}最后还是照做了。起初他明显别扭，嘴上还想再挣扎一下，可真开始执行时反而认真得过分。整个过程里他的情绪起伏全写在细节上，到最后连他自己都拿这件事没办法，只能认栽。`
-    );
+3. 有一点戟剧感，但仍然贴合人设。
+4. 内容必须写完整，不可以在中途截断。
+只返回正文。`;
+    let resultText = '';
+    try {
+      const _simRaw = await _tdFetchModelCompletion([{ role: 'user', content: _simBase + '\n\n' + _simAsk }], p, 900, 0.95);
+      resultText = String(_simRaw || '').replace(/^["'\u201c\u201d\u300c\u300d]|["'\u201c\u201d\u300c\u300d]$/g, '').trim();
+    } catch(e) {}
+    if (_simTypingEl) _simTypingEl.classList.add('hidden');
+    if (!resultText) resultText = `${p.name}最后还是照做了。起初他明显别扮，嘴上还想再挑战一下，可真开始执行时反而认真得过分。整个过程里他的情绪起伏全写在细节上，到最后连他自己都拿这件事没办法，只能认栽。`;
     _tdPushChatMessage(p.id, {
       role: 'assistant',
       msgType: 'truth_dare_exec',
@@ -36440,23 +36509,27 @@ function tdMarkUserDareDone(personaId) {
   state.lastSummary = '你已经标记完成这轮大冒险。';
   tdSetState(p.id, state);
 }
-async function tdEndGame(personaId, fromUser) {
+function tdEndGame(personaId, fromUser) {
   const p = personas.find(function(x) { return String(x.id) === String(personaId); });
   if (!p) return;
   const state = tdGetState(p.id);
   if (!state.active) return;
-  if (fromUser) {
-    const reply = await _tdPersonaAskText(
-      p,
-      state,
-      '用户现在主动结束了这场真心话大冒险。请你像平时私聊那样，用1到2句做出真实回应。只返回消息内容。',
-      '行，这轮就先到这里。不过我会记着。'
-    );
-    _tdPushChatMessage(p.id, { role: 'assistant', content: reply });
-  }
+  // Immediately clear state and re-render UI so the panel closes without waiting for API
+  const _endState = Object.assign({}, state);
   _tdUpdateLatestInviteStatus(p.id, 'ended');
   _tdPushContext(p.id, `【真心话大冒险记忆】你和${userProfile.name || '用户'}在当前私聊里结束了这场真心话大冒险。你仍然记得这场游戏里的邀请、问题、回答和所有执行过的大冒险。`, { _tdContext: true });
-  tdClearState(p.id);
+  tdClearState(p.id);  // This immediately re-renders the panel (hides it)
+  // Fire goodbye message in background without blocking UI
+  if (fromUser) {
+    _tdPersonaAskText(
+      p,
+      _endState,
+      '用户现在主动结束了这场真心话大冒险。请你像平时私聊那样，用1到2句做出真实回应。只返回消息内容。',
+      '行，这轮就先到这里。不过我会记着。'
+    ).then(function(reply) {
+      if (reply) _tdPushChatMessage(p.id, { role: 'assistant', content: reply });
+    }).catch(function() {});
+  }
 }
 async function tdHandleUserMessageInActiveGame(p, newMsg) {
   if (!p || !newMsg) return { skipDefaultAutoReply: false };
@@ -36776,7 +36849,7 @@ function renderTransferBubble(m, idx, isUser, avatarSrc, authorName, isSelected)
   const bubbleHtml = `<div class="bubble-transfer ${styleClass}">
     <div class="bubble-transfer-header"><i class="fas fa-money-bill-wave"></i> ${headerLabel}</div>
     <div class="bubble-transfer-amount">¥${parseFloat(m.transferAmt || 0).toFixed(2)}</div>
-    ${m.transferNote ? `<div class="bubble-transfer-note">${wrappedTransferNote}${m.transferNoteTranslation ? '<div style="margin-top:4px;font-size:10px;color:rgba(255,255,255,0.5);font-style:italic;border-top:1px solid rgba(255,255,255,0.15);padding-top:4px;"><span style="font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:0.7;font-family:\'DM Mono\',monospace;display:block;margin-bottom:2px;">译文</span>' + wrappedTransferTranslation + '</div>' : ''}</div>` : ''}
+    ${m.transferNote ? `<div class="bubble-transfer-note">${wrappedTransferNote}${m.transferNoteTranslation ? '<div style="margin-top:4px;font-size:10px;color:rgba(255,255,255,0.5);font-style:italic;border-top:1px solid rgba(255,255,255,0.15);padding-top:4px;">' + wrappedTransferTranslation + '</div>' : ''}</div>` : ''}
     <span class="bubble-transfer-status ${statusClass}">${statusText}</span>
     ${actionBtns}
   </div>`;
@@ -40498,7 +40571,7 @@ function renderBbRecords() {
         else if (line.type === 'deleted') lineClass = 'bb-line-deleted';
         else if (line.type === 'sent') lineClass = 'bb-line-sent';
         else if (line.type === 'note') lineClass = 'bb-line-note';
-        html += `<div class="bb-record-line ${lineClass}">${escapeHtml(line.text)}${line.translation ? '<div style="margin-top:4px;padding:3px 8px;border-left:2px solid #ccc;font-size:10px;color:#888;font-style:italic;letter-spacing:0.3px;"><span style="font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#bbb;font-family:\'DM Mono\',monospace;">译文</span><br>' + escapeHtml(line.translation) + '</div>' : ''}</div>`;
+        html += `<div class="bb-record-line ${lineClass}">${escapeHtml(line.text)}${line.translation ? '<div style="margin-top:4px;padding:3px 8px;border-left:2px solid #ccc;font-size:10px;color:#888;font-style:italic;letter-spacing:0.3px;">' + escapeHtml(line.translation) + '</div>' : ''}</div>`;
       });
     }
     html += `</div></div>`;
@@ -48325,7 +48398,7 @@ function renderMusicChat() {
       return `<div style="text-align:center;font-size:10px;color:#bbb;margin:6px 0;">${m.text}</div>`;
     }
     if (m.role === 'translation') {
-      return `<div style="margin:0 8px 6px 44px;padding:5px 9px;border-left:2px solid #d0d0d0;font-size:10px;color:#999;font-style:italic;letter-spacing:0.3px;line-height:1.5;"><span style="font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#bbb;font-family:'DM Mono',monospace;display:block;margin-bottom:2px;">번역 · 译文</span>${m.text}</div>`;
+      return `<div style="margin:0 8px 6px 44px;padding:5px 9px;border-left:2px solid #d0d0d0;font-size:10px;color:#999;font-style:italic;letter-spacing:0.3px;line-height:1.5;">${m.text}</div>`;
     }
     const p = m.persona ? personas.find(x => x.id == m.persona) : null;
     if (m.role === 'ai' && p) {
@@ -50131,14 +50204,12 @@ function _buildTranslationHtml(translation, langHint) {
   else if (langHint === 'ko') label = '한 · 译文';
   else label = '🌐 译文';
   return '<div class="msg-translation">'
-    + '<span class="msg-translation-label" style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#bbb;font-family:\'DM Mono\',monospace;display:block;margin-bottom:2px;">' + label + '</span>'
     + '<span class="msg-translation-text">' + translation + '</span>'
     + '</div>';
 }
 // Build a "translate failed — retry" pill injected into the bubble
 function _buildTranslationRetryHtml(hash, text) {
   return '<div class="msg-translation msg-translation-retry" data-retry-hash="' + hash + '" data-retry-text="' + text.replace(/"/g,'&quot;') + '" onclick="_retryTranslation(this)" style="cursor:pointer;user-select:none;">'
-    + '<span class="msg-translation-label" style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#bbb;font-family:\'DM Mono\',monospace;display:block;margin-bottom:2px;">🌐 译文</span>'
     + '<span class="msg-translation-text" style="color:#bbb;font-size:10px;letter-spacing:0.5px;">翻譯失敗 · 点擊重试</span>'
     + '</div>';
 }
@@ -62559,7 +62630,6 @@ function _renderPetMsgs() {
         } else {
           // Show retry pill as placeholder; will be replaced by async fetch
           translationHtml = '<div class="msg-translation pet-chat-tr-pending" data-pet-chat-tr-idx="' + idx + '" data-pet-chat-tr-text="' + clean.replace(/"/g,'&quot;').slice(0,500) + '" onclick="_petChatRetryTranslate(this,' + idx + ')" style="cursor:pointer;">'
-            + '<span class="msg-translation-label" style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#bbb;font-family:\'DM Mono\',monospace;display:block;margin-bottom:2px;">🌐 译文</span>'
             + '<span class="msg-translation-text" style="color:#bbb;font-size:10px;">翻譯中…</span>'
             + '</div>';
         }
@@ -90249,7 +90319,7 @@ if (document.readyState === 'loading') {
         html += '<div class="diary-content">' + monoEscHtml(line.text || '') + '</div>';
         if (line.translation) {
           html += '<div style="margin-top:6px;padding:7px 10px;border-left:2px solid #d8d8d8;background:#fafafa;border-radius:8px;font-size:11px;line-height:1.7;color:#777;font-style:italic;">'
-            + '<div style="font-size:8px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:#b3b3b3;margin-bottom:4px;">简体中文译文</div>'
+            + ''
             + monoEscHtml(line.translation)
             + '</div>';
         }

@@ -36002,8 +36002,10 @@ async function tdHandleInviteAccepted(personaId) {
   );
   _tdUpdateLatestInviteStatus(p.id, 'accepted');
   _tdPushContext(p.id, `【真心话大冒险记忆】你已经接受了${userProfile.name || '用户'}在当前私聊里发来的真心话大冒险邀请。之后发生的轮次、问题、大冒险执行内容，都要当作真实经历来记住。`, { _tdContext: true });
-  _tdPushChatMessage(p.id, { role: 'assistant', content: acceptReply || _tdPersonaFallbackAcceptReply(p) });
-  tdSetState(p.id, Object.assign(state, {
+  // Note: _tdPersonaAskMulti already pushes the accept reply messages above.
+  // We read a fresh state snapshot here to avoid stale reference issues.
+  const freshState = tdGetState(p.id);
+  tdSetState(p.id, Object.assign(freshState, {
     active: true,
     accepted: true,
     phase: 'awaiting_start',

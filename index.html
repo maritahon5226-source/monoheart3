@@ -7235,6 +7235,27 @@ body:not(.ios-fullscreen) .family-widget {
   padding: 0 14px;
   gap: 10px;
   z-index: 8888;
+  cursor: grab;
+  border-radius: 0;
+  transition: border-radius 0.2s, box-shadow 0.2s;
+}
+#musicMiniBar.dragging {
+  cursor: grabbing;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  border: none;
+  left: auto !important;
+  right: auto !important;
+}
+#musicMiniBar.floating {
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+  border: 1px solid #e0e0e0;
+  left: auto !important;
+  right: auto !important;
+  width: auto;
+  min-width: 260px;
+  max-width: 92vw;
 }
 #musicMiniBar.visible { display: flex; }
 .music-mini-restore-pill {
@@ -21128,6 +21149,18 @@ body.editor-modal-open #chatPage .app-back-bar {
           <button class="custom-btn" onclick="livePreviewMetaColors()" style="font-size:9px;padding:4px 10px;">预览</button>
           <button class="custom-btn danger" onclick="resetMetaColors()" style="font-size:9px;padding:4px 10px;">重置</button>
         </div>
+        <!-- 隐藏时间戳开关 -->
+        <div style="margin-top:10px;padding:8px 10px;background:#fff;border:1px solid #e8e8e8;border-radius:8px;display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <span style="font-size:11px;font-weight:700;color:#1a1a1a;display:block;">🕐 隐藏聊天消息时间戳</span>
+            <span style="font-size:10px;color:#888;margin-top:2px;display:block;">开启后，该聊天室每条消息下方的时间不会显示。</span>
+          </div>
+          <label style="position:relative;display:inline-block;width:38px;height:22px;flex-shrink:0;margin-left:10px;">
+            <input type="checkbox" id="pHideTimestamp" style="opacity:0;width:0;height:0;">
+            <span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#ccc;border-radius:22px;transition:0.3s;" id="pHideTimestampSlider"></span>
+          </label>
+          <style>#pHideTimestamp:checked + #pHideTimestampSlider{background:#1a1a1a;} #pHideTimestampSlider:before{content:'';position:absolute;width:16px;height:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:0.3s;} #pHideTimestamp:checked + #pHideTimestampSlider:before{transform:translateX(16px);}</style>
+        </div>
       </div>
     </div>
     <!-- ===== 聊天室完整自定义 CSS ===== -->
@@ -24145,6 +24178,17 @@ function _showHeartVoicePopupCard(p, line, opts) {
   card.setAttribute('data-heart-voice-card', cardId);
   card.style.zIndex = String(_heartVoicePopupSeq);
   card.title = '点击展开或重叠角色心声';
+  // Check if translation needed for this card
+  var _hvNeedTranslate = (function() {
+    try {
+      if (!p) return false;
+      if (p.enableTranslation === false) return false;
+      var lang = (p.outputLang || '').toLowerCase().trim();
+      return lang && lang !== 'zh' && lang !== 'zh-cn' && lang !== '';
+    } catch(e) { return false; }
+  })();
+  var _hvTranslationHtml = '';
+  // We'll do async translation and inject it after card is added to DOM
   card.innerHTML =
     '<div class="heart-voice-notif-top">'
       + '<div class="heart-voice-notif-app">'
@@ -24154,7 +24198,8 @@ function _showHeartVoicePopupCard(p, line, opts) {
       + '<div class="heart-voice-notif-time">' + timeLabel + '</div>'
     + '</div>'
     + '<div class="heart-voice-notif-title">' + title + '</div>'
-    + '<div class="heart-voice-notif-body ' + (type === 'reply' ? 'replying' : 'reading') + '">' + _hvEsc(line) + '</div>';
+    + '<div class="heart-voice-notif-body ' + (type === 'reply' ? 'replying' : 'reading') + '">' + _hvEsc(line) + '</div>'
+    + (_hvNeedTranslate ? '<div class="heart-voice-notif-translation" data-hv-trans-target="1" style="font-size:9px;color:#aaa;margin-top:4px;border-top:1px solid #f0f0f0;padding-top:4px;line-height:1.5;">译文加载中…</div>' : '');
   card.addEventListener('click', function(e) {
     e.stopPropagation();
     if (layer.children.length <= 1) return;
@@ -24165,6 +24210,30 @@ function _showHeartVoicePopupCard(p, line, opts) {
   _heartVoicePopupTimers[cardId] = setTimeout(function() {
     _dismissHeartVoicePopupCard(cardId);
   }, type === 'reply' ? 14000 : 12000);
+  // Async translate if needed
+  if (_hvNeedTranslate && line) {
+    (async function() {
+      try {
+        var apiCfg = _getApiConfig ? _getApiConfig() : null;
+        if (!apiCfg || !apiCfg.url || !apiCfg.key) return;
+        var resp = await fetch((apiCfg.url || '').replace(/\/$/, '') + '/chat/completions', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + apiCfg.key, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: apiCfg.model, messages: [{ role: 'user', content: '请将以下文字翻译成简体中文，只返回翻译结果，不加任何说明：\n' + line }], max_tokens: 120, temperature: 0.3 })
+        });
+        if (!resp.ok) return;
+        var rdata = await resp.json();
+        var translated = (((rdata || {}).choices || [])[0] || {}).message && (((rdata || {}).choices || [])[0] || {}).message.content;
+        translated = (translated || '').trim();
+        if (!translated) return;
+        var transEl = card.querySelector('[data-hv-trans-target]');
+        if (transEl) transEl.textContent = translated;
+      } catch(e) {
+        var transEl = card.querySelector('[data-hv-trans-target]');
+        if (transEl) transEl.style.display = 'none';
+      }
+    })();
+  }
 }
 function _queueHeartVoicePopupLines(p, lines, opts) {
   if (!_heartVoicePopupContextMatches(p, opts)) return;
@@ -25744,6 +25813,7 @@ function openEditor(isEdit=false) {
     if (document.getElementById('pOshiGlowPink')) document.getElementById('pOshiGlowPink').value = '#e5e5e5';
     if (document.getElementById('pOshiGlowShowHeart')) document.getElementById('pOshiGlowShowHeart').checked = true;
     if (document.getElementById('pMetaTimeColor'))   document.getElementById('pMetaTimeColor').value   = '#bbbbbb';
+    if (document.getElementById('pHideTimestamp'))   document.getElementById('pHideTimestamp').checked   = false;
     if (document.getElementById('pMetaNameColor'))   document.getElementById('pMetaNameColor').value   = '#999999';
     if (document.getElementById('pMetaReadColor'))   document.getElementById('pMetaReadColor').value   = '#aaaaaa';
     if (document.getElementById('pMetaUnreadColor')) document.getElementById('pMetaUnreadColor').value = '#cccccc';
@@ -25849,6 +25919,7 @@ function openEditor(isEdit=false) {
     if (document.getElementById('pOshiGlowShowHeart')) document.getElementById('pOshiGlowShowHeart').checked = p.oshiGlowShowHeart !== false;
     // Load meta text colors
     if (document.getElementById('pMetaTimeColor'))   document.getElementById('pMetaTimeColor').value   = p.metaTimeColor   || '#bbbbbb';
+    if (document.getElementById('pHideTimestamp'))   document.getElementById('pHideTimestamp').checked   = !!(p.hideTimestamp);
     if (document.getElementById('pMetaNameColor'))   document.getElementById('pMetaNameColor').value   = p.metaNameColor   || '#999999';
     if (document.getElementById('pMetaReadColor'))   document.getElementById('pMetaReadColor').value   = p.metaReadColor   || '#aaaaaa';
     if (document.getElementById('pMetaUnreadColor')) document.getElementById('pMetaUnreadColor').value = p.metaUnreadColor || '#cccccc';
@@ -25906,11 +25977,11 @@ function savePersona() {
     const p = personas.find(x=>x.id==currentId);
     const _saveAiColor = document.getElementById('pBubbleAiFontColorEnabled').checked ? (document.getElementById('pBubbleAiFontColor').value||'') : '';
     const _saveUserColor = document.getElementById('pBubbleUserFontColorEnabled').checked ? (document.getElementById('pBubbleUserFontColor').value||'') : '';
-    if(p){ p.name=name; p.nickname=document.getElementById('pNick').value.trim(); p.persona=document.getElementById('pPersona').value.trim()||'一个简单的角色设定'; p.avatar=avatar; p.minReplyCount=minReply; p.maxReplyCount=maxReply; p.temperature=temperature; p.timeAwareness=timeAwareness; p.allowSticker=allowSticker; p.stickerLibraryIds=stickerLibraryIds; p.allowVoice=allowVoice; p.voiceId=voiceId; p.voiceSpeed=voiceSpeed; p.voiceLang=voiceLang; p.outputLang=outputLang; p.enableTranslation=enableTranslation; p.translateLang=translateLang; p.voiceFreq=voiceFreq; p.memoryCount=parseInt(document.getElementById('pMemoryCount').value)||100; p.autoMsg=document.getElementById('pAutoMsg').checked; p.autoMsgMinInterval=Math.max(5,parseInt(document.getElementById('pAutoMsgMinInterval').value)||60); p.autoMsgMaxInterval=Math.max(p.autoMsgMinInterval,parseInt(document.getElementById('pAutoMsgMaxInterval').value)||120); p.autoDiary=document.getElementById('pAutoDiary').checked; p.autoDiaryTime=document.getElementById('pAutoDiaryTime').value||'21:00'; p.diaryIncludeOfflineMemory=!document.getElementById('monoDiaryOfflineSetting') || document.getElementById('monoDiaryOfflineSetting').checked; p.autoMoments=document.getElementById('pAutoMoments').checked; p.autoMomentsTime=document.getElementById('pAutoMomentsTime').value||'20:00'; p.momentsIncludeOfflineMemory=!document.getElementById('monoMomentsOfflineSetting') || document.getElementById('monoMomentsOfflineSetting').checked; p.autoSummary=document.getElementById('pAutoSummary').checked; p.autoSummaryInterval=parseInt(document.getElementById('pAutoSummaryInterval').value)||20; p.bubbleAiCss=document.getElementById('pBubbleAiCss').value.trim(); p.bubbleUserCss=document.getElementById('pBubbleUserCss').value.trim(); p.chatRoomCustomCss=(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(); p.bubbleAiFontColor=_saveAiColor; p.bubbleUserFontColor=_saveUserColor; p.bubblePreset=(document.getElementById('pBubblePreset')||{}).value||'none'; p.oshiGlowBlue=_saveOshiBlue; p.oshiGlowPink=_saveOshiPink; p.oshiGlowShowHeart=_saveOshiShowHeart; p.metaTimeColor=(document.getElementById('pMetaTimeColor')||{}).value||''; p.metaNameColor=(document.getElementById('pMetaNameColor')||{}).value||''; p.metaReadColor=(document.getElementById('pMetaReadColor')||{}).value||''; p.metaUnreadColor=(document.getElementById('pMetaUnreadColor')||{}).value||''; if(document.getElementById('pChatBgImg').src && document.getElementById('pChatBgImg').style.display!=='none') p.chatBgImage=document.getElementById('pChatBgImg').src; else p.chatBgImage=''; p.replyMode=_getSelectedReplyMode(); var _spd=document.querySelector('input[name="pReplySpeed"]:checked'); p.replySpeed=_spd?_spd.value:'fast'; p.replySpeedCustomMin=parseInt(document.getElementById('pReplySpeedCustomMin').value)||0; p.replySpeedCustomMax=parseInt(document.getElementById('pReplySpeedCustomMax').value)||10; p.heartVoiceGenerateEnabled=heartVoiceGenerateEnabled; p.showHeartVoiceInHeader=heartVoiceEnabled; p.heartVoiceEnabled=heartVoiceEnabled; p.heartVoiceMode=heartVoiceMode; p.allowCallTts=document.getElementById('pAllowCallTts').checked; if (p.momentsNickname == null || !String(p.momentsNickname).trim()) p.momentsNickname = name; if (p.momentsSignature == null) p.momentsSignature = ''; if (p.momentsBanner == null) p.momentsBanner = ''; }
+    if(p){ p.name=name; p.nickname=document.getElementById('pNick').value.trim(); p.persona=document.getElementById('pPersona').value.trim()||'一个简单的角色设定'; p.avatar=avatar; p.minReplyCount=minReply; p.maxReplyCount=maxReply; p.temperature=temperature; p.timeAwareness=timeAwareness; p.allowSticker=allowSticker; p.stickerLibraryIds=stickerLibraryIds; p.allowVoice=allowVoice; p.voiceId=voiceId; p.voiceSpeed=voiceSpeed; p.voiceLang=voiceLang; p.outputLang=outputLang; p.enableTranslation=enableTranslation; p.translateLang=translateLang; p.voiceFreq=voiceFreq; p.memoryCount=parseInt(document.getElementById('pMemoryCount').value)||100; p.autoMsg=document.getElementById('pAutoMsg').checked; p.autoMsgMinInterval=Math.max(5,parseInt(document.getElementById('pAutoMsgMinInterval').value)||60); p.autoMsgMaxInterval=Math.max(p.autoMsgMinInterval,parseInt(document.getElementById('pAutoMsgMaxInterval').value)||120); p.autoDiary=document.getElementById('pAutoDiary').checked; p.autoDiaryTime=document.getElementById('pAutoDiaryTime').value||'21:00'; p.diaryIncludeOfflineMemory=!document.getElementById('monoDiaryOfflineSetting') || document.getElementById('monoDiaryOfflineSetting').checked; p.autoMoments=document.getElementById('pAutoMoments').checked; p.autoMomentsTime=document.getElementById('pAutoMomentsTime').value||'20:00'; p.momentsIncludeOfflineMemory=!document.getElementById('monoMomentsOfflineSetting') || document.getElementById('monoMomentsOfflineSetting').checked; p.autoSummary=document.getElementById('pAutoSummary').checked; p.autoSummaryInterval=parseInt(document.getElementById('pAutoSummaryInterval').value)||20; p.bubbleAiCss=document.getElementById('pBubbleAiCss').value.trim(); p.bubbleUserCss=document.getElementById('pBubbleUserCss').value.trim(); p.chatRoomCustomCss=(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(); p.bubbleAiFontColor=_saveAiColor; p.bubbleUserFontColor=_saveUserColor; p.bubblePreset=(document.getElementById('pBubblePreset')||{}).value||'none'; p.oshiGlowBlue=_saveOshiBlue; p.oshiGlowPink=_saveOshiPink; p.oshiGlowShowHeart=_saveOshiShowHeart; p.hideTimestamp=document.getElementById('pHideTimestamp')?document.getElementById('pHideTimestamp').checked:false; p.metaTimeColor=(document.getElementById('pMetaTimeColor')||{}).value||''; p.metaNameColor=(document.getElementById('pMetaNameColor')||{}).value||''; p.metaReadColor=(document.getElementById('pMetaReadColor')||{}).value||''; p.metaUnreadColor=(document.getElementById('pMetaUnreadColor')||{}).value||''; if(document.getElementById('pChatBgImg').src && document.getElementById('pChatBgImg').style.display!=='none') p.chatBgImage=document.getElementById('pChatBgImg').src; else p.chatBgImage=''; p.replyMode=_getSelectedReplyMode(); var _spd=document.querySelector('input[name="pReplySpeed"]:checked'); p.replySpeed=_spd?_spd.value:'fast'; p.replySpeedCustomMin=parseInt(document.getElementById('pReplySpeedCustomMin').value)||0; p.replySpeedCustomMax=parseInt(document.getElementById('pReplySpeedCustomMax').value)||10; p.heartVoiceGenerateEnabled=heartVoiceGenerateEnabled; p.showHeartVoiceInHeader=heartVoiceEnabled; p.heartVoiceEnabled=heartVoiceEnabled; p.heartVoiceMode=heartVoiceMode; p.allowCallTts=document.getElementById('pAllowCallTts').checked; if (p.momentsNickname == null || !String(p.momentsNickname).trim()) p.momentsNickname = name; if (p.momentsSignature == null) p.momentsSignature = ''; if (p.momentsBanner == null) p.momentsBanner = ''; }
   } else {
     const _saveAiColor = document.getElementById('pBubbleAiFontColorEnabled').checked ? (document.getElementById('pBubbleAiFontColor').value||'') : '';
     const _saveUserColor = document.getElementById('pBubbleUserFontColorEnabled').checked ? (document.getElementById('pBubbleUserFontColor').value||'') : '';
-    const newP = { id:Date.now(), name, nickname:document.getElementById('pNick').value.trim()||name, momentsNickname:name, momentsSignature:'', momentsBanner:'', persona:document.getElementById('pPersona').value.trim()||'一个简单的角色设定', avatar, history:[], memoryCore:[], lastHeartVoice:null, autoSummary:document.getElementById('pAutoSummary').checked, autoSummaryInterval:parseInt(document.getElementById('pAutoSummaryInterval').value)||20, minReplyCount:minReply, maxReplyCount:maxReply, temperature:temperature, timeAwareness:timeAwareness, allowSticker:allowSticker, stickerLibraryIds:stickerLibraryIds, allowVoice:allowVoice, voiceId:voiceId, voiceSpeed:voiceSpeed, voiceLang:voiceLang, outputLang:outputLang, enableTranslation:enableTranslation, translateLang:translateLang, voiceFreq:voiceFreq, memoryCount:parseInt(document.getElementById('pMemoryCount').value)||100, autoMsg:document.getElementById('pAutoMsg').checked, autoMsgMinInterval:Math.max(5,parseInt(document.getElementById('pAutoMsgMinInterval').value)||60), autoMsgMaxInterval:Math.max(5,parseInt(document.getElementById('pAutoMsgMaxInterval').value)||120), autoDiary:document.getElementById('pAutoDiary').checked, autoDiaryTime:document.getElementById('pAutoDiaryTime').value||'21:00', diaryIncludeOfflineMemory:!document.getElementById('monoDiaryOfflineSetting') || document.getElementById('monoDiaryOfflineSetting').checked, autoMoments:document.getElementById('pAutoMoments').checked, autoMomentsTime:document.getElementById('pAutoMomentsTime').value||'20:00', momentsIncludeOfflineMemory:!document.getElementById('monoMomentsOfflineSetting') || document.getElementById('monoMomentsOfflineSetting').checked, bubbleAiCss:document.getElementById('pBubbleAiCss').value.trim(), bubbleUserCss:document.getElementById('pBubbleUserCss').value.trim(), chatRoomCustomCss:(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(), bubbleAiFontColor:_saveAiColor, bubbleUserFontColor:_saveUserColor, bubblePreset:(document.getElementById('pBubblePreset')||{}).value||'none', oshiGlowBlue:_saveOshiBlue, oshiGlowPink:_saveOshiPink, oshiGlowShowHeart:_saveOshiShowHeart, metaTimeColor:(document.getElementById('pMetaTimeColor')||{}).value||'', metaNameColor:(document.getElementById('pMetaNameColor')||{}).value||'', metaReadColor:(document.getElementById('pMetaReadColor')||{}).value||'', metaUnreadColor:(document.getElementById('pMetaUnreadColor')||{}).value||'', chatBgImage:(document.getElementById('pChatBgImg').style.display!=='none'?document.getElementById('pChatBgImg').src:''), replyMode:_getSelectedReplyMode(), replySpeed:(document.querySelector('input[name="pReplySpeed"]:checked')||{}).value||'fast', replySpeedCustomMin:parseInt(document.getElementById('pReplySpeedCustomMin').value)||0, replySpeedCustomMax:parseInt(document.getElementById('pReplySpeedCustomMax').value)||10, heartVoiceGenerateEnabled:heartVoiceGenerateEnabled, showHeartVoiceInHeader:heartVoiceEnabled, heartVoiceEnabled:heartVoiceEnabled, heartVoiceMode:heartVoiceMode, allowCallTts:document.getElementById('pAllowCallTts').checked };
+    const newP = { id:Date.now(), name, nickname:document.getElementById('pNick').value.trim()||name, momentsNickname:name, momentsSignature:'', momentsBanner:'', persona:document.getElementById('pPersona').value.trim()||'一个简单的角色设定', avatar, history:[], memoryCore:[], lastHeartVoice:null, autoSummary:document.getElementById('pAutoSummary').checked, autoSummaryInterval:parseInt(document.getElementById('pAutoSummaryInterval').value)||20, minReplyCount:minReply, maxReplyCount:maxReply, temperature:temperature, timeAwareness:timeAwareness, allowSticker:allowSticker, stickerLibraryIds:stickerLibraryIds, allowVoice:allowVoice, voiceId:voiceId, voiceSpeed:voiceSpeed, voiceLang:voiceLang, outputLang:outputLang, enableTranslation:enableTranslation, translateLang:translateLang, voiceFreq:voiceFreq, memoryCount:parseInt(document.getElementById('pMemoryCount').value)||100, autoMsg:document.getElementById('pAutoMsg').checked, autoMsgMinInterval:Math.max(5,parseInt(document.getElementById('pAutoMsgMinInterval').value)||60), autoMsgMaxInterval:Math.max(5,parseInt(document.getElementById('pAutoMsgMaxInterval').value)||120), autoDiary:document.getElementById('pAutoDiary').checked, autoDiaryTime:document.getElementById('pAutoDiaryTime').value||'21:00', diaryIncludeOfflineMemory:!document.getElementById('monoDiaryOfflineSetting') || document.getElementById('monoDiaryOfflineSetting').checked, autoMoments:document.getElementById('pAutoMoments').checked, autoMomentsTime:document.getElementById('pAutoMomentsTime').value||'20:00', momentsIncludeOfflineMemory:!document.getElementById('monoMomentsOfflineSetting') || document.getElementById('monoMomentsOfflineSetting').checked, bubbleAiCss:document.getElementById('pBubbleAiCss').value.trim(), bubbleUserCss:document.getElementById('pBubbleUserCss').value.trim(), chatRoomCustomCss:(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(), bubbleAiFontColor:_saveAiColor, bubbleUserFontColor:_saveUserColor, bubblePreset:(document.getElementById('pBubblePreset')||{}).value||'none', oshiGlowBlue:_saveOshiBlue, oshiGlowPink:_saveOshiPink, oshiGlowShowHeart:_saveOshiShowHeart, hideTimestamp:document.getElementById('pHideTimestamp')?document.getElementById('pHideTimestamp').checked:false, metaTimeColor:(document.getElementById('pMetaTimeColor')||{}).value||'', metaNameColor:(document.getElementById('pMetaNameColor')||{}).value||'', metaReadColor:(document.getElementById('pMetaReadColor')||{}).value||'', metaUnreadColor:(document.getElementById('pMetaUnreadColor')||{}).value||'', chatBgImage:(document.getElementById('pChatBgImg').style.display!=='none'?document.getElementById('pChatBgImg').src:''), replyMode:_getSelectedReplyMode(), replySpeed:(document.querySelector('input[name="pReplySpeed"]:checked')||{}).value||'fast', replySpeedCustomMin:parseInt(document.getElementById('pReplySpeedCustomMin').value)||0, replySpeedCustomMax:parseInt(document.getElementById('pReplySpeedCustomMax').value)||10, heartVoiceGenerateEnabled:heartVoiceGenerateEnabled, showHeartVoiceInHeader:heartVoiceEnabled, heartVoiceEnabled:heartVoiceEnabled, heartVoiceMode:heartVoiceMode, allowCallTts:document.getElementById('pAllowCallTts').checked };
     personas.push(newP); currentId=newP.id;
   }
   saveData(); renderContactList(); if(currentId) selectPersona(currentId); closeEditor(); renderDiaryTabs();
@@ -32991,6 +33062,9 @@ function applyMetaColors(p) {
   let css = '';
   if (timeColor)   css += ':root { --chat-meta-time-color: ' + timeColor + '; }\n';
   else              css += ':root { --chat-meta-time-color: #bbb; }\n';
+  // Hide timestamp if enabled
+  if (p && p.hideTimestamp) css += '.msg-time-read { display: none !important; }\n';
+  else css += '.msg-time-read { display: flex !important; }\n';
   if (nameColor)   css += ':root { --chat-meta-name-color: ' + nameColor + '; }\n';
   else              css += ':root { --chat-meta-name-color: #999; }\n';
   // read/unread applied via inline data-read-color attr and JS patch below
@@ -36448,7 +36522,7 @@ function tdEnsureUserDareRoom(p, dare) {
       dailyTurns: 0,
       _tdUserRoom: true,
       _tdOwnerPersonaId: String(p.id),
-      tdContext: `这是用户执行真心话大冒险时开启的聊天室。发起这场游戏的角色是 ${p.name}。用户正在完成的大冒险要求是：${dare.instruction}。请让 ${targetName} 的回复自然承接用户发来的内容。`,
+      tdContext: `这是用户执行真心话大冒险时开启的聊天室。发起这场游戏的角色是 ${p.name}（但${p.name}不在这个聊天室里）。【重要】：执行大冒险任务的人是【用户（${userProfile && userProfile.name || '用户'}）】，不是你。用户正在完成的大冒险要求是：${dare.instruction}。你是聊天室里的 ${targetName}，只需自然回应用户发来的消息，完全不知道这是大冒险游戏，把用户发来的内容当作正常消息来回应。绝对不能以为是自己要去执行什么任务。`,
       npcMeta: dare.targetIdentity ? {
         [targetName]: {
           name: targetName,
@@ -36460,7 +36534,7 @@ function tdEnsureUserDareRoom(p, dare) {
     rooms.push(room);
     ccSaveRooms(rooms);
   } else {
-    room.tdContext = `这是用户执行真心话大冒险时开启的聊天室。发起这场游戏的角色是 ${p.name}。用户正在完成的大冒险要求是：${dare.instruction}。请让 ${targetName} 的回复自然承接用户发来的内容。`;
+    room.tdContext = `这是用户执行真心话大冒险时开启的聊天室。发起这场游戏的角色是 ${p.name}（但${p.name}不在这个聊天室里）。【重要】：执行大冒险任务的人是【用户（${userProfile && userProfile.name || '用户'}）】，不是你。用户正在完成的大冒险要求是：${dare.instruction}。你是聊天室里的 ${targetName}，只需自然回应用户发来的消息，完全不知道这是大冒险游戏，把用户发来的内容当作正常消息来回应。绝对不能以为是自己要去执行什么任务。`;
     if (dare.targetIdentity) {
       room.npcMeta = room.npcMeta || {};
       room.npcMeta[targetName] = {
@@ -49422,7 +49496,8 @@ async function regenerateSavedTaskReward() {
       chosen: { category: reward.category, subcategory: reward.subcategory },
       dynamicTitle: reward.title || reward.subcategory || '感情奖励',
       isAutoGenerated: reward.category === '專屬惊喜',
-      p: p
+      p: p,
+      previousContent: reward.content || ''
     },
     _isSavedRewardEdit: true
   };
@@ -49445,7 +49520,7 @@ function deleteCurrentTaskReward() {
   _taskRefreshRewardViews();
 }
 // Internal helper: re-generate reward content from scratch (same params as doClaimReward's generation step)
-async function _rerunRewardGeneration({ rewardCharId, chosen, dynamicTitle, isAutoGenerated, p }) {
+async function _rerunRewardGeneration({ rewardCharId, chosen, dynamicTitle, isAutoGenerated, p, previousContent }) {
   // Show loading state
   document.getElementById('taskRewardPopupContent').innerHTML = '<div class="task-reward-popup-loading"><i class="fas fa-spinner fa-spin" style="margin-right:6px;"></i>正在重新生成…</div>';
   document.getElementById('taskRewardPopupSaveBtn').style.display = 'none';
@@ -49464,7 +49539,8 @@ async function _rerunRewardGeneration({ rewardCharId, chosen, dynamicTitle, isAu
           .filter(r => r.personaId == rewardCharId)
           .map(r => r.title || r.subcategory || '');
         const existingList = existingTitles.length > 0 ? `\n已经生成过的主題（请勿重复）：\n${existingTitles.join('、')}` : '';
-        prompt = `以下是角色「${p.name}」的完整人设：\n${p.persona}\n\n---\n\n🎯 任务：请自創一个有趣、独特的关於「${p.name}」或关於「${p.name}」和「${userProfile.name}」之間的问題，然后以第三人称视角写出${p.name}的回答。${existingList}\n\n📝 要求：\n- 先用一行以【问題】开头写出问題（例如：【问題】${p.name}最害怕什麼？）\n- 然后换行写回答內容\n- 问題要有趣、独特、貼合角色人设，不要太通用\n- 回答以第三人称敘述（用「${p.name}」而非「我」）\n- 回答总长度 120-250 字\n- 內容要完全貼合角色的人设性格，展现角色独有的个性和魅力\n- 要有「活人感」——不是模板化的內容，而是只屬於这个角色的独特故事\n- 用 HTML 格式输出，可适当使用 <p>、<em>、<strong> 等标签排版\n\n直接返回內容，不要加外层标签或引号。`;
+        const prevContentNote = previousContent ? `\n\n⚠️【重新生成要求】以下是上一次生成的内容，这次必须生成完全不同的内容，包括不同的问题角度、不同的事件、不同的细节，不能相似或重复：\n---\n${previousContent.replace(/<[^>]*>/g, '').substring(0, 300)}\n---` : '';
+        prompt = `以下是角色「${p.name}」的完整人设：\n${p.persona}\n\n---\n\n🎯 任务：请自創一个有趣、独特的关於「${p.name}」或关於「${p.name}」和「${userProfile.name}」之間的问題，然后以第三人称视角写出${p.name}的回答。${existingList}${prevContentNote}\n\n📝 要求：\n- 先用一行以【问題】开头写出问題（例如：【问題】${p.name}最害怕什麼？）\n- 然后换行写回答內容\n- 问題要有趣、独特、貼合角色人设，不要太通用\n- 回答以第三人称敘述（用「${p.name}」而非「我」）\n- 回答总长度 120-250 字\n- 內容要完全貼合角色的人设性格，展现角色独有的个性和魅力\n- 要有「活人感」——不是模板化的內容，而是只屬於这个角色的独特故事\n- 用 HTML 格式输出，可适当使用 <p>、<em>、<strong> 等标签排版\n\n直接返回內容，不要加外层标签或引号。`;
       } else {
         const specificTitle = dynamicTitleForPrompt;
         const specificSubcategory = chosen.subcategory;
@@ -49487,7 +49563,8 @@ async function _rerunRewardGeneration({ rewardCharId, chosen, dynamicTitle, isAu
           '角色只对你开放的柔軟一面': `写${p.name}平时藏得很好、但只在${userProfile.name}面前才会展露的柔軟一面。要描述这种柔軟是什麼样子，以及${p.name}为什麼只对${userProfile.name}这样。`
         };
         const brief = subcategoryBriefs[specificSubcategory] || `写关於「${specificTitle}」的內容，完全貼合${p.name}的人设性格。`;
-        prompt = `以下是角色「${p.name}」的完整人设：\n${p.persona}\n\n用戶暱称：${userProfile.name}\n\n---\n\n🎯 这次奖励的主題是：「${specificTitle}」\n\n📋 写作任务：${brief}\n\n📝 格式要求：\n- 以第三人称敘述（用「${p.name}」而非「我」）\n- 总长度 120-250 字\n- 內容必須紧紧围绕「${specificTitle}」这个主題，不要偏离\n- 完全貼合角色的人设性格，展现${p.name}独有的个性\n- 要有「活人感」——具体、有细节、有画面，不是模板化的內容\n- 用 HTML 格式输出，可适当使用 <p>、<em>、<strong> 等标签排版\n- 【强制语言】無論角色人设有何语言设定，奖励內容必須全程使用简体中文\n\n直接返回內容，不要加外层标签、标題或引号。`;
+        const prevNote = previousContent ? `\n\n⚠️【重新生成要求】以下是上一次生成的内容，这次必须生成完全不同的内容——不同的具体事件/细节/场景，不能相似或重复任何段落：\n---\n${previousContent.replace(/<[^>]*>/g, '').substring(0, 300)}\n---` : '';
+        prompt = `以下是角色「${p.name}」的完整人设：\n${p.persona}\n\n用戶暱称：${userProfile.name}\n\n---\n\n🎯 这次奖励的主題是：「${specificTitle}」\n\n📋 写作任务：${brief}${prevNote}\n\n📝 格式要求：\n- 以第三人称敘述（用「${p.name}」而非「我」）\n- 总长度 120-250 字\n- 內容必須紧紧围绕「${specificTitle}」这个主題，不要偏离\n- 完全貼合角色的人设性格，展现${p.name}独有的个性\n- 要有「活人感」——具体、有细节、有画面，不是模板化的內容\n- 用 HTML 格式输出，可适当使用 <p>、<em>、<strong> 等标签排版\n- 【强制语言】無論角色人设有何语言设定，奖励內容必須全程使用简体中文\n\n直接返回內容，不要加外层标签、标題或引号。`;
       }
       const r = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, {
         method: 'POST',
@@ -90950,6 +91027,116 @@ if (document.readyState === 'loading') {
   obs.observe(document.body, { childList: true, subtree: true });
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', injectAllGears);
   else setTimeout(injectAllGears, 120);
+})();
+</script>
+
+<script id="music-mini-bar-drag">
+(function() {
+  'use strict';
+  var bar, isDragging = false, startX, startY, startLeft, startTop, isFloating = false;
+  var SNAP_THRESHOLD = 40; // px from edge to snap back
+
+  function initDrag() {
+    bar = document.getElementById('musicMiniBar');
+    if (!bar) return;
+
+    bar.addEventListener('mousedown', onDragStart, { passive: false });
+    bar.addEventListener('touchstart', onDragStart, { passive: false });
+    document.addEventListener('mousemove', onDragMove, { passive: false });
+    document.addEventListener('touchmove', onDragMove, { passive: false });
+    document.addEventListener('mouseup', onDragEnd);
+    document.addEventListener('touchend', onDragEnd);
+  }
+
+  function getBarControls() {
+    // Buttons inside the bar should not start drag
+    return bar ? bar.querySelectorAll('button, input, select, a') : [];
+  }
+
+  function onDragStart(e) {
+    bar = document.getElementById('musicMiniBar');
+    if (!bar || !bar.classList.contains('visible')) return;
+    var target = e.target;
+    // Don't drag if clicking buttons
+    var controls = getBarControls();
+    for (var i = 0; i < controls.length; i++) {
+      if (controls[i] === target || controls[i].contains(target)) return;
+    }
+    e.preventDefault();
+    isDragging = true;
+    var touch = e.touches ? e.touches[0] : e;
+    startX = touch.clientX;
+    startY = touch.clientY;
+    var rect = bar.getBoundingClientRect();
+    startLeft = rect.left;
+    startTop = rect.top;
+    bar.classList.add('dragging');
+    // Transition to absolute positioning for free movement
+    if (!isFloating) {
+      bar.style.left = startLeft + 'px';
+      bar.style.top = startTop + 'px';
+      bar.style.bottom = 'auto';
+      bar.style.right = 'auto';
+      bar.style.width = rect.width + 'px';
+    }
+  }
+
+  function onDragMove(e) {
+    if (!isDragging) return;
+    e.preventDefault();
+    var touch = e.touches ? e.touches[0] : e;
+    var dx = touch.clientX - startX;
+    var dy = touch.clientY - startY;
+    var newLeft = startLeft + dx;
+    var newTop = startTop + dy;
+    // Clamp to viewport
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var barW = bar.offsetWidth, barH = bar.offsetHeight;
+    newLeft = Math.max(0, Math.min(vw - barW, newLeft));
+    newTop = Math.max(0, Math.min(vh - barH, newTop));
+    bar.style.left = newLeft + 'px';
+    bar.style.top = newTop + 'px';
+  }
+
+  function onDragEnd(e) {
+    if (!isDragging) return;
+    isDragging = false;
+    bar.classList.remove('dragging');
+    var rect = bar.getBoundingClientRect();
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var distBottom = vh - (rect.top + rect.height);
+    var distLeft = rect.left;
+    var distRight = vw - (rect.left + rect.width);
+    var distTop = rect.top;
+    // Snap back to bottom bar if close to bottom
+    if (distBottom < SNAP_THRESHOLD && rect.left < 20) {
+      // Snap back to original full-width bottom bar
+      bar.style.left = '0';
+      bar.style.right = '0';
+      bar.style.top = 'auto';
+      bar.style.bottom = '60px';
+      bar.style.width = '';
+      bar.classList.remove('floating');
+      isFloating = false;
+    } else {
+      // Float
+      bar.classList.add('floating');
+      isFloating = true;
+      // Snap horizontally to nearest edge if very close
+      if (distLeft < 10) bar.style.left = '8px';
+      if (distRight < 10) bar.style.left = (vw - bar.offsetWidth - 8) + 'px';
+      if (distTop < 10) bar.style.top = '8px';
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initDrag);
+  } else {
+    setTimeout(initDrag, 300);
+  }
+  // Re-init after music bar becomes visible
+  var _mmObs = new MutationObserver(function() { if (!bar) initDrag(); });
+  _mmObs.observe(document.body, { childList: true, subtree: false });
 })();
 </script>
 </body>

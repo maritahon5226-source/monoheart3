@@ -29,6 +29,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head><base href="https://d16ilfvy4mv02r.cloudfront.net/workspaces/sh0bDVYUIEw8H1dpwjAJvINuiJ6ETxg0/6c9a375e-adcc-44e2-9ec5-2d1ce63bc50b/files/">
@@ -21242,10 +21243,20 @@ body.editor-modal-open #chatPage .app-back-bar {
           <input type="number" id="pAutoSummaryInterval" min="5" max="200" value="20" style="width:60px;border-bottom:1px solid #aaa;padding:4px;outline:none;font-size:12px;text-align:center;">
           <label style="font-size:10px;color:#666;white-space:nowrap;">轮对话自动总结一次</label>
         </div>
-        <button type="button" id="manualSummaryBtn" onclick="window.manualGenerateSummary && window.manualGenerateSummary()" style="margin-top:10px;width:100%;background:#1a1a1a;color:#fff;border:none;border-radius:8px;padding:10px;font-size:12px;cursor:pointer;font-weight:600;">
-          按最近条数生成总结
-        </button>
-        <p style="font-size:10px;color:#999;margin-top:4px;">点击后 AI 会读取所有对话内容，生成一条综合记忆并永久保存。</p>
+        <!-- 日期范围总结 -->
+        <div style="margin-top:10px;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+            <label style="font-size:10px;color:#666;white-space:nowrap;">开始日期</label>
+            <input type="date" id="pSummaryDateStart" style="flex:1;border:1px solid #ddd;border-radius:6px;padding:4px 6px;font-size:11px;outline:none;color:#333;">
+            <label style="font-size:10px;color:#666;white-space:nowrap;">结束日期</label>
+            <input type="date" id="pSummaryDateEnd" style="flex:1;border:1px solid #ddd;border-radius:6px;padding:4px 6px;font-size:11px;outline:none;color:#333;">
+          </div>
+          <p style="font-size:10px;color:#999;margin-bottom:6px;">留空则总结全部记录；只填开始日期则总结该日期之后；只填结束日期则总结该日期之前。</p>
+          <button type="button" id="manualSummaryBtn" onclick="window.manualGenerateSummary && window.manualGenerateSummary()" style="width:100%;background:#1a1a1a;color:#fff;border:none;border-radius:8px;padding:10px;font-size:12px;cursor:pointer;font-weight:600;">
+            按日期范围生成总结
+          </button>
+        </div>
+        <p style="font-size:10px;color:#999;margin-top:4px;">AI 会读取选定日期范围内的对话内容，生成一条综合记忆并永久保存。</p>
       </div>
       <!-- 手动添加记忆 -->
       <div style="display:flex;gap:6px;margin-bottom:10px;">
@@ -55835,9 +55846,20 @@ async function _generateOfflineResponse(session) {
       : _offlineState.settings.saveToMemory);
     if (!isIfSession) {
       // Regular offline sessions always have access to chat history for context
+      // Include more messages (40 instead of 20) and also inject memoryCore online summaries
       try {
-        var hist = p.history.slice(-20).filter(function(m) { return m.content && !m._transferContext && !m._hiddenContext; });
-        recentChat = hist.map(function(m) { return (m.role==='user'?uName:p.name) + '：' + m.content.slice(0,100); }).join('\n');
+        var hist = p.history.slice(-40).filter(function(m) { return m.content && !m._transferContext && !m._hiddenContext; });
+        recentChat = hist.map(function(m) { return (m.role==='user'?uName:p.name) + '：' + m.content.slice(0,150); }).join('\n');
+        // Also append online memoryCore summaries (non-offline ones) so offline story has full relationship memory
+        var onlineCoreMemories = (p.memoryCore || []).filter(function(item) {
+          return item && !item._offlineMemoryType && !(item.source && item.source.indexOf('线下') >= 0);
+        }).slice(-5).map(function(item, i) {
+          var c = typeof item === 'string' ? item : (item.content || '');
+          return '【线上记忆' + (i+1) + '】' + c.substring(0, 300);
+        }).join('\n');
+        if (onlineCoreMemories) {
+          recentChat = onlineCoreMemories + '\n\n【最近线上对话】\n' + recentChat;
+        }
       } catch(e) {}
     }
     // Build full session context (all entries of this session, not just last 8)
@@ -55908,7 +55930,7 @@ async function _generateOfflineResponse(session) {
           offlineHeartVoiceRule,
           '文风要求：' + styleNote + '。这条要求优先级很高，措辞、句式、节奏、情绪推进都必须明显体现这个文风。',
           wordRule,
-          '完整性要求：这一轮内容必须停在完整句子、完整动作或完整场景节点上，绝对不能半句话、半个动作、半段对话突然断掉。',
+          '完整性要求：这一轮内容必须在目标字数附近完整收束，停在完整句子、完整动作或完整场景节点上。绝对不能半句话、半个动作、半段对话突然断掉。宁可略短一点也必须有完整结尾。',
           '如果当前事件已经表达完整，就在目标字数附近自然结束，不要自行续写到下一大段剧情。',
           (typeof _monoGetOfflinePovHardRule === 'function')
             ? _monoGetOfflinePovHardRule(true)
@@ -55932,7 +55954,7 @@ async function _generateOfflineResponse(session) {
             : '模式：长篇敘事——用第三人称或混合视角，详细描写场景、氛围、角色的动作、表情、心理感受。',
           '文风要求：' + styleNote + '。这条要求优先级很高，措辞、句式密度、镜头感、情绪纹理都必须尽量贴近这个文风。',
           wordRule,
-          '完整性要求：这一轮必须收束在完整句子、完整动作或完整场景节点上，宁可略短一点，也不能在情绪或动作正展开时突然截停。',
+          '完整性要求：这一轮必须在目标字数附近完整收束，停在完整句子、完整动作或完整场景节点上。宁可略短一点，也不能在情绪或动作正展开时突然截停，必须有完整结尾。',
           '如果这一轮已经写到目标字数附近，就在当前场景内自然收束，不要继续扩写新的大段落。',
           (typeof _monoGetOfflinePovHardRule === 'function')
             ? _monoGetOfflinePovHardRule(false)
@@ -56016,42 +56038,29 @@ async function _generateOfflineResponse(session) {
     }
     var requestMessages = messages.slice();
     var reply = '';
-    var maxContinuationRounds = isShort ? 1 : 2;
-    for (var contRound = 0; contRound <= maxContinuationRounds; contRound++) {
-      var r = await fetch(api.url.replace(/\/$/, '') + '/chat/completions', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + api.key, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: api.model,
-          messages: requestMessages,
-          temperature: p.temperature || 1.1,
-          max_tokens: contRound === 0
-            ? offlineMaxTokens
-            : Math.max(
-                isShort ? 120 : 180,
-                Math.min(offlineMaxTokens, Math.floor(offlineMaxTokens * 0.65))
-              )
-        })
-      });
-      if (!r.ok) {
-        var errText = '';
-        try { errText = await r.text(); } catch(e2) {}
-        throw new Error('API 错误 ' + r.status + (errText ? '：' + errText.slice(0, 100) : ''));
-      }
-      var data = await r.json();
-      if (!data.choices || !data.choices[0]) throw new Error('API 返回格式異常');
-      var piece = (((data.choices[0] || {}).message || {}).content || '').trim();
-      if (piece) {
-        reply = _mergeOfflineReplyPiece(reply, piece);
-      }
-      var finishReason = String((data.choices[0] || {}).finish_reason || '').toLowerCase();
-      var looksCutOff = _offlineResponseLooksCutOff(reply, piece, finishReason);
-      if (!looksCutOff) break;
-      requestMessages = messages.concat([
-        { role: 'assistant', content: reply },
-        { role: 'user', content: '（上一段线下剧情仍未真正写完。请严格从刚才停住的位置继续：不要重复已经写过的句子，不要回顾总结，不要重新起头；保持同一场景、同一动作逻辑、同一情绪流向，继续写到这一段以完整句子和完整场景节点自然收束为止。）' }
-      ]);
+    // 单次API调用：提高 max_tokens 上限，确保内容完整不截断
+    // 在 system prompt 中已要求完整收束，不再做多轮续写（避免截断+续写造成重复）
+    var singleCallMaxTokens = isShort
+      ? Math.max(600, Math.min(1400, offlineMaxTokens * 2))
+      : Math.max(900, Math.min(2800, offlineMaxTokens * 2));
+    var r = await fetch(api.url.replace(/\/$/, '') + '/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + api.key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: api.model,
+        messages: requestMessages,
+        temperature: p.temperature || 1.1,
+        max_tokens: singleCallMaxTokens
+      })
+    });
+    if (!r.ok) {
+      var errText = '';
+      try { errText = await r.text(); } catch(e2) {}
+      throw new Error('API 错误 ' + r.status + (errText ? '：' + errText.slice(0, 100) : ''));
     }
+    var data = await r.json();
+    if (!data.choices || !data.choices[0]) throw new Error('API 返回格式異常');
+    reply = (((data.choices[0] || {}).message || {}).content || '').trim();
     reply = reply.trim();
     reply = await _rewriteOfflineReplyToTargetPov(reply, p, api, isShort);
     if (_offlineState.settings.heartVoicePopup) {
@@ -88486,8 +88495,26 @@ generateAutoSummary = async function(p, isManual, opts) {
   try {
     let targetMsgs;
     const recentCount = parseInt(opts.recentCount || '0', 10) || 0;
+    const dateStart = opts.dateStart ? opts.dateStart.trim() : '';
+    const dateEnd = opts.dateEnd ? opts.dateEnd.trim() : '';
     if (isManual) {
-      targetMsgs = recentCount > 0 ? p.history.slice(-recentCount) : p.history.slice();
+      if (dateStart || dateEnd) {
+        // 按日期范围筛选
+        const startTs = dateStart ? new Date(dateStart + 'T00:00:00').getTime() : 0;
+        const endTs = dateEnd ? new Date(dateEnd + 'T23:59:59').getTime() : Infinity;
+        targetMsgs = p.history.filter(function(m) {
+          const ts = m.timestamp || 0;
+          return ts >= startTs && ts <= endTs;
+        });
+        if (targetMsgs.length === 0) {
+          alert('所选日期范围内没有聊天记录，请重新选择。');
+          return;
+        }
+      } else if (recentCount > 0) {
+        targetMsgs = p.history.slice(-recentCount);
+      } else {
+        targetMsgs = p.history.slice();
+      }
     } else {
       const lastSummary = p.memoryCore && p.memoryCore.length ? p.memoryCore[p.memoryCore.length - 1] : null;
       const interval = p.autoSummaryInterval || 20;
@@ -88507,7 +88534,12 @@ generateAutoSummary = async function(p, isManual, opts) {
     }
     const msgCount = targetMsgs.length;
     const now = new Date();
-    const dateStr = now.getFullYear() + '/' + String(now.getMonth() + 1).padStart(2, '0') + '/' + String(now.getDate()).padStart(2, '0');
+    // 日期标签：有范围时标注范围
+    let dateLabel = now.getFullYear() + '/' + String(now.getMonth() + 1).padStart(2, '0') + '/' + String(now.getDate()).padStart(2, '0');
+    if (dateStart || dateEnd) {
+      dateLabel = (dateStart || '起始') + ' ~ ' + (dateEnd || '今日');
+    }
+    const dateStr = dateLabel;
     const existingSummaries = (p.memoryCore || []).slice(-5).map(function(item, i) {
       const c = typeof item === 'string' ? item : (item.content || '');
       return '第' + (i + 1) + '段已有总结：' + c.substring(0, 150);
@@ -88519,8 +88551,10 @@ generateAutoSummary = async function(p, isManual, opts) {
     else if (msgCount <= 60) lengthGuide = '2-3个自然段，约200-350字，涵盖主要情节和情感变化';
     else lengthGuide = '3-4个自然段，约350-500字，完整覆盖重要事件、情感转折、约定承诺';
     const offlineBlock = offlineLines.length ? '\n\n【补充的近期线下剧情记忆（也属于真实经历，若与线上内容连续请一起归纳）】\n' + offlineLines.join('\n') : '';
+    const dateRangeNote = (dateStart || dateEnd) ? '\n\n【本次总结范围】' + (dateStart ? '从 ' + dateStart : '') + (dateEnd ? ' 到 ' + dateEnd : '') + ' 的聊天记录（共' + msgCount + '条）' : '';
     const summaryPrompt = '你是「' + p.name + '」这个角色的记忆整理助手。请将以下内容真正总结成角色视角的记忆，以自然段落书写。'
       + alreadySummarizedNote
+      + dateRangeNote
       + '\n\n【线上聊天内容（共' + msgCount + '条）】\n' + (chatLines || '（暂无）')
       + offlineBlock
       + '\n\n【总结要求】\n'
@@ -88542,14 +88576,22 @@ generateAutoSummary = async function(p, isManual, opts) {
     const summaryText = _extractAssistantMessageContent(data).trim();
     if (!summaryText) throw new Error('AI 返回内容为空');
     if (!p.memoryCore) p.memoryCore = [];
-    p.memoryCore.push({ content: summaryText, date: dateStr, auto: !isManual, source: isManual ? ('手动总结' + (recentCount > 0 ? '（最近' + recentCount + '条）' : '')) : ('每' + (p.autoSummaryInterval || 20) + '轮自动总结') });
+    let sourceLabel;
+    if (dateStart || dateEnd) {
+      sourceLabel = '日期总结（' + (dateStart || '起始') + '~' + (dateEnd || '今日') + '）';
+    } else if (recentCount > 0) {
+      sourceLabel = '手动总结（最近' + recentCount + '条）';
+    } else {
+      sourceLabel = isManual ? '手动总结' : ('每' + (p.autoSummaryInterval || 20) + '轮自动总结');
+    }
+    p.memoryCore.push({ content: summaryText, date: dateStr, auto: !isManual, source: sourceLabel });
     saveData();
     if (currentId == p.id && typeof renderMemoryCoreList === 'function') renderMemoryCoreList(p.memoryCore);
     if (isManual) alert('总结完成，已写入角色记忆。');
   } catch(e) {
     if (isManual) alert('生成失败：' + e.message);
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '立即生成总结'; }
+    if (btn) { btn.disabled = false; btn.textContent = '按日期范围生成总结'; }
   }
 };
 manualGenerateSummary = async function() {
@@ -88557,10 +88599,12 @@ manualGenerateSummary = async function() {
   const p = personas.find(function(x) { return x.id == currentId; });
   if (!p) return;
   if (!p.history || p.history.length === 0) { alert('该角色还没有任何对话记录。'); return; }
-  const input = prompt('想从最近多少条聊天室消息开始总结？\n输入 0 或留空 = 总结全部聊天室记录。', String(p.autoSummaryInterval || 20));
-  if (input === null) return;
-  const recentCount = Math.max(0, parseInt(String(input).trim() || '0', 10) || 0);
-  await generateAutoSummary(p, true, { recentCount: recentCount });
+  // 读取日期范围输入
+  const startEl = document.getElementById('pSummaryDateStart');
+  const endEl = document.getElementById('pSummaryDateEnd');
+  const dateStart = startEl ? startEl.value : '';
+  const dateEnd = endEl ? endEl.value : '';
+  await generateAutoSummary(p, true, { dateStart: dateStart, dateEnd: dateEnd });
 };
 
 function _monoBuildDiaryPrompt(p, upName, relCtx) {
@@ -89980,11 +90024,13 @@ if (document.readyState === 'loading') {
     const persona = monoGetCurrentPersona();
     if (!persona) return alert('请先选择一个角色');
     if (!Array.isArray(persona.history) || !persona.history.length) return alert('该角色还没有任何对话记录。');
-    const input = prompt('想从最近多少条聊天室消息开始总结？\n输入 0 或留空 = 总结全部聊天室记录。', String(persona.autoSummaryInterval || 20));
-    if (input === null) return;
-    const recentCount = Math.max(0, parseInt(String(input).trim() || '0', 10) || 0);
+    // 读取日期范围输入
+    const startEl = document.getElementById('pSummaryDateStart');
+    const endEl = document.getElementById('pSummaryDateEnd');
+    const dateStart = startEl ? startEl.value : '';
+    const dateEnd = endEl ? endEl.value : '';
     if (typeof window.generateAutoSummary === 'function') {
-      await window.generateAutoSummary(persona, true, { recentCount: recentCount });
+      await window.generateAutoSummary(persona, true, { dateStart: dateStart, dateEnd: dateEnd });
     }
   };
 

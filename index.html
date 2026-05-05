@@ -30,6 +30,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head><base href="https://d16ilfvy4mv02r.cloudfront.net/workspaces/sh0bDVYUIEw8H1dpwjAJvINuiJ6ETxg0/6c9a375e-adcc-44e2-9ec5-2d1ce63bc50b/files/">
@@ -75,6 +76,38 @@ const STATIC_ASSETS = ['./', './index.html'];
 const BG_DB_NAME = 'MonoHeartSW';
 const BG_DB_VERSION = 1;
 const BG_STORE = 'config';
+const SW_CHANNEL_NAME = 'mono-sw-sync';
+let _swBroadcastChannel = null;
+function swGetBroadcastChannel() {
+  if (_swBroadcastChannel) return _swBroadcastChannel;
+  try { _swBroadcastChannel = new BroadcastChannel(SW_CHANNEL_NAME); } catch (e) {}
+  return _swBroadcastChannel;
+}
+async function swPostToClients(message) {
+  try {
+    const allClients = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+    allClients.forEach(c => {
+      try { c.postMessage(message); } catch (e) {}
+    });
+  } catch (e) {}
+}
+function swEmit(type, payload) {
+  const packet = Object.assign({ type: type, ts: Date.now() }, payload || {});
+  try {
+    const bc = swGetBroadcastChannel();
+    if (bc) bc.postMessage(packet);
+  } catch (e) {}
+  swPostToClients(packet);
+}
+function swTouchAlive(reason) {
+  swEmit('SW_PONG', { reason: reason || 'heartbeat' });
+}
+function swNotifyPendingSync(personaId) {
+  swEmit('SW_PENDING_MESSAGES', { personaId: personaId || null });
+}
+function swBuildNotifTag(kind, personaId, ts) {
+  return 'mono-' + String(kind || 'msg') + '-' + String(personaId || 'global') + '-' + String(ts || Date.now());
+}
 function swOpenDB() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(BG_DB_NAME, BG_DB_VERSION);
@@ -103,27 +136,47 @@ function swIdbSet(db, store, key, value) {
     req.onerror = () => reject(req.error);
   });
 }
-function swNormalizeBaseUrl(rawUrl) {
+function swUniq(arr) {
+  return Array.from(new Set((arr || []).filter(Boolean)));
+}
+function swStripApiKnownSuffix(rawUrl) {
   return String(rawUrl || '').trim().replace(/\/+$/, '')
     .replace(/\/chat\/completions$/i, '')
     .replace(/\/completions$/i, '')
-    .replace(/\/models$/i, '');
+    .replace(/\/responses$/i, '')
+    .replace(/\/messages$/i, '')
+    .replace(/\/models$/i, '')
+    .replace(/\/api\/chat$/i, '')
+    .replace(/:streamGenerateContent$/i, '')
+    .replace(/:generateContent$/i, '');
 }
-function swBuildChatCandidates(rawUrl) {
-  const raw = String(rawUrl || '').trim().replace(/\/+$/, '');
-  const direct = /\/chat\/completions$/i.test(raw) ? [raw] : [];
-  const base = swNormalizeBaseUrl(raw);
-  const candidates = [base];
-  if (base && /\/v\d+$/i.test(base)) candidates.push(base.replace(/\/v\d+$/i, ''));
-  else if (base) candidates.push(base + '/v1');
-  return Array.from(new Set(direct.concat(candidates.filter(Boolean).map(url => url.replace(/\/+$/, '') + '/chat/completions'))));
+function swNormalizeBaseUrl(rawUrl) {
+  return swStripApiKnownSuffix(rawUrl);
+}
+function swBuildBaseCandidates(rawUrl) {
+  const base = swNormalizeBaseUrl(rawUrl);
+  if (!base) return [];
+  const out = [base];
+  if (/\/v\d+(?:beta\d+)?$/i.test(base)) out.push(base.replace(/\/v\d+(?:beta\d+)?$/i, ''));
+  else out.push(base + '/v1');
+  return swUniq(out.map(function(item) { return item.replace(/\/+$/, ''); }));
 }
 function swDetectProvider(url, model) {
   const u = String(url || '').toLowerCase();
   const m = String(model || '').toLowerCase();
-  if (u.includes('anthropic.com') || m.startsWith('claude-')) return 'anthropic';
-  if (u.includes('googleapis.com') || u.includes('generativelanguage') || m.startsWith('gemini')) return 'gemini';
-  if (u.includes('openai.azure.com') || /\.azure\.\w+/.test(u)) return 'azure';
+  if (u.includes('anthropic.com') || m.indexOf('claude-') === 0) return 'anthropic';
+  if (u.includes('googleapis.com') || u.includes('generativelanguage') || m.indexOf('gemini') === 0) return 'gemini';
+  if (u.includes('openai.azure.com') || /\.azure\./.test(u)) return 'azure';
+  if (u.includes('ollama') || u.includes(':11434')) return 'ollama';
+  if (u.includes('api.openai.com')) return 'openai';
+  if (u.includes('openrouter.ai')) return 'openrouter';
+  if (u.includes('huggingface.co') || u.includes('hf.space')) return 'huggingface';
+  if (u.includes('groq.com')) return 'groq';
+  if (u.includes('together.ai')) return 'together';
+  if (u.includes('mistral.ai')) return 'mistral';
+  if (u.includes('x.ai')) return 'xai';
+  if (u.includes('deepseek.com')) return 'deepseek';
+  if (u.includes('cohere.com')) return 'cohere';
   return 'openai_compat';
 }
 function swBuildAuthVariants(url, key, model) {
@@ -132,7 +185,7 @@ function swBuildAuthVariants(url, key, model) {
   const provider = swDetectProvider(url, model);
   if (provider === 'anthropic') {
     return [
-      { headers: { 'x-api-key': realKey, 'anthropic-version': '2023-06-01' }, urlSuffix: '' },
+      { headers: { 'x-api-key': realKey, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'messages-2023-12-15' }, urlSuffix: '' },
       { headers: { 'Authorization': 'Bearer ' + realKey }, urlSuffix: '' }
     ];
   }
@@ -144,47 +197,201 @@ function swBuildAuthVariants(url, key, model) {
   }
   if (provider === 'gemini') {
     return [
+      { headers: { 'Authorization': 'Bearer ' + realKey }, urlSuffix: '' },
       { headers: {}, urlSuffix: '?key=' + encodeURIComponent(realKey) },
-      { headers: { 'Authorization': 'Bearer ' + realKey }, urlSuffix: '' }
+      { headers: { 'x-goog-api-key': realKey }, urlSuffix: '' }
     ];
   }
   return [
     { headers: { 'Authorization': 'Bearer ' + realKey }, urlSuffix: '' },
-    { headers: { 'x-api-key': realKey }, urlSuffix: '' }
+    { headers: { 'x-api-key': realKey }, urlSuffix: '' },
+    { headers: { 'api-key': realKey }, urlSuffix: '' }
   ];
+}
+function swContentToText(content) {
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) {
+    return content.map(function(part) {
+      if (typeof part === 'string') return part;
+      if (!part || typeof part !== 'object') return '';
+      if (typeof part.text === 'string') return part.text;
+      if (typeof part.content === 'string') return part.content;
+      return '';
+    }).join('').trim();
+  }
+  if (content && typeof content === 'object') {
+    if (typeof content.text === 'string') return content.text.trim();
+    if (typeof content.content === 'string') return content.content.trim();
+  }
+  return '';
 }
 function swExtractAssistantText(payload) {
   try {
-    const content = payload && payload.choices && payload.choices[0] && payload.choices[0].message && payload.choices[0].message.content;
-    if (typeof content === 'string') return content;
-    if (Array.isArray(content)) return content.map(part => typeof part === 'string' ? part : ((part && part.text) || '')).join('').trim();
-    if (content && typeof content.text === 'string') return content.text.trim();
+    if (!payload || typeof payload !== 'object') return '';
+    if (typeof payload.output_text === 'string' && payload.output_text.trim()) return payload.output_text.trim();
+    if (payload.message && typeof payload.message.content === 'string') return payload.message.content.trim();
+    if (typeof payload.response === 'string' && payload.response.trim()) return payload.response.trim();
+    if (typeof payload.text === 'string' && payload.text.trim()) return payload.text.trim();
+    if (payload.choices && payload.choices[0]) {
+      const msg = payload.choices[0].message;
+      const txt = swContentToText(msg && msg.content);
+      if (txt) return txt;
+      if (typeof payload.choices[0].text === 'string') return payload.choices[0].text.trim();
+    }
+    if (Array.isArray(payload.content)) {
+      const txt = payload.content.map(function(item) { return item && typeof item.text === 'string' ? item.text : ''; }).join('').trim();
+      if (txt) return txt;
+    }
+    if (Array.isArray(payload.candidates) && payload.candidates[0] && payload.candidates[0].content && Array.isArray(payload.candidates[0].content.parts)) {
+      const txt = payload.candidates[0].content.parts.map(function(part) { return part && typeof part.text === 'string' ? part.text : ''; }).join('').trim();
+      if (txt) return txt;
+    }
+    if (Array.isArray(payload.output)) {
+      const txt = payload.output.map(function(item) {
+        if (!item || !Array.isArray(item.content)) return '';
+        return item.content.map(function(part) { return part && typeof part.text === 'string' ? part.text : ''; }).join('');
+      }).join('').trim();
+      if (txt) return txt;
+    }
+    if (Array.isArray(payload.generations) && payload.generations[0] && typeof payload.generations[0].text === 'string') {
+      return payload.generations[0].text.trim();
+    }
   } catch (e) {}
   return '';
 }
+function swBuildEndpointVariants(rawUrl, model) {
+  const raw = String(rawUrl || '').trim().replace(/\/+$/, '');
+  const provider = swDetectProvider(rawUrl, model);
+  const variants = [];
+  const add = function(kind, url) {
+    if (url) variants.push({ kind: kind, url: url.replace(/\/+$/, '') });
+  };
+  if (/\/chat\/completions(?:\?|$)/i.test(raw)) add('openai_chat', raw);
+  if (/\/responses(?:\?|$)/i.test(raw)) add('openai_responses', raw);
+  if (/\/messages(?:\?|$)/i.test(raw)) add('anthropic_messages', raw);
+  if (/\/api\/chat(?:\?|$)/i.test(raw)) add('ollama_chat', raw);
+  if (/:generateContent(?:\?|$)/i.test(raw) || /:streamGenerateContent(?:\?|$)/i.test(raw)) add('gemini_native', raw.replace(/:streamGenerateContent/i, ':generateContent'));
+  swBuildBaseCandidates(raw).forEach(function(base) {
+    add('openai_chat', base + '/chat/completions');
+    add('openai_responses', base + '/responses');
+    if (provider === 'anthropic' || provider === 'openrouter') add('anthropic_messages', base + '/messages');
+    if (provider === 'ollama') add('ollama_chat', base + '/api/chat');
+    if ((provider === 'gemini' || String(model || '').toLowerCase().indexOf('gemini') === 0) && model && model !== '__auto__') {
+      add('gemini_native', base + '/models/' + encodeURIComponent(model) + ':generateContent');
+    }
+  });
+  return swUniq(variants.map(function(item) { return item.kind + '::' + item.url; })).map(function(key) {
+    const idx = key.indexOf('::');
+    return { kind: key.slice(0, idx), url: key.slice(idx + 2) };
+  });
+}
+function swMessagesToInput(messages) {
+  return (messages || []).map(function(msg) {
+    return { role: msg && msg.role ? msg.role : 'user', content: [{ type: 'input_text', text: String((msg && msg.content) || '') }] };
+  });
+}
+function swMessagesToAnthropic(messages) {
+  const out = [];
+  (messages || []).forEach(function(msg) {
+    if (!msg) return;
+    if (msg.role === 'system') return;
+    out.push({ role: msg.role === 'assistant' ? 'assistant' : 'user', content: String(msg.content || '') });
+  });
+  return out.length ? out : [{ role: 'user', content: 'Hi' }];
+}
+function swMessagesToGemini(messages) {
+  const out = [];
+  (messages || []).forEach(function(msg) {
+    if (!msg || msg.role === 'system') return;
+    out.push({ role: msg.role === 'assistant' ? 'model' : 'user', parts: [{ text: String(msg.content || '') }] });
+  });
+  return out.length ? out : [{ role: 'user', parts: [{ text: 'Hi' }] }];
+}
+function swBuildRequestBodies(kind, model, messages) {
+  const modelId = model && model !== '__auto__' ? String(model).trim() : '';
+  const bodies = [];
+  if (kind === 'openai_chat') {
+    const base = { messages: messages || [], stream: false, temperature: 1.0, max_tokens: 500 };
+    if (modelId) base.model = modelId;
+    bodies.push(base);
+    const minimal = { messages: messages || [], stream: false };
+    if (modelId) minimal.model = modelId;
+    bodies.push(minimal);
+  } else if (kind === 'openai_responses') {
+    const base = { input: swMessagesToInput(messages), temperature: 1.0, max_output_tokens: 500 };
+    if (modelId) base.model = modelId;
+    bodies.push(base);
+    const minimal = { input: swMessagesToInput(messages) };
+    if (modelId) minimal.model = modelId;
+    bodies.push(minimal);
+  } else if (kind === 'anthropic_messages') {
+    if (!modelId) return [];
+    const systemText = (messages || []).filter(function(msg) { return msg && msg.role === 'system'; }).map(function(msg) { return String(msg.content || ''); }).join('\n').trim();
+    const body = { model: modelId, max_tokens: 500, messages: swMessagesToAnthropic(messages) };
+    if (systemText) body.system = systemText;
+    bodies.push(body);
+  } else if (kind === 'gemini_native') {
+    const systemText = (messages || []).filter(function(msg) { return msg && msg.role === 'system'; }).map(function(msg) { return String(msg.content || ''); }).join('\n').trim();
+    const body = { contents: swMessagesToGemini(messages), generationConfig: { temperature: 1.0, maxOutputTokens: 500 } };
+    if (systemText) body.systemInstruction = { parts: [{ text: systemText }] };
+    bodies.push(body);
+  } else if (kind === 'ollama_chat') {
+    const body = { messages: messages || [], stream: false, options: { temperature: 1.0, num_predict: 500 } };
+    if (modelId) body.model = modelId;
+    bodies.push(body);
+  }
+  return bodies;
+}
+function swJoinUrl(url, suffix) {
+  if (!suffix) return url;
+  return url + (url.indexOf('?') >= 0 ? '&' : suffix.charAt(0) === '?' ? '' : '?') + suffix.replace(/^\?/, '');
+}
+async function swReadEventStream(res) {
+  const text = await res.text();
+  let out = '';
+  text.split('\n').forEach(function(line) {
+    if (!/^data:/i.test(line) || /\[DONE\]/i.test(line)) return;
+    try {
+      const payload = JSON.parse(line.replace(/^data:\s*/i, ''));
+      out += swExtractAssistantText(payload) || '';
+      if (payload && payload.choices && payload.choices[0] && payload.choices[0].delta && typeof payload.choices[0].delta.content === 'string') {
+        out += payload.choices[0].delta.content;
+      }
+    } catch (e) {}
+  });
+  return out.trim();
+}
 async function swChatCompletion(rawUrl, key, model, messages) {
-  const endpoints = swBuildChatCandidates(rawUrl);
+  const endpoints = swBuildEndpointVariants(rawUrl, model);
   const authVariants = swBuildAuthVariants(rawUrl, key, model);
   for (const endpoint of endpoints) {
+    const bodies = swBuildRequestBodies(endpoint.kind, model, messages);
+    if (!bodies.length) continue;
     for (const auth of authVariants) {
-      const requestBody = { messages: messages, temperature: 1.0, max_tokens: 200 };
-      if (model && model !== '__auto__') requestBody.model = model;
-      try {
-        const res = await fetch(endpoint + auth.urlSuffix, {
-          method: 'POST',
-          headers: Object.assign({ 'Content-Type': 'application/json' }, auth.headers),
-          body: JSON.stringify(requestBody)
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const text = swExtractAssistantText(data);
-          if (text) return text;
+      for (const requestBody of bodies) {
+        try {
+          const res = await fetch(swJoinUrl(endpoint.url, auth.urlSuffix), {
+            method: 'POST',
+            headers: Object.assign({ 'Content-Type': 'application/json' }, auth.headers),
+            body: JSON.stringify(requestBody)
+          });
+          if (res.ok) {
+            const ct = String(res.headers.get('content-type') || '').toLowerCase();
+            if (ct.indexOf('text/event-stream') >= 0) {
+              const sseText = await swReadEventStream(res);
+              if (sseText) return sseText;
+            } else {
+              const data = await res.json().catch(function() { return null; });
+              const text = swExtractAssistantText(data);
+              if (text) return text;
+            }
+          }
+          if (res.status === 429) return '';
+          if (res.status === 401 || res.status === 403) break;
+          if (res.status === 404 || res.status === 405 || res.status === 422 || res.status === 503) continue;
+        } catch (e) {
+          continue;
         }
-        if (res.status === 429) return '';
-        if (res.status === 401 || res.status === 403) continue;
-        if (res.status === 404 || res.status === 503) break;
-      } catch (e) {
-        break;
       }
     }
   }
@@ -192,18 +399,23 @@ async function swChatCompletion(rawUrl, key, model, messages) {
 }
 async function bgGenerateAndNotify() {
   try {
+    swTouchAlive('bgGenerateAndNotify:start');
     const db = await swOpenDB();
     const apiCfg = await swIdbGet(db, BG_STORE, 'apiConfig');
     const personaList = await swIdbGet(db, BG_STORE, 'bgPersonas');
     if (!apiCfg || !apiCfg.url || !apiCfg.key || !personaList) return;
+    // 只有当页面完全可见时才跳过（由前台 triggerAutoMessage 负责）
+    // 页面隐藏/后台时 SW 接管，确保消息不会因为页面不可见而中断
     const allClients = await clients.matchAll({ type: 'window', includeUncontrolled: true });
     const hasVisibleClient = allClients.some(c => c.visibilityState === 'visible');
-    if (hasVisibleClient) return;
+    // 不再直接 return：即使有客户端存在，只要没有完全可见的窗口就继续执行
     for (const p of personaList) {
       if (!p.autoMsg) continue;
       if (p.offlineActive) continue;
-      const minMs = Math.max(5, p.autoMsgMinInterval || 60) * 60 * 1000;
-      const maxMs = Math.max(minMs, (p.autoMsgMaxInterval || 120) * 60 * 1000);
+      const minMinutes = (p.autoMsgMinInterval == null) ? 60 : Math.max(0, Number(p.autoMsgMinInterval) || 0);
+      const maxMinutes = (p.autoMsgMaxInterval == null) ? 120 : Math.max(minMinutes, Number(p.autoMsgMaxInterval) || 0);
+      const minMs = minMinutes * 60 * 1000;
+      const maxMs = maxMinutes * 60 * 1000;
       const lastAutoTime = Number(p.lastAutoMsgTime || 0) || 0;
       const lastUserTime = Number(p.lastUserMsgTime || 0) || 0;
       const anchorTime = Math.max(lastAutoTime, lastUserTime);
@@ -238,25 +450,63 @@ async function bgGenerateAndNotify() {
         // Schedule next random interval for this persona
         p.nextAutoMsgDelay = minMs + Math.random() * (maxMs - minMs);
         await swIdbSet(db, BG_STORE, 'bgPersonas', personaList);
+        swNotifyPendingSync(p.id);
+        const notifTs = Date.now();
         await self.registration.showNotification('Mono Heart · ' + p.name, {
           body: parts[0].substring(0, 80),
           icon: p.avatar || undefined,
-          tag: 'mono-bg-' + p.id,
+          tag: swBuildNotifTag('bg', p.id, notifTs),
           renotify: true,
-          data: { personaId: p.id, type: 'bg_message' }
+          data: { personaId: p.id, type: 'bg_message', notifTs: notifTs, threadTag: 'mono-bg-' + p.id }
         });
+        // 通知页面端立即同步新消息
+        swEmit('SW_AUTO_MSG_DONE', { personaId: p.id });
       } catch(e) {}
     }
   } catch(e) {}
 }
+// ── SW 内部自驱动调度器 ──────────────────────────────────────────
+// SW 激活后自动启动内部定时循环，不依赖页面端 BG_CHECK
+// 利用 waitUntil + setTimeout 链延长 SW 生命周期并周期触发消息生成
+const SW_SELF_DRIVE_INTERVAL_MS = 10 * 1000;
+var _swSelfScheduled = false;
+function _swSelfSchedule(intervalMs) {
+  if (_swSelfScheduled) return;
+  _swSelfScheduled = true;
+  function _tick() {
+    self.registration.active; // 保持引用
+    // 触发一次消息生成
+    var p = bgGenerateAndNotify();
+    // 安排下次执行（链式 waitUntil 延长 SW 生命）
+    p.then(function() {
+      return new Promise(function(resolve) {
+        setTimeout(function() {
+          // 重置标志以允许重新启动（如果需要的话）
+          resolve();
+        }, intervalMs);
+      });
+    }).then(function() {
+      _tick(); // 递归触发下次
+    }).catch(function() {
+      // 发生错误也继续尝试
+      setTimeout(_tick, intervalMs);
+    });
+  }
+  // 延迟 10s 后开始第一次（等 SW 完全激活并收到配置）
+  setTimeout(_tick, 10000);
+}
+
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(STATIC_ASSETS)).catch(() => {}));
   self.skipWaiting();
 });
 self.addEventListener('activate', e => {
+  // 激活后立即启动 SW 内部自驱动调度器（每10秒检查一次是否需要发消息）
+  _swSelfSchedule(SW_SELF_DRIVE_INTERVAL_MS);
   e.waitUntil(
     caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
     .then(() => self.clients.claim())
+    .then(() => { swTouchAlive('activate'); })
   );
 });
 self.addEventListener('fetch', e => {
@@ -267,6 +517,7 @@ self.addEventListener('fetch', e => {
 });
 self.addEventListener('message', e => {
   if (!e.data) return;
+  swTouchAlive('message');
   if (e.data.type === 'SHOW_NOTIFICATION') {
     const { title, body, icon, tag, data } = e.data;
     e.waitUntil(
@@ -277,16 +528,120 @@ self.addEventListener('message', e => {
     );
   }
   if (e.data.type === 'SYNC_BG_CONFIG') {
+    // 收到配置同步时，重置 SW 自驱动调度器，确保始终保活
+    _swSelfScheduled = false;
+    _swSelfSchedule(SW_SELF_DRIVE_INTERVAL_MS);
     e.waitUntil((async () => {
       try {
         const db = await swOpenDB();
         if (e.data.apiConfig) await swIdbSet(db, BG_STORE, 'apiConfig', e.data.apiConfig);
         if (e.data.bgPersonas) await swIdbSet(db, BG_STORE, 'bgPersonas', e.data.bgPersonas);
+        swEmit('SW_CONFIG_SYNCED', { personaCount: (e.data.bgPersonas || []).length });
       } catch(err) {}
     })());
   }
+  if (e.data.type === 'SW_PING') {
+    swTouchAlive('ping');
+  }
+  if (e.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+    swTouchAlive('skipWaiting');
+  }
   if (e.data.type === 'BG_CHECK') {
     e.waitUntil(bgGenerateAndNotify());
+  }
+  if (e.data.type === 'TRIGGER_REPLY') {
+    // 页面隐藏时，把角色回复用户消息的任务委托给 SW
+    e.waitUntil((async () => {
+      try {
+        const db = await swOpenDB();
+        const apiCfg = await swIdbGet(db, BG_STORE, 'apiConfig');
+        if (!apiCfg || !apiCfg.url || !apiCfg.key) return;
+        const pd = e.data; // { personaId, personaName, personaAvatar, systemPrompt, messages, maxReply, temperature }
+        if (!pd.personaId || !pd.systemPrompt || !pd.messages) return;
+        const fullMessages = [{ role: 'system', content: pd.systemPrompt }, ...pd.messages];
+        const maxReply = pd.maxReply || 3;
+        const temperature = pd.temperature || 1.0;
+        // Call AI
+        let rawReply = await swChatCompletion(apiCfg.url, apiCfg.key, apiCfg.model, fullMessages);
+        if (!rawReply) return;
+        rawReply = rawReply.trim().replace(/^["'"]|["'"]$/g, '');
+        // Split by ### like the main app does
+        const parts = rawReply.split('###').map(s => s.trim()).filter(Boolean).slice(0, maxReply);
+        if (!parts.length) return;
+        // Write to pending queue
+        const bgMsgs = (await swIdbGet(db, 'messages', 'pending')) || [];
+        const firstTs = Date.now();
+        parts.forEach((part, i) => {
+          bgMsgs.push({
+            personaId: pd.personaId, personaName: pd.personaName || '', avatar: pd.personaAvatar || '',
+            content: part, timestamp: firstTs + i * 300, role: 'assistant', _autoMsgTime: firstTs, _isReply: true
+          });
+        });
+        await swIdbSet(db, 'messages', 'pending', bgMsgs);
+        swNotifyPendingSync(pd.personaId);
+        const notifTs = Date.now();
+        // Send notification
+        try {
+          await self.registration.showNotification('Mono Heart · ' + (pd.personaName || '角色'), {
+            body: parts[0].substring(0, 80),
+            icon: pd.personaAvatar || undefined,
+            tag: swBuildNotifTag('reply', pd.personaId, notifTs),
+            renotify: true,
+            data: { personaId: pd.personaId, type: 'bg_message', notifTs: notifTs, threadTag: 'mono-reply-' + pd.personaId }
+          });
+        } catch(ne) {}
+        // Tell the page to sync
+        swEmit('SW_AUTO_MSG_DONE', { personaId: pd.personaId });
+      } catch(err) {}
+    })());
+  }
+  if (e.data.type === 'TRIGGER_AUTO_MSG') {
+    // 页面隐藏时，前台把发消息任务委托给 SW 执行
+    e.waitUntil((async () => {
+      try {
+        const db = await swOpenDB();
+        const apiCfg = await swIdbGet(db, BG_STORE, 'apiConfig');
+        const personaList = await swIdbGet(db, BG_STORE, 'bgPersonas');
+        if (!apiCfg || !apiCfg.url || !apiCfg.key || !personaList) return;
+        const targetId = e.data.personaId;
+        const p = personaList.find(x => String(x.id) === String(targetId));
+        if (!p || !p.autoMsg) return;
+        const recentChat = (p.recentHistory || []).map(m => m.role + ': ' + m.content).join('\n').substring(0, 2000);
+        const now = new Date();
+        const timeStr = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+        const _h = now.getHours();
+        const _period = _h<5?'深夜/凌晨':_h<9?'清晨/早上':_h<12?'上午':_h<14?'中午':_h<18?'下午':_h<20?'傍晚':_h<23?'晚上':'深夜';
+        const minReply = p.minReplyCount || 1;
+        const maxReply = p.maxReplyCount || 3;
+        const count = Math.floor(Math.random() * (maxReply - minReply + 1)) + minReply;
+        const prompt = '你是' + p.name + '，人设：' + (p.persona || '').substring(0, 500) + '。现在时间是' + timeStr + '，时段：' + _period + '。你现在主动给用户发消息。发送恰好 ' + count + ' 条消息，消息之间用 "###" 分隔，多条要连贯自然。默认风格是短句分开发，尽量不要用逗号和句号。只返回消息内容本身。\n最近对话：\n' + (recentChat || '(暂无)');
+        const reply = (await swChatCompletion(apiCfg.url, apiCfg.key, apiCfg.model, [{role:'user',content:prompt}]) || '').trim().replace(/^["'"]|["'"]$/g, '');
+        if (!reply) return;
+        const parts = reply.split('###').map(s => s.trim()).filter(Boolean).slice(0, maxReply);
+        const bgMsgs = (await swIdbGet(db, 'messages', 'pending')) || [];
+        const firstTs = Date.now();
+        parts.forEach((part, i) => {
+          bgMsgs.push({ personaId: p.id, personaName: p.name, avatar: p.avatar || '', content: part, timestamp: firstTs + i * 300, role: 'assistant', _autoMsgTime: firstTs });
+        });
+        await swIdbSet(db, 'messages', 'pending', bgMsgs);
+        // 更新上次发消息时间
+        p.lastAutoMsgTime = firstTs;
+        await swIdbSet(db, BG_STORE, 'bgPersonas', personaList);
+        swNotifyPendingSync(p.id);
+        const notifTs = Date.now();
+        // 发系统通知
+        await self.registration.showNotification('Mono Heart · ' + p.name, {
+          body: parts[0].substring(0, 80),
+          icon: p.avatar || undefined,
+          tag: swBuildNotifTag('bg', p.id, notifTs),
+          renotify: true,
+          data: { personaId: p.id, type: 'bg_message', notifTs: notifTs, threadTag: 'mono-bg-' + p.id }
+        });
+        // 通知页面同步消息（如果页面还存在）
+        swEmit('SW_AUTO_MSG_DONE', { personaId: p.id });
+      } catch(e) {}
+    })());
   }
   if (e.data.type === 'BG_TEST') {
     // 强制测试：跳过「页面可见」检查和「时间间隔」检查，直接触发一次后台发送
@@ -349,7 +704,7 @@ self.addEventListener('message', e => {
               await self.registration.showNotification('[测试] Mono Heart · ' + p.name, {
                 body: parts[0].substring(0, 80),
                 icon: p.avatar || undefined,
-                tag: 'mono-bg-test-' + p.id,
+                tag: swBuildNotifTag('bg-test', p.id, Date.now()),
                 renotify: true,
                 data: { personaId: p.id, type: 'bg_message' }
               });
@@ -407,9 +762,11 @@ self.addEventListener('message', e => {
           await sendLog('✅ 后台角色列表：' + personaList.length + ' 个角色已配置');
           for (const p of personaList) {
             const last = p.lastAutoMsgTime ? new Date(p.lastAutoMsgTime).toLocaleString() : '从未';
-            const minMs = Math.max(5, p.autoMsgMinInterval || 60) * 60 * 1000;
+            const minMinutes = (p.autoMsgMinInterval == null) ? 60 : Math.max(0, Number(p.autoMsgMinInterval) || 0);
+            const maxMinutes = (p.autoMsgMaxInterval == null) ? 120 : Math.max(minMinutes, Number(p.autoMsgMaxInterval) || 0);
+            const minMs = minMinutes * 60 * 1000;
             const remaining = p.lastAutoMsgTime ? Math.max(0, Math.ceil((p.lastAutoMsgTime + minMs - Date.now()) / 60000)) : 0;
-            await sendLog('   👤 ' + p.name + ' · 间隔 ' + (p.autoMsgMinInterval||60) + '~' + (p.autoMsgMaxInterval||120) + '分钟 · 上次: ' + last + (remaining > 0 ? ' · 距下次最少还需 ' + remaining + '分钟' : ' · 已可触发'));
+            await sendLog('   👤 ' + p.name + ' · 间隔 ' + minMinutes + '~' + maxMinutes + '分钟 · 上次: ' + last + (remaining > 0 ? ' · 距下次最少还需 ' + remaining + '分钟' : ' · 已可触发'));
           }
         }
 
@@ -430,6 +787,21 @@ self.addEventListener('message', e => {
       }
     })());
   }
+  // ── SW_KEEPALIVE_PING：页面端心跳补丁发来的保活请求 ──
+  // 用 waitUntil 延长 SW 生命周期，并安排 25s 后广播 SW_IDLE_SOON
+  if (e.data.type === 'SW_KEEPALIVE_PING') {
+    // 重置调度器标志并重启（防止 SW 调度链因异常断裂）
+    _swSelfScheduled = false;
+    _swSelfSchedule(SW_SELF_DRIVE_INTERVAL_MS);
+    e.waitUntil((async () => {
+      try {
+        await new Promise(r => setTimeout(r, 25000));
+        const allC = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+        allC.forEach(c => { try { c.postMessage({ type: 'SW_IDLE_SOON' }); } catch(err) {} });
+      } catch(err) {}
+    })());
+  }
+});
 self.addEventListener('push', e => {
   let title = 'Mono Heart', body = '你有新消息', data = {};
   if (e.data) {
@@ -453,11 +825,21 @@ self.addEventListener('notificationclick', e => {
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
       for (const client of clientList) {
         if ('focus' in client) {
+          client.postMessage({ type: 'YD_NOTIFY_OPEN', payload: clickData });
           client.postMessage({ type: 'BG_MSG_CLICK', personaId: clickData.personaId });
           return client.focus();
         }
       }
-      if (clients.openWindow) return clients.openWindow('./');
+      if (clients.openWindow) {
+        return clients.openWindow('./').then(c => {
+          if (c) {
+            return new Promise(r => setTimeout(r, 1200)).then(() => {
+              c.postMessage({ type: 'YD_NOTIFY_OPEN', payload: clickData });
+              c.postMessage({ type: 'BG_MSG_CLICK', personaId: clickData.personaId });
+            });
+          }
+        });
+      }
     })
   );
 });
@@ -485,24 +867,27 @@ self.addEventListener('notificationclick', e => {
       const swScope = location.pathname.replace(/\/[^/]*$/, '/') || './';
       return navigator.serviceWorker.register(swUrl, { scope: swScope });
     }
+    window._cachedSwCode = swCode; // 缓存供 SW 健康检查重注册使用
     _registerSW(swCode).then(reg => {
       window._swRegistration = reg;
       window._swFailed = false;
+      _markSwAlive('register');
       reg.update();
       const trackWorker = (w) => {
         if (!w) return;
         w.addEventListener('statechange', () => {
           if (w.state === 'activated') {
-            window._swReady = true;
+            _markSwAlive('worker-activated');
             window._swRegistration = reg;
             try { syncBgConfigToSW(); } catch(e) {}
+            try { _flushPendingSwSync(); } catch(e) {}
           }
         });
       };
       trackWorker(reg.installing);
       trackWorker(reg.waiting);
       if (reg.active) {
-        window._swReady = true;
+        _markSwAlive('register-active');
         setTimeout(() => { try { syncBgConfigToSW(); } catch(e) {} }, 2000);
       }
       if ('periodicSync' in reg) {
@@ -518,17 +903,46 @@ self.addEventListener('notificationclick', e => {
       _startFallbackNotifWorker();
     });
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      window._swReady = true;
-      window._swFailed = false;
+      _markSwAlive('controllerchange');
       // controllerchange 后更新缓存的 registration
       navigator.serviceWorker.ready.then(reg => {
         window._swRegistration = reg;
       }).catch(() => {});
       setTimeout(() => { try { syncBgConfigToSW(); } catch(e) {} }, 1000);
+      setTimeout(() => { try { _flushPendingSwSync(); } catch(e) {} }, 1200);
     });
     navigator.serviceWorker.addEventListener('message', e => {
-      if (e.data && e.data.type === 'BG_MSG_CLICK') {
+      if (!e.data) return;
+      if (e.data.type === 'SW_PONG') {
+        _markSwAlive('sw-message');
+      }
+      if (e.data.type === 'SW_PENDING_MESSAGES') {
+        _markSwAlive('sw-pending');
+        setTimeout(() => { try { syncBgMessagesToPage(); } catch(err) {} }, 80);
+      }
+      if (e.data.type === 'SW_CONFIG_SYNCED') {
+        _markSwAlive('sw-config');
+      }
+      if (e.data.type === 'BG_MSG_CLICK') {
         setTimeout(() => { try { syncBgMessagesToPage(); } catch(err) {} }, 500);
+      }
+      if (e.data.type === 'SW_AUTO_MSG_DONE') {
+        // SW 在后台完成了消息生成，立即同步到页面
+        setTimeout(() => {
+          try { syncBgMessagesToPage(); } catch(err) {}
+          try { renderContactList(); } catch(err) {}
+        }, 300);
+      }
+      if (e.data.type === 'YD_NOTIFY_OPEN') {
+        const payload = e.data.payload || {};
+        const pid = payload.personaId;
+        if (pid) {
+          try {
+            openApp('chatPage');
+            selectPersona(pid);
+          } catch(err) { console.warn('[YD_NOTIFY_OPEN] 跳转失败:', err); }
+        }
+        setTimeout(() => { try { syncBgMessagesToPage(); } catch(err) {} }, 600);
       }
     });
   }
@@ -17017,9 +17431,37 @@ body.editor-modal-open #chatPage .app-back-bar {
 .dw-morse-line:nth-child(4), .dw-poem-line:nth-child(4) { animation-delay: 0.43s !important; }
 .dw-answer { animation: dw-answer-appear 0.46s ease both !important; }
 .dw-placeholder { animation: dw-placeholder-appear 0.5s ease both !important; }
+/* ===== YD 全局通知横幅 ===== */
+#yd-global-notify { position:fixed; top:0; left:0; right:0; bottom:0; pointer-events:none; z-index:999999; }
+#yd-global-notify .yd-notify-banner { pointer-events:auto; }
+.yd-notify-banner[hidden] { display:none !important; visibility:hidden; pointer-events:none; }
+.yd-notify-banner { position:fixed; left:10px; right:10px; display:flex; align-items:stretch; gap:0; top:calc(10px + env(safe-area-inset-top,0px)); z-index:999999; border-radius:16px; padding:0; background:rgba(255,255,255,0.88); border:1px solid rgba(0,0,0,0.08); box-shadow:0 12px 28px rgba(0,0,0,0.14); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); transform:translateY(-16px); opacity:0; transition:transform 220ms ease,opacity 220ms ease; cursor:pointer; user-select:none; }
+.yd-notify-banner--enter { transform:translateY(0) !important; opacity:1 !important; }
+.yd-notify-banner__icon { flex-shrink:0; width:48px; min-width:48px; display:flex; align-items:center; justify-content:center; border-radius:16px 0 0 16px; color:rgba(60,60,67,0.7); }
+.yd-notify-banner__icon svg { display:block; width:24px; height:24px; }
+.yd-notify-banner__icon-img { width:28px; height:28px; object-fit:cover; border-radius:6px; }
+.yd-notify-banner__content { flex:1; min-width:0; padding:12px 14px 12px 8px; display:flex; flex-direction:column; gap:4px; justify-content:center; }
+.yd-notify-banner__title { font-size:12px; font-weight:800; letter-spacing:0.2px; color:rgba(60,60,67,0.8); display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.yd-notify-banner__title-left { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.yd-notify-banner__title-right { flex:0 0 auto; color:rgba(60,60,67,0.5); font-size:11px; font-weight:600; }
+.yd-notify-banner__body { font-size:14px; font-weight:700; color:#111; line-height:1.25; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
+.yd-notify-banner:active { opacity:0.9; transform:translateY(1px); }
 </style>
 </head>
 <body>
+<!-- YD 全局通知横幅覆盖层 -->
+<div id="yd-global-notify">
+  <div class="yd-notify-banner" hidden>
+    <div class="yd-notify-banner__icon" id="ydNotifIcon"></div>
+    <div class="yd-notify-banner__content">
+      <div class="yd-notify-banner__title">
+        <span class="yd-notify-banner__title-left" id="ydNotifTitleLeft"></span>
+        <span class="yd-notify-banner__title-right" id="ydNotifTitleRight"></span>
+      </div>
+      <div class="yd-notify-banner__body" id="ydNotifBody"></div>
+    </div>
+  </div>
+</div>
 <!-- In-App Notification Toast -->
 <div class="mono-notif-toast" id="monoNotifToast">
   <img class="mono-notif-toast-avatar" id="monoNotifAvatar" src="">
@@ -19598,6 +20040,10 @@ body.editor-modal-open #chatPage .app-back-bar {
     <div style="padding:12px 16px 8px; border-bottom:1px solid #eee; flex-shrink:0;">
       <h2 class="text-xl font-bold" style="margin-bottom:4px;">通知中心</h2>
       <p style="font-size:10px;color:#999;margin:0;">管理角色的通知设置，查看历史通知记录</p>
+      <button id="ydNotifPermBtn" onclick="monoEnableFrontendNotifications()" style="margin-top:10px;width:100%;padding:10px;border:1px solid #1a1a1a;border-radius:10px;background:#1a1a1a;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">
+        开启系统通知
+      </button>
+      <p style="font-size:10px;color:#999;margin:4px 0 0;">开启后离开页面时仍可收到系统通知，点击通知可直接跳回对话。</p>
     </div>
     <!-- Per-character notification toggles -->
     <div id="notifCharToggles" style="padding:12px 16px;border-bottom:1px solid #eee;flex-shrink:0;">
@@ -20924,7 +21370,7 @@ body.editor-modal-open #chatPage .app-back-bar {
           <div style="display:flex;flex-direction:column;gap:3px;">
             <span style="font-size:10px;color:#888;">最少間隔</span>
             <div style="display:flex;align-items:center;gap:4px;">
-              <input type="number" id="pAutoMsgMinInterval" min="5" max="1440" value="60" class="border-b border-black py-1 outline-none text-center" style="width:70px;font-size:13px;">
+              <input type="number" id="pAutoMsgMinInterval" min="0" max="1440" value="60" class="border-b border-black py-1 outline-none text-center" style="width:70px;font-size:13px;">
               <span style="font-size:11px;color:#666;">分鐘</span>
             </div>
           </div>
@@ -20932,7 +21378,7 @@ body.editor-modal-open #chatPage .app-back-bar {
           <div style="display:flex;flex-direction:column;gap:3px;">
             <span style="font-size:10px;color:#888;">最多間隔</span>
             <div style="display:flex;align-items:center;gap:4px;">
-              <input type="number" id="pAutoMsgMaxInterval" min="5" max="1440" value="120" class="border-b border-black py-1 outline-none text-center" style="width:70px;font-size:13px;">
+              <input type="number" id="pAutoMsgMaxInterval" min="0" max="1440" value="120" class="border-b border-black py-1 outline-none text-center" style="width:70px;font-size:13px;">
               <span style="font-size:11px;color:#666;">分鐘</span>
             </div>
           </div>
@@ -22080,22 +22526,28 @@ function _persistEffectiveApiConfig(cfg) {
 }
 function _getCurrentActiveApiConfig() {
   try {
+    const currentActiveId = localStorage.getItem('mono_active_api') || 'preset';
+    if (currentActiveId !== 'preset') {
+      const apis = JSON.parse(localStorage.getItem('mono_secondary_apis') || '[]');
+      const matched = Array.isArray(apis) ? apis.find(function(item) { return item && item.id === currentActiveId; }) : null;
+      if (matched) return _normalizeApiConfigObject(matched);
+    }
+  } catch (e) {}
+  try {
     const cached = JSON.parse(localStorage.getItem(EFFECTIVE_API_STORAGE_KEY) || 'null');
     if (cached && (cached.url || cached.key || cached.model)) {
       return _normalizeApiConfigObject(cached);
     }
   } catch (e) {}
   try {
-    if (typeof apiConfig !== 'undefined' && apiConfig && (apiConfig.url || apiConfig.key || apiConfig.model)) {
-      return _normalizeApiConfigObject(apiConfig);
+    if (typeof activeApiId !== 'undefined' && activeApiId && activeApiId !== 'preset' && typeof secondaryApis !== 'undefined' && Array.isArray(secondaryApis)) {
+      const matched = secondaryApis.find(function(item) { return item && item.id === activeApiId; });
+      if (matched) return _normalizeApiConfigObject(matched);
     }
   } catch (e) {}
   try {
-    const currentActiveId = localStorage.getItem('mono_active_api') || 'preset';
-    if (currentActiveId !== 'preset') {
-      const apis = JSON.parse(localStorage.getItem('mono_secondary_apis') || '[]');
-      const matched = Array.isArray(apis) ? apis.find(function(item) { return item && item.id === currentActiveId; }) : null;
-      if (matched) return _normalizeApiConfigObject(matched);
+    if (typeof apiConfig !== 'undefined' && apiConfig && (apiConfig.url || apiConfig.key || apiConfig.model)) {
+      return _normalizeApiConfigObject(apiConfig);
     }
   } catch (e) {}
   return _getPresetApiConfig();
@@ -22809,6 +23261,9 @@ window.onload = () => {
     renderContactList();
     try { if (typeof renderCcRoomDrawer === "function") renderCcRoomDrawer(); } catch(e) {}
     initNotifTracking(); startAutoMsgTimers(); startAutoDiaryTimers(); requestNotifPermission(); startGcBackgroundActivity(); startProactiveCallTimers();
+    // 初始化 iOS 风格横幅通知系统
+    try { if (window.Notifications) window.Notifications.init(); } catch(e) {}
+    try { monoRenderPushControls(); } catch(e) {}
     if (personas.length > 0) selectPersona(personas[0].id);
     // 永久微信模式 — 强制套用
     document.getElementById('chatPage').classList.add('wechat-style');
@@ -25848,8 +26303,8 @@ function openEditor(isEdit=false) {
     document.getElementById('pMemoryCount').value = p.memoryCount || 100;
     document.getElementById('pMemoryVal').textContent = p.memoryCount || '100';
     document.getElementById('pAutoMsg').checked = !!p.autoMsg;
-    document.getElementById('pAutoMsgMinInterval').value = p.autoMsgMinInterval || (p.autoMsgInterval ? p.autoMsgInterval * 60 : 60);
-    document.getElementById('pAutoMsgMaxInterval').value = p.autoMsgMaxInterval || (p.autoMsgInterval ? Math.max(p.autoMsgInterval * 60, p.autoMsgInterval * 60 + 60) : 120);
+    document.getElementById('pAutoMsgMinInterval').value = p.autoMsgMinInterval != null ? p.autoMsgMinInterval : (p.autoMsgInterval ? p.autoMsgInterval * 60 : 60);
+    document.getElementById('pAutoMsgMaxInterval').value = p.autoMsgMaxInterval != null ? p.autoMsgMaxInterval : (p.autoMsgInterval ? Math.max(p.autoMsgInterval * 60, p.autoMsgInterval * 60 + 60) : 120);
     document.getElementById('pAutoDiary').checked = !!p.autoDiary;
     document.getElementById('pAutoDiaryTime').value = p.autoDiaryTime || '21:00';
     if (document.getElementById('monoDiaryOfflineSetting')) document.getElementById('monoDiaryOfflineSetting').checked = p.diaryIncludeOfflineMemory !== false;
@@ -25974,15 +26429,19 @@ function savePersona() {
   const heartVoiceGenerateEnabled = !!document.getElementById('pHeartVoiceGenerateEnabled').checked;
   const heartVoiceEnabled = !!document.getElementById('pShowHeartVoiceInHeader').checked;
   const heartVoiceMode = _getSelectedHeartVoiceMode();
+  const _autoMsgMinInputRaw = parseInt(document.getElementById('pAutoMsgMinInterval').value, 10);
+  const _autoMsgMinInterval = Number.isFinite(_autoMsgMinInputRaw) ? Math.max(0, _autoMsgMinInputRaw) : 60;
+  const _autoMsgMaxInputRaw = parseInt(document.getElementById('pAutoMsgMaxInterval').value, 10);
+  const _autoMsgMaxInterval = Number.isFinite(_autoMsgMaxInputRaw) ? Math.max(_autoMsgMinInterval, _autoMsgMaxInputRaw) : Math.max(_autoMsgMinInterval, 120);
   if (currentId && !document.getElementById('delBtn').classList.contains('hidden')) {
     const p = personas.find(x=>x.id==currentId);
     const _saveAiColor = document.getElementById('pBubbleAiFontColorEnabled').checked ? (document.getElementById('pBubbleAiFontColor').value||'') : '';
     const _saveUserColor = document.getElementById('pBubbleUserFontColorEnabled').checked ? (document.getElementById('pBubbleUserFontColor').value||'') : '';
-    if(p){ p.name=name; p.nickname=document.getElementById('pNick').value.trim(); p.persona=document.getElementById('pPersona').value.trim()||'一个简单的角色设定'; p.avatar=avatar; p.minReplyCount=minReply; p.maxReplyCount=maxReply; p.temperature=temperature; p.timeAwareness=timeAwareness; p.allowSticker=allowSticker; p.stickerLibraryIds=stickerLibraryIds; p.allowVoice=allowVoice; p.voiceId=voiceId; p.voiceSpeed=voiceSpeed; p.voiceLang=voiceLang; p.outputLang=outputLang; p.enableTranslation=enableTranslation; p.translateLang=translateLang; p.voiceFreq=voiceFreq; p.memoryCount=parseInt(document.getElementById('pMemoryCount').value)||100; p.autoMsg=document.getElementById('pAutoMsg').checked; p.autoMsgMinInterval=Math.max(5,parseInt(document.getElementById('pAutoMsgMinInterval').value)||60); p.autoMsgMaxInterval=Math.max(p.autoMsgMinInterval,parseInt(document.getElementById('pAutoMsgMaxInterval').value)||120); p.autoDiary=document.getElementById('pAutoDiary').checked; p.autoDiaryTime=document.getElementById('pAutoDiaryTime').value||'21:00'; p.diaryIncludeOfflineMemory=!document.getElementById('monoDiaryOfflineSetting') || document.getElementById('monoDiaryOfflineSetting').checked; p.autoMoments=document.getElementById('pAutoMoments').checked; p.autoMomentsTime=document.getElementById('pAutoMomentsTime').value||'20:00'; p.momentsIncludeOfflineMemory=!document.getElementById('monoMomentsOfflineSetting') || document.getElementById('monoMomentsOfflineSetting').checked; p.autoSummary=document.getElementById('pAutoSummary').checked; p.autoSummaryInterval=parseInt(document.getElementById('pAutoSummaryInterval').value)||20; p.bubbleAiCss=document.getElementById('pBubbleAiCss').value.trim(); p.bubbleUserCss=document.getElementById('pBubbleUserCss').value.trim(); p.chatRoomCustomCss=(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(); p.bubbleAiFontColor=_saveAiColor; p.bubbleUserFontColor=_saveUserColor; p.bubblePreset=(document.getElementById('pBubblePreset')||{}).value||'none'; p.oshiGlowBlue=_saveOshiBlue; p.oshiGlowPink=_saveOshiPink; p.oshiGlowShowHeart=_saveOshiShowHeart; p.hideTimestamp=document.getElementById('pHideTimestamp')?document.getElementById('pHideTimestamp').checked:false; p.metaTimeColor=(document.getElementById('pMetaTimeColor')||{}).value||''; p.metaNameColor=(document.getElementById('pMetaNameColor')||{}).value||''; p.metaReadColor=(document.getElementById('pMetaReadColor')||{}).value||''; p.metaUnreadColor=(document.getElementById('pMetaUnreadColor')||{}).value||''; if(document.getElementById('pChatBgImg').src && document.getElementById('pChatBgImg').style.display!=='none') p.chatBgImage=document.getElementById('pChatBgImg').src; else p.chatBgImage=''; p.replyMode=_getSelectedReplyMode(); var _spd=document.querySelector('input[name="pReplySpeed"]:checked'); p.replySpeed=_spd?_spd.value:'fast'; p.replySpeedCustomMin=parseInt(document.getElementById('pReplySpeedCustomMin').value)||0; p.replySpeedCustomMax=parseInt(document.getElementById('pReplySpeedCustomMax').value)||10; p.heartVoiceGenerateEnabled=heartVoiceGenerateEnabled; p.showHeartVoiceInHeader=heartVoiceEnabled; p.heartVoiceEnabled=heartVoiceEnabled; p.heartVoiceMode=heartVoiceMode; p.allowCallTts=document.getElementById('pAllowCallTts').checked; if (p.momentsNickname == null || !String(p.momentsNickname).trim()) p.momentsNickname = name; if (p.momentsSignature == null) p.momentsSignature = ''; if (p.momentsBanner == null) p.momentsBanner = ''; }
+    if(p){ p.name=name; p.nickname=document.getElementById('pNick').value.trim(); p.persona=document.getElementById('pPersona').value.trim()||'一个简单的角色设定'; p.avatar=avatar; p.minReplyCount=minReply; p.maxReplyCount=maxReply; p.temperature=temperature; p.timeAwareness=timeAwareness; p.allowSticker=allowSticker; p.stickerLibraryIds=stickerLibraryIds; p.allowVoice=allowVoice; p.voiceId=voiceId; p.voiceSpeed=voiceSpeed; p.voiceLang=voiceLang; p.outputLang=outputLang; p.enableTranslation=enableTranslation; p.translateLang=translateLang; p.voiceFreq=voiceFreq; p.memoryCount=parseInt(document.getElementById('pMemoryCount').value)||100; p.autoMsg=document.getElementById('pAutoMsg').checked; p.autoMsgMinInterval=_autoMsgMinInterval; p.autoMsgMaxInterval=_autoMsgMaxInterval; p.autoDiary=document.getElementById('pAutoDiary').checked; p.autoDiaryTime=document.getElementById('pAutoDiaryTime').value||'21:00'; p.diaryIncludeOfflineMemory=!document.getElementById('monoDiaryOfflineSetting') || document.getElementById('monoDiaryOfflineSetting').checked; p.autoMoments=document.getElementById('pAutoMoments').checked; p.autoMomentsTime=document.getElementById('pAutoMomentsTime').value||'20:00'; p.momentsIncludeOfflineMemory=!document.getElementById('monoMomentsOfflineSetting') || document.getElementById('monoMomentsOfflineSetting').checked; p.autoSummary=document.getElementById('pAutoSummary').checked; p.autoSummaryInterval=parseInt(document.getElementById('pAutoSummaryInterval').value)||20; p.bubbleAiCss=document.getElementById('pBubbleAiCss').value.trim(); p.bubbleUserCss=document.getElementById('pBubbleUserCss').value.trim(); p.chatRoomCustomCss=(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(); p.bubbleAiFontColor=_saveAiColor; p.bubbleUserFontColor=_saveUserColor; p.bubblePreset=(document.getElementById('pBubblePreset')||{}).value||'none'; p.oshiGlowBlue=_saveOshiBlue; p.oshiGlowPink=_saveOshiPink; p.oshiGlowShowHeart=_saveOshiShowHeart; p.hideTimestamp=document.getElementById('pHideTimestamp')?document.getElementById('pHideTimestamp').checked:false; p.metaTimeColor=(document.getElementById('pMetaTimeColor')||{}).value||''; p.metaNameColor=(document.getElementById('pMetaNameColor')||{}).value||''; p.metaReadColor=(document.getElementById('pMetaReadColor')||{}).value||''; p.metaUnreadColor=(document.getElementById('pMetaUnreadColor')||{}).value||''; if(document.getElementById('pChatBgImg').src && document.getElementById('pChatBgImg').style.display!=='none') p.chatBgImage=document.getElementById('pChatBgImg').src; else p.chatBgImage=''; p.replyMode=_getSelectedReplyMode(); var _spd=document.querySelector('input[name="pReplySpeed"]:checked'); p.replySpeed=_spd?_spd.value:'fast'; p.replySpeedCustomMin=parseInt(document.getElementById('pReplySpeedCustomMin').value)||0; p.replySpeedCustomMax=parseInt(document.getElementById('pReplySpeedCustomMax').value)||10; p.heartVoiceGenerateEnabled=heartVoiceGenerateEnabled; p.showHeartVoiceInHeader=heartVoiceEnabled; p.heartVoiceEnabled=heartVoiceEnabled; p.heartVoiceMode=heartVoiceMode; p.allowCallTts=document.getElementById('pAllowCallTts').checked; if (p.momentsNickname == null || !String(p.momentsNickname).trim()) p.momentsNickname = name; if (p.momentsSignature == null) p.momentsSignature = ''; if (p.momentsBanner == null) p.momentsBanner = ''; }
   } else {
     const _saveAiColor = document.getElementById('pBubbleAiFontColorEnabled').checked ? (document.getElementById('pBubbleAiFontColor').value||'') : '';
     const _saveUserColor = document.getElementById('pBubbleUserFontColorEnabled').checked ? (document.getElementById('pBubbleUserFontColor').value||'') : '';
-    const newP = { id:Date.now(), name, nickname:document.getElementById('pNick').value.trim()||name, momentsNickname:name, momentsSignature:'', momentsBanner:'', persona:document.getElementById('pPersona').value.trim()||'一个简单的角色设定', avatar, history:[], memoryCore:[], lastHeartVoice:null, autoSummary:document.getElementById('pAutoSummary').checked, autoSummaryInterval:parseInt(document.getElementById('pAutoSummaryInterval').value)||20, minReplyCount:minReply, maxReplyCount:maxReply, temperature:temperature, timeAwareness:timeAwareness, allowSticker:allowSticker, stickerLibraryIds:stickerLibraryIds, allowVoice:allowVoice, voiceId:voiceId, voiceSpeed:voiceSpeed, voiceLang:voiceLang, outputLang:outputLang, enableTranslation:enableTranslation, translateLang:translateLang, voiceFreq:voiceFreq, memoryCount:parseInt(document.getElementById('pMemoryCount').value)||100, autoMsg:document.getElementById('pAutoMsg').checked, autoMsgMinInterval:Math.max(5,parseInt(document.getElementById('pAutoMsgMinInterval').value)||60), autoMsgMaxInterval:Math.max(5,parseInt(document.getElementById('pAutoMsgMaxInterval').value)||120), autoDiary:document.getElementById('pAutoDiary').checked, autoDiaryTime:document.getElementById('pAutoDiaryTime').value||'21:00', diaryIncludeOfflineMemory:!document.getElementById('monoDiaryOfflineSetting') || document.getElementById('monoDiaryOfflineSetting').checked, autoMoments:document.getElementById('pAutoMoments').checked, autoMomentsTime:document.getElementById('pAutoMomentsTime').value||'20:00', momentsIncludeOfflineMemory:!document.getElementById('monoMomentsOfflineSetting') || document.getElementById('monoMomentsOfflineSetting').checked, bubbleAiCss:document.getElementById('pBubbleAiCss').value.trim(), bubbleUserCss:document.getElementById('pBubbleUserCss').value.trim(), chatRoomCustomCss:(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(), bubbleAiFontColor:_saveAiColor, bubbleUserFontColor:_saveUserColor, bubblePreset:(document.getElementById('pBubblePreset')||{}).value||'none', oshiGlowBlue:_saveOshiBlue, oshiGlowPink:_saveOshiPink, oshiGlowShowHeart:_saveOshiShowHeart, hideTimestamp:document.getElementById('pHideTimestamp')?document.getElementById('pHideTimestamp').checked:false, metaTimeColor:(document.getElementById('pMetaTimeColor')||{}).value||'', metaNameColor:(document.getElementById('pMetaNameColor')||{}).value||'', metaReadColor:(document.getElementById('pMetaReadColor')||{}).value||'', metaUnreadColor:(document.getElementById('pMetaUnreadColor')||{}).value||'', chatBgImage:(document.getElementById('pChatBgImg').style.display!=='none'?document.getElementById('pChatBgImg').src:''), replyMode:_getSelectedReplyMode(), replySpeed:(document.querySelector('input[name="pReplySpeed"]:checked')||{}).value||'fast', replySpeedCustomMin:parseInt(document.getElementById('pReplySpeedCustomMin').value)||0, replySpeedCustomMax:parseInt(document.getElementById('pReplySpeedCustomMax').value)||10, heartVoiceGenerateEnabled:heartVoiceGenerateEnabled, showHeartVoiceInHeader:heartVoiceEnabled, heartVoiceEnabled:heartVoiceEnabled, heartVoiceMode:heartVoiceMode, allowCallTts:document.getElementById('pAllowCallTts').checked };
+    const newP = { id:Date.now(), name, nickname:document.getElementById('pNick').value.trim()||name, momentsNickname:name, momentsSignature:'', momentsBanner:'', persona:document.getElementById('pPersona').value.trim()||'一个简单的角色设定', avatar, history:[], memoryCore:[], lastHeartVoice:null, autoSummary:document.getElementById('pAutoSummary').checked, autoSummaryInterval:parseInt(document.getElementById('pAutoSummaryInterval').value)||20, minReplyCount:minReply, maxReplyCount:maxReply, temperature:temperature, timeAwareness:timeAwareness, allowSticker:allowSticker, stickerLibraryIds:stickerLibraryIds, allowVoice:allowVoice, voiceId:voiceId, voiceSpeed:voiceSpeed, voiceLang:voiceLang, outputLang:outputLang, enableTranslation:enableTranslation, translateLang:translateLang, voiceFreq:voiceFreq, memoryCount:parseInt(document.getElementById('pMemoryCount').value)||100, autoMsg:document.getElementById('pAutoMsg').checked, autoMsgMinInterval:_autoMsgMinInterval, autoMsgMaxInterval:_autoMsgMaxInterval, autoDiary:document.getElementById('pAutoDiary').checked, autoDiaryTime:document.getElementById('pAutoDiaryTime').value||'21:00', diaryIncludeOfflineMemory:!document.getElementById('monoDiaryOfflineSetting') || document.getElementById('monoDiaryOfflineSetting').checked, autoMoments:document.getElementById('pAutoMoments').checked, autoMomentsTime:document.getElementById('pAutoMomentsTime').value||'20:00', momentsIncludeOfflineMemory:!document.getElementById('monoMomentsOfflineSetting') || document.getElementById('monoMomentsOfflineSetting').checked, bubbleAiCss:document.getElementById('pBubbleAiCss').value.trim(), bubbleUserCss:document.getElementById('pBubbleUserCss').value.trim(), chatRoomCustomCss:(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(), bubbleAiFontColor:_saveAiColor, bubbleUserFontColor:_saveUserColor, bubblePreset:(document.getElementById('pBubblePreset')||{}).value||'none', oshiGlowBlue:_saveOshiBlue, oshiGlowPink:_saveOshiPink, oshiGlowShowHeart:_saveOshiShowHeart, hideTimestamp:document.getElementById('pHideTimestamp')?document.getElementById('pHideTimestamp').checked:false, metaTimeColor:(document.getElementById('pMetaTimeColor')||{}).value||'', metaNameColor:(document.getElementById('pMetaNameColor')||{}).value||'', metaReadColor:(document.getElementById('pMetaReadColor')||{}).value||'', metaUnreadColor:(document.getElementById('pMetaUnreadColor')||{}).value||'', chatBgImage:(document.getElementById('pChatBgImg').style.display!=='none'?document.getElementById('pChatBgImg').src:''), replyMode:_getSelectedReplyMode(), replySpeed:(document.querySelector('input[name="pReplySpeed"]:checked')||{}).value||'fast', replySpeedCustomMin:parseInt(document.getElementById('pReplySpeedCustomMin').value)||0, replySpeedCustomMax:parseInt(document.getElementById('pReplySpeedCustomMax').value)||10, heartVoiceGenerateEnabled:heartVoiceGenerateEnabled, showHeartVoiceInHeader:heartVoiceEnabled, heartVoiceEnabled:heartVoiceEnabled, heartVoiceMode:heartVoiceMode, allowCallTts:document.getElementById('pAllowCallTts').checked };
     personas.push(newP); currentId=newP.id;
   }
   saveData(); renderContactList(); if(currentId) selectPersona(currentId); closeEditor(); renderDiaryTabs();
@@ -38143,9 +38602,40 @@ ${_buildPersonaIdentityPrompt(p)}
 12. 【消息撤回】如果你觉得有充分理由撤回你刚才说的话（如说错了、太冲动、想收回某句话），可以在下一次回复的第一条消息最前面加 \`[RECALL]\` 标签，系统会自动撤回你上一条消息。例如：\`[RECALL]等等，我刚才那话说重了。\` 不要频繁使用，只在真的需要的时候。
 ${modePrompt}${quoteTip}${fwdContext}${timeContext}${transferContext}${wbInjection}${gcMemInjection}${offlineSceneInject}${readStatusInject}${typeof _buildHealthInjection === 'function' ? _buildHealthInjection(p.id) : ''}${_isHeartVoiceGenerationEnabled(p) ? HEART_VOICE_INSTRUCTION : ''}`;
   try {
+    // ── 页面不可见时：把回复任务委托给 Service Worker，避免 fetch 被浏览器中断 ──
+    if (document.hidden) {
+      // 先同步配置到 SW
+      try { syncBgConfigToSW(); } catch(e) {}
+      // 构建一个简化版的 historyToSend 给 SW
+      const _swHistory = p.history.slice(-(p.memoryCount || 50)).map(m => ({
+        role: m.role === 'user' ? 'user' : 'assistant',
+        content: (m.content || '').substring(0, 500)
+      })).filter(m => m.content);
+      setTimeout(function() {
+        try {
+          const sw = (navigator.serviceWorker && (navigator.serviceWorker.controller ||
+            (window._swRegistration && window._swRegistration.active))) || null;
+          if (sw) {
+            sw.postMessage({
+              type: 'TRIGGER_REPLY',
+              personaId: p.id,
+              personaName: p.name,
+              personaAvatar: p.avatar || '',
+              systemPrompt: sysPrompt,
+              messages: _swHistory,
+              maxReply: maxReply,
+              temperature: p.temperature || 1.0
+            });
+          }
+        } catch(e) {}
+      }, 400);
+      // 隐藏打字指示器（因为前台不会有回复了）
+      if (typing) typing.classList.add('hidden');
+      delete _autoReplyLocks[_replyPersonaId];
+      _autoReplyAbortController = null;
+      return;
+    }
     const historyToSend = p.history.slice(-memCount)
-      .filter(m => !m._transferContext)
-      .slice(-Math.min(memCount, 50))
       .map((m, idx, arr) => {
         if (m.msgType === 'call') {
           return {
@@ -38323,11 +38813,47 @@ ${modePrompt}${quoteTip}${fwdContext}${timeContext}${transferContext}${wbInjecti
     } catch(asErr) { console.warn('[AutoSummary] hook error:', asErr); }
   } catch(e) {
     if (typing) typing.classList.add('hidden');
-    // Only log if not a user-initiated abort
-    if (!(e.name === 'AbortError' && _autoReplyCancelled)) {
+    // 不显示错误 toast 的情况：
+    // 1. 用户主动取消（_autoReplyCancelled）
+    // 2. 页面不可见导致的中断（document.hidden）
+    // 3. AbortError 且页面当前不可见
+    const isHiddenAbort = (e.name === 'AbortError' || e.name === 'TypeError') && document.hidden;
+    const isUserAbort = e.name === 'AbortError' && _autoReplyCancelled;
+    if (!isUserAbort && !isHiddenAbort) {
       console.warn('角色回复失败:', e.message);
       const _pForErr = personas.find(x => x.id == _replyPersonaId);
       _showApiErrorToast((_pForErr ? _pForErr.name + ' · ' : '') + '回复失败', e);
+    }
+    // 如果是页面隐藏导致的中断，尝试通过 SW 重新发送
+    if (isHiddenAbort && !isUserAbort) {
+      try {
+        const _pForRetry = personas.find(x => x.id == _replyPersonaId);
+        if (_pForRetry) {
+          try { syncBgConfigToSW(); } catch(se) {}
+          setTimeout(function() {
+            try {
+              const sw = (navigator.serviceWorker && (navigator.serviceWorker.controller ||
+                (window._swRegistration && window._swRegistration.active))) || null;
+              if (sw) {
+                const _swHistRetry = (_pForRetry.history || []).slice(-50).map(m => ({
+                  role: m.role === 'user' ? 'user' : 'assistant',
+                  content: (m.content || '').substring(0, 500)
+                })).filter(m => m.content);
+                sw.postMessage({
+                  type: 'TRIGGER_REPLY',
+                  personaId: _pForRetry.id,
+                  personaName: _pForRetry.name,
+                  personaAvatar: _pForRetry.avatar || '',
+                  systemPrompt: '你是' + _pForRetry.name + '，人设：' + (_pForRetry.persona || '').substring(0, 500) + '。请根据对话记录自然回复用户的最后一条消息，回复1-3条，消息之间用"###"分隔，只返回消息内容本身。',
+                  messages: _swHistRetry,
+                  maxReply: _pForRetry.maxReplyCount || 3,
+                  temperature: _pForRetry.temperature || 1.0
+                });
+              }
+            } catch(re) {}
+          }, 600);
+        }
+      } catch(re) {}
     }
   } finally {
     delete _autoReplyLocks[_replyPersonaId];
@@ -43755,6 +44281,7 @@ function toggleDreamArchive() {
 }
 // ===== 梦境软件 JS 结束 =====
 function renderNotifCenter() {
+  try { monoRenderPushControls(); } catch(e) {}
   // Render persona toggles
   const toggleList = document.getElementById('notifToggleList');
   if (toggleList) {
@@ -43889,12 +44416,498 @@ function _processNotifQueue() {
     setTimeout(() => _processNotifQueue(), 400);
   }, 3500);
 }
+// ===== window.Notifications — iOS 风格横幅 + 后台系统通知统一入口 =====
+window.Notifications = (function () {
+  'use strict';
+  const _msgIcon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>';
+  let _queue = [], _timer = null, _hideTimer = null, _hideAnimTimer = null, _current = null;
+  let _swipeStartY = 0;
+  let _inited = false;
+
+  function _overlay() { return document.getElementById('yd-global-notify'); }
+  function _banner() { return _overlay() ? _overlay().querySelector('.yd-notify-banner') : null; }
+  function _el(id)   { return document.getElementById(id); }
+
+  function _init() {
+    if (_inited) return;
+    _inited = true;
+    const b = _banner();
+    if (!b) return;
+    b.addEventListener('click', () => {
+      const cur = _current;
+      _hideNow();
+      if (cur && cur.meta && cur.meta.personaId) {
+        try { openApp('chatPage'); selectPersona(cur.meta.personaId); } catch(e) {}
+      }
+    });
+    b.addEventListener('touchstart', e => { _swipeStartY = e.touches?.[0]?.pageY ?? 0; }, { passive: true });
+    b.addEventListener('touchend', e => {
+      const dy = _swipeStartY - (e.changedTouches?.[0]?.pageY ?? 0);
+      if (dy > 50) { e.preventDefault(); _hideNow(); }
+    }, { passive: false });
+  }
+
+  function _renderIcon(avatar) {
+    const ic = _el('ydNotifIcon');
+    if (!ic) return;
+    if (avatar) {
+      ic.innerHTML = '<img src="' + avatar.replace(/"/g, '&quot;') + '" alt="" class="yd-notify-banner__icon-img">';
+    } else {
+      ic.innerHTML = _msgIcon;
+      ic.style.color = 'rgba(60,60,67,0.7)';
+    }
+  }
+
+  function _show(item) {
+    if (!_inited) _init();
+    const b = _banner();
+    if (!b) return;
+    _current = item;
+    _renderIcon(item.avatar || '');
+    const titleLeft = _el('ydNotifTitleLeft');
+    const titleRight = _el('ydNotifTitleRight');
+    const body = _el('ydNotifBody');
+    if (titleLeft) titleLeft.textContent = item.name || 'Mono Heart';
+    if (titleRight) titleRight.textContent = item.timeLabel || '';
+    if (body) body.textContent = item.text || '';
+    if (_hideAnimTimer) { clearTimeout(_hideAnimTimer); _hideAnimTimer = null; }
+    b.hidden = false;
+    b.classList.remove('yd-notify-banner--enter');
+    requestAnimationFrame(() => b.classList.add('yd-notify-banner--enter'));
+    if (_hideTimer) clearTimeout(_hideTimer);
+    _hideTimer = setTimeout(_hideNow, 7000);
+  }
+
+  function _hideNow(immediate) {
+    const b = _banner();
+    if (!b) return;
+    if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
+    if (_hideAnimTimer) { clearTimeout(_hideAnimTimer); _hideAnimTimer = null; }
+    _current = null;
+    b.classList.remove('yd-notify-banner--enter');
+    if (immediate) { b.hidden = true; _scheduleNext(); return; }
+    _hideAnimTimer = setTimeout(() => { b.hidden = true; _hideAnimTimer = null; _scheduleNext(); }, 230);
+  }
+
+  function _scheduleNext() {
+    if (_timer) { clearTimeout(_timer); _timer = null; }
+    if (!_queue.length) return;
+    const now = Date.now();
+    const wait = Math.max(0, (_queue[0].dueAt || now) - now);
+    _timer = setTimeout(_showNextDue, wait);
+  }
+
+  function _showNextDue() {
+    if (!_queue.length) return;
+    const next = _queue.shift();
+    _show(next);
+    _scheduleNext();
+  }
+
+  function enqueue(name, text, avatar, delayMs, meta) {
+    if (!name || !text) return;
+    if (!_inited) _init();
+    const now = Date.now();
+    const lastDue = _queue.length ? (_queue[_queue.length - 1].dueAt || now) : now;
+    const dueAt = Math.max(now, lastDue) + Math.max(0, Number(delayMs) || 0);
+    const now2 = new Date();
+    const timeLabel = now2.getHours().toString().padStart(2,'0') + ':' + now2.getMinutes().toString().padStart(2,'0');
+    const item = { name, text, avatar: avatar || '', dueAt, timeLabel, meta: meta || null };
+    if (_current) {
+      _queue = [];
+      _hideNow(true);
+      _show(item);
+      return;
+    }
+    _queue.push(item);
+    _scheduleNext();
+  }
+
+  return { enqueue, hideNow: _hideNow, init: _init };
+})();
 // ---- Browser Push Notification ----
 // 跨浏览器通知支持情况：
 //   Chrome/Edge (desktop + Android): SW 注册成功后全功能支持
 //   iOS Safari PWA (加入主屏幕): iOS 16.4+ 支持 SW 通知，必须是 PWA 模式
 //   iOS Safari 普通浏览器: 不支持任何后台通知，只能弹应用内 toast
 //   Firefox: 支持 SW 通知，不支持 periodicSync
+const MONO_WEBPUSH_USER_KEY = 'mono_webpush_user_id';
+const MONO_WEBPUSH_DEVICE_KEY = 'mono_webpush_device_id';
+const MONO_WEBPUSH_PULL_SINCE_KEY = 'mono_webpush_pull_since';
+window.MONO_WEBPUSH_API_BASE = window.MONO_WEBPUSH_API_BASE || '';
+window._monoPushRegistration = window._monoPushRegistration || null;
+window._monoBgPullInFlight = window._monoBgPullInFlight || false;
+window._monoBackendPushReady = window._monoBackendPushReady || false;
+
+function monoGetPushBackendBase() {
+  try {
+    const explicit = String(window.MONO_WEBPUSH_API_BASE || '').trim().replace(/\/+$/, '');
+    if (explicit) return explicit;
+    if (location && /^https?:$/i.test(location.protocol)) return String(location.origin || '').replace(/\/+$/, '');
+  } catch(e) {}
+  return '';
+}
+
+function monoCanUseBackendPush() {
+  try {
+    const base = monoGetPushBackendBase();
+    if (!base || !location || !/^https?:$/i.test(location.protocol)) return false;
+    return new URL(base).origin === location.origin;
+  } catch(e) {
+    return false;
+  }
+}
+
+function monoGetPushIdentity() {
+  let userId = localStorage.getItem(MONO_WEBPUSH_USER_KEY) || '';
+  let deviceId = localStorage.getItem(MONO_WEBPUSH_DEVICE_KEY) || '';
+  if (!userId) {
+    userId = 'mono_user_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    localStorage.setItem(MONO_WEBPUSH_USER_KEY, userId);
+  }
+  if (!deviceId) {
+    deviceId = 'mono_device_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    localStorage.setItem(MONO_WEBPUSH_DEVICE_KEY, deviceId);
+  }
+  return { userId: userId, deviceId: deviceId };
+}
+
+function monoUrlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
+
+async function monoEnsurePushWorkerRegistration() {
+  if (!monoCanUseBackendPush() || !('serviceWorker' in navigator)) return null;
+  if (window._monoPushRegistration) return window._monoPushRegistration;
+  try {
+    const existing = await navigator.serviceWorker.getRegistration('/mono-webpush/');
+    if (existing) {
+      window._monoPushRegistration = existing;
+      return existing;
+    }
+  } catch(e) {}
+  try {
+    const reg = await navigator.serviceWorker.register('/mono-push-sw.js', { scope: '/mono-webpush/' });
+    window._monoPushRegistration = reg;
+    return reg;
+  } catch(e) {
+    console.warn('[mono webpush] register failed:', e);
+    return null;
+  }
+}
+
+async function monoEnsureBackendPushSubscribed() {
+  if (!monoCanUseBackendPush() || !('PushManager' in window)) return false;
+  if (Notification.permission !== 'granted') return false;
+  try {
+    const apiBase = monoGetPushBackendBase();
+    const reg = await monoEnsurePushWorkerRegistration();
+    if (!reg || !reg.pushManager) return false;
+    const keyRes = await fetch(apiBase + '/api/webpush/public-key');
+    const keyJson = await keyRes.json();
+    if (!keyJson || !keyJson.publicKey) return false;
+
+    let subscription = await reg.pushManager.getSubscription();
+    if (!subscription) {
+      subscription = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: monoUrlBase64ToUint8Array(String(keyJson.publicKey))
+      });
+    }
+
+    const identity = monoGetPushIdentity();
+    await fetch(apiBase + '/api/webpush/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: identity.userId,
+        deviceId: identity.deviceId,
+        subscription: subscription.toJSON(),
+        scope: reg.scope,
+        origin: location.origin,
+        userAgent: navigator.userAgent
+      })
+    });
+    window._monoBackendPushReady = true;
+    setTimeout(function() {
+      try { if (typeof syncBgConfigToSW === 'function') syncBgConfigToSW(); } catch(e) {}
+    }, 0);
+    return true;
+  } catch(e) {
+    window._monoBackendPushReady = false;
+    console.warn('[mono webpush] subscribe failed:', e);
+    return false;
+  }
+}
+
+async function monoSyncBackendBgConfig(activeCfg, bgPersonas) {
+  if (!monoCanUseBackendPush()) return false;
+  const cfg = activeCfg || (typeof _getCurrentActiveApiConfig === 'function' ? _getCurrentActiveApiConfig() : null);
+  if (!cfg || !cfg.url || !cfg.key || !cfg.model) return false;
+  try {
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      try { await monoEnsureBackendPushSubscribed(); } catch(e) {}
+    }
+    const identity = monoGetPushIdentity();
+    const apiBase = monoGetPushBackendBase();
+    const payload = {
+      userId: identity.userId,
+      deviceId: identity.deviceId,
+      apiConfig: { url: cfg.url, key: cfg.key, model: cfg.model },
+      bgPersonas: Array.isArray(bgPersonas) ? bgPersonas : [],
+      appOrigin: location.origin,
+      appUrl: location.href.split('#')[0],
+      notificationPermission: (typeof Notification !== 'undefined' ? Notification.permission : ''),
+      pushSubscribed: !!window._monoPushRegistration
+    };
+    const res = await fetch(apiBase + '/api/bg/personas/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return !!res.ok;
+  } catch(e) {
+    console.warn('[mono webpush] bg config sync failed:', e);
+    return false;
+  }
+}
+
+function monoGetBackendPullSince() {
+  return Number(localStorage.getItem(MONO_WEBPUSH_PULL_SINCE_KEY) || '0') || 0;
+}
+
+function monoSetBackendPullSince(ts) {
+  if (!ts) return;
+  try { localStorage.setItem(MONO_WEBPUSH_PULL_SINCE_KEY, String(Number(ts) || 0)); } catch(e) {}
+}
+
+function monoRenderPushControls() {
+  const box = document.getElementById('monoPushStatusBox');
+  const permBtn = document.getElementById('ydNotifPermBtn');
+  const enableBtn = document.getElementById('monoPushEnableBtn');
+  const testBtn = document.getElementById('monoPushTestBtn');
+  const forceBtn = document.getElementById('monoPushForceBtn');
+
+  const permission = (typeof Notification !== 'undefined') ? Notification.permission : 'unsupported';
+
+  if (box) {
+    box.innerHTML = '<div>当前版本：纯前端后台保活通知</div><div>通知权限：' + String(permission).replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</div>';
+  }
+
+  if (permBtn) {
+    permBtn.disabled = (permission === 'unsupported');
+    permBtn.textContent = permission === 'granted' ? '✓ 系统通知已开启' : '开启系统通知';
+    permBtn.style.opacity = permission === 'unsupported' ? '0.55' : '1';
+  }
+
+  if (enableBtn) { enableBtn.disabled = true; enableBtn.style.opacity = '0.55'; }
+  if (testBtn) { testBtn.disabled = true; testBtn.style.opacity = '0.55'; }
+  if (forceBtn) { forceBtn.disabled = true; forceBtn.style.opacity = '0.55'; }
+}
+
+async function monoEnableFrontendNotifications() {
+  try {
+    requestNotifPermission();
+    setTimeout(function() {
+      try { monoRenderPushControls(); } catch(e) {}
+    }, 300);
+    return typeof Notification !== 'undefined' && Notification.permission === 'granted';
+  } catch(e) {
+    try { monoRenderPushControls(); } catch(err) {}
+    return false;
+  }
+}
+
+async function monoEnableBackendPush() {
+  return monoEnableFrontendNotifications();
+}
+
+async function monoSendBackendPushTest() {
+  if (!monoCanUseBackendPush()) {
+    alert('当前不是同源服务地址，无法走真实 Web Push 测试');
+    return;
+  }
+  const ready = await monoEnableBackendPush();
+  if (!ready) return;
+  try {
+    const apiBase = monoGetPushBackendBase();
+    const identity = monoGetPushIdentity();
+    const res = await fetch(apiBase + '/api/webpush/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: identity.userId,
+        body: '这是一条来自后端 Web Push 的测试通知',
+        url: location.href.split('#')[0]
+      })
+    });
+    const json = await res.json();
+    monoRenderPushControls();
+    if (json && json.ok) {
+      try { if (typeof showMonoNotifToast === 'function') showMonoNotifToast('测试已发送', '请查看系统通知栏中的 Web Push 测试消息', ''); } catch(e) {}
+      return;
+    }
+    alert('测试发送失败');
+  } catch(e) {
+    alert('测试通知失败：' + (e.message || String(e)));
+  }
+}
+
+async function monoForceBackendPersonaPush() {
+  if (!monoCanUseBackendPush()) {
+    alert('当前不是同源服务地址，无法走后端强制触发');
+    return;
+  }
+  const targetPersona = (typeof personas !== 'undefined' && Array.isArray(personas))
+    ? (personas.find(function(p) { return p && p.autoMsg && String(p.id) === String(currentId || ''); }) || personas.find(function(p) { return p && p.autoMsg; }))
+    : null;
+  if (!targetPersona) {
+    alert('还没有开启自动消息的角色');
+    return;
+  }
+  const ready = await monoEnableBackendPush();
+  if (!ready) return;
+  try {
+    const apiBase = monoGetPushBackendBase();
+    const identity = monoGetPushIdentity();
+    const res = await fetch(apiBase + '/api/bg/personas/trigger', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: identity.userId,
+        deviceId: identity.deviceId,
+        personaId: String(targetPersona.id)
+      })
+    });
+    const json = await res.json();
+    if (json && json.ok) {
+      try { if (typeof showMonoNotifToast === 'function') showMonoNotifToast('已请求后端发送', targetPersona.name + ' 正在通过后端生成并推送消息', targetPersona.avatar || ''); } catch(e) {}
+      setTimeout(function() {
+        try { monoPullBackendBgMessages(); } catch(e) {}
+      }, 1500);
+    } else {
+      alert('后端触发失败：' + ((json && json.error) || '未知错误'));
+    }
+  } catch(e) {
+    alert('后端触发失败：' + (e.message || String(e)));
+  }
+}
+
+async function monoAckBackendBgMessages(messageIds, status) {
+  const ids = (messageIds || []).map(id => String(id || '').trim()).filter(Boolean);
+  if (!ids.length || !status || !monoCanUseBackendPush()) return false;
+  try {
+    const apiBase = monoGetPushBackendBase();
+    await fetch(apiBase + '/api/bg/messages/ack', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messageIds: ids, status: status })
+    });
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
+
+function monoMergeBackendBgMessages(list, source) {
+  const items = Array.isArray(list) ? list : [];
+  if (!items.length || typeof personas === 'undefined' || !Array.isArray(personas)) return 0;
+  let changed = false;
+  const deliveredIds = [];
+  let maxTs = 0;
+
+  items.forEach(msg => {
+    if (!msg || !msg.personaId || !msg.content) return;
+    const p = personas.find(x => String(x.id) === String(msg.personaId));
+    if (!p) return;
+    if (!p.history) p.history = [];
+    const already = p.history.some(h => String(h._backendMsgId || '') === String(msg.id || ''));
+    if (already) {
+      maxTs = Math.max(maxTs, Number(msg.createdAt || 0));
+      return;
+    }
+    p.history.push({
+      role: 'assistant',
+      content: String(msg.content || ''),
+      timestamp: Number(msg.createdAt || Date.now()),
+      _autoMsgTime: Number(msg.createdAt || Date.now()),
+      _notified: true,
+      _backendMsgId: String(msg.id || ''),
+      _backendSource: source || 'backend-webpush'
+    });
+    deliveredIds.push(String(msg.id || ''));
+    maxTs = Math.max(maxTs, Number(msg.createdAt || 0));
+    changed = true;
+  });
+
+  if (changed) {
+    try { saveData(); } catch(e) {}
+    try { renderContactList(); } catch(e) {}
+    try { if (typeof currentId !== 'undefined' && currentId) renderMessages(); } catch(e) {}
+  }
+  if (maxTs) monoSetBackendPullSince(maxTs);
+  if (deliveredIds.length) monoAckBackendBgMessages(deliveredIds, 'delivered');
+  return deliveredIds.length;
+}
+
+async function monoPullBackendBgMessages() {
+  if (!monoCanUseBackendPush() || window._monoBgPullInFlight) return 0;
+  window._monoBgPullInFlight = true;
+  try {
+    const apiBase = monoGetPushBackendBase();
+    const identity = monoGetPushIdentity();
+    const since = monoGetBackendPullSince();
+    const url = apiBase + '/api/bg/messages?userId=' + encodeURIComponent(identity.userId) + '&since=' + encodeURIComponent(String(since)) + '&limit=50';
+    const res = await fetch(url);
+    const json = await res.json();
+    if (!json || !Array.isArray(json.messages)) return 0;
+    return monoMergeBackendBgMessages(json.messages, 'backend-pull');
+  } catch(e) {
+    return 0;
+  } finally {
+    window._monoBgPullInFlight = false;
+  }
+}
+
+if (navigator.serviceWorker) {
+  navigator.serviceWorker.addEventListener('message', function(e) {
+    const data = e && e.data ? e.data : {};
+    if (data.type === 'MONO_WEBPUSH_PUSH' && data.message) {
+      try { monoMergeBackendBgMessages([data.message], 'push-worker'); } catch(err) {}
+    }
+    if (data.type === 'MONO_WEBPUSH_OPEN' && data.message) {
+      try { monoMergeBackendBgMessages([data.message], 'push-open'); } catch(err) {}
+      try {
+        openApp('chatPage');
+        if (data.message.personaId) selectPersona(data.message.personaId);
+      } catch(err) {}
+      try { monoAckBackendBgMessages([data.message.id], 'opened'); } catch(err) {}
+      setTimeout(function() {
+        try { monoAckBackendBgMessages([data.message.id], 'read'); } catch(err) {}
+      }, 800);
+    }
+  });
+}
+
+document.addEventListener('visibilitychange', function() {
+  if (!document.hidden) {
+    setTimeout(function() {
+      try { monoPullBackendBgMessages(); } catch(e) {}
+    }, 800);
+  }
+});
+
+setInterval(function() {
+  if (!document.hidden) {
+    try { monoPullBackendBgMessages(); } catch(e) {}
+  }
+}, 45000);
+
 function requestNotifPermission() {
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const isStandalone = window.navigator.standalone === true ||
@@ -43926,8 +44939,10 @@ function requestNotifPermission() {
         if (navigator.storage && navigator.storage.persist) {
           navigator.storage.persist().catch(() => {});
         }
+        monoEnsureBackendPushSubscribed().catch(() => {});
         // 确保 SW 配置已同步
         setTimeout(() => { try { syncBgConfigToSW(); } catch(e) {} }, 1000);
+        setTimeout(() => { try { monoPullBackendBgMessages(); } catch(e) {} }, 1400);
         sendBrowserNotif('Mono Heart', '通知已开启 · 角色消息将即时弹出 ✓', undefined);
       } else if (perm === 'denied') {
         const isEdge = /edg\//i.test(navigator.userAgent);
@@ -43943,84 +44958,199 @@ function requestNotifPermission() {
     if (navigator.storage && navigator.storage.persist) {
       navigator.storage.persist().catch(() => {});
     }
+    monoEnsureBackendPushSubscribed().catch(() => {});
     setTimeout(() => { try { syncBgConfigToSW(); } catch(e) {} }, 500);
+    setTimeout(() => { try { monoPullBackendBgMessages(); } catch(e) {} }, 1000);
   }
 }
 // SW 注册状态追踪
 window._swFailed = window._swFailed || false;
 window._swRegistration = window._swRegistration || null;
 
-function sendBrowserNotif(name, text, avatar) {
+// ── 发送系统通知（多路径降级，移动端兼容）──────────────────────────────
+// 路径1: postMessage → SW.active → self.registration.showNotification（最可靠）
+// 路径2: registration.showNotification（SW 已 active 时有效）
+// 路径3: navigator.serviceWorker.ready 等待后再试
+// 路径4: new Notification（仅桌面 Chrome/Firefox，移动端会 DOMException）
+async function sendBrowserNotif(name, text, avatar, personaId) {
   if (!('Notification' in window)) return;
   if (Notification.permission !== 'granted') return;
 
   const title = 'Mono Heart · ' + name;
-  const tag = 'mono-msg-' + Date.now();
-  const notifOpts = {
-    body: text,
-    icon: avatar || undefined,
-    tag: tag,
-    renotify: true,
-    data: { name, text }
-  };
+  const notifTs = Date.now();
+  const tag = 'mono-msg-' + (personaId || 'global') + '-' + notifTs;
+  const notifData = { name, text, personaId: personaId || null, notifTs: notifTs, threadTag: 'mono-msg-' + (personaId || 'global') };
+  const notifOpts = { body: text, icon: avatar || undefined, tag, renotify: true, data: notifData };
 
-  // 直接 Notification API（SW 失败时 / 不支持 SW 时 / iOS PWA 模式）
-  function fallbackNotification() {
+  // 路径4 兜底：new Notification（桌面有效，移动端会 throw）
+  function fallbackDirect() {
     try {
       const n = new Notification(title, notifOpts);
+      n.onclick = function() {
+        window.focus();
+        try { openApp('chatPage'); if (personaId) selectPersona(personaId); } catch(e) {}
+        n.close();
+      };
       setTimeout(() => { try { n.close(); } catch(e) {} }, 15000);
     } catch(e) {}
   }
 
-  // iOS Safari PWA：SW 注册了但 controller 可能为 null，用 registration 直接弹
-  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-
-  // 优先路径：SW registration.showNotification（Chrome/Edge/Firefox/iOS PWA）
-  if (!window._swFailed && navigator.serviceWorker) {
+  // 路径1: postMessage 给 SW active worker（移动端最可靠路径）
+  function tryPostMessage(reg) {
+    if (!reg || !reg.active) return false;
     try {
-      // 如果已有缓存的 registration 直接用，避免 ready 等待延迟
-      const cachedReg = window._swRegistration;
-      if (cachedReg && cachedReg.showNotification) {
-        cachedReg.showNotification(title, notifOpts).catch(fallbackNotification);
-        return;
-      }
-      // 否则等 ready
-      navigator.serviceWorker.ready.then(reg => {
-        window._swRegistration = reg;
-        if (reg && reg.showNotification) {
-          reg.showNotification(title, notifOpts).catch(fallbackNotification);
-        } else {
-          fallbackNotification();
-        }
-      }).catch(fallbackNotification);
-      return;
-    } catch(e) {}
+      reg.active.postMessage({
+        type: 'SHOW_NOTIFICATION',
+        title: title,
+        body: text,
+        icon: avatar || '',
+        tag: tag,
+        data: notifData
+      });
+      return true;
+    } catch(e) { return false; }
   }
 
-  fallbackNotification();
+  // 路径2: registration.showNotification（SW active 时直接有效）
+  async function tryRegShowNotif(reg) {
+    if (!reg || typeof reg.showNotification !== 'function') return false;
+    try {
+      await reg.showNotification(title, notifOpts);
+      return true;
+    } catch(e) { return false; }
+  }
+
+  if (!navigator.serviceWorker) { fallbackDirect(); return; }
+
+  try {
+    // 用缓存 registration（避免等待延迟）
+    let reg = window._swRegistration;
+    if (!reg) {
+      try { reg = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 3000))
+      ]); window._swRegistration = reg; } catch(e) {}
+    }
+
+    if (reg) {
+      // 路径1 优先：让 SW 内部弹通知（不受 SW active 状态影响）
+      if (tryPostMessage(reg)) return;
+      // 路径2：直接 registration.showNotification
+      if (await tryRegShowNotif(reg)) return;
+    }
+
+    // 路径3：等 ready 后再试一次（SW 可能还在 installing）
+    try {
+      const readyReg = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000))
+      ]);
+      window._swRegistration = readyReg;
+      if (tryPostMessage(readyReg)) return;
+      if (await tryRegShowNotif(readyReg)) return;
+    } catch(e) {}
+
+  } catch(e) {}
+
+  // 路径4：桌面兜底
+  fallbackDirect();
 }
 
-// Fallback Worker：SW 完全不可用时，用 Web Worker 保持定时器活跃
-// （页面切到后台后 setInterval 会被浏览器节流，Worker 不受影响）
+// Fallback Worker：升级为常驻后台保活心跳器
+// 说明：它不能突破浏览器冻结策略，但能在“页面已隐藏但尚未冻结”的阶段
+// 更稳定地维持 SW 唤醒、配置同步、消息补拉与页面侧降级触发。
+function _runBestEffortBgKeepalive(reason) {
+  try { syncBgConfigToSW(); } catch(e) {}
+  try {
+    const sw = navigator.serviceWorker && (
+      navigator.serviceWorker.controller ||
+      (window._swRegistration && window._swRegistration.active)
+    );
+    if (sw) {
+      try { sw.postMessage({ type: 'SW_PING', reason: reason || 'bg-keepalive' }); } catch(e) {}
+      if (document.hidden) {
+        try { sw.postMessage({ type: 'SW_KEEPALIVE_PING', reason: reason || 'bg-keepalive' }); } catch(e) {}
+        try { sw.postMessage({ type: 'BG_CHECK', reason: reason || 'bg-keepalive' }); } catch(e) {}
+      }
+    }
+  } catch(e) {}
+  try { _checkSwHealth(); } catch(e) {}
+  if (document.hidden) {
+    try { _triggerSwBgCheck(); } catch(e) {}
+    if (window._swFailed) {
+      try { triggerPendingAutoMessages(); } catch(e) {}
+      try {
+        if (typeof _checkAllGroupsBackground === 'function') _checkAllGroupsBackground();
+      } catch(e) {}
+    }
+  } else {
+    try { syncBgMessagesToPage(); } catch(e) {}
+    try { monoPullBackendBgMessages(); } catch(e) {}
+  }
+}
+function _pokeFallbackWorker(hidden, reason, boostMs) {
+  try {
+    if (!window._fallbackWorker) return;
+    window._fallbackWorker.postMessage({
+      type: 'STATE',
+      hidden: !!hidden,
+      reason: reason || '',
+      boostMs: Math.max(0, Number(boostMs || 0))
+    });
+  } catch(e) {}
+}
 function _startFallbackNotifWorker() {
-  if (window._fallbackWorkerStarted) return;
+  if (window._fallbackWorkerStarted && window._fallbackWorker) {
+    _pokeFallbackWorker(document.hidden, 'reuse', document.hidden ? 180000 : 0);
+    return;
+  }
   window._fallbackWorkerStarted = true;
   try {
     const wCode = `
-      var interval = 60000;
-      setInterval(function() { postMessage('tick'); }, interval);
+      var hidden = false;
+      var timer = null;
+      var boostUntil = 0;
+      function nextInterval() {
+        var now = Date.now();
+        if (hidden) return now < boostUntil ? 12000 : 30000;
+        return 60000;
+      }
+      function schedule() {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(function tick() {
+          postMessage({ type: 'tick', ts: Date.now(), hidden: hidden });
+          schedule();
+        }, nextInterval());
+      }
+      onmessage = function(ev) {
+        var data = ev.data || {};
+        if (data.type === 'STATE') {
+          hidden = !!data.hidden;
+          if (data.boostMs) boostUntil = Math.max(boostUntil, Date.now() + Number(data.boostMs || 0));
+          schedule();
+          return;
+        }
+        if (data.type === 'PING') {
+          postMessage({ type: 'pong', ts: Date.now(), hidden: hidden });
+        }
+      };
+      schedule();
     `;
     const wBlob = new Blob([wCode], { type: 'application/javascript' });
     const wWorker = new Worker(URL.createObjectURL(wBlob));
-    wWorker.onmessage = function() {
-      // Worker tick：检查是否有待发送的自动消息
-      try {
-        if (typeof triggerPendingAutoMessages === 'function') {
-          triggerPendingAutoMessages();
-        }
-      } catch(e) {}
+    wWorker.onmessage = function(ev) {
+      const data = ev.data || {};
+      if (data.type === 'tick') {
+        _runBestEffortBgKeepalive(data.hidden ? 'fallback-worker:hidden' : 'fallback-worker:visible');
+        return;
+      }
+      if (data.type === 'pong') {
+        try { window._fallbackWorkerLastPongAt = Date.now(); } catch(e) {}
+      }
     };
     window._fallbackWorker = wWorker;
+    window._fallbackWorkerLastPongAt = Date.now();
+    _pokeFallbackWorker(document.hidden, 'start', document.hidden ? 180000 : 0);
   } catch(e) {}
 }
 
@@ -44132,26 +45262,25 @@ function showGroupNotification(g, sender, text) {
 // 4. 用戶关掉了小手機（页面隐藏/最小化） → 只弹瀏覽器通知，不弹韓系 toast
 function dispatchNotification(personaId, name, text, avatar) {
   if (!getNotifEnabled(personaId)) return;
-  // Save to history
+  // 写入通知历史
   notifHistory.unshift({ personaId, name, text, avatar, time: Date.now() });
   if (notifHistory.length > 200) notifHistory = notifHistory.slice(0, 200);
   localStorage.setItem('mono_notif_history', JSON.stringify(notifHistory));
-  // Check if user is currently in the chat of this persona
+  // 正在该角色聊天室且页面可见 → 不弹任何通知
   const chatPage = document.getElementById('chatPage');
-  const isInChat = chatPage &&
-    chatPage.classList.contains('active') &&
-    currentId == personaId;
-  // 场景2：用戶正在该角色的聊天室页面 → 不发任何通知
-  if (isInChat && !document.hidden) {
-    return;
-  }
-  // 场景4：用戶关掉了小手機（页面不可见） → 只发瀏覽器推送通知，不弹 toast
+  const isInChat = chatPage && chatPage.classList.contains('active') && currentId == personaId;
+  if (isInChat && !document.hidden) return;
+  // 页面不可见（后台/切换标签页） → 只发系统通知
   if (document.hidden) {
-    sendBrowserNotif(name, text, avatar);
+    sendBrowserNotif(name, text, avatar, personaId);
     return;
   }
-  // 场景3：用戶在小手機里但不在该角色聊天室 → 只弹韓系 toast，不发瀏覽器通知
-  showMonoNotifToast(name, text, avatar);
+  // 页面可见但不在该角色聊天室 → 弹 iOS 风格横幅
+  if (typeof window.Notifications !== 'undefined') {
+    window.Notifications.enqueue(name, text, avatar, 0, { personaId });
+  } else {
+    showMonoNotifToast(name, text, avatar);
+  }
 }
 // ---- Hook into existing message generation to trigger notifications ----
 // We monkey-patch the saveData function to detect new assistant messages
@@ -44189,11 +45318,13 @@ function initNotifTracking() {
 }
 // ---- Auto-message sending system ----
 function _getAutoMsgMinDelayMs(p) {
-  return Math.max(5, p && p.autoMsgMinInterval || 60) * 60 * 1000;
+  const minMinutes = (p && p.autoMsgMinInterval != null) ? Math.max(0, Number(p.autoMsgMinInterval) || 0) : 60;
+  return minMinutes * 60 * 1000;
 }
 function _getAutoMsgMaxDelayMs(p) {
   const minMs = _getAutoMsgMinDelayMs(p);
-  return Math.max(minMs, (p && p.autoMsgMaxInterval || 120) * 60 * 1000);
+  const maxMinutes = (p && p.autoMsgMaxInterval != null) ? Math.max((minMs / 60000), Number(p.autoMsgMaxInterval) || 0) : 120;
+  return Math.max(minMs, maxMinutes * 60 * 1000);
 }
 function _computeNextAutoMsgDelay(p) {
   const minMs = _getAutoMsgMinDelayMs(p);
@@ -44241,6 +45372,23 @@ async function triggerAutoMessage(personaId) {
   const minMs = _getAutoMsgMinDelayMs(p);
   const anchorTs = _getPersonaAutoMsgAnchorTs(p);
   if (anchorTs && (Date.now() - anchorTs) < minMs) return;
+
+  // ── 页面不可见时：把任务委托给 Service Worker，避免 fetch 被浏览器中断 ──
+  if (document.hidden) {
+    // 先同步最新配置和历史到 SW
+    try { syncBgConfigToSW(); } catch(e) {}
+    // 延迟一点等 IDB 写入完成，再让 SW 开始发消息
+    setTimeout(function() {
+      try {
+        const sw = (navigator.serviceWorker && (navigator.serviceWorker.controller ||
+          (window._swRegistration && window._swRegistration.active))) || null;
+        if (sw) {
+          sw.postMessage({ type: 'TRIGGER_AUTO_MSG', personaId: personaId });
+        }
+      } catch(e) {}
+    }, 400);
+    return;
+  }
   _autoMsgLocks[personaId] = true;
   _autoMsgLastAttemptAt[personaId] = Date.now();
   const memCount = p.memoryCount || 100;
@@ -44560,6 +45708,23 @@ document.addEventListener('visibilitychange', function() {
     if (window._swRegistration && 'sync' in window._swRegistration) {
       window._swRegistration.sync.register('mono-bg-sync').catch(() => {});
     }
+    // 把已到期的自动消息任务委托给 SW（防止前台 fetch 被浏览器中断）
+    setTimeout(function() {
+      try {
+        const sw = (navigator.serviceWorker && (navigator.serviceWorker.controller ||
+          (window._swRegistration && window._swRegistration.active))) || null;
+        if (!sw || typeof personas === 'undefined') return;
+        personas.forEach(function(p) {
+          if (!p.autoMsg || _isOfflineModeActiveForPersona(p.id)) return;
+          const minMs = _getAutoMsgMinDelayMs(p);
+          const anchorTs = _getPersonaAutoMsgAnchorTs(p);
+          // 只委托已到期的（或从未发过的）
+          if (!anchorTs || (Date.now() - anchorTs) >= minMs) {
+            sw.postMessage({ type: 'TRIGGER_AUTO_MSG', personaId: p.id });
+          }
+        });
+      } catch(e) {}
+    }, 600);
   } else {
     try { syncBgMessagesToPage(); } catch(e) {}
     try { startAutoMsgTimers(); } catch(e) {}
@@ -44610,37 +45775,101 @@ function catchUpAutoMessage(p) {
   }
 }
 // ===================== 后台保活 & SW 配置同步 =====================
-function syncBgConfigToSW() {
+window._swLastHeartbeatAt = window._swLastHeartbeatAt || 0;
+window._pendingSwSyncPayload = window._pendingSwSyncPayload || null;
+window._swBgDrainInFlight = window._swBgDrainInFlight || false;
+function _markSwAlive(source) {
+  window._swLastHeartbeatAt = Date.now();
+  window._swReady = true;
+  window._swFailed = false;
+  if (source) window._swLastHeartbeatSource = source;
+}
+function _getDirectSwTarget() {
+  return (navigator.serviceWorker && navigator.serviceWorker.controller) ||
+    (window._swRegistration && (window._swRegistration.active || window._swRegistration.waiting || window._swRegistration.installing)) ||
+    null;
+}
+async function _resolveSwTarget() {
+  const direct = _getDirectSwTarget();
+  if (direct) return direct;
+  if (!navigator.serviceWorker || !navigator.serviceWorker.ready) return null;
+  try {
+    const reg = await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise((resolve) => setTimeout(() => resolve(null), 2500))
+    ]);
+    if (reg) {
+      window._swRegistration = reg;
+      return reg.active || reg.waiting || reg.installing || null;
+    }
+  } catch (e) {}
+  return null;
+}
+async function _postToSw(message, opts) {
+  const options = opts || {};
+  const target = options.target || await _resolveSwTarget();
+  if (!target) return false;
+  try {
+    target.postMessage(message);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+async function _flushPendingSwSync() {
+  if (!window._pendingSwSyncPayload) return false;
+  const payload = window._pendingSwSyncPayload;
+  const ok = await _postToSw(payload);
+  if (ok) window._pendingSwSyncPayload = null;
+  return ok;
+}
+async function syncBgConfigToSW() {
   try {
     if (!navigator.serviceWorker) return;
-    if (typeof apiConfig === 'undefined' || !apiConfig || !apiConfig.url || !apiConfig.key) return;
-    // 找到可用的 SW worker（controller 优先，其次 registration.active）
-    const sw = navigator.serviceWorker.controller ||
-      (window._swRegistration && window._swRegistration.active) || null;
-    if (!sw) return;
+    // ── 修复：始终使用当前激活的 API（支持副 API），不再硬绑定全局 apiConfig ──
+    const _activeCfg = (typeof _getCurrentActiveApiConfig === 'function')
+      ? _getCurrentActiveApiConfig()
+      : (typeof apiConfig !== 'undefined' ? apiConfig : null);
+    if (!_activeCfg || !_activeCfg.url || !_activeCfg.key) return;
+    try {
+      if (typeof apiConfig !== 'undefined' && apiConfig) {
+        apiConfig = _normalizeApiConfigObject(_activeCfg);
+      }
+      _persistEffectiveApiConfig(_activeCfg);
+    } catch(e) {}
     const bgPersonas = (personas || []).filter(p => p.autoMsg).map(p => ({
       id: p.id, name: p.name,
       persona: (p.persona || '').substring(0, 500),
       avatar: p.avatar || '',
       autoMsg: p.autoMsg,
-      autoMsgMinInterval: p.autoMsgMinInterval || 60,
-      autoMsgMaxInterval: p.autoMsgMaxInterval || 120,
+      autoMsgMinInterval: p.autoMsgMinInterval != null ? p.autoMsgMinInterval : 60,
+      autoMsgMaxInterval: p.autoMsgMaxInterval != null ? p.autoMsgMaxInterval : 120,
+      minReplyCount: p.minReplyCount || 1,
+      maxReplyCount: p.maxReplyCount || 3,
       offlineActive: _isOfflineModeActiveForPersona(p.id),
       lastAutoMsgTime: _getPersonaLastAutoMessageTs(p),
       lastUserMsgTime: _getPersonaLastUserActivityTs(p),
-      recentHistory: (p.history || []).slice(-20).map(m => ({
-        role: m.role, content: (m.content || '').substring(0, 200)
+      recentHistory: (p.history || []).slice(-30).map(m => ({
+        role: m.role, content: (m.content || '').substring(0, 300)
       }))
     }));
-    sw.postMessage({
+    const useBackendBgPush = monoCanUseBackendPush() && window._monoBackendPushReady === true;
+    const swBgPersonas = useBackendBgPush ? [] : bgPersonas;
+    const payload = {
       type: 'SYNC_BG_CONFIG',
-      apiConfig: { url: apiConfig.url, key: apiConfig.key, model: apiConfig.model },
-      bgPersonas
-    });
+      apiConfig: { url: _activeCfg.url, key: _activeCfg.key, model: _activeCfg.model },
+      bgPersonas: swBgPersonas
+    };
+    window._pendingSwSyncPayload = payload;
+    try { monoSyncBackendBgConfig(_activeCfg, bgPersonas); } catch(e) {}
+    const ok = await _postToSw(payload);
+    if (ok) window._pendingSwSyncPayload = null;
   } catch(e) {}
 }
 async function syncBgMessagesToPage() {
   try {
+    if (window._swBgDrainInFlight) return;
+    window._swBgDrainInFlight = true;
     const dbReq = indexedDB.open('MonoHeartSW', 1);
     dbReq.onupgradeneeded = function(ev) {
       const db = ev.target.result;
@@ -44649,13 +45878,17 @@ async function syncBgMessagesToPage() {
     };
     dbReq.onsuccess = function(ev) {
       const db = ev.target.result;
-      if (!db.objectStoreNames.contains('messages')) return;
+      if (!db.objectStoreNames.contains('messages')) { window._swBgDrainInFlight = false; return; }
       const tx = db.transaction('messages', 'readwrite');
       const store = tx.objectStore('messages');
       const getReq = store.get('pending');
       getReq.onsuccess = function() {
         const msgs = getReq.result || [];
-        if (msgs.length === 0) return;
+        if (msgs.length === 0) {
+          window._swBgDrainInFlight = false;
+          return;
+        }
+        try { localStorage.setItem('mono_bg_messages', JSON.stringify(msgs)); } catch(e) {}
         msgs.forEach(msg => {
           const p = personas.find(x => x.id == msg.personaId);
           if (p) {
@@ -44676,10 +45909,34 @@ async function syncBgMessagesToPage() {
         try { saveData(); } catch(e) {}
         try { renderContactList(); } catch(e) {}
         try { if (typeof currentId !== 'undefined' && currentId) renderMessages(); } catch(e) {}
+        window._swBgDrainInFlight = false;
       };
+      getReq.onerror = function() { window._swBgDrainInFlight = false; };
+      tx.onabort = function() { window._swBgDrainInFlight = false; };
+      tx.onerror = function() { window._swBgDrainInFlight = false; };
     };
+    dbReq.onerror = function() { window._swBgDrainInFlight = false; };
   } catch(e) {}
+  finally {
+    setTimeout(function() { window._swBgDrainInFlight = false; }, 1500);
+  }
 }
+try {
+  if ('BroadcastChannel' in window && !window._monoSwSyncChannel) {
+    window._monoSwSyncChannel = new BroadcastChannel('mono-sw-sync');
+    window._monoSwSyncChannel.onmessage = function(ev) {
+      const data = ev && ev.data ? ev.data : {};
+      if (!data.type) return;
+      if (data.type === 'SW_PONG' || data.type === 'SW_CONFIG_SYNCED') {
+        _markSwAlive('broadcast');
+      }
+      if (data.type === 'SW_PENDING_MESSAGES' || data.type === 'SW_AUTO_MSG_DONE') {
+        _markSwAlive('broadcast-pending');
+        try { syncBgMessagesToPage(); } catch(e) {}
+      }
+    };
+  }
+} catch(e) {}
 let _keepAliveLock = null;
 function startKeepAlive() {
   // Web Locks API：阻止浏览器回收后台标签（Chrome/Edge 支持）
@@ -44689,31 +45946,13 @@ function startKeepAlive() {
     }).catch(() => {});
   }
 
-  // 主定时器：每3分钟同步配置到 SW 并触发后台检查
-  setInterval(() => {
-    try { syncBgConfigToSW(); } catch(e) {}
-    if (document.hidden) {
-      _triggerSwBgCheck();
-    }
-  }, 3 * 60 * 1000);
+  try { _startFallbackNotifWorker(); } catch(e) {}
+  try { _pokeFallbackWorker(document.hidden, 'startKeepAlive', document.hidden ? 180000 : 0); } catch(e) {}
 
-  // 独立 Worker 定时器：不受页面节流影响，每60秒 tick 一次
-  try {
-    const workerCode = 'setInterval(function(){ postMessage("tick"); }, 60000);';
-    const workerBlob = new Blob([workerCode], { type: 'application/javascript' });
-    const keepAliveWorker = new Worker(URL.createObjectURL(workerBlob));
-    window._keepAliveWorker = keepAliveWorker;
-    keepAliveWorker.onmessage = function() {
-      try { syncBgConfigToSW(); } catch(e) {}
-      if (document.hidden) {
-        _triggerSwBgCheck();
-        // SW 不可用时用 fallback worker 触发消息
-        if (window._swFailed) {
-          try { triggerPendingAutoMessages(); } catch(e) {}
-        }
-      }
-    };
-  } catch(e) {}
+  // 主定时器：每90秒同步配置到 SW 并触发后台检查（原3分钟）
+  setInterval(() => {
+    try { _runBestEffortBgKeepalive('startKeepAlive:interval'); } catch(e) {}
+  }, 90 * 1000);
 }
 
 // 统一触发 SW 后台检查（不依赖 controller，直接用 registration）
@@ -44721,15 +45960,24 @@ function _triggerSwBgCheck() {
   if (!navigator.serviceWorker) return;
   // 优先用 controller（已控制当前页面的 SW）
   if (navigator.serviceWorker.controller) {
-    try { navigator.serviceWorker.controller.postMessage({ type: 'BG_CHECK' }); return; } catch(e) {}
+    try {
+      navigator.serviceWorker.controller.postMessage({ type: 'SW_PING' });
+      navigator.serviceWorker.controller.postMessage({ type: 'BG_CHECK' });
+      return;
+    } catch(e) {}
   }
   // 降级：用 registration.active（blob URL SW 常见情况：active 但 controller 为 null）
   if (window._swRegistration && window._swRegistration.active) {
-    try { window._swRegistration.active.postMessage({ type: 'BG_CHECK' }); return; } catch(e) {}
+    try {
+      window._swRegistration.active.postMessage({ type: 'SW_PING' });
+      window._swRegistration.active.postMessage({ type: 'BG_CHECK' });
+      return;
+    } catch(e) {}
   }
   // 再降级：等 ready
   navigator.serviceWorker.ready.then(reg => {
     if (reg && reg.active) {
+      try { reg.active.postMessage({ type: 'SW_PING' }); } catch(e) {}
       reg.active.postMessage({ type: 'BG_CHECK' });
     }
   }).catch(() => {});
@@ -44737,14 +45985,20 @@ function _triggerSwBgCheck() {
 setTimeout(startKeepAlive, 5000);
 document.addEventListener('visibilitychange', function() {
   if (!document.hidden) {
+    try { _pokeFallbackWorker(false, 'visibility-visible', 0); } catch(e) {}
     setTimeout(() => { try { syncBgMessagesToPage(); } catch(e) {} }, 1000);
     setTimeout(() => { try { syncBgConfigToSW(); } catch(e) {} }, 2000);
     if (window._swRegistration && 'sync' in window._swRegistration) {
       window._swRegistration.sync.register('mono-bg-sync').catch(() => {});
     }
   } else {
-    // 页面隐藏时也立即触发一次 BG_CHECK
-    setTimeout(() => { try { _triggerSwBgCheck(); } catch(e) {} }, 500);
+    // 页面切后台：立即同步最新配置到 SW，然后触发 BG_CHECK
+    try { _pokeFallbackWorker(true, 'visibility-hidden', 180000); } catch(e) {}
+    try { syncBgConfigToSW(); } catch(e) {}
+    try { _runBestEffortBgKeepalive('visibility-hidden:immediate'); } catch(e) {}
+    setTimeout(() => { try { _triggerSwBgCheck(); } catch(e) {} }, 300);
+    setTimeout(() => { try { _triggerSwBgCheck(); } catch(e) {} }, 10000); // 10s 后再触发一次，防止首次失效
+    setTimeout(() => { try { _runBestEffortBgKeepalive('visibility-hidden:retry'); } catch(e) {} }, 2000);
   }
 });
 // ===================== 世界书 World Book =====================
@@ -63175,6 +64429,7 @@ function initApiSwitcher() {
   }
   // Apply the active API to the global apiConfig
   applyActiveApi();
+  try { _persistEffectiveApiConfig(apiConfig); } catch(e) {}
   // Render secondary API list in settings
   renderSecondaryApiList();
   renderActiveApiIndicator();
@@ -63206,6 +64461,9 @@ function applyActiveApi() {
   }
   spyDataCache = {};
   _persistEffectiveApiConfig(apiConfig);
+  setTimeout(function() {
+    try { syncBgConfigToSW(); } catch(e) {}
+  }, 0);
 }
 // ── Get active API display name ──
 function getActiveApiName() {
@@ -63224,6 +64482,8 @@ function switchActiveApi(id) {
   renderSecondaryApiList();
   renderActiveApiIndicator();
   updateFabPanel();
+  // ── 修复：切换 API 后立即将最新激活的 API 配置同步给 SW ──
+  setTimeout(function() { try { syncBgConfigToSW(); } catch(e) {} }, 300);
 }
 // ── Render active API indicator ──
 function renderActiveApiIndicator() {
@@ -88917,7 +90177,7 @@ function _monoPersonaExportBase(p) {
       enableTranslation: p.enableTranslation, translateLang: p.translateLang, voiceFreq: p.voiceFreq, memoryCount: p.memoryCount,
       memoryCore: p.memoryCore || [], lastHeartVoice: p.lastHeartVoice || null, heartVoiceGenerateEnabled: _isHeartVoiceGenerationEnabled(p), heartVoiceEnabled: !!(p.heartVoiceEnabled != null ? p.heartVoiceEnabled : p.showHeartVoiceInHeader),
       heartVoiceMode: p.heartVoiceMode || 'header', autoSummary: !!p.autoSummary, autoSummaryInterval: p.autoSummaryInterval || 20,
-      autoMsg: !!p.autoMsg, autoMsgMinInterval: p.autoMsgMinInterval || 60, autoMsgMaxInterval: p.autoMsgMaxInterval || 120,
+      autoMsg: !!p.autoMsg, autoMsgMinInterval: p.autoMsgMinInterval != null ? p.autoMsgMinInterval : 60, autoMsgMaxInterval: p.autoMsgMaxInterval != null ? p.autoMsgMaxInterval : 120,
       autoDiary: !!p.autoDiary, autoDiaryTime: p.autoDiaryTime || '21:00', autoMoments: !!p.autoMoments, autoMomentsTime: p.autoMomentsTime || '20:00',
       diaryIncludeOfflineMemory: p.diaryIncludeOfflineMemory !== false, momentsIncludeOfflineMemory: p.momentsIncludeOfflineMemory !== false, bubbleAiCss: p.bubbleAiCss || '', bubbleUserCss: p.bubbleUserCss || '',
       bubbleAiFontColor: p.bubbleAiFontColor || '', bubbleUserFontColor: p.bubbleUserFontColor || '', bubblePreset: p.bubblePreset || 'none',
@@ -89473,8 +90733,8 @@ if (document.readyState === 'loading') {
         autoSummary: !!persona.autoSummary,
         autoSummaryInterval: persona.autoSummaryInterval || 20,
         autoMsg: !!persona.autoMsg,
-        autoMsgMinInterval: persona.autoMsgMinInterval || 60,
-        autoMsgMaxInterval: persona.autoMsgMaxInterval || 120,
+        autoMsgMinInterval: persona.autoMsgMinInterval != null ? persona.autoMsgMinInterval : 60,
+        autoMsgMaxInterval: persona.autoMsgMaxInterval != null ? persona.autoMsgMaxInterval : 120,
       autoDiary: !!persona.autoDiary,
       autoDiaryTime: persona.autoDiaryTime || '21:00',
       autoMoments: !!persona.autoMoments,
@@ -89573,8 +90833,8 @@ if (document.readyState === 'loading') {
       autoSummary: !!settings.autoSummary,
       autoSummaryInterval: settings.autoSummaryInterval || 20,
       autoMsg: !!settings.autoMsg,
-      autoMsgMinInterval: settings.autoMsgMinInterval || 60,
-      autoMsgMaxInterval: settings.autoMsgMaxInterval || 120,
+      autoMsgMinInterval: settings.autoMsgMinInterval != null ? settings.autoMsgMinInterval : 60,
+      autoMsgMaxInterval: settings.autoMsgMaxInterval != null ? settings.autoMsgMaxInterval : 120,
       autoDiary: !!settings.autoDiary,
       autoDiaryTime: settings.autoDiaryTime || '21:00',
       autoMoments: !!settings.autoMoments,
@@ -91198,6 +92458,231 @@ if (document.readyState === 'loading') {
   // Re-init after music bar becomes visible
   var _mmObs = new MutationObserver(function() { if (!bar) initDrag(); });
   _mmObs.observe(document.body, { childList: true, subtree: false });
+})();
+</script>
+
+<!-- ===== SW 永久保活增强补丁 v4 ===== -->
+<script>
+(function() {
+  'use strict';
+
+  // ── 1. SW 健康检查 & 自动重注册 ──────────────────────────────────
+  // 每 90 秒检查一次 SW 是否仍然存活；若丢失则立刻重新注册
+  var SW_HEALTH_INTERVAL = 60 * 1000; // 每 60s 检查一次（原90s）
+  var _swReg = null;
+
+  function _getSWCode() {
+    // 从原始全局变量获取 swCode（若页面已注册过就有缓存）
+    return window._cachedSwCode || null;
+  }
+
+  // 拦截并缓存 swCode，以便重注册时使用
+  (function patchRegisterSW() {
+    var origRegister = navigator.serviceWorker && navigator.serviceWorker.register
+      ? navigator.serviceWorker.register.bind(navigator.serviceWorker) : null;
+    if (!origRegister) return;
+    navigator.serviceWorker.register = function(url, opts) {
+      // 如果是 blob URL，尝试读出代码缓存
+      return origRegister(url, opts).then(function(reg) {
+        _swReg = reg;
+        return reg;
+      });
+    };
+  })();
+
+  // 检查 SW 是否活跃（active worker 存在），否则尝试重新注册
+  async function _checkSwHealth() {
+    if (!('serviceWorker' in navigator)) return;
+    try {
+      var regs = [];
+      if (navigator.serviceWorker.getRegistrations) {
+        regs = await navigator.serviceWorker.getRegistrations();
+      } else {
+        var single = await navigator.serviceWorker.getRegistration();
+        if (single) regs = [single];
+      }
+      var reg = window._swRegistration || regs.find(function(item) { return item && (item.active || item.waiting || item.installing); }) || regs[0] || null;
+      if (reg) {
+        window._swRegistration = reg;
+        _swReg = reg;
+      }
+      var heartbeatAge = Date.now() - (window._swLastHeartbeatAt || 0);
+      var staleMs = document.hidden ? 45000 : 90000;
+      if (reg && reg.waiting) {
+        try { reg.waiting.postMessage({ type: 'SKIP_WAITING' }); } catch(e) {}
+      }
+      if (reg && reg.active) {
+        _markSwAlive('health-active');
+        try { reg.active.postMessage({ type: 'SW_PING' }); } catch(e) {}
+        try { syncBgConfigToSW(); } catch(e) {}
+        try { _flushPendingSwSync(); } catch(e) {}
+        if (!window._swLastHeartbeatAt || heartbeatAge < staleMs) return;
+      }
+      console.warn('[SW Health] SW 心跳过期或未 active，尝试恢复…');
+      if (reg) {
+        await reg.update().catch(function() {});
+        await new Promise(function(r) { setTimeout(r, 800); });
+        if (reg.waiting) {
+          try { reg.waiting.postMessage({ type: 'SKIP_WAITING' }); } catch(e) {}
+        }
+        if (reg.active) {
+          _markSwAlive('health-recovered');
+          try { reg.active.postMessage({ type: 'SW_PING' }); } catch(e) {}
+          try { syncBgConfigToSW(); } catch(e) {}
+          try { _flushPendingSwSync(); } catch(e) {}
+          return;
+        }
+      }
+      window._swReady = false;
+      window._swFailed = true;
+      var _cachedCode = window._cachedSwCode;
+      if (_cachedCode && typeof _registerSW === 'function') {
+        console.warn('[SW Health] 尝试重新注册 SW…');
+        try {
+          _registerSW(_cachedCode).then(function(newReg) {
+            _swReg = newReg;
+            window._swRegistration = newReg;
+            window._swFailed = false;
+            _markSwAlive('health-reregister');
+            console.log('[SW Health] SW 重注册成功');
+            return new Promise(function(r) { setTimeout(r, 2000); });
+          }).then(function() {
+            try { syncBgConfigToSW(); } catch(e) {}
+            try { _flushPendingSwSync(); } catch(e) {}
+          }).catch(function(err) {
+            console.warn('[SW Health] 重注册失败，启动兜底 Worker：', err);
+            try { _startFallbackNotifWorker(); } catch(e2) {}
+          });
+        } catch(regErr) {
+          try { _startFallbackNotifWorker(); } catch(e) {}
+        }
+      } else {
+        // 没有缓存代码，只能启动兜底 Worker
+        try { _startFallbackNotifWorker(); } catch(e) {}
+      }
+    } catch(e) {}
+  }
+
+  // ── 2. 页面端高频心跳（避免浏览器节流 SW）────────────────────────
+  // 补充原有 60s Worker：增加 30s 可见时 / 15s 隐藏时的专属心跳
+  var _heartbeatTimer = null;
+
+  function _startHeartbeat() {
+    if (_heartbeatTimer) clearInterval(_heartbeatTimer);
+    var interval = document.hidden ? 10 * 1000 : 30 * 1000; // 后台10s/前台30s
+    _heartbeatTimer = setInterval(function() {
+      try { _runBestEffortBgKeepalive(document.hidden ? 'heartbeat:hidden' : 'heartbeat:visible'); } catch(e) {}
+    }, interval);
+  }
+
+  document.addEventListener('visibilitychange', function() {
+    // 切换时重置心跳频率
+    _startHeartbeat();
+    try { _pokeFallbackWorker(document.hidden, 'sw-enhanced-visibility', document.hidden ? 180000 : 0); } catch(e) {}
+    // 切到后台时立即触发一次检查 + SW 健康检查
+    if (document.hidden) {
+      setTimeout(function() {
+        try { _runBestEffortBgKeepalive('heartbeat-visibility-hidden'); } catch(e) {}
+      }, 300);
+    }
+  });
+
+  // ── 3. SW 内部自唤醒：通过 postMessage 让 SW 安排自己的下次任务 ──
+  // 在页面发送 BG_CHECK 时，同时发一个 SCHEDULE_SELF_PING 让 SW
+  // 通过 setTimeout + waitUntil 安排自身延迟唤醒（延长 SW 生命周期）
+  var _origTrigger = null;
+  function _patchTriggerSwBgCheck() {
+    // 等待原函数就绪
+    if (typeof _triggerSwBgCheck !== 'function') {
+      setTimeout(_patchTriggerSwBgCheck, 1000);
+      return;
+    }
+    var _orig = _triggerSwBgCheck;
+    window._triggerSwBgCheck = function() {
+      _orig();
+      // 额外发送 KEEPALIVE ping
+      try {
+        var sw = navigator.serviceWorker.controller ||
+          (window._swRegistration && window._swRegistration.active);
+        if (sw) sw.postMessage({ type: 'SW_KEEPALIVE_PING' });
+      } catch(e) {}
+    };
+  }
+  setTimeout(_patchTriggerSwBgCheck, 3000);
+
+  // ── 4. SW 注册后注入自唤醒代码片段处理器 ────────────────────────
+  // 监听 SW message，如果 SW 反馈它即将进入 idle，立刻发一条消息把它唤醒
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', function(ev) {
+      if (!ev.data) return;
+      // SW 告知自己 idle → 立刻回一个 ping 保活
+      if (ev.data.type === 'SW_IDLE_SOON') {
+        setTimeout(function() {
+          try {
+            var sw = navigator.serviceWorker.controller ||
+              (window._swRegistration && window._swRegistration.active);
+            if (sw) sw.postMessage({ type: 'BG_CHECK' });
+          } catch(e) {}
+        }, 2000);
+      }
+    });
+  }
+
+  // ── 5. Periodic Sync 补注册（每次页面变为可见时重申请）────────────
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) {
+      setTimeout(function() {
+        try {
+          var reg = window._swRegistration;
+          if (reg && 'periodicSync' in reg) {
+            reg.periodicSync.register('mono-bg-check', { minInterval: 15 * 60 * 1000 }).catch(function() {});
+          }
+          if (reg && 'sync' in reg) {
+            reg.sync.register('mono-bg-sync').catch(function() {});
+          }
+        } catch(e) {}
+      }, 3000);
+    }
+  });
+
+  // ── 6. 启动所有增强机制 ──────────────────────────────────────────
+  setTimeout(function() {
+    try { _startFallbackNotifWorker(); } catch(e) {}
+    try { _pokeFallbackWorker(document.hidden, 'sw-enhanced-start', document.hidden ? 180000 : 0); } catch(e) {}
+    _startHeartbeat();
+    // SW 健康检查定时器
+    setInterval(_checkSwHealth, SW_HEALTH_INTERVAL);
+    // 启动后立刻检查一次
+    _checkSwHealth();
+  }, 3000); // 延迟 3s，等原始初始化完成（原6s）
+
+  // ── 7. 浏览器 freeze/resume 事件（Chrome 76+）────────────────────
+  // 当标签被冻结（内存压缩）时，SW 是最后的保障
+  if ('onfreeze' in document) {
+    document.addEventListener('freeze', function() {
+      // 页面被冻结前，触发一次 SW 后台检查
+      try { _triggerSwBgCheck(); } catch(e) {}
+      // 同步最新配置
+      try { syncBgConfigToSW(); } catch(e) {}
+    });
+    document.addEventListener('resume', function() {
+      // 页面恢复时：同步消息 + 重启心跳 + SW 健康检查
+      try { _checkSwHealth(); } catch(e) {}
+      setTimeout(function() {
+        try { syncBgMessagesToPage(); } catch(e) {}
+        try { syncBgConfigToSW(); } catch(e) {}
+        _startHeartbeat();
+      }, 800);
+    });
+  }
+
+  // ── 8. 页面关闭前的最后一次同步（beforeunload）──────────────────
+  window.addEventListener('beforeunload', function() {
+    try { syncBgConfigToSW(); } catch(e) {}
+    try { _triggerSwBgCheck(); } catch(e) {}
+  });
+
+  console.log('[SW增强补丁 v5] 已加载：SW内部自驱动(10s) / 心跳(后台10s/前台30s) / 健康检查(60s+真实重注册) / KEEPALIVE_PING→IDLE_SOON / Freeze-Resume保护 / 配置同步增强 / ✅ 副API修复(syncBgConfigToSW→_getCurrentActiveApiConfig) / ✅ 切换API立即同步SW / ✅ SYNC_BG_CONFIG重置调度器');
 })();
 </script>
 </body>

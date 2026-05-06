@@ -22488,6 +22488,131 @@ const EFFECTIVE_API_STORAGE_KEY = 'mono_effective_api';
 function _uniqStrings(arr) {
   return Array.from(new Set((arr || []).filter(Boolean)));
 }
+function _monoSafeString(value, fallback) {
+  if (value == null) return fallback == null ? '' : String(fallback);
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  return fallback == null ? '' : String(fallback);
+}
+function _monoFallbackPersonaAvatar(name) {
+  try {
+    if (typeof makeAvatar === 'function') return makeAvatar(String(name || '?').charAt(0) || '?', '#f2f2f2', '#555555');
+  } catch (e) {}
+  return '';
+}
+function _monoSanitizeChatMessage(raw) {
+  const msg = (raw && typeof raw === 'object') ? Object.assign({}, raw) : {};
+  const role = msg.role === 'user' ? 'user' : 'assistant';
+  msg.role = role;
+  msg.content = msg.content == null ? '' : String(msg.content);
+  msg.msgType = msg.msgType ? String(msg.msgType) : '';
+  msg.timestamp = Number.isFinite(Number(msg.timestamp)) ? Number(msg.timestamp) : Date.now();
+  if (msg.quote && typeof msg.quote === 'object') {
+    msg.quote = {
+      role: msg.quote.role === 'user' ? 'user' : 'assistant',
+      content: msg.quote.content == null ? '' : String(msg.quote.content)
+    };
+  } else {
+    msg.quote = null;
+  }
+  ['imageSrc', 'imageCaption', 'imageDesc', 'textImagePrompt', 'stickerSrc', 'caption', 'audioUrl', 'transcript', '_recalledContent'].forEach(function(key) {
+    if (msg[key] != null) msg[key] = String(msg[key]);
+  });
+  if (msg.takeoutData && typeof msg.takeoutData !== 'object') msg.takeoutData = null;
+  return msg;
+}
+function _monoSanitizePersonaRuntime(persona) {
+  if (!persona || typeof persona !== 'object') return null;
+  let changed = false;
+  const normalizedName = _monoSafeString(persona.name, '未命名角色').trim() || '未命名角色';
+  if (persona.name !== normalizedName) {
+    persona.name = normalizedName;
+    changed = true;
+  }
+  if (!persona.name) {
+    persona.name = '未命名角色';
+    changed = true;
+  }
+  const normalizedAvatar = _monoSafeString(persona.avatar, '').trim();
+  if (persona.avatar !== normalizedAvatar) {
+    persona.avatar = normalizedAvatar;
+    changed = true;
+  }
+  if (!persona.avatar) {
+    persona.avatar = _monoFallbackPersonaAvatar(persona.name);
+    changed = true;
+  }
+  ['chatBgImage', 'bubbleAiCss', 'bubbleUserCss', 'bubbleAiFontColor', 'bubbleUserFontColor', 'userMaskId'].forEach(function(key) {
+    const next = _monoSafeString(persona[key], '');
+    if (persona[key] !== next) {
+      persona[key] = next;
+      changed = true;
+    }
+  });
+  if (!Array.isArray(persona.history)) {
+    try {
+      const raw = localStorage.getItem('mono_hist_' + persona.id);
+      persona.history = raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      persona.history = [];
+    }
+    if (!Array.isArray(persona.history)) persona.history = [];
+    changed = true;
+  }
+  if (!Array.isArray(persona.memoryCore)) {
+    persona.memoryCore = [];
+    changed = true;
+  }
+  const normalizedMemoryCore = [];
+  persona.memoryCore.forEach(function(item) {
+    if (item == null) {
+      changed = true;
+      return;
+    }
+    if (typeof item === 'string') {
+      normalizedMemoryCore.push(item);
+      return;
+    }
+    if (typeof item === 'number' || typeof item === 'boolean') {
+      normalizedMemoryCore.push(String(item));
+      changed = true;
+      return;
+    }
+    if (typeof item === 'object') {
+      try {
+        normalizedMemoryCore.push(JSON.stringify(item));
+        changed = true;
+      } catch (e) {
+        changed = true;
+      }
+    }
+  });
+  if (normalizedMemoryCore.length !== persona.memoryCore.length) changed = true;
+  persona.memoryCore = normalizedMemoryCore;
+  if (persona.lastHeartVoice != null) {
+    try {
+      const normalizedHeartVoice = _normalizeHeartVoicePayload(persona.lastHeartVoice);
+      if (normalizedHeartVoice !== persona.lastHeartVoice) {
+        persona.lastHeartVoice = normalizedHeartVoice;
+        changed = true;
+      }
+    } catch (e) {
+      persona.lastHeartVoice = null;
+      changed = true;
+    }
+  }
+  const normalizedHistory = [];
+  persona.history.forEach(function(item) {
+    try {
+      normalizedHistory.push(_monoSanitizeChatMessage(item));
+    } catch (e) {
+      changed = true;
+    }
+  });
+  if (normalizedHistory.length !== persona.history.length) changed = true;
+  persona.history = normalizedHistory;
+  return { persona: persona, changed: changed };
+}
 // ── 检测是否为 HuggingFace 推理 URL（不应裁剪路径中的 /models/ 段）──
 function _isHuggingFaceUrl(url) {
   return /huggingface\.co/i.test(url) || /hf\.space/i.test(url);
@@ -23985,6 +24110,7 @@ async function deleteSingleMsg(idx) {
   if (!p) return;
   if (await monoConfirm('确定删除这条消息？')) {
     p.history.splice(idx, 1);
+    await monoStrictPersistPersonaHistory(p);
     saveData();
     renderMessages();
     spyDataCache = {};
@@ -24020,6 +24146,7 @@ async function confirmMultiDelete() {
   if (await monoConfirm(`确定删除选中的 ${selectedMsgIndices.size} 条消息？`)) {
     const indices = Array.from(selectedMsgIndices).sort((a, b) => b - a);
     indices.forEach(i => p.history.splice(i, 1));
+    await monoStrictPersistPersonaHistory(p);
     saveData();
     cancelMultiSelect();
     renderMessages();
@@ -24556,7 +24683,9 @@ async function confirmBulkDelete() {
   if (!await monoConfirm('确定要删除以下 ' + count + ' 个角色吗？\n\n' + nameList + '\n\n⚠️ 此操作不可撤销，所有相关数据将被彻底清除。')) return;
   // 执行批量删除
   var idsToDelete = Array.from(_bulkSelected);
-  idsToDelete.forEach(function(id) { _purgePersonaById(id); });
+  for (const id of idsToDelete) {
+    await _purgePersonaById(id);
+  }
   // 退出多选模式
   _bulkSelectMode = false;
   _bulkSelected.clear();
@@ -24568,6 +24697,7 @@ async function confirmBulkDelete() {
   if (normalActions) normalActions.style.display = '';
   // 保存并刷新UI
   saveData();
+  await monoStrictSyncPersonasSnapshot();
   currentId = personas.length > 0 ? personas[0].id : null;
   renderContactList();
   if (currentId) {
@@ -24804,6 +24934,12 @@ function _purgePersonaById(id) {
     });
     localStorage.setItem('mono_love_data', JSON.stringify(_loveData));
   } catch(e) {}
+  try {
+    return Promise.resolve().then(function() {
+      return monoStrictDeletePersonaPrimaryStorage(_delId);
+    }).catch(function(){});
+  } catch(e) {}
+  return Promise.resolve();
 }
 function renderContactList() {
   const list = document.getElementById('contactList');
@@ -24812,6 +24948,7 @@ function renderContactList() {
     return;
   }
   list.innerHTML = personas.map(p => {
+    _monoSanitizePersonaRuntime(p);
     const lastMsg = _getChatListPreviewText(p);
     const isPinned = (window._pinnedChatId == p.id);
     if (_bulkSelectMode) {
@@ -24889,6 +25026,12 @@ function selectPersona(id) {
   _resetChatRenderWindow(id);
   const p = personas.find(x => x.id == id);
   if (!p) return;
+  const _sanitizedPersonaState = _monoSanitizePersonaRuntime(p);
+  if (_sanitizedPersonaState && _sanitizedPersonaState.persona) {
+    if (_sanitizedPersonaState.changed) {
+      try { saveData(); } catch (e) { console.warn('[chat] save sanitized persona failed:', e); }
+    }
+  }
   // 确保 history 已加载（防止 saveData 存储后变成 __hist_ref__ 未还原）
   if (!Array.isArray(p.history)) {
     try {
@@ -25822,6 +25965,7 @@ function renderMessages(opts) {
   const p = personas.find(x => x.id == currentId);
   const box = document.getElementById('chatBox');
   if (!p || !box) return;
+  _monoSanitizePersonaRuntime(p);
   if (_chatRenderPersonaId !== String(p.id) || !_chatRenderVisibleCount) {
     _resetChatRenderWindow(p.id);
   }
@@ -25841,6 +25985,7 @@ function renderMessages(opts) {
     </div>`;
   }
   html += fullHistory.slice(startIdx).map((m, offset) => {
+    try {
     const idx = startIdx + offset;
     const _personaLangCode = typeof _detectPersonaLang === 'function' ? _detectPersonaLang(p) : '';
     // Hidden context messages — injected into AI system prompt but never shown in UI
@@ -26341,6 +26486,11 @@ function renderMessages(opts) {
         </div>
       </div>`;
     }
+    } catch (err) {
+      const idx = startIdx + offset;
+      console.warn('[chat] bad message skipped', p && p.id, idx, err);
+      return `<div class="msg-row ai" data-idx="${idx}"><div class="msg-content"><div class="bubble bubble-ai" style="color:#999;">这条旧消息数据异常，已跳过显示</div></div></div>`;
+    }
   }).join('');
   box.innerHTML = html;
   (function _injectChatDateDividers() {
@@ -26702,9 +26852,11 @@ async function deleteCurrentPersona() {
   const p = personas.find(x => x.id == currentId);
   if (!p) return;
   if (await monoConfirm(`确定要删除角色 "${p.name}" 吗？此操作不可撤销。`)) {
-    personas = personas.filter(x => x.id !== currentId);
-    currentId = personas.length > 0 ? personas[0].id : null;
+    const deletingId = currentId;
+    await _purgePersonaById(deletingId);
     saveData();
+    await monoStrictSyncPersonasSnapshot();
+    currentId = personas.length > 0 ? personas[0].id : null;
     renderContactList();
     if (currentId) {
       openApp('chat', currentId);
@@ -26983,228 +27135,17 @@ function previewAvatar(input) {
   }
 }
 async function deletePersona() {
-  if (await monoConfirm("确定要删除这个角色吗？此操作无法撤销！")){
-    const _delId = currentId;
-    const _delPersona = personas.find(x => x.id == _delId);
-    const _delName = _delPersona ? _delPersona.name : null;
-    // 1. Remove from personas array
-    personas = personas.filter(x => x.id != _delId);
-    // 2. Chat history & background
-    try { localStorage.removeItem('mono_bg_' + _delId); } catch(e) {}
-    try { localStorage.removeItem('mono_hist_' + _delId); } catch(e) {}
-    // 3. Baby app data
-    try {
-      var _babyData = JSON.parse(localStorage.getItem('mono_baby_data') || '{}');
-      if (_babyData.babyList) delete _babyData.babyList[_delId];
-      if (_babyData.chatHistory) delete _babyData.chatHistory[_delId];
-      if (_babyData.dramaHistory) delete _babyData.dramaHistory[_delId];
-      if (_babyData.milestones) delete _babyData.milestones[_delId];
-      if (_babyData.babyEvents) delete _babyData.babyEvents[_delId];
-      if (_babyData.currentFamily == _delId) delete _babyData.currentFamily;
-      localStorage.setItem('mono_baby_data', JSON.stringify(_babyData));
-    } catch(e) {}
-    // 4. Diary entries by this persona
-    try {
-      diaryData = diaryData.filter(function(d) {
-        return !(d.authorType === 'persona' && String(d.personaId) === String(_delId));
-      });
-      localStorage.setItem('mono_diary', JSON.stringify(diaryData));
-      if (typeof renderDiary === 'function') renderDiary();
-    } catch(e) {}
-    // 5. Moments posts by this persona (matched by name since personaId not stored)
-    try {
-      if (_delName) {
-        momentsData = momentsData.filter(function(m) {
-          return !(m.author === _delName && m.avatar === (_delPersona && _delPersona.avatar));
-        });
-        localStorage.setItem('mono_moments', JSON.stringify(momentsData));
-        if (typeof renderMoments === 'function') renderMoments();
-      }
-    } catch(e) {}
-    // 6. Dating app session
-    try {
-      var _datingSess = JSON.parse(localStorage.getItem('mono_dating_sessions') || '{}');
-      delete _datingSess[_delId];
-      localStorage.setItem('mono_dating_sessions', JSON.stringify(_datingSess));
-      if (typeof datingSessions !== 'undefined') delete datingSessions[_delId];
-    } catch(e) {}
-    // 7. Pet app — remove invitedChar references & group chat rooms
-    try {
-      var _petRaw = localStorage.getItem('mono_pet_house');
-      if (_petRaw) {
-        var _petState2 = JSON.parse(_petRaw);
-        if (_petState2.pet && String(_petState2.pet.invitedChar) === String(_delId)) {
-          _petState2.pet.invitedChar = null;
-          _petState2.pet.coSchedule = null;
-        }
-        if (_petState2.collection) {
-          _petState2.collection.forEach(function(cp) {
-            if (String(cp.invitedChar) === String(_delId)) {
-              cp.invitedChar = null;
-              cp.coSchedule = null;
-            }
-          });
-        }
-        localStorage.setItem('mono_pet_house', JSON.stringify(_petState2));
-        if (typeof _petState !== 'undefined') {
-          if (_petState.pet && String(_petState.pet.invitedChar) === String(_delId)) {
-            _petState.pet.invitedChar = null;
-            _petState.pet.coSchedule = null;
-          }
-          if (_petState.collection) {
-            _petState.collection.forEach(function(cp) {
-              if (String(cp.invitedChar) === String(_delId)) {
-                cp.invitedChar = null; cp.coSchedule = null;
-              }
-            });
-          }
-        }
-      }
-      // Remove pet group chat rooms involving this persona
-      var _petChats = JSON.parse(localStorage.getItem('mono_pet_chats') || '{}');
-      Object.keys(_petChats).forEach(function(roomId) {
-        if (roomId.indexOf('_' + String(_delId)) !== -1) delete _petChats[roomId];
-      });
-      localStorage.setItem('mono_pet_chats', JSON.stringify(_petChats));
-    } catch(e) {}
-    // 8. Blackbox records & secrets
-    try {
-      var _bbRec = JSON.parse(localStorage.getItem('mono_blackbox_records') || '{}');
-      delete _bbRec[_delId];
-      localStorage.setItem('mono_blackbox_records', JSON.stringify(_bbRec));
-    } catch(e) {}
-    try {
-      var _bbSec = JSON.parse(localStorage.getItem('mono_blackbox_secrets') || '{}');
-      delete _bbSec[_delId];
-      localStorage.setItem('mono_blackbox_secrets', JSON.stringify(_bbSec));
-    } catch(e) {}
-    try {
-      var _bbSet = JSON.parse(localStorage.getItem('mono_blackbox_settings') || '{}');
-      if (_bbSet.enabled) delete _bbSet.enabled[_delId];
-      localStorage.setItem('mono_blackbox_settings', JSON.stringify(_bbSet));
-    } catch(e) {}
-    // 9. Location — relations, traces, charPos, charRegions
-    try {
-      var _locRel = JSON.parse(localStorage.getItem('mono_loc_relations') || '[]');
-      _locRel = _locRel.filter(function(r) { return String(r.personaId) !== String(_delId); });
-      localStorage.setItem('mono_loc_relations', JSON.stringify(_locRel));
-      if (typeof locRelations !== 'undefined') locRelations = _locRel;
-    } catch(e) {}
-    try {
-      var _locTraces = JSON.parse(localStorage.getItem('mono_loc_traces') || '{}');
-      delete _locTraces[_delId];
-      localStorage.setItem('mono_loc_traces', JSON.stringify(_locTraces));
-      if (typeof locDailyTraces !== 'undefined') delete locDailyTraces[_delId];
-    } catch(e) {}
-    try {
-      var _locCharPos = JSON.parse(localStorage.getItem('mono_loc_char_pos') || '{}');
-      delete _locCharPos[_delId];
-      localStorage.setItem('mono_loc_char_pos', JSON.stringify(_locCharPos));
-      if (typeof locCharLocations !== 'undefined') delete locCharLocations[_delId];
-    } catch(e) {}
-    try {
-      var _locRegions = JSON.parse(localStorage.getItem('mono_loc_char_regions') || '{}');
-      delete _locRegions[_delId];
-      localStorage.setItem('mono_loc_char_regions', JSON.stringify(_locRegions));
-      if (typeof locCharRegions !== 'undefined') delete locCharRegions[_delId];
-    } catch(e) {}
-    // 10. Task data — streaks, per-day tasks, chat counts, rewards, streak rewards
-    try {
-      var _taskRaw = JSON.parse(localStorage.getItem('mono_task_data') || '{}');
-      // streaks
-      if (_taskRaw.streaks) delete _taskRaw.streaks[_delId];
-      // per-day tasks keyed by date then personaId
-      if (_taskRaw.tasks) {
-        Object.keys(_taskRaw.tasks).forEach(function(day) {
-          if (_taskRaw.tasks[day]) delete _taskRaw.tasks[day][_delId];
-        });
-      }
-      // daily chat counts
-      if (_taskRaw.dailyChatCounts) {
-        Object.keys(_taskRaw.dailyChatCounts).forEach(function(day) {
-          if (_taskRaw.dailyChatCounts[day]) delete _taskRaw.dailyChatCounts[day][_delId];
-        });
-      }
-      // rewards (array filtered by personaId)
-      if (_taskRaw.rewards) {
-        _taskRaw.rewards = _taskRaw.rewards.filter(function(r) {
-          return String(r.personaId) !== String(_delId);
-        });
-      }
-      // streak rewards
-      if (_taskRaw.streakRewards) {
-        _taskRaw.streakRewards = _taskRaw.streakRewards.filter(function(r) {
-          return String(r.personaId) !== String(_delId);
-        });
-      }
-      localStorage.setItem('mono_task_data', JSON.stringify(_taskRaw));
-      if (typeof taskData !== 'undefined') {
-        // Merge field-by-field to avoid clobbering in-memory streak/reward state
-        if (_taskRaw.streaks) taskData.streaks = _taskRaw.streaks;
-        if (_taskRaw.tasks) taskData.tasks = _taskRaw.tasks;
-        if (_taskRaw.dailyChatCounts) taskData.dailyChatCounts = _taskRaw.dailyChatCounts;
-        if (Array.isArray(_taskRaw.rewards)) taskData.rewards = _taskRaw.rewards;
-        if (Array.isArray(_taskRaw.streakRewards)) taskData.streakRewards = _taskRaw.streakRewards;
-      }
-    } catch(e) {}
-    // 11. Visit (串門) data — remove all keys prefixed with charId
-    try {
-      var _visitRaw = JSON.parse(localStorage.getItem('mono_visit_data') || '{}');
-      var _delIdStr = String(_delId);
-      Object.keys(_visitRaw).forEach(function(k) {
-        // keys: floorplan_<id>, rooms_<id>, items_<id>_<roomId>, discovered_<id>
-        if (k === 'floorplan_' + _delIdStr ||
-            k === 'rooms_' + _delIdStr ||
-            k === 'discovered_' + _delIdStr ||
-            k.indexOf('items_' + _delIdStr + '_') === 0) {
-          delete _visitRaw[k];
-        }
-      });
-      localStorage.setItem('mono_visit_data', JSON.stringify(_visitRaw));
-    } catch(e) {}
-    // 12. Notification history for this persona
-    try {
-      var _notifHist = JSON.parse(localStorage.getItem('mono_notif_history') || '[]');
-      _notifHist = _notifHist.filter(function(n) { return String(n.personaId) !== String(_delId); });
-      localStorage.setItem('mono_notif_history', JSON.stringify(_notifHist));
-    } catch(e) {}
-    // 13. Auto diary/moments daily dedup keys for this persona
-    try {
-      var keysToRemove = [];
-      for (var i = 0; i < localStorage.length; i++) {
-        var k = localStorage.key(i);
-        if (k && (k.indexOf('mono_auto_diary_' + String(_delId) + '_') === 0 ||
-                  k.indexOf('mono_auto_moments_' + String(_delId) + '_') === 0)) {
-          keysToRemove.push(k);
-        }
-      }
-      keysToRemove.forEach(function(k) { localStorage.removeItem(k); });
-    } catch(e) {}
-    // 14. 恋爱观察室：清理该角色关联的联机对象数据
-    try {
-      var _loveData2 = JSON.parse(localStorage.getItem('mono_love_data') || '{}');
-      Object.keys(_loveData2).forEach(function(k) {
-        var st = _loveData2[k];
-        if (!st || !Array.isArray(st.matches)) return;
-        st.matches = st.matches.filter(function(m) {
-          var src = m && m.onlineSource ? m.onlineSource : null;
-          if (!src) return true;
-          return String(src.ownerPersonaId || '') !== String(_delId);
-        });
-        if (typeof st.selectedMatchIdx === 'number' && st.selectedMatchIdx >= st.matches.length) {
-          st.selectedMatchIdx = st.matches.length ? 0 : -1;
-        }
-        _loveData2[k] = st;
-      });
-      localStorage.setItem('mono_love_data', JSON.stringify(_loveData2));
-    } catch(e) {}
-    saveData();
-    currentId = personas.length > 0 ? personas[0].id : null;
-    renderContactList();
-    if (currentId) selectPersona(currentId);
-    closeEditor();
-    renderDiaryTabs();
-  }
+  if (!await monoConfirm("确定要删除这个角色吗？此操作无法撤销！")) return;
+  const deletingId = currentId;
+  if (deletingId == null) return;
+  await _purgePersonaById(deletingId);
+  saveData();
+  await monoStrictSyncPersonasSnapshot();
+  currentId = personas.length > 0 ? personas[0].id : null;
+  renderContactList();
+  if (currentId) selectPersona(currentId);
+  closeEditor();
+  renderDiaryTabs();
 }
 // ===================== 用户资料 =====================
 function loadProfilePage() {
@@ -27379,11 +27320,9 @@ async function monoDeleteMask(maskId) {
   }
   _monoPersistUserProfileStorage();
   try {
-    if (window._monoIdb && window._idb) {
-      const tx = window._idb.transaction('novel_blobs', 'readwrite');
-      tx.objectStore('novel_blobs').delete(_monoUserMaskAvatarKey(maskId));
-    }
+    await monoStrictRemoveStorageKey(_monoUserMaskAvatarKey(maskId), { blob: true });
   } catch(e) {}
+  try { await monoRunDeletionSweep(); } catch(e) {}
   monoRenderUserMasks();
   monoRenderPersonaMaskOptions();
   monoRenderGroupMaskOptions();
@@ -27646,9 +27585,9 @@ function mwDeleteWorld(worldId) {
   </div>`;
   document.body.appendChild(confirmDiv);
   document.getElementById('mwDelCancel').onclick = function() { document.body.removeChild(confirmDiv); };
-  document.getElementById('mwDelConfirm').onclick = function() {
+  document.getElementById('mwDelConfirm').onclick = async function() {
     document.body.removeChild(confirmDiv);
-    _mwPurgeWorldData(worldId);
+    await _mwPurgeWorldData(worldId);
     const newWorlds = worlds.filter(w => w.id !== worldId);
     mwSaveWorlds(newWorlds);
     mwRenderWorldsList();
@@ -27656,31 +27595,9 @@ function mwDeleteWorld(worldId) {
   };
 }
 // ── 清除某世界所有数据 ──
-function _mwPurgeWorldData(worldId) {
+async function _mwPurgeWorldData(worldId) {
   const prefix = 'mono_mw_' + worldId + '_';
-  // Clear from IDB cache + localStorage
-  try {
-    const keys = Object.keys(localStorage).filter ? null : null; // proxy doesn't expose keys
-    // Use IDB directly if available
-    if (window._idb) {
-      const tx = window._idb.transaction('kv', 'readwrite');
-      const store = tx.objectStore('kv');
-      store.openCursor().onsuccess = e => {
-        const cursor = e.target.result;
-        if (cursor) {
-          if (cursor.key.startsWith(prefix)) cursor.delete();
-          cursor.continue();
-        }
-      };
-    }
-    // Also clean from realLS
-    const toRemove = [];
-    for (let i = 0; i < window.localStorage.length; i++) {
-      const k = window.localStorage.key ? window.localStorage.key(i) : null;
-      if (k && k.startsWith(prefix)) toRemove.push(k);
-    }
-    toRemove.forEach(k => { try { window.localStorage.removeItem(k); } catch(e){} });
-  } catch(e) {}
+  await monoStrictRemoveStorageKeysByPrefixes([prefix]);
 }
 // ── 世界设定 Modal ──
 function _toggleMwCharChat() {
@@ -29041,7 +28958,7 @@ async function deleteCcRoom() {
   if (!await monoConfirm(`确定删除聊天室「${room.name}」？所有对话记录将被永久删除。`)) return;
   const newRooms = rooms.filter(r => r.id !== roomId);
   ccSaveRooms(newRooms);
-  localStorage.removeItem(_ccHistKey(roomId));
+  await monoStrictRemoveStorageKey(_ccHistKey(roomId));
   document.getElementById('ccRoomSettingsModal').style.display = 'none';
   closeCcChatRoom();
   ccRenderRoomList();
@@ -40153,6 +40070,7 @@ function _monoDownloadJsonText(filename, text) {
   }, 1000);
 }
 async function _doExportAllData(statusEl, exportMode) {
+  try { await monoRunDeletionSweep(); } catch(e) {}
   // ── 导出前先将内存中的线下剧情状态落盘，确保导出时 _cache 是最新的 ──
   if (typeof _offlineState !== 'undefined' && _offlineState.sessions && Object.keys(_offlineState.sessions).length > 0) {
     _saveOfflineSessions();
@@ -91852,29 +91770,136 @@ if (document.readyState === 'loading') {
     });
   }
 
+  async function monoStrictRemoveStorageKey(key, options) {
+    if (!key) return;
+    const opts = options || {};
+    try { localStorage.removeItem(key); } catch (err) {}
+    try {
+      if (window._monoRawLocalStorage) window._monoRawLocalStorage.removeItem(key);
+    } catch (err) {}
+    await monoSyncKvRecord(key, null);
+    if (opts.blob) {
+      try {
+        if (window._monoIdbBlobDel) await Promise.resolve(window._monoIdbBlobDel(key)).catch(function() {});
+      } catch (err) {}
+    }
+  }
+
+  async function monoStrictRemoveStorageKeysByPrefixes(prefixes, options) {
+    const list = Array.isArray(prefixes) ? prefixes.filter(Boolean) : [];
+    if (!list.length) return;
+    const keys = [];
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && list.some(function(prefix) { return key.indexOf(prefix) === 0; })) keys.push(key);
+      }
+    } catch (err) {}
+    for (const key of Array.from(new Set(keys))) {
+      const shouldDeleteBlob = !!(options && typeof options.blobKeyTest === 'function' && options.blobKeyTest(key));
+      await monoStrictRemoveStorageKey(key, { blob: shouldDeleteBlob });
+    }
+  }
+
+  async function monoStrictSyncPersonasSnapshot() {
+    const personasSlimJson = JSON.stringify(monoBuildPersonasSlimSnapshot());
+    try {
+      localStorage.setItem('mono_personas', personasSlimJson);
+    } catch (err) {}
+    try {
+      if (window._monoRawLocalStorage) window._monoRawLocalStorage.setItem('mono_personas', personasSlimJson);
+    } catch (err) {}
+    await monoSyncKvRecord('mono_personas', personasSlimJson);
+  }
+
+  async function monoStrictDeletePersonaPrimaryStorage(personaId) {
+    if (personaId == null) return;
+    const pid = String(personaId);
+    await monoStrictRemoveStorageKey('mono_hist_' + pid, { blob: true });
+    await monoStrictRemoveStorageKey('mono_bg_' + pid, { blob: true });
+    await monoStrictRemoveStorageKeysByPrefixes([
+      'mono_auto_diary_' + pid + '_',
+      'mono_auto_moments_' + pid + '_'
+    ]);
+  }
+
+  async function monoRunDeletionSweep() {
+    const activePersonaIds = new Set((Array.isArray(personas) ? personas : []).map(function(p) { return String(p && p.id != null ? p.id : ''); }).filter(Boolean));
+    const activeMaskIds = new Set((_monoGetUserMasks() || []).map(function(mask) { return String(mask && mask.id != null ? mask.id : ''); }).filter(Boolean));
+    const keysToDelete = [];
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key) continue;
+        if (key.indexOf('mono_hist_') === 0) {
+          const pid = key.slice('mono_hist_'.length);
+          if (pid && !activePersonaIds.has(pid)) keysToDelete.push({ key: key, blob: true });
+          continue;
+        }
+        if (key.indexOf('mono_bg_') === 0) {
+          const pid = key.slice('mono_bg_'.length);
+          if (pid && !activePersonaIds.has(pid)) keysToDelete.push({ key: key, blob: true });
+          continue;
+        }
+        if (key.indexOf('mono_auto_diary_') === 0) {
+          const rest = key.slice('mono_auto_diary_'.length);
+          const pid = rest.split('_')[0];
+          if (pid && !activePersonaIds.has(pid)) keysToDelete.push({ key: key, blob: false });
+          continue;
+        }
+        if (key.indexOf('mono_auto_moments_') === 0) {
+          const rest = key.slice('mono_auto_moments_'.length);
+          const pid = rest.split('_')[0];
+          if (pid && !activePersonaIds.has(pid)) keysToDelete.push({ key: key, blob: false });
+        }
+      }
+    } catch (err) {}
+    for (const item of keysToDelete) {
+      await monoStrictRemoveStorageKey(item.key, { blob: !!item.blob });
+    }
+    try {
+      if (window._idb) {
+        await new Promise(function(resolve) {
+          try {
+            const tx = window._idb.transaction('novel_blobs', 'readwrite');
+            const store = tx.objectStore('novel_blobs');
+            const req = store.openCursor();
+            req.onsuccess = function(event) {
+              const cursor = event.target.result;
+              if (!cursor) return;
+              const key = String(cursor.key || '');
+              if (key.indexOf(MONO_USER_MASK_AVATAR_PREFIX) === 0) {
+                const maskId = key.slice(MONO_USER_MASK_AVATAR_PREFIX.length);
+                if (maskId && !activeMaskIds.has(maskId)) cursor.delete();
+              }
+              cursor.continue();
+            };
+            tx.oncomplete = function() { resolve(); };
+            tx.onerror = tx.onabort = function() { resolve(); };
+          } catch (err) {
+            resolve();
+          }
+        });
+      }
+    } catch (err) {}
+    await monoStrictSyncPersonasSnapshot();
+  }
+
   async function monoStrictPersistPersonaHistory(persona) {
     if (!persona) return;
     const histKey = 'mono_hist_' + persona.id;
     const histPayload = (Array.isArray(persona.history) && persona.history.length)
       ? JSON.stringify(persona.history)
       : null;
-    const personasSlimJson = JSON.stringify(monoBuildPersonasSlimSnapshot());
     try {
-      if (histPayload == null) localStorage.removeItem(histKey);
+      if (histPayload == null) await monoStrictRemoveStorageKey(histKey, { blob: true });
       else localStorage.setItem(histKey, histPayload);
     } catch (err) {}
     try {
-      localStorage.setItem('mono_personas', personasSlimJson);
+      if (histPayload != null && window._monoRawLocalStorage) window._monoRawLocalStorage.setItem(histKey, histPayload);
     } catch (err) {}
-    try {
-      if (window._monoRawLocalStorage) {
-        if (histPayload == null) window._monoRawLocalStorage.removeItem(histKey);
-        else window._monoRawLocalStorage.setItem(histKey, histPayload);
-        window._monoRawLocalStorage.setItem('mono_personas', personasSlimJson);
-      }
-    } catch (err) {}
-    await monoSyncKvRecord(histKey, histPayload);
-    await monoSyncKvRecord('mono_personas', personasSlimJson);
+    if (histPayload != null) await monoSyncKvRecord(histKey, histPayload);
+    await monoStrictSyncPersonasSnapshot();
   }
 
   function monoRenderAll() {
@@ -92433,8 +92458,14 @@ if (document.readyState === 'loading') {
     if (!await monoConfirm('确定要处理这个日期范围内的 ' + targets.length + ' 条聊天记录吗？')) return;
     const set = new Set(targets);
     persona.history = persona.history.filter(function(message) { return !set.has(message); });
-    monoSaveAll();
+    if (!persona.history.length) {
+      if (typeof _lastHistoryLengths !== 'undefined') _lastHistoryLengths[persona.id] = 0;
+      if (typeof _autoReplyLocks !== 'undefined') delete _autoReplyLocks[persona.id];
+      try { selectedMsgIndices = new Set(); } catch (err) {}
+      try { isMultiSelectMode = false; } catch (err) {}
+    }
     await monoStrictPersistPersonaHistory(persona);
+    monoSaveAll();
     monoResetSpyCache();
     monoCloseChatModal();
     monoRenderAll();
@@ -92447,15 +92478,16 @@ if (document.readyState === 'loading') {
     if (!persona) return;
     if (!await monoConfirm('确定只清空这个角色的线上聊天室内容吗？这不会影响黑盒、日记、线下剧情、角色设定或角色本身。')) return;
     persona.history = [];
-    try { localStorage.removeItem('mono_hist_' + persona.id); } catch (err) {}
-    Promise.resolve()
-      .then(function() { monoSaveAll(); })
-      .then(function() { return monoStrictPersistPersonaHistory(persona); })
-      .then(function() {
-        monoResetSpyCache();
-        monoRenderAll();
-        alert('已清空当前角色的线上聊天室记录，其他数据均已保留。');
-      });
+    await monoStrictRemoveStorageKey('mono_hist_' + persona.id, { blob: true });
+    if (typeof _lastHistoryLengths !== 'undefined') _lastHistoryLengths[persona.id] = 0;
+    if (typeof _autoReplyLocks !== 'undefined') delete _autoReplyLocks[persona.id];
+    try { selectedMsgIndices = new Set(); } catch (err) {}
+    try { isMultiSelectMode = false; } catch (err) {}
+    monoSaveAll();
+    await monoStrictPersistPersonaHistory(persona);
+    monoResetSpyCache();
+    monoRenderAll();
+    alert('已清空当前角色的线上聊天室记录，其他数据均已保留。');
   };
 
   window.monoOpenChatHistoryManager = function() {
@@ -94009,6 +94041,99 @@ if (document.readyState === 'loading') {
     try { syncBgConfigToSW(); } catch(e) {}
     try { _triggerSwBgCheck(); } catch(e) {}
   });
+
+  function _monoWrapDeletionHandler(name) {
+    try {
+      if (!name || !window || typeof window[name] !== 'function') return;
+      var original = window[name];
+      if (original._monoDeletionWrapped) return;
+      var wrapped = async function() {
+        var result = await original.apply(this, arguments);
+        try { await monoRunDeletionSweep(); } catch(e) {}
+        return result;
+      };
+      wrapped._monoDeletionWrapped = true;
+      wrapped._monoDeletionOriginal = original;
+      window[name] = wrapped;
+    } catch (e) {}
+  }
+
+  function _monoInstallDeletionWrappers() {
+    [
+      'deleteMemoryCoreItem',
+      'clearLastHeartVoice',
+      'deleteSingleMsg',
+      'confirmMultiDelete',
+      'deleteCurrentPersona',
+      'deletePersona',
+      'mwDeleteWorld',
+      'deleteCcRoom',
+      'deleteMoment',
+      'deleteMomentsComment',
+      'clearMomentsImage',
+      'deleteDiaryEntry',
+      'deleteForumSection',
+      'deleteForumPost',
+      'removeFromShelf',
+      'removeImportedBook',
+      'removeFromCart',
+      'executeClearChatHistory',
+      'removeBubbleStyles',
+      'removeChatRoomCustomCss',
+      'deleteStickerLibrary',
+      'removeBatchStickerSlot',
+      'deleteSticker',
+      'deleteMemoItem',
+      'deleteBbRecord',
+      'deleteBbSecret',
+      'scriptDeleteArchive',
+      'deleteDreamArchiveItem',
+      'deleteWorldBook',
+      'deleteWbEntry',
+      'removeGcBubbleStyles',
+      'deleteGroup',
+      'removeGroupMember',
+      'removeLocRelation',
+      'clearMusicAccountCookie',
+      'removeImportedTrack',
+      'removeFromLibrary',
+      'deleteCurrentTaskReward',
+      'deleteSingleDatingMsg',
+      'confirmClearDatingHistory',
+      'confirmClearDatingSession',
+      'deleteOfflineEntry',
+      '_hClearAll',
+      'deleteSecondaryApi',
+      'deleteBabyChatMsg',
+      'deleteDrama',
+      'deleteBabyMilestone',
+      'deleteBabyEvent',
+      'deleteLovePartner',
+      'fwRemoveBg',
+      'clearBabyChatHistory',
+      'deletePersonaBabyData',
+      'rpcClearLog',
+      'monoDeleteMask',
+      'monoDeleteChatByDateRange',
+      'olDeleteRoom',
+      'olClearRoomMessages',
+      'olDeleteFriend',
+      '_deleteOfflineSession',
+      '_ifHubDelete',
+      '_hDelEx',
+      '_hDelPeriod',
+      'csRemoveAnniversary',
+      'csDeleteFootprint',
+      'diaryDeleteEntry',
+      'deleteBabyChatMsg',
+      'deleteCurrentTaskReward'
+    ].forEach(_monoWrapDeletionHandler);
+  }
+
+  try { _monoInstallDeletionWrappers(); } catch(e) {}
+  setTimeout(function() {
+    try { _monoInstallDeletionWrappers(); } catch(e) {}
+  }, 1200);
 
   console.log('[SW增强补丁 v5] 已加载：SW内部自驱动(10s) / 心跳(后台10s/前台30s) / 健康检查(60s+真实重注册) / KEEPALIVE_PING→IDLE_SOON / Freeze-Resume保护 / 配置同步增强 / ✅ 副API修复(syncBgConfigToSW→_getCurrentActiveApiConfig) / ✅ 切换API立即同步SW / ✅ SYNC_BG_CONFIG重置调度器');
 })();

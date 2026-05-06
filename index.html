@@ -22808,7 +22808,14 @@ if (!userProfile.avatar || userProfile.avatar.length < 50) {
   }
 })();
 const MONO_USER_MASKS_KEY = 'mono_user_masks';
+const MONO_USER_MASK_AVATAR_KEY_PREFIX = 'user_mask_avatar_';
 let _monoPendingUserMaskAvatarId = '';
+function monoUserMaskAvatarBlobKey(maskId) {
+  return MONO_USER_MASK_AVATAR_KEY_PREFIX + String(maskId || '');
+}
+function monoHasDataImage(value) {
+  return typeof value === 'string' && value.indexOf('data:image') === 0 && value.length > 50;
+}
 function monoNormalizeUserProfile(raw) {
   const src = raw && typeof raw === 'object' ? Object.assign({}, raw) : {};
   const profile = {
@@ -22830,11 +22837,13 @@ function monoNormalizeUserMask(raw) {
   const item = raw && typeof raw === 'object' ? Object.assign({}, raw) : {};
   const id = item.id || ('mask_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7));
   const name = String(item.name || '未命名面具').trim() || '未命名面具';
-  const avatar = item.avatar && String(item.avatar).length > 50 ? String(item.avatar) : makeUserAvatar(name);
+  const hasCustomAvatar = item.hasCustomAvatar == null ? monoHasDataImage(item.avatar) : !!item.hasCustomAvatar;
+  const avatar = monoHasDataImage(item.avatar) ? String(item.avatar) : makeUserAvatar(name);
   return {
     id: id,
     name: name,
     avatar: avatar,
+    hasCustomAvatar: hasCustomAvatar,
     bio: String(item.bio || ''),
     personaSpec: String(item.personaSpec || ''),
     createdAt: Number(item.createdAt) || Date.now(),
@@ -22847,14 +22856,72 @@ function monoLoadUserMasks() {
     return Array.isArray(parsed) ? parsed.map(monoNormalizeUserMask) : [];
   } catch(e) { return []; }
 }
+async function monoSyncUserMaskAvatarsToIdb(masks) {
+  if (!window._monoIdbBlobSet && !window._monoIdbBlobDel) return;
+  const list = Array.isArray(masks) ? masks : [];
+  for (let i = 0; i < list.length; i += 1) {
+    const mask = monoNormalizeUserMask(list[i]);
+    const key = monoUserMaskAvatarBlobKey(mask.id);
+    if (mask.hasCustomAvatar && monoHasDataImage(mask.avatar) && window._monoIdbBlobSet) {
+      try { await window._monoIdbBlobSet(key, mask.avatar); } catch(e) {}
+    }
+  }
+}
 function monoSaveUserMasks(nextMasks) {
   userMasks = (Array.isArray(nextMasks) ? nextMasks : []).map(monoNormalizeUserMask);
-  localStorage.setItem(MONO_USER_MASKS_KEY, JSON.stringify(userMasks));
+  const storable = userMasks.map(function(mask) {
+    const item = Object.assign({}, mask);
+    if (item.hasCustomAvatar && monoHasDataImage(item.avatar)) item.avatar = '';
+    return item;
+  });
+  localStorage.setItem(MONO_USER_MASKS_KEY, JSON.stringify(storable));
+  monoSyncUserMaskAvatarsToIdb(userMasks).catch(function(){});
   monoRefreshUserIdentityUi();
+}
+function monoRestoreUserMaskAvatarsFromIdb() {
+  const hydrate = function() {
+    if (!window._monoIdbBlobGet) {
+      setTimeout(hydrate, 200);
+      return;
+    }
+    Promise.all((userMasks || []).map(function(mask) {
+      return window._monoIdbBlobGet(monoUserMaskAvatarBlobKey(mask.id)).then(function(av) {
+        if (monoHasDataImage(av)) {
+          return monoNormalizeUserMask(Object.assign({}, mask, { avatar: av, hasCustomAvatar: true }));
+        }
+        if (mask.hasCustomAvatar && monoHasDataImage(mask.avatar)) {
+          if (window._monoIdbBlobSet) window._monoIdbBlobSet(monoUserMaskAvatarBlobKey(mask.id), mask.avatar).catch(function(){});
+          return monoNormalizeUserMask(mask);
+        }
+        return monoNormalizeUserMask(mask);
+      }).catch(function() {
+        return monoNormalizeUserMask(mask);
+      });
+    })).then(function(restored) {
+      userMasks = restored;
+      monoRefreshUserIdentityUi();
+    }).catch(function(){});
+  };
+  hydrate();
 }
 function monoGetUserMask(maskId) {
   if (!maskId) return null;
   return (userMasks || []).find(function(mask) { return String(mask.id) === String(maskId); }) || null;
+}
+async function monoExportUserMasksWithAvatars() {
+  const masks = (typeof userMasks !== 'undefined' && Array.isArray(userMasks)) ? userMasks.slice() : monoLoadUserMasks();
+  if (!window._monoIdbBlobGet) return masks.map(monoNormalizeUserMask);
+  const result = [];
+  for (let i = 0; i < masks.length; i += 1) {
+    const mask = monoNormalizeUserMask(masks[i]);
+    let avatar = mask.avatar;
+    try {
+      const stored = await window._monoIdbBlobGet(monoUserMaskAvatarBlobKey(mask.id));
+      if (monoHasDataImage(stored)) avatar = stored;
+    } catch(e) {}
+    result.push(monoNormalizeUserMask(Object.assign({}, mask, { avatar: avatar })));
+  }
+  return result;
 }
 function monoResolveUserIdentityProfile(personaOrId, opts) {
   opts = opts || {};
@@ -23014,6 +23081,7 @@ async function monoCreateUserMask() {
     name: trimmedName,
     bio: String(values.bio || '').trim(),
     personaSpec: String(values.personaSpec || '').trim(),
+    hasCustomAvatar: false,
     createdAt: Date.now(),
     updatedAt: Date.now()
   });
@@ -23065,9 +23133,10 @@ function monoHandleUserMaskAvatarInput(input) {
     } catch(err) {}
     monoSaveUserMasks((userMasks || []).map(function(item) {
       if (String(item.id) !== String(_monoPendingUserMaskAvatarId)) return item;
-      return monoNormalizeUserMask(Object.assign({}, item, { avatar: dataUrl, updatedAt: Date.now() }));
+      return monoNormalizeUserMask(Object.assign({}, item, { avatar: dataUrl, hasCustomAvatar: true, updatedAt: Date.now() }));
     }));
     _monoPendingUserMaskAvatarId = '';
+    monoRestoreFullscreenAfterFilePicker('user-mask-avatar-picked', 260);
   };
   reader.readAsDataURL(file);
 }
@@ -23089,8 +23158,12 @@ async function monoDeleteUserMask(maskId) {
     try { saveData(); } catch(e) {}
   }
   monoSaveUserMasks((userMasks || []).filter(function(item) { return String(item.id) !== String(maskId); }));
+  if (window._monoIdbBlobDel) {
+    try { window._monoIdbBlobDel(monoUserMaskAvatarBlobKey(maskId)).catch(function(){}); } catch(e) {}
+  }
 }
 let userMasks = monoLoadUserMasks();
+monoRestoreUserMaskAvatarsFromIdb();
 let momentsData = _safeParse('mono_moments', []);
 let diaryData = _safeParse('mono_diary', []);
 const FORUM_STATE_KEY = 'mono_forum_state_v2';
@@ -23589,6 +23662,9 @@ let monoNativeFullscreenLastAttemptAt = 0;
 let monoNativeFullscreenRetryCount = 0;
 let monoNativeFullscreenRetryTimer = null;
 let monoNativeFullscreenSessionStamp = Date.now();
+let monoPendingFullscreenRestoreFromPicker = false;
+let monoFullscreenPickerStamp = 0;
+let monoFullscreenGestureRestoreBound = false;
 function monoIsNativeFullscreenActive() {
   return !!(document.fullscreenElement || document.webkitFullscreenElement);
 }
@@ -23607,6 +23683,43 @@ function monoTryNativeFullscreen(reason) {
       el.webkitRequestFullscreen();
     }
   } catch (err) {}
+}
+function monoArmGestureFullscreenRestore() {
+  if (!isIOSFullscreen || monoIsNativeFullscreenActive() || monoFullscreenGestureRestoreBound) return;
+  const handler = function() {
+    document.removeEventListener('pointerdown', handler, true);
+    document.removeEventListener('touchend', handler, true);
+    document.removeEventListener('keydown', handler, true);
+    monoFullscreenGestureRestoreBound = false;
+    monoNativeFullscreenRetryCount = 0;
+    monoTryNativeFullscreen('gesture-restore');
+    monoScheduleNativeFullscreenRetry('gesture-restore-delayed', 420);
+  };
+  monoFullscreenGestureRestoreBound = true;
+  document.addEventListener('pointerdown', handler, true);
+  document.addEventListener('touchend', handler, true);
+  document.addEventListener('keydown', handler, true);
+}
+function monoRequestFullscreenRecovery(reason) {
+  if (!isIOSFullscreen) return;
+  monoNativeFullscreenRetryCount = 0;
+  monoNativeFullscreenSessionStamp = Date.now();
+  monoTryNativeFullscreen(reason);
+  monoScheduleNativeFullscreenRetry(reason + '-retry1', 220);
+  monoScheduleNativeFullscreenRetry(reason + '-retry2', 1100);
+  monoArmGestureFullscreenRestore();
+}
+function monoPrepareForFilePickerFullscreenRestore() {
+  if (!isIOSFullscreen) return;
+  monoPendingFullscreenRestoreFromPicker = true;
+  monoFullscreenPickerStamp = Date.now();
+  monoArmGestureFullscreenRestore();
+}
+function monoRestoreFullscreenAfterFilePicker(reason, delay) {
+  if (!isIOSFullscreen) return;
+  monoPendingFullscreenRestoreFromPicker = false;
+  monoRequestFullscreenRecovery(reason || 'file-picker-return');
+  if (delay != null) monoScheduleNativeFullscreenRetry((reason || 'file-picker-return') + '-delayed', delay);
 }
 function monoScheduleNativeFullscreenRetry(reason, delay) {
   if (!isIOSFullscreen) return;
@@ -23637,12 +23750,10 @@ function toggleIOSFullscreen() {
   localStorage.setItem('mono_ios_fullscreen', isIOSFullscreen.toString());
   applyIOSFullscreenState();
   if (isIOSFullscreen) {
-    monoNativeFullscreenRetryCount = 0;
-    monoNativeFullscreenSessionStamp = Date.now();
-    monoTryNativeFullscreen('toggle-on');
-    monoScheduleNativeFullscreenRetry('toggle-on-delayed', 900);
+    monoRequestFullscreenRecovery('toggle-on');
   } else {
     monoNativeFullscreenRetryCount = 0;
+    monoPendingFullscreenRestoreFromPicker = false;
     if (monoNativeFullscreenRetryTimer) {
       clearTimeout(monoNativeFullscreenRetryTimer);
       monoNativeFullscreenRetryTimer = null;
@@ -23659,16 +23770,38 @@ document.addEventListener('fullscreenchange', () => {
 });
 document.addEventListener('visibilitychange', function() {
   if (!document.hidden && isIOSFullscreen && !monoIsNativeFullscreenActive()) {
-    if (Date.now() - monoNativeFullscreenSessionStamp < 12000) {
-      monoScheduleNativeFullscreenRetry('visibility-return', 180);
-    }
+    monoRequestFullscreenRecovery(monoPendingFullscreenRestoreFromPicker ? 'picker-visibility-return' : 'visibility-return');
   }
+});
+window.addEventListener('focus', function() {
+  if (!isIOSFullscreen || monoIsNativeFullscreenActive()) return;
+  if (monoPendingFullscreenRestoreFromPicker && (Date.now() - monoFullscreenPickerStamp < 20000)) {
+    monoRestoreFullscreenAfterFilePicker('picker-focus-return', 260);
+    return;
+  }
+  monoArmGestureFullscreenRestore();
 });
 window.addEventListener('pageshow', function() {
   if (isIOSFullscreen && !monoIsNativeFullscreenActive()) {
-    monoScheduleNativeFullscreenRetry('pageshow', 180);
+    monoRequestFullscreenRecovery(monoPendingFullscreenRestoreFromPicker ? 'picker-pageshow' : 'pageshow');
   }
 });
+document.addEventListener('click', function(e) {
+  const target = e.target;
+  if (!target) return;
+  const fileInput = (target.closest && target.closest('input[type="file"]')) || null;
+  if (fileInput) {
+    monoPrepareForFilePickerFullscreenRestore();
+    return;
+  }
+  const label = target.closest ? target.closest('label[for]') : null;
+  if (!label) return;
+  const targetId = label.getAttribute('for');
+  const input = targetId ? document.getElementById(targetId) : null;
+  if (input && String(input.type || '').toLowerCase() === 'file') {
+    monoPrepareForFilePickerFullscreenRestore();
+  }
+}, true);
 // ===================== 主屏幕换页模式 =====================
 let homePageMode = localStorage.getItem('mono_home_page_mode') || 'swipe'; // 'swipe' | 'flip'
 /* ── Tap handler called by the two invisible half-screen zones ── */
@@ -26922,6 +27055,7 @@ function previewAvatar(input) {
       const compressed = await compressImage(e.target.result, 300, 0.82);
       document.getElementById('editAvatarPre').src=compressed;
       _pendingAvatarData = compressed;
+      monoRestoreFullscreenAfterFilePicker('persona-avatar-picked', 260);
     };
     r.readAsDataURL(input.files[0]);
   }
@@ -26995,8 +27129,11 @@ function selectGender(gender,save=false) {
 function previewProfileAvatar(input) {
   if (input.files && input.files[0]) {
     const r = new FileReader();
-    r.onload = function(e) {
-      const dataUrl = e.target.result;
+    r.onload = async function(e) {
+      let dataUrl = e.target.result;
+      try {
+        if (typeof compressImage === 'function') dataUrl = await compressImage(dataUrl, 300, 0.82);
+      } catch (err) {}
       document.getElementById('profileAvatarPreview').src = dataUrl;
       document.getElementById('profilePreviewAvatar').src = dataUrl;
       userProfile.avatar = dataUrl;
@@ -27004,6 +27141,7 @@ function previewProfileAvatar(input) {
       if (window._monoIdbBlobSet) {
         window._monoIdbBlobSet('user_avatar', dataUrl).catch(function() {});
       }
+      monoRestoreFullscreenAfterFilePicker('profile-avatar-picked', 260);
     };
     r.readAsDataURL(input.files[0]);
   }
@@ -39458,7 +39596,7 @@ async function _doExportAllData(statusEl) {
       profile: {
         userProfile: monoNormalizeUserProfile((typeof userProfile !== 'undefined' && userProfile) ? userProfile : JSON.parse(localStorage.getItem('mono_user_profile') || '{}')),
         userAvatar: (allBlobs && allBlobs['user_avatar']) || ((typeof userProfile !== 'undefined' && userProfile && userProfile.avatar) ? userProfile.avatar : ''),
-        userMasks: (typeof userMasks !== 'undefined' && Array.isArray(userMasks)) ? userMasks.map(monoNormalizeUserMask) : monoLoadUserMasks()
+        userMasks: await monoExportUserMasksWithAvatars()
       },
       // 主屏幕自定义 (背景图、应用图标、桌件、页面、位置)
       homeScreen: {
@@ -42010,9 +42148,7 @@ window.onload = function() {
   try { applyIOSFullscreenState(); } catch(e) {}
   try {
     if (isIOSFullscreen) {
-      monoNativeFullscreenRetryCount = 0;
-      monoTryNativeFullscreen('restore-onload');
-      monoScheduleNativeFullscreenRetry('restore-onload-delayed', 1200);
+      monoRequestFullscreenRecovery('restore-onload');
     }
   } catch(e) {}
 };

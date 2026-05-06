@@ -11345,6 +11345,202 @@ body.editor-modal-open #chatPage .app-back-bar {
 }
 .confirm-box .btn-cancel { background: #f5f5f5; border: 1px solid #ddd; color: #666; }
 .confirm-box .btn-danger { background: #e74c3c; border: none; color: #fff; }
+.mono-system-alert-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(24, 24, 24, 0.36);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 100000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+.mono-system-alert-overlay.open { display: flex; }
+.mono-system-alert-card {
+  width: min(100%, 360px);
+  background: linear-gradient(180deg, rgba(252,252,252,0.98) 0%, rgba(244,244,244,0.98) 100%);
+  border: 1px solid rgba(219,219,219,0.95);
+  border-radius: 24px;
+  box-shadow: 0 20px 54px rgba(0,0,0,0.15);
+  padding: 18px 18px 16px;
+  color: #242424;
+  animation: monoSystemAlertUp 0.18s ease;
+}
+.mono-system-alert-handle {
+  width: 42px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(170,170,170,0.55);
+  margin: 0 auto 14px;
+}
+.mono-system-alert-title {
+  font-size: calc(13px * var(--fs, 1));
+  font-weight: 800;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  text-align: center;
+  color: #2a2a2a;
+  margin-bottom: 10px;
+}
+.mono-system-alert-body {
+  font-size: calc(12px * var(--fs, 1));
+  line-height: 1.78;
+  color: #5a5a5a;
+  white-space: pre-wrap;
+  word-break: break-word;
+  text-align: left;
+  background: rgba(255,255,255,0.78);
+  border: 1px solid rgba(229,229,229,0.92);
+  border-radius: 18px;
+  padding: 14px 14px 13px;
+}
+.mono-system-alert-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+.mono-system-alert-btn {
+  flex: 1;
+  border: none;
+  border-radius: 16px;
+  padding: 12px 10px;
+  font-size: calc(12px * var(--fs, 1));
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform 0.14s ease, background 0.14s ease, opacity 0.14s ease;
+}
+.mono-system-alert-btn:active { transform: scale(0.97); }
+.mono-system-alert-btn.primary {
+  background: linear-gradient(180deg, #ededed 0%, #dfdfdf 100%);
+  color: #2e2e2e;
+  border: 1px solid rgba(202,202,202,0.95);
+}
+.mono-system-alert-btn.subtle {
+  background: rgba(255,255,255,0.84);
+  color: #777;
+  border: 1px solid rgba(222,222,222,0.96);
+}
+.mono-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(28,28,28,0.38);
+  backdrop-filter: blur(9px);
+  -webkit-backdrop-filter: blur(9px);
+  z-index: 100001;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.mono-dialog-overlay.open { display: flex; }
+.mono-dialog-card {
+  width: min(100%, 390px);
+  max-height: min(82vh, 720px);
+  overflow-y: auto;
+  background: linear-gradient(180deg, rgba(251,251,251,0.99) 0%, rgba(242,242,242,0.99) 100%);
+  border-radius: 26px;
+  border: 1px solid rgba(223,223,223,0.95);
+  box-shadow: 0 22px 60px rgba(0,0,0,0.16);
+  padding: 18px 18px 16px;
+  animation: monoSystemAlertUp 0.18s ease;
+}
+.mono-dialog-handle {
+  width: 44px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(171,171,171,0.52);
+  margin: 0 auto 14px;
+}
+.mono-dialog-title {
+  font-size: calc(13px * var(--fs, 1));
+  font-weight: 800;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  text-align: center;
+  color: #272727;
+  margin-bottom: 8px;
+}
+.mono-dialog-note {
+  font-size: calc(11px * var(--fs, 1));
+  line-height: 1.7;
+  color: #7b7b7b;
+  text-align: center;
+  margin-bottom: 14px;
+  white-space: pre-wrap;
+}
+.mono-dialog-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mono-dialog-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mono-dialog-label {
+  font-size: calc(10px * var(--fs, 1));
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #777;
+}
+.mono-dialog-input,
+.mono-dialog-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(219,219,219,0.96);
+  background: rgba(255,255,255,0.84);
+  border-radius: 16px;
+  padding: 12px 13px;
+  font-size: calc(12px * var(--fs, 1));
+  font-family: inherit;
+  color: #2f2f2f;
+  outline: none;
+  resize: vertical;
+}
+.mono-dialog-input:focus,
+.mono-dialog-textarea:focus {
+  border-color: rgba(153,153,153,0.96);
+  background: rgba(255,255,255,0.96);
+}
+.mono-dialog-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+.mono-dialog-btn {
+  flex: 1;
+  border-radius: 16px;
+  padding: 12px 10px;
+  font-size: calc(12px * var(--fs, 1));
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  border: 1px solid rgba(220,220,220,0.96);
+  transition: transform 0.14s ease, background 0.14s ease;
+}
+.mono-dialog-btn:active { transform: scale(0.97); }
+.mono-dialog-btn.cancel {
+  background: rgba(255,255,255,0.82);
+  color: #7a7a7a;
+}
+.mono-dialog-btn.confirm {
+  background: linear-gradient(180deg, #ededed 0%, #dfdfdf 100%);
+  color: #2f2f2f;
+}
+.mono-dialog-btn.danger {
+  background: linear-gradient(180deg, #5f5f5f 0%, #3b3b3b 100%);
+  border-color: rgba(70,70,70,0.96);
+  color: #fff;
+}
+@keyframes monoSystemAlertUp {
+  from { opacity: 0; transform: translateY(18px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
 .custom-section { border-top: 1px solid #eee; padding-top: 20px; margin-top: 4px; }
 .custom-section-title {
   font-size: 10px; font-weight: 700; text-transform: uppercase;
@@ -17031,6 +17227,28 @@ body.editor-modal-open #chatPage .app-back-bar {
     <div class="mono-notif-toast-text" id="monoNotifText"></div>
   </div>
 </div>
+<div class="mono-system-alert-overlay" id="monoSystemAlertOverlay" aria-hidden="true">
+  <div class="mono-system-alert-card" role="dialog" aria-modal="true" aria-labelledby="monoSystemAlertTitle" aria-describedby="monoSystemAlertBody">
+    <div class="mono-system-alert-handle"></div>
+    <div class="mono-system-alert-title" id="monoSystemAlertTitle">系统提示</div>
+    <div class="mono-system-alert-body" id="monoSystemAlertBody"></div>
+    <div class="mono-system-alert-actions">
+      <button type="button" class="mono-system-alert-btn primary" id="monoSystemAlertOkBtn">知道了</button>
+    </div>
+  </div>
+</div>
+<div class="mono-dialog-overlay" id="monoDialogOverlay" aria-hidden="true">
+  <div class="mono-dialog-card" role="dialog" aria-modal="true" aria-labelledby="monoDialogTitle" aria-describedby="monoDialogNote">
+    <div class="mono-dialog-handle"></div>
+    <div class="mono-dialog-title" id="monoDialogTitle">操作确认</div>
+    <div class="mono-dialog-note" id="monoDialogNote"></div>
+    <div class="mono-dialog-fields" id="monoDialogFields"></div>
+    <div class="mono-dialog-actions">
+      <button type="button" class="mono-dialog-btn cancel" id="monoDialogCancelBtn">取消</button>
+      <button type="button" class="mono-dialog-btn confirm" id="monoDialogConfirmBtn">确定</button>
+    </div>
+  </div>
+</div>
 <div class="phone-container">
   <div class="phone-header">
     <div class="phone-notch"></div>
@@ -19799,7 +20017,6 @@ body.editor-modal-open #chatPage .app-back-bar {
         <div class="online-subtitle" id="olRoomSubtitle">未连接</div>
       </div>
       <div style="display:flex;gap:8px;margin-left:auto;">
-        <button class="online-top-action" onclick="olOpenResidentSheet()"><i class="fas fa-user-astronaut"></i></button>
         <button class="online-top-action" onclick="olRefreshCurrentRoom()"><i class="fas fa-rotate"></i></button>
       </div>
     </div>
@@ -19810,13 +20027,7 @@ body.editor-modal-open #chatPage .app-back-bar {
       <button class="online-room-send" onclick="olSendMessage()">发送</button>
     </div>
   </div>
-  <div class="online-sheet-mask" id="olResidentSheet" onclick="olCloseSheet(event, 'olResidentSheet')">
-    <div class="online-sheet" onclick="event.stopPropagation()">
-      <div class="online-sheet-title">角色入驻聊天室</div>
-      <div class="online-sheet-desc">把角色变成聊天软件里的常驻成员。不是一次性发言，而是会按风格留在房间里，随时插话、接梗、抛观点。</div>
-      <div id="olResidentSheetContent"></div>
-    </div>
-  </div>
+  <div class="online-sheet-mask" id="olResidentSheet" style="display:none;" aria-hidden="true"></div>
   <div class="online-sheet-mask" id="olQuickSheet" onclick="olCloseSheet(event, 'olQuickSheet')">
     <div class="online-sheet" onclick="event.stopPropagation()">
       <div class="online-sheet-title">快捷操作</div>
@@ -21286,9 +21497,9 @@ body.editor-modal-open #chatPage .app-back-bar {
           <label style="font-size:10px;color:#666;white-space:nowrap;">轮对话自动总结一次</label>
         </div>
         <button type="button" id="manualSummaryBtn" onclick="window.manualGenerateSummary && window.manualGenerateSummary()" style="margin-top:10px;width:100%;background:#1a1a1a;color:#fff;border:none;border-radius:8px;padding:10px;font-size:12px;cursor:pointer;font-weight:600;">
-          按最近条数生成总结
+          打开按日期总结
         </button>
-        <p style="font-size:10px;color:#999;margin-top:4px;">点击后 AI 会读取所有对话内容，生成一条综合记忆并永久保存。</p>
+        <p style="font-size:10px;color:#999;margin-top:4px;">点击后会打开聊天室记录管理，你可以按开始日期、结束日期来总结指定范围内的聊天内容。</p>
       </div>
       <!-- 手动添加记忆 -->
       <div style="display:flex;gap:6px;margin-bottom:10px;">
@@ -21679,11 +21890,18 @@ function addMemoryCoreItem() {
   saveData();
   renderMemoryCoreList(p.memoryCore);
 }
-function deleteMemoryCoreItem(idx) {
+async function deleteMemoryCoreItem(idx) {
   if (!currentId) return;
   const p = personas.find(x => x.id == currentId);
   if (!p || !p.memoryCore) return;
-  if (!confirm('确定删除这条记忆吗？删除后无法恢复。')) return;
+  const ok = await window.monoInAppConfirm({
+    title: '删除记忆',
+    note: '确定删除这条记忆吗？删除后无法恢复。',
+    confirmText: '删除',
+    cancelText: '取消',
+    danger: true
+  });
+  if (!ok) return;
   p.memoryCore.splice(idx, 1);
   saveData();
   renderMemoryCoreList(p.memoryCore);
@@ -22777,30 +22995,55 @@ function monoRenderUserMasksManager() {
       + '</div></div></div>';
   }).join('');
 }
-function monoCreateUserMask() {
-  const name = prompt('请输入这个面具的名字：');
-  if (name === null) return;
-  const trimmedName = String(name || '').trim();
+async function monoCreateUserMask() {
+  const values = await window.monoInAppForm({
+    title: '新建用户面具',
+    note: '你可以在这里填写面具名字、简介和详细设定。',
+    confirmText: '创建',
+    cancelText: '取消',
+    fields: [
+      { key: 'name', label: '面具名字', placeholder: '请输入这个面具的名字' },
+      { key: 'bio', label: '面具简介', placeholder: '一句话简介', multiline: true, rows: 3 },
+      { key: 'personaSpec', label: '详细设定', placeholder: '详细写下这个面具的人设、背景、习惯与称呼', multiline: true, rows: 5 }
+    ]
+  });
+  if (!values) return;
+  const trimmedName = String(values.name || '').trim();
   if (!trimmedName) return alert('面具名字不能为空。');
-  const bio = prompt('请输入这个面具的简介：', '') || '';
-  const personaSpec = prompt('请输入这个面具的详细设定：', '') || '';
-  const mask = monoNormalizeUserMask({ name: trimmedName, bio: bio, personaSpec: personaSpec, createdAt: Date.now(), updatedAt: Date.now() });
+  const mask = monoNormalizeUserMask({
+    name: trimmedName,
+    bio: String(values.bio || '').trim(),
+    personaSpec: String(values.personaSpec || '').trim(),
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  });
   monoSaveUserMasks((userMasks || []).concat([mask]));
 }
-function monoEditUserMask(maskId) {
+async function monoEditUserMask(maskId) {
   const mask = monoGetUserMask(maskId);
   if (!mask) return;
-  const nextName = prompt('修改面具名字：', mask.name || '');
-  if (nextName === null) return;
-  const trimmedName = String(nextName || '').trim();
+  const values = await window.monoInAppForm({
+    title: '编辑用户面具',
+    note: '修改这个面具的显示信息和详细设定。',
+    confirmText: '保存',
+    cancelText: '取消',
+    fields: [
+      { key: 'name', label: '面具名字', value: mask.name || '' },
+      { key: 'bio', label: '面具简介', value: mask.bio || '', multiline: true, rows: 3 },
+      { key: 'personaSpec', label: '详细设定', value: mask.personaSpec || '', multiline: true, rows: 5 }
+    ]
+  });
+  if (!values) return;
+  const trimmedName = String(values.name || '').trim();
   if (!trimmedName) return alert('面具名字不能为空。');
-  const nextBio = prompt('修改面具简介：', mask.bio || '');
-  if (nextBio === null) return;
-  const nextSpec = prompt('修改详细面具设定：', mask.personaSpec || '');
-  if (nextSpec === null) return;
   monoSaveUserMasks((userMasks || []).map(function(item) {
     if (String(item.id) !== String(maskId)) return item;
-    return monoNormalizeUserMask(Object.assign({}, item, { name: trimmedName, bio: nextBio, personaSpec: nextSpec, updatedAt: Date.now() }));
+    return monoNormalizeUserMask(Object.assign({}, item, {
+      name: trimmedName,
+      bio: String(values.bio || '').trim(),
+      personaSpec: String(values.personaSpec || '').trim(),
+      updatedAt: Date.now()
+    }));
   }));
 }
 function monoPickUserMaskAvatar(maskId) {
@@ -22828,10 +23071,17 @@ function monoHandleUserMaskAvatarInput(input) {
   };
   reader.readAsDataURL(file);
 }
-function monoDeleteUserMask(maskId) {
+async function monoDeleteUserMask(maskId) {
   const mask = monoGetUserMask(maskId);
   if (!mask) return;
-  if (!confirm('确定要删除面具「' + (mask.name || '未命名面具') + '」吗？绑定到该面具的角色会自动回退到默认用户资料。')) return;
+  const ok = await window.monoInAppConfirm({
+    title: '删除用户面具',
+    note: '确定要删除面具「' + (mask.name || '未命名面具') + '」吗？绑定到该面具的角色会自动回退到默认用户资料。',
+    confirmText: '删除',
+    cancelText: '取消',
+    danger: true
+  });
+  if (!ok) return;
   if (typeof personas !== 'undefined' && Array.isArray(personas)) {
     personas.forEach(function(persona) {
       if (String(persona.userMaskId || '') === String(maskId)) persona.userMaskId = '';
@@ -23122,7 +23372,252 @@ window.onload = () => {
   });
 };
 // ===================== iOS 全萤幕 =====================
+window._nativeAlert = window._nativeAlert || (typeof window.alert === 'function' ? window.alert.bind(window) : function() {});
+window._nativeConfirm = window._nativeConfirm || (typeof window.confirm === 'function' ? window.confirm.bind(window) : function() { return false; });
+window._nativePrompt = window._nativePrompt || (typeof window.prompt === 'function' ? window.prompt.bind(window) : function() { return null; });
+var _monoSystemAlertQueue = [];
+var _monoSystemAlertActive = false;
+var _monoSystemAlertLastFocus = null;
+function monoEnsureSystemAlertDom() {
+  return {
+    overlay: document.getElementById('monoSystemAlertOverlay'),
+    title: document.getElementById('monoSystemAlertTitle'),
+    body: document.getElementById('monoSystemAlertBody'),
+    ok: document.getElementById('monoSystemAlertOkBtn')
+  };
+}
+function monoCloseSystemAlert() {
+  var dom = monoEnsureSystemAlertDom();
+  if (!dom.overlay) return;
+  dom.overlay.classList.remove('open');
+  dom.overlay.setAttribute('aria-hidden', 'true');
+  _monoSystemAlertActive = false;
+  if (_monoSystemAlertLastFocus && typeof _monoSystemAlertLastFocus.focus === 'function') {
+    try { _monoSystemAlertLastFocus.focus({ preventScroll: true }); } catch(_e) {}
+  }
+  _monoSystemAlertLastFocus = null;
+  setTimeout(monoFlushSystemAlertQueue, 20);
+}
+function monoFlushSystemAlertQueue() {
+  if (_monoSystemAlertActive || !_monoSystemAlertQueue.length) return;
+  var dom = monoEnsureSystemAlertDom();
+  if (!dom.overlay || !dom.title || !dom.body || !dom.ok) return;
+  var next = _monoSystemAlertQueue.shift();
+  _monoSystemAlertActive = true;
+  _monoSystemAlertLastFocus = document.activeElement;
+  dom.title.textContent = next && next.title ? String(next.title) : '系统提示';
+  dom.body.textContent = next && next.message != null ? String(next.message) : '';
+  dom.ok.textContent = next && next.okText ? String(next.okText) : '知道了';
+  dom.ok.onclick = function() { monoCloseSystemAlert(); };
+  dom.overlay.onclick = function(event) {
+    if (event.target === dom.overlay) monoCloseSystemAlert();
+  };
+  dom.overlay.onkeydown = function(event) {
+    if (event.key === 'Escape' || event.key === 'Enter') {
+      event.preventDefault();
+      monoCloseSystemAlert();
+    }
+  };
+  dom.overlay.classList.add('open');
+  dom.overlay.setAttribute('aria-hidden', 'false');
+  setTimeout(function() {
+    try { dom.ok.focus({ preventScroll: true }); } catch(_e) {}
+  }, 10);
+}
+window.monoInAppAlert = function(message, title, okText) {
+  _monoSystemAlertQueue.push({
+    title: title || '系统提示',
+    message: message == null ? '' : String(message),
+    okText: okText || '知道了'
+  });
+  monoFlushSystemAlertQueue();
+};
+window.alert = function(message) {
+  try {
+    window.monoInAppAlert(message, '系统提示', '知道了');
+  } catch (err) {
+    try { window._nativeAlert(message); } catch(_e) {}
+  }
+};
+var _monoDialogResolver = null;
+var _monoDialogLastFocus = null;
+function monoEnsureDialogDom() {
+  return {
+    overlay: document.getElementById('monoDialogOverlay'),
+    title: document.getElementById('monoDialogTitle'),
+    note: document.getElementById('monoDialogNote'),
+    fields: document.getElementById('monoDialogFields'),
+    cancelBtn: document.getElementById('monoDialogCancelBtn'),
+    confirmBtn: document.getElementById('monoDialogConfirmBtn')
+  };
+}
+function monoCloseDialog(result) {
+  var dom = monoEnsureDialogDom();
+  if (dom.overlay) {
+    dom.overlay.classList.remove('open');
+    dom.overlay.setAttribute('aria-hidden', 'true');
+  }
+  if (dom.fields) dom.fields.innerHTML = '';
+  if (_monoDialogLastFocus && typeof _monoDialogLastFocus.focus === 'function') {
+    try { _monoDialogLastFocus.focus({ preventScroll: true }); } catch(_e) {}
+  }
+  _monoDialogLastFocus = null;
+  var resolver = _monoDialogResolver;
+  _monoDialogResolver = null;
+  if (typeof resolver === 'function') resolver(result);
+}
+window.monoInAppForm = function(opts) {
+  opts = opts || {};
+  var dom = monoEnsureDialogDom();
+  if (!dom.overlay || !dom.title || !dom.note || !dom.fields || !dom.cancelBtn || !dom.confirmBtn) {
+    return Promise.resolve(null);
+  }
+  if (_monoDialogResolver) monoCloseDialog(null);
+  _monoDialogLastFocus = document.activeElement;
+  dom.title.textContent = opts.title || '输入内容';
+  dom.note.textContent = opts.note || '';
+  dom.fields.innerHTML = '';
+  var fieldEls = [];
+  (opts.fields || []).forEach(function(field, index) {
+    var wrap = document.createElement('label');
+    wrap.className = 'mono-dialog-field';
+    var label = document.createElement('div');
+    label.className = 'mono-dialog-label';
+    label.textContent = field.label || '';
+    wrap.appendChild(label);
+    var input = field.multiline ? document.createElement('textarea') : document.createElement('input');
+    input.className = field.multiline ? 'mono-dialog-textarea' : 'mono-dialog-input';
+    if (!field.multiline) input.type = field.type || 'text';
+    if (field.multiline && field.rows) input.rows = field.rows;
+    if (field.placeholder) input.placeholder = field.placeholder;
+    if (field.value != null) input.value = String(field.value);
+    if (field.inputMode) input.inputMode = field.inputMode;
+    if (field.autocomplete) input.autocomplete = field.autocomplete;
+    if (field.maxLength) input.maxLength = field.maxLength;
+    wrap.appendChild(input);
+    dom.fields.appendChild(wrap);
+    fieldEls.push({ key: field.key || ('field_' + index), input: input });
+  });
+  dom.cancelBtn.textContent = opts.cancelText || '取消';
+  dom.confirmBtn.textContent = opts.confirmText || '确定';
+  dom.confirmBtn.className = 'mono-dialog-btn ' + (opts.danger ? 'danger' : 'confirm');
+  dom.cancelBtn.onclick = function() { monoCloseDialog(null); };
+  dom.confirmBtn.onclick = function() {
+    var result = {};
+    fieldEls.forEach(function(item) { result[item.key] = item.input.value; });
+    monoCloseDialog(result);
+  };
+  dom.overlay.onclick = function(event) {
+    if (event.target === dom.overlay && opts.closeOnBackdrop !== false) monoCloseDialog(null);
+  };
+  dom.overlay.onkeydown = function(event) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      monoCloseDialog(null);
+      return;
+    }
+    if (event.key === 'Enter' && !event.shiftKey) {
+      var target = event.target;
+      var isTextarea = target && target.tagName === 'TEXTAREA';
+      if (!isTextarea || opts.submitOnEnter === true) {
+        event.preventDefault();
+        dom.confirmBtn.click();
+      }
+    }
+  };
+  dom.overlay.classList.add('open');
+  dom.overlay.setAttribute('aria-hidden', 'false');
+  setTimeout(function() {
+    var first = fieldEls[0] && fieldEls[0].input;
+    if (first && typeof first.focus === 'function') {
+      try {
+        first.focus({ preventScroll: true });
+        if (typeof first.select === 'function' && !first.readOnly) first.select();
+      } catch(_e) {}
+    } else {
+      try { dom.confirmBtn.focus({ preventScroll: true }); } catch(_e) {}
+    }
+  }, 10);
+  return new Promise(function(resolve) {
+    _monoDialogResolver = resolve;
+  });
+};
+window.monoInAppConfirm = function(messageOrOpts, maybeTitle) {
+  var opts = typeof messageOrOpts === 'object' && messageOrOpts
+    ? Object.assign({}, messageOrOpts)
+    : { note: messageOrOpts, title: maybeTitle || '操作确认' };
+  return window.monoInAppForm({
+    title: opts.title || '操作确认',
+    note: opts.note || opts.message || '',
+    fields: [],
+    cancelText: opts.cancelText || '取消',
+    confirmText: opts.confirmText || '确定',
+    danger: !!opts.danger,
+    submitOnEnter: true
+  }).then(function(result) {
+    return !!result;
+  });
+};
+window.monoInAppPrompt = function(messageOrOpts, defaultValue) {
+  var opts = typeof messageOrOpts === 'object' && messageOrOpts
+    ? Object.assign({}, messageOrOpts)
+    : { label: messageOrOpts, value: defaultValue || '' };
+  return window.monoInAppForm({
+    title: opts.title || '输入内容',
+    note: opts.note || '',
+    cancelText: opts.cancelText || '取消',
+    confirmText: opts.confirmText || '保存',
+    submitOnEnter: opts.submitOnEnter !== false,
+    fields: [{
+      key: 'value',
+      label: opts.label || '内容',
+      value: opts.value == null ? '' : opts.value,
+      placeholder: opts.placeholder || '',
+      multiline: !!opts.multiline,
+      rows: opts.rows || (opts.multiline ? 5 : 0),
+      type: opts.type || 'text',
+      inputMode: opts.inputMode || '',
+      maxLength: opts.maxLength || 0
+    }]
+  }).then(function(result) {
+    return result ? result.value : null;
+  });
+};
+
 let isIOSFullscreen = localStorage.getItem('mono_ios_fullscreen') === 'true';
+let monoNativeFullscreenLastAttemptAt = 0;
+let monoNativeFullscreenRetryCount = 0;
+let monoNativeFullscreenRetryTimer = null;
+let monoNativeFullscreenSessionStamp = Date.now();
+function monoIsNativeFullscreenActive() {
+  return !!(document.fullscreenElement || document.webkitFullscreenElement);
+}
+function monoTryNativeFullscreen(reason) {
+  if (!isIOSFullscreen) return;
+  const now = Date.now();
+  if (monoIsNativeFullscreenActive()) return;
+  if (now - monoNativeFullscreenLastAttemptAt < 1400) return;
+  monoNativeFullscreenLastAttemptAt = now;
+  const el = document.documentElement;
+  try {
+    if (el.requestFullscreen) {
+      const req = el.requestFullscreen({ navigationUI: 'hide' });
+      if (req && typeof req.catch === 'function') req.catch(function() {});
+    } else if (el.webkitRequestFullscreen) {
+      el.webkitRequestFullscreen();
+    }
+  } catch (err) {}
+}
+function monoScheduleNativeFullscreenRetry(reason, delay) {
+  if (!isIOSFullscreen) return;
+  if (monoNativeFullscreenRetryCount >= 3) return;
+  if (monoNativeFullscreenRetryTimer) clearTimeout(monoNativeFullscreenRetryTimer);
+  monoNativeFullscreenRetryTimer = setTimeout(function() {
+    monoNativeFullscreenRetryTimer = null;
+    monoNativeFullscreenRetryCount += 1;
+    monoTryNativeFullscreen(reason);
+  }, Math.max(0, delay || 0));
+}
 function applyIOSFullscreenState() {
   const body = document.body;
   const icon = document.getElementById('profileFullscreenIcon');
@@ -23142,10 +23637,16 @@ function toggleIOSFullscreen() {
   localStorage.setItem('mono_ios_fullscreen', isIOSFullscreen.toString());
   applyIOSFullscreenState();
   if (isIOSFullscreen) {
-    const el = document.documentElement;
-    if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
-    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    monoNativeFullscreenRetryCount = 0;
+    monoNativeFullscreenSessionStamp = Date.now();
+    monoTryNativeFullscreen('toggle-on');
+    monoScheduleNativeFullscreenRetry('toggle-on-delayed', 900);
   } else {
+    monoNativeFullscreenRetryCount = 0;
+    if (monoNativeFullscreenRetryTimer) {
+      clearTimeout(monoNativeFullscreenRetryTimer);
+      monoNativeFullscreenRetryTimer = null;
+    }
     if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
     else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
   }
@@ -23154,6 +23655,18 @@ document.addEventListener('fullscreenchange', () => {
   if (!document.fullscreenElement && isIOSFullscreen) {
     // User exited fullscreen via browser/OS gesture
     // Keep CSS state and localStorage - only toggle off when user clicks button
+  }
+});
+document.addEventListener('visibilitychange', function() {
+  if (!document.hidden && isIOSFullscreen && !monoIsNativeFullscreenActive()) {
+    if (Date.now() - monoNativeFullscreenSessionStamp < 12000) {
+      monoScheduleNativeFullscreenRetry('visibility-return', 180);
+    }
+  }
+});
+window.addEventListener('pageshow', function() {
+  if (isIOSFullscreen && !monoIsNativeFullscreenActive()) {
+    monoScheduleNativeFullscreenRetry('pageshow', 180);
   }
 });
 // ===================== 主屏幕换页模式 =====================
@@ -23323,15 +23836,21 @@ function saveEditMsg() {
   renderMessages();
   closeEditMsg();
 }
-function deleteSingleMsg(idx) {
+async function deleteSingleMsg(idx) {
   const p = personas.find(x => x.id == currentId);
   if (!p) return;
-  if (confirm('确定删除这条消息？')) {
-    p.history.splice(idx, 1);
-    saveData();
-    renderMessages();
-    spyDataCache = {};
-  }
+  const ok = await window.monoInAppConfirm({
+    title: '删除消息',
+    note: '确定删除这条消息？',
+    confirmText: '删除',
+    cancelText: '取消',
+    danger: true
+  });
+  if (!ok) return;
+  p.history.splice(idx, 1);
+  saveData();
+  renderMessages();
+  spyDataCache = {};
 }
 function enterMultiSelect(firstIdx) {
   isMultiSelectMode = true;
@@ -23356,18 +23875,24 @@ function cancelMultiSelect() {
   document.getElementById('multiDeleteBar').classList.remove('show');
   renderMessages();
 }
-function confirmMultiDelete() {
+async function confirmMultiDelete() {
   if (selectedMsgIndices.size === 0) return;
   const p = personas.find(x => x.id == currentId);
   if (!p) return;
-  if (confirm(`确定删除选中的 ${selectedMsgIndices.size} 条消息？`)) {
-    const indices = Array.from(selectedMsgIndices).sort((a, b) => b - a);
-    indices.forEach(i => p.history.splice(i, 1));
-    saveData();
-    cancelMultiSelect();
-    renderMessages();
-    spyDataCache = {};
-  }
+  const ok = await window.monoInAppConfirm({
+    title: '批量删除消息',
+    note: '确定删除选中的 ' + selectedMsgIndices.size + ' 条消息？',
+    confirmText: '删除',
+    cancelText: '取消',
+    danger: true
+  });
+  if (!ok) return;
+  const indices = Array.from(selectedMsgIndices).sort((a, b) => b - a);
+  indices.forEach(i => p.history.splice(i, 1));
+  saveData();
+  cancelMultiSelect();
+  renderMessages();
+  spyDataCache = {};
 }
 async function regenerateMsg(idx) {
   const p = personas.find(x => x.id == currentId);
@@ -23884,7 +24409,7 @@ function bulkSelectAll() {
   _updateBulkDeleteBar();
   renderContactList();
 }
-function confirmBulkDelete() {
+async function confirmBulkDelete() {
   var count = _bulkSelected.size;
   if (count === 0) return;
   var names = Array.from(_bulkSelected).map(function(id) {
@@ -23894,7 +24419,14 @@ function confirmBulkDelete() {
   var nameList = names.length <= 5
     ? names.join('、')
     : names.slice(0, 5).join('、') + ' 等 ' + names.length + ' 个角色';
-  if (!confirm('确定要删除以下 ' + count + ' 个角色吗？\n\n' + nameList + '\n\n⚠️ 此操作不可撤销，所有相关数据将被彻底清除。')) return;
+  const ok = await window.monoInAppConfirm({
+    title: '批量删除角色',
+    note: '确定要删除以下 ' + count + ' 个角色吗？\n\n' + nameList + '\n\n⚠️ 此操作不可撤销，所有相关数据将被彻底清除。',
+    confirmText: '删除',
+    cancelText: '取消',
+    danger: true
+  });
+  if (!ok) return;
   // 执行批量删除
   var idsToDelete = Array.from(_bulkSelected);
   idsToDelete.forEach(function(id) { _purgePersonaById(id); });
@@ -26105,20 +26637,26 @@ function saveCurrentPersona() {
   URL.revokeObjectURL(url);
   alert('角色已保存为文件！（含记忆核心数据）');
 }
-function deleteCurrentPersona() {
+async function deleteCurrentPersona() {
   const p = personas.find(x => x.id == currentId);
   if (!p) return;
-  if (confirm(`确定要删除角色 "${p.name}" 吗？此操作不可撤销。`)) {
-    const deletedId = currentId;
-    _purgePersonaById(deletedId);
-    currentId = personas.length > 0 ? personas[0].id : null;
-    saveData();
-    renderContactList();
-    if (currentId) {
-      openApp('chat', currentId);
-    } else {
-      document.getElementById('chatPage').classList.add('hidden');
-    }
+  const ok = await window.monoInAppConfirm({
+    title: '删除角色',
+    note: '确定要删除角色「' + p.name + '」吗？此操作不可撤销。',
+    confirmText: '删除',
+    cancelText: '取消',
+    danger: true
+  });
+  if (!ok) return;
+  const deletedId = currentId;
+  _purgePersonaById(deletedId);
+  currentId = personas.length > 0 ? personas[0].id : null;
+  saveData();
+  renderContactList();
+  if (currentId) {
+    openApp('chat', currentId);
+  } else {
+    document.getElementById('chatPage').classList.add('hidden');
   }
 }
 function openEditor(isEdit=false) {
@@ -26388,17 +26926,23 @@ function previewAvatar(input) {
     r.readAsDataURL(input.files[0]);
   }
 }
-function deletePersona() {
-  if(confirm("确定要删除这个角色吗？此操作无法撤销！")){
-    const _delId = currentId;
-    _purgePersonaById(_delId);
-    saveData();
-    currentId = personas.length > 0 ? personas[0].id : null;
-    renderContactList();
-    if (currentId) selectPersona(currentId);
-    closeEditor();
-    renderDiaryTabs();
-  }
+async function deletePersona() {
+  const ok = await window.monoInAppConfirm({
+    title: '删除角色',
+    note: '确定要删除这个角色吗？此操作无法撤销！',
+    confirmText: '删除',
+    cancelText: '取消',
+    danger: true
+  });
+  if (!ok) return;
+  const _delId = currentId;
+  _purgePersonaById(_delId);
+  saveData();
+  currentId = personas.length > 0 ? personas[0].id : null;
+  renderContactList();
+  if (currentId) selectPersona(currentId);
+  closeEditor();
+  renderDiaryTabs();
 }
 // ===================== 用户资料 =====================
 function loadProfilePage() {
@@ -28081,13 +28625,20 @@ function saveCcRoomSettings() {
   document.getElementById('ccChatRoomTitle').textContent = rooms[idx].name || rooms[idx].members.join(' & ');
   ccRenderRoomList();
 }
-function deleteCcRoom() {
+async function deleteCcRoom() {
   const roomId = _ccCurrentRoomId;
   if (!roomId) return;
   const rooms = ccGetRooms();
   const room = rooms.find(r => r.id === roomId);
   if (!room) return;
-  if (!confirm(`确定删除聊天室「${room.name}」？所有对话记录将被永久删除。`)) return;
+  const ok = await window.monoInAppConfirm({
+    title: '删除角色聊天室',
+    note: '确定删除聊天室「' + room.name + '」？所有对话记录将被永久删除。',
+    confirmText: '删除',
+    cancelText: '取消',
+    danger: true
+  });
+  if (!ok) return;
   const newRooms = rooms.filter(r => r.id !== roomId);
   ccSaveRooms(newRooms);
   monoPurgeKeys([_ccHistKey(roomId)]);
@@ -28981,35 +29532,51 @@ function showMomentsFeed() {
   momentsViewState = { mode: 'feed', profileType: '', profileId: null };
   renderMoments();
 }
-function editMomentsProfile(type, id) {
+async function editMomentsProfile(type, id) {
   const meta = getMomentsProfileMeta(type, id);
   if (!meta) return;
-  const nextName = prompt('修改朋友圈网名：', meta.displayName || meta.name || '');
-  if (nextName === null) return;
-  const nextSign = prompt('修改个性签名：', meta.signature || '');
-  if (nextSign === null) return;
   if (type === 'user') {
     const currentCustomStats = _getUserCustomMomentsStats();
-    const nextFollowers = prompt('自定义粉丝数量（留空则继续自动生成）：', currentCustomStats.followers == null ? '' : String(currentCustomStats.followers));
-    if (nextFollowers === null) return;
-    const nextFollowing = prompt('自定义追踪数量（留空则继续自动生成）：', currentCustomStats.following == null ? '' : String(currentCustomStats.following));
-    if (nextFollowing === null) return;
-    const normalizedFollowers = _normalizeMomentsSocialCountInput(nextFollowers);
-    const normalizedFollowing = _normalizeMomentsSocialCountInput(nextFollowing);
+    const values = await window.monoInAppForm({
+      title: '编辑朋友圈资料',
+      note: '你可以在这里修改显示名、个性签名，以及粉丝和追踪数量。',
+      confirmText: '保存',
+      cancelText: '取消',
+      fields: [
+        { key: 'name', label: '朋友圈网名', value: meta.displayName || meta.name || '' },
+        { key: 'sign', label: '个性签名', value: meta.signature || '', multiline: true, rows: 3 },
+        { key: 'followers', label: '自定义粉丝数量', value: currentCustomStats.followers == null ? '' : String(currentCustomStats.followers), inputMode: 'numeric', placeholder: '留空则继续自动生成' },
+        { key: 'following', label: '自定义追踪数量', value: currentCustomStats.following == null ? '' : String(currentCustomStats.following), inputMode: 'numeric', placeholder: '留空则继续自动生成' }
+      ]
+    });
+    if (!values) return;
+    const normalizedFollowers = _normalizeMomentsSocialCountInput(values.followers);
+    const normalizedFollowing = _normalizeMomentsSocialCountInput(values.following);
     if (normalizedFollowers === null || normalizedFollowing === null) {
       alert('粉丝数量和追踪数量只能填写非负整数，或留空。');
       return;
     }
-    userProfile.momentsNickname = nextName.trim() || userProfile.name || '用户';
-    userProfile.momentsSignature = nextSign.trim();
+    userProfile.momentsNickname = String(values.name || '').trim() || userProfile.name || '用户';
+    userProfile.momentsSignature = String(values.sign || '').trim();
     userProfile.momentsFollowersCustom = normalizedFollowers;
     userProfile.momentsFollowingCustom = normalizedFollowing;
     persistMomentsUserProfile();
   } else {
+    const values = await window.monoInAppForm({
+      title: '编辑角色朋友圈资料',
+      note: '这里只会修改这个角色在朋友圈里的显示名和个性签名。',
+      confirmText: '保存',
+      cancelText: '取消',
+      fields: [
+        { key: 'name', label: '朋友圈网名', value: meta.displayName || meta.name || '' },
+        { key: 'sign', label: '个性签名', value: meta.signature || '', multiline: true, rows: 3 }
+      ]
+    });
+    if (!values) return;
     const p = personas.find(function(x) { return String(x.id) === String(id); });
     if (!p) return;
-    p.momentsNickname = nextName.trim() || p.name;
-    p.momentsSignature = nextSign.trim();
+    p.momentsNickname = String(values.name || '').trim() || p.name;
+    p.momentsSignature = String(values.sign || '').trim();
     saveData();
   }
   renderMoments();
@@ -29953,14 +30520,28 @@ function _fallbackConnectedAccountPosts(acc, contextPersona) {
   });
 }
 
-function deleteMoment(itemId) {
-  if (!confirm('确定要删除这条朋友圈吗？')) return;
+async function deleteMoment(itemId) {
+  const ok = await window.monoInAppConfirm({
+    title: '删除朋友圈',
+    note: '确定要删除这条朋友圈吗？',
+    confirmText: '删除',
+    cancelText: '取消',
+    danger: true
+  });
+  if (!ok) return;
   momentsData = momentsData.filter(m => m.id !== itemId);
   localStorage.setItem('mono_moments', JSON.stringify(momentsData));
   renderMoments();
 }
-function deleteMomentsComment(itemId, cIdx) {
-  if (!confirm('确定要删除这条留言吗？')) return;
+async function deleteMomentsComment(itemId, cIdx) {
+  const ok = await window.monoInAppConfirm({
+    title: '删除留言',
+    note: '确定要删除这条留言吗？',
+    confirmText: '删除',
+    cancelText: '取消',
+    danger: true
+  });
+  if (!ok) return;
   const item = momentsData.find(m => m.id === itemId);
   if (!item || !item.comments) return;
   item.comments.splice(cIdx, 1);
@@ -29969,10 +30550,18 @@ function deleteMomentsComment(itemId, cIdx) {
   const box = document.getElementById(`momentsComments_${itemId}`);
   if (box) box.classList.add('open');
 }
-function editMoment(itemId) {
+async function editMoment(itemId) {
   const item = momentsData.find(m => m.id === itemId);
   if (!item) return;
-  const newContent = prompt('编辑朋友圈内容：', item.content);
+  const newContent = await window.monoInAppPrompt({
+    title: '编辑朋友圈',
+    label: '朋友圈内容',
+    value: item.content,
+    multiline: true,
+    rows: 5,
+    confirmText: '保存',
+    cancelText: '取消'
+  });
   if (newContent === null) return;
   const trimmed = newContent.trim();
   if (!trimmed) { alert('内容不能为空'); return; }
@@ -30836,16 +31425,31 @@ function postDiary() {
   // Track for task system
   if (typeof taskTrackDiaryPost === 'function') taskTrackDiaryPost(_diaryPostTs);
 }
-function deleteDiaryEntry(entryId) {
-  if (!confirm('确定要删除这篇日记吗？')) return;
+async function deleteDiaryEntry(entryId) {
+  const ok = await window.monoInAppConfirm({
+    title: '删除日记',
+    note: '确定要删除这篇日记吗？',
+    confirmText: '删除',
+    cancelText: '取消',
+    danger: true
+  });
+  if (!ok) return;
   diaryData = diaryData.filter(d => d.id !== entryId);
   localStorage.setItem('mono_diary', JSON.stringify(diaryData));
   renderDiary();
 }
-function editDiaryEntry(entryId) {
+async function editDiaryEntry(entryId) {
   const entry = diaryData.find(d => d.id === entryId);
   if (!entry) return;
-  const newContent = prompt('编辑日记内容：', entry.content);
+  const newContent = await window.monoInAppPrompt({
+    title: '编辑日记',
+    label: '日记内容',
+    value: entry.content,
+    multiline: true,
+    rows: 6,
+    confirmText: '保存',
+    cancelText: '取消'
+  });
   if (newContent === null) return;
   const trimmed = newContent.trim();
   if (!trimmed) { alert('日记内容不能为空'); return; }
@@ -30921,18 +31525,24 @@ function addForumSection(evt) {
   closeSectionModal();
   alert("板块添加成功！");
 }
-function deleteForumSection(id) {
-  if (confirm("确定要删除这个板块吗？")) {
-    (forumData[String(id)] || []).forEach(function(post) {
-      try { _forumRemoveMemoriesForPost(post); } catch(e) {}
-    });
-    forumSections = forumSections.filter(s => s.id !== id);
-    delete forumData[String(id)];
-    currentSectionId = forumSections.length > 0 ? forumSections[0].id : null;
-    saveForumState(currentSectionId);
-    renderForumSections();
-    renderForum();
-  }
+async function deleteForumSection(id) {
+  const ok = await window.monoInAppConfirm({
+    title: '删除论坛板块',
+    note: '确定要删除这个板块吗？板块里的帖子也会一起删除。',
+    confirmText: '删除',
+    cancelText: '取消',
+    danger: true
+  });
+  if (!ok) return;
+  (forumData[String(id)] || []).forEach(function(post) {
+    try { _forumRemoveMemoriesForPost(post); } catch(e) {}
+  });
+  forumSections = forumSections.filter(s => s.id !== id);
+  delete forumData[String(id)];
+  currentSectionId = forumSections.length > 0 ? forumSections[0].id : null;
+  saveForumState(currentSectionId);
+  renderForumSections();
+  renderForum();
 }
 function renderForum() {
   const fl = document.getElementById('forumList');
@@ -31011,8 +31621,15 @@ function renderForum() {
     </div>`;
   }).join('');
 }
-function deleteForumPost(postId) {
-  if (!confirm('确定要删除这个帖子吗？')) return;
+async function deleteForumPost(postId) {
+  const ok = await window.monoInAppConfirm({
+    title: '删除论坛帖子',
+    note: '确定要删除这个帖子吗？',
+    confirmText: '删除',
+    cancelText: '取消',
+    danger: true
+  });
+  if (!ok) return;
   if (!forumData[currentSectionId]) return;
   const targetPost = (forumData[currentSectionId] || []).find(function(p) { return p.id === postId; });
   if (targetPost) _forumRemoveMemoriesForPost(targetPost);
@@ -32137,8 +32754,15 @@ function addNovelToShelf() {
   renderNovelBookshelf();
   alert(`《${currentNovel.title}》已加入书架！`);
 }
-function removeFromShelf(title) {
-  if (!confirm(`确定移除《${title}》？`)) return;
+async function removeFromShelf(title) {
+  const ok = await window.monoInAppConfirm({
+    title: '移除书籍',
+    note: '确定移除《' + title + '》？',
+    confirmText: '移除',
+    cancelText: '取消',
+    danger: true
+  });
+  if (!ok) return;
   novelBookshelf = novelBookshelf.filter(n => n.title !== title);
   localStorage.setItem('mono_novel_shelf', JSON.stringify(novelBookshelf));
   renderNovelBookshelf();
@@ -32665,7 +33289,14 @@ async function saveImportedBookInfo() {
 }
 // ── 从书架移除导入书 ──
 async function removeImportedBook(bookId) {
-  if (!confirm('确定移除这本书吗？')) return;
+  const ok = await window.monoInAppConfirm({
+    title: '移除导入书籍',
+    note: '确定移除这本书吗？',
+    confirmText: '移除',
+    cancelText: '取消',
+    danger: true
+  });
+  if (!ok) return;
   const books = getImportedBooks().filter(b => b.id !== bookId);
   await saveImportedBooks(books);
   monoPurgeKeys(['mono_imported_progress_' + bookId]);
@@ -34458,8 +35089,15 @@ function setCurrentStickerLibrary(id) {
   }
   renderStickerManageView();
 }
-function createStickerLibrary() {
-  const name = prompt('请输入新的表情包库名称：', '');
+async function createStickerLibrary() {
+  const name = await window.monoInAppPrompt({
+    title: '新建表情包库',
+    label: '表情包库名称',
+    value: '',
+    placeholder: '请输入新的表情包库名称',
+    confirmText: '创建',
+    cancelText: '取消'
+  });
   if (!name || !name.trim()) return;
   const libs = getStickerLibraries();
   const newLib = { id: _makeStickerLibraryId(), name: name.trim(), stickers: [] };
@@ -34469,11 +35107,17 @@ function createStickerLibrary() {
   renderStickerManageView();
   renderPersonaStickerLibraryOptions(getSelectedPersonaStickerLibraryIds());
 }
-function renameStickerLibrary(id) {
+async function renameStickerLibrary(id) {
   const libs = getStickerLibraries();
   const target = libs.find(function(lib) { return lib.id === id; });
   if (!target) return;
-  const name = prompt('修改表情包库名称：', target.name || '');
+  const name = await window.monoInAppPrompt({
+    title: '修改表情包库名称',
+    label: '表情包库名称',
+    value: target.name || '',
+    confirmText: '保存',
+    cancelText: '取消'
+  });
   if (!name || !name.trim()) return;
   target.name = name.trim();
   saveStickerLibraries(libs);
@@ -34481,12 +35125,19 @@ function renameStickerLibrary(id) {
   renderStickerSendView();
   renderPersonaStickerLibraryOptions(getSelectedPersonaStickerLibraryIds());
 }
-function deleteStickerLibrary(id) {
+async function deleteStickerLibrary(id) {
   const libs = getStickerLibraries();
   if (libs.length <= 1) { alert('至少需要保留一个表情包库'); return; }
   const target = libs.find(function(lib) { return lib.id === id; });
   if (!target) return;
-  if (!confirm('确定删除表情包库“' + target.name + '”？库内表情包也会一起删除。')) return;
+  const ok = await window.monoInAppConfirm({
+    title: '删除表情包库',
+    note: '确定删除表情包库「' + target.name + '」？库内表情包也会一起删除。',
+    confirmText: '删除',
+    cancelText: '取消',
+    danger: true
+  });
+  if (!ok) return;
   const nextLibs = libs.filter(function(lib) { return lib.id !== id; });
   saveStickerLibraries(nextLibs);
   if (_stickerSendLibraryFilter === id) _stickerSendLibraryFilter = 'all';
@@ -38511,7 +39162,18 @@ ${modePrompt}${quoteTip}${fwdContext}${timeContext}${transferContext}${wbInjecti
       if (p.autoSummary && p.autoSummaryInterval > 0) {
         const interval = p.autoSummaryInterval || 20;
         const userMsgCount = p.history.filter(m => m.role === 'user').length;
-        if (userMsgCount > 0 && userMsgCount % interval === 0) {
+        const memoryItems = Array.isArray(p.memoryCore) ? p.memoryCore : [];
+        let lastAutoUserMsgCountEnd = 0;
+        for (let i = memoryItems.length - 1; i >= 0; i--) {
+          const item = memoryItems[i];
+          if (!item || typeof item !== 'object' || !item.auto) continue;
+          const parsed = parseInt(item._userMsgCountEnd, 10);
+          if (Number.isFinite(parsed)) {
+            lastAutoUserMsgCountEnd = Math.max(0, parsed);
+            break;
+          }
+        }
+        if (userMsgCount > 0 && userMsgCount - lastAutoUserMsgCountEnd >= interval) {
           generateAutoSummary(p, false).catch(e => console.warn('[AutoSummary] error:', e));
         }
       }
@@ -41348,9 +42010,9 @@ window.onload = function() {
   try { applyIOSFullscreenState(); } catch(e) {}
   try {
     if (isIOSFullscreen) {
-      const el = document.documentElement;
-      if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
-      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+      monoNativeFullscreenRetryCount = 0;
+      monoTryNativeFullscreen('restore-onload');
+      monoScheduleNativeFullscreenRetry('restore-onload-delayed', 1200);
     }
   } catch(e) {}
 };
@@ -46748,8 +47410,15 @@ function saveGroupSettings() {
   }
   closeGcSettingsModal();
 }
-function deleteGroup() {
-  if (!confirm('确认删除这个群组？所有聊天记录也会被删除。')) return;
+async function deleteGroup() {
+  const ok = await window.monoInAppConfirm({
+    title: '删除群组',
+    note: '确认删除这个群组？所有聊天记录也会被删除。',
+    confirmText: '删除',
+    cancelText: '取消',
+    danger: true
+  });
+  if (!ok) return;
   const gId = document.getElementById('gcSettingsGroupId').value;
   groups = groups.filter(x => x.id !== gId);
   saveGroups();
@@ -81421,157 +82090,47 @@ window.addEventListener('load', function() {
   }
 
   function olMaybeTriggerResidentReply(roomId, triggerMsg) {
-    const state = olState();
-    const residents = olGetRoomResidents(state, roomId).filter(function(r) { return !!r.autoReply; });
-    if (!residents.length) return;
-    if (triggerMsg && String(triggerMsg.senderId || '').indexOf('resident:') === 0) return;
-    const rawSpeaker = String(triggerMsg && triggerMsg.speakerType || '');
-    const rawName = String(triggerMsg && triggerMsg.speakerName || '');
-    const candidates = residents.filter(function(r) {
-      if (rawSpeaker === 'persona' && rawName.indexOf(r.name || '') === 0) return false;
-      return true;
-    });
-    if (!candidates.length) return;
-    const sorted = candidates.slice().sort(function(a, b) {
-      return (a.lastSpokeAt || 0) - (b.lastSpokeAt || 0);
-    });
-    const picked = sorted[0];
-    setTimeout(function() {
-      olPostResidentMessage(roomId, picked.id, triggerMsg).catch(function(err) {
-        console.warn('[resident auto reply]', err);
-      });
-    }, 650);
+    return;
   }
 
   function olRenderResidentSheet() {
     const wrap = document.getElementById('olResidentSheetContent');
     if (!wrap) return;
-    const state = olState();
-    const room = (state.rooms || []).find(function(r){ return String(r.id) === String(state.currentRoomId); });
-    if (!room) {
-      wrap.innerHTML = '<div class="online-empty">先打开一个聊天室，再邀请角色入驻。</div>';
-      return;
-    }
-    const residents = olGetRoomResidents(state, room.id);
-    const intro = '<div class="online-card"><div class="online-card-title">当前房间</div><div class="online-card-desc">' + olEsc(room.title) + ' 里现在有 ' + room.members.length + ' 位真人成员，' + residents.length + ' 位驻场角色。你可以让角色自动插话，也可以手动让 ta 冒泡。</div><div class="online-item-actions" style="margin-top:10px;"><button class="online-mini-btn" onclick="olAddResidentToCurrentRoom()">邀请角色入驻</button></div></div>';
-    const modeCards = '<div class="online-card"><div class="online-card-title">入驻风格</div><div class="online-card-desc">' + olResidentModes().map(function(mode) {
-      return olResidentModeLabel(mode) + '：' + olResidentModeDesc(mode);
-    }).join('<br>') + '</div></div>';
-    const list = residents.length ? '<div class="online-resident-grid">' + residents.map(function(r) {
-      return '<div class="online-resident-card"><div class="online-resident-head"><div class="online-flex-row"><div class="online-avatar">' + (r.avatar ? '<img src="' + olEsc(r.avatar) + '">' : '<i class="fas fa-user-astronaut"></i>') + '</div><div><div class="online-resident-name">' + olEsc(r.name || '未命名角色') + '</div><div class="online-resident-mode">' + olEsc(olResidentModeLabel(r.mode)) + ' · ' + (r.autoReply ? '自动插话已开启' : '手动发声模式') + '</div></div></div><span class="online-status-pill ' + (r.autoReply ? 'ok' : 'warn') + '">' + (r.autoReply ? 'auto' : 'manual') + '</span></div><div class="online-resident-note">' + olEsc((r.summary || '暂无设定').slice(0, 90)) + '</div><div class="online-resident-actions"><button class="online-mini-btn" onclick="olResidentSpeakNow(\'' + olEsc(r.id) + '\')">立即发声</button><button class="online-mini-btn" onclick="olChangeResidentMode(\'' + olEsc(r.id) + '\')">切换风格</button><button class="online-mini-btn" onclick="olToggleResidentAuto(\'' + olEsc(r.id) + '\')">' + (r.autoReply ? '关闭自动插话' : '开启自动插话') + '</button><button class="online-mini-btn" onclick="olRemoveResidentFromCurrentRoom(\'' + olEsc(r.id) + '\')">移出房间</button></div></div>';
-    }).join('') + '</div>' : '<div class="online-empty">这个房间还没有驻场角色。先邀请一个，让聊天软件里真的“住”进一个角色。</div>';
-    wrap.innerHTML = intro + modeCards + list;
+    wrap.innerHTML = '';
   }
 
   function olOpenResidentSheet() {
-    const state = olState();
-    if (!state.currentRoomId) return alert('先进入一个聊天室，再给角色安排入驻。');
-    olRenderResidentSheet();
-    olOpenSheet('olResidentSheet');
+    return;
   }
 
   function olOpenResidentLabForRoom(roomId) {
-    olOpenRoom(roomId);
-    setTimeout(function() {
-      olOpenResidentSheet();
-    }, 50);
+    if (roomId) olOpenRoom(roomId);
   }
 
   function olAddResidentToCurrentRoom() {
-    const state = olState();
-    const roomId = state.currentRoomId;
-    if (!roomId) return;
-    const room = (state.rooms || []).find(function(r){ return String(r.id) === String(roomId); });
-    if (!room) return;
-    const residents = olGetRoomResidents(state, roomId);
-    if (residents.length >= 3) return alert('一个聊天室最多放 3 位驻场角色，这样氛围会更像真实社交软件。');
-    const personas = olGetPersonasSafe();
-    if (!personas.length) return alert('你本地还没有角色，先去角色系统创建角色吧。');
-    const text = personas.map(function(p, i) {
-      return (i + 1) + '. ' + (p.name || '未命名角色') + ' - ' + olTrimResidentText(p.persona || p.appearance || '暂无设定', 26);
-    }).join('\n');
-    const idx = parseInt((prompt('选择要入驻聊天室的角色序号：\n\n' + text) || '').trim(), 10) - 1;
-    const persona = personas[idx];
-    if (!persona) return;
-    if (residents.some(function(r){ return String(r.personaId) === String(persona.id); })) return alert('这个角色已经在当前房间里了。');
-    const mode = olPickResidentMode('vibe');
-    residents.push({
-      id: olUid('resident'),
-      personaId: persona.id,
-      name: persona.name || '未命名角色',
-      avatar: persona.avatar || '',
-      summary: (persona.persona || persona.appearance || '').slice(0, 120),
-      mode: mode,
-      autoReply: true,
-      joinedAt: olNow(),
-      lastSpokeAt: 0
-    });
-    olSetRoomResidents(state, roomId, residents);
-    olSave(state);
-    olRenderResidentSheet();
-    olRenderRoom();
-    renderOnlineApp();
+    return;
   }
 
   function olRemoveResidentFromCurrentRoom(residentId) {
-    const state = olState();
-    const roomId = state.currentRoomId;
-    if (!roomId) return;
-    const residents = olGetRoomResidents(state, roomId).filter(function(r){ return String(r.id) !== String(residentId); });
-    olSetRoomResidents(state, roomId, residents);
-    olSave(state);
-    olRenderResidentSheet();
-    olRenderRoom();
-    renderOnlineApp();
+    return;
   }
 
   function olToggleResidentAuto(residentId) {
-    const state = olState();
-    const roomId = state.currentRoomId;
-    if (!roomId) return;
-    const residents = olGetRoomResidents(state, roomId).map(function(r) {
-      if (String(r.id) !== String(residentId)) return r;
-      return Object.assign({}, r, { autoReply: !r.autoReply });
-    });
-    olSetRoomResidents(state, roomId, residents);
-    olSave(state);
-    olRenderResidentSheet();
-    olRenderRoom();
-    renderOnlineApp();
+    return;
   }
 
   function olChangeResidentMode(residentId) {
-    const state = olState();
-    const roomId = state.currentRoomId;
-    if (!roomId) return;
-    const residents = olGetRoomResidents(state, roomId);
-    const idx = residents.findIndex(function(r){ return String(r.id) === String(residentId); });
-    if (idx < 0) return;
-    const nextMode = olPickResidentMode(residents[idx].mode || 'vibe');
-    residents[idx] = Object.assign({}, residents[idx], { mode: nextMode });
-    olSetRoomResidents(state, roomId, residents);
-    olSave(state);
-    olRenderResidentSheet();
-    olRenderRoom();
-    renderOnlineApp();
+    return;
   }
 
   function olResidentSpeakNow(residentId) {
-    const state = olState();
-    const roomId = state.currentRoomId;
-    if (!roomId) return;
-    const msgs = state.messages[roomId] || [];
-    const last = msgs[msgs.length - 1] || null;
-    olPostResidentMessage(roomId, residentId, last).catch(function(err) {
-      console.warn('[resident speak now]', err);
-    });
-    olRenderResidentSheet();
+    return;
   }
 
   function olQuickOpenResidentLab() {
     const state = olState();
-    if (!state.rooms.length) return alert('先创建一个聊天室，再让角色入驻。');
-    olOpenResidentLabForRoom(state.currentRoomId || state.rooms[0].id);
+    if (!state.rooms.length) return alert('先创建一个聊天室。');
+    olOpenRoom(state.currentRoomId || state.rooms[0].id);
     olCloseSheet(null, 'olQuickSheet');
   }
 
@@ -82225,6 +82784,9 @@ window.addEventListener('load', function() {
   function olOpenRoom(roomId) {
     const state = olState();
     state.currentRoomId = roomId;
+    if (state.roomResidents && typeof state.roomResidents === 'object' && state.roomResidents[roomId]) {
+      delete state.roomResidents[roomId];
+    }
     olSave(state);
     document.getElementById('olRoomShell').style.display = 'flex';
     olRenderRoom();
@@ -82664,12 +83226,11 @@ window.addEventListener('load', function() {
     const items = state.rooms.map(function(r) {
       const msgs = state.messages[r.id] || [];
       const last = msgs[msgs.length - 1];
-      const residentCount = olGetRoomResidents(state, r.id).length;
-      return '<div class="online-list-item"><div class="online-item-top"><div><div class="online-item-name">' + olEsc(r.title) + '</div><div class="online-item-sub">' + r.members.length + ' 人 · ' + residentCount + ' 位驻场角色 · ' + (last ? olEsc((last.speakerName || last.senderName) + '：' + last.content.slice(0, 22)) : '还没有消息') + '</div></div><span class="online-status-pill">room</span></div><div class="online-item-actions"><button class="online-mini-btn" onclick="olOpenRoom(\'' + olEsc(r.id) + '\')">进入聊天室</button><button class="online-mini-btn" onclick="olOpenResidentLabForRoom(\'' + olEsc(r.id) + '\')">角色入驻</button><button class="online-mini-btn" onclick="olClearRoomMessages(\'' + olEsc(r.id) + '\')">清空聊天</button><button class="online-mini-btn" onclick="olDeleteRoom(\'' + olEsc(r.id) + '\')">删除聊天室</button></div></div>';
+      return '<div class="online-list-item"><div class="online-item-top"><div><div class="online-item-name">' + olEsc(r.title) + '</div><div class="online-item-sub">' + r.members.length + ' 人 · ' + (last ? olEsc((last.speakerName || last.senderName) + '：' + last.content.slice(0, 22)) : '还没有消息') + '</div></div><span class="online-status-pill">room</span></div><div class="online-item-actions"><button class="online-mini-btn" onclick="olOpenRoom(\'' + olEsc(r.id) + '\')">进入聊天室</button><button class="online-mini-btn" onclick="olClearRoomMessages(\'' + olEsc(r.id) + '\')">清空聊天</button><button class="online-mini-btn" onclick="olDeleteRoom(\'' + olEsc(r.id) + '\')">删除聊天室</button></div></div>';
     }).join('') || '<div class="online-empty">还没有聊天室。添加好友后可自动有私聊房间。</div>';
 
     document.getElementById('olPanelRooms').innerHTML =
-      '<div class="online-card"><div class="online-card-title">实时聊天室</div><div class="online-card-desc">自动轮询刷新已开启，进入房间后会定时更新消息。现在还支持角色常驻入驻，让聊天软件里真的“住”进人格。</div><div class="online-item-actions"><button class="online-mini-btn" onclick="olCreateRoom()">创建聊天室</button><button class="online-mini-btn" onclick="olQuickOpenResidentLab()">角色入驻</button><button class="online-mini-btn" onclick="olSyncRemote(true)">同步房间</button></div></div>'
+      '<div class="online-card"><div class="online-card-title">实时聊天室</div><div class="online-card-desc">自动轮询刷新已开启，进入房间后会定时更新消息。</div><div class="online-item-actions"><button class="online-mini-btn" onclick="olCreateRoom()">创建聊天室</button><button class="online-mini-btn" onclick="olSyncRemote(true)">同步房间</button></div></div>'
       + '<div class="online-card"><div class="online-card-title">我的聊天室</div><div class="online-list">' + items + '</div></div>';
   }
 
@@ -82920,21 +83481,10 @@ window.addEventListener('load', function() {
     const room = state.rooms.find(function(r){ return String(r.id) === String(state.currentRoomId); });
     if (!room) return;
     const msgs = state.messages[room.id] || [];
-    const residents = olGetRoomResidents(state, room.id);
     document.getElementById('olRoomTitle').textContent = room.title;
-    document.getElementById('olRoomSubtitle').textContent = room.members.length + ' 人聊天室 · ' + residents.length + ' 位驻场角色 · 自动刷新中';
+    document.getElementById('olRoomSubtitle').textContent = room.members.length + ' 人聊天室 · 自动刷新中';
 
-    const crewHtml = residents.length ? (
-      '<div class="online-room-crew">'
-      + '<div class="online-room-crew-summary"><div class="online-room-crew-title">角色已入驻这个聊天室</div><div class="online-room-crew-desc">ta 们会像聊天软件里的常驻成员一样留在房间，自动插话或手动冒泡，而不是只发一次消息就消失。</div></div>'
-      + '<div class="online-room-crew-list">'
-      + residents.map(function(r) {
-        return '<div class="online-room-crew-chip"><strong>' + olEsc(r.name || '未命名角色') + '</strong><span>' + olEsc(olResidentModeLabel(r.mode)) + ' · ' + (r.autoReply ? '自动插话中' : '手动模式') + '</span></div>';
-      }).join('')
-      + '</div></div>'
-    ) : '<div class="online-room-crew-empty">还没有驻场角色。点右上角的小宇航员，把角色真正安排进这个聊天软件里。</div>';
-
-    document.getElementById('olRoomBody').innerHTML = crewHtml + (msgs.length ? msgs.map(function(m) {
+    document.getElementById('olRoomBody').innerHTML = (msgs.length ? msgs.map(function(m) {
       const mine = String(m.senderId) === String(state.profile.id);
       return '<div class="online-chat-row ' + (mine ? 'mine' : '') + '">'
         + (mine ? '' : '<div class="online-avatar" style="width:34px;height:34px;border-radius:12px;">' + (m.speakerAvatar ? '<img src="' + olEsc(m.speakerAvatar) + '">' : '<i class="fas fa-user"></i>') + '</div>')
@@ -82956,7 +83506,6 @@ window.addEventListener('load', function() {
       { title: '加好友', desc: '输入 6 位邀请码发申请', fn: 'olAddFriendByCode()' },
       { title: '好友申请', desc: '处理同意/拒绝', fn: 'olSwitchTab(\'friends\');olCloseSheet(null,\'olQuickSheet\')' },
       { title: '建聊天室', desc: '创建 10 人以内群聊', fn: 'olCloseSheet(null,\'olQuickSheet\');olCreateRoom()' },
-      { title: '角色入驻', desc: '让角色常驻在聊天室里', fn: 'olQuickOpenResidentLab()' },
       { title: '红线邀请', desc: '处理约会和求婚', fn: 'olSwitchTab(\'redline\');olCloseSheet(null,\'olQuickSheet\')' }
     ].map(function(a) {
       return '<button class="online-action-btn" onclick="' + a.fn + '"><strong>' + a.title + '</strong>' + a.desc + '</button>';
@@ -88784,22 +89333,60 @@ generateAutoSummary = async function(p, isManual, opts) {
     if (isManual) alert('请先配置 API 才能生成总结。');
     return;
   }
-  const btn = document.getElementById('manualSummaryBtn');
-  if (btn) { btn.disabled = true; btn.textContent = '生成中…'; }
+  window._monoAutoSummaryLocks = window._monoAutoSummaryLocks || {};
+  if (!isManual) {
+    if (window._monoAutoSummaryLocks[p.id]) return;
+    window._monoAutoSummaryLocks[p.id] = true;
+  }
+  const mainBtn = document.getElementById('manualSummaryBtn');
+  const rangeBtn = document.getElementById('monoSummaryByDateBtn');
+  if (mainBtn) { mainBtn.disabled = true; mainBtn.textContent = '生成中…'; }
+  if (rangeBtn) { rangeBtn.disabled = true; rangeBtn.textContent = '生成中…'; }
   try {
     let targetMsgs;
     const recentCount = parseInt(opts.recentCount || '0', 10) || 0;
+    const history = Array.isArray(p.history) ? p.history : [];
+    const countUserMessages = function(list) {
+      return (Array.isArray(list) ? list : []).filter(function(m) { return m && m.role === 'user'; }).length;
+    };
+    const resolveLastAutoSummaryState = function() {
+      const items = Array.isArray(p.memoryCore) ? p.memoryCore : [];
+      for (let i = items.length - 1; i >= 0; i--) {
+        const item = items[i];
+        if (!item || typeof item !== 'object' || !item.auto) continue;
+        const rawEndIndex = parseInt(item._historyEndIndex, 10);
+        if (!Number.isFinite(rawEndIndex)) continue;
+        const historyEndIndex = Math.max(0, Math.min(rawEndIndex, history.length));
+        const rawUserCountEnd = parseInt(item._userMsgCountEnd, 10);
+        const userMsgCountEnd = Number.isFinite(rawUserCountEnd)
+          ? Math.max(0, rawUserCountEnd)
+          : countUserMessages(history.slice(0, historyEndIndex));
+        return {
+          historyStartIndex: Math.max(0, parseInt(item._historyStartIndex, 10) || 0),
+          historyEndIndex: historyEndIndex,
+          userMsgCountStart: Math.max(0, parseInt(item._userMsgCountStart, 10) || 0),
+          userMsgCountEnd: userMsgCountEnd
+        };
+      }
+      return { historyStartIndex: 0, historyEndIndex: 0, userMsgCountStart: 0, userMsgCountEnd: 0 };
+    };
+    let historyStartIndex = 0;
+    let historyEndIndex = history.length;
+    let userMsgCountStart = 0;
+    let userMsgCountEnd = countUserMessages(history);
     if (isManual) {
       if (Array.isArray(opts.targetMessages)) {
         targetMsgs = opts.targetMessages.slice();
       } else {
-        targetMsgs = recentCount > 0 ? p.history.slice(-recentCount) : p.history.slice();
+        targetMsgs = recentCount > 0 ? history.slice(-recentCount) : history.slice();
       }
     } else {
-      const lastSummary = p.memoryCore && p.memoryCore.length ? p.memoryCore[p.memoryCore.length - 1] : null;
-      const interval = p.autoSummaryInterval || 20;
-      const sinceCount = lastSummary ? interval : Math.min(interval * 2, p.history.length);
-      targetMsgs = p.history.slice(-sinceCount);
+      const lastAutoSummary = resolveLastAutoSummaryState();
+      historyStartIndex = Math.max(0, Math.min(lastAutoSummary.historyEndIndex, history.length));
+      historyEndIndex = history.length;
+      userMsgCountStart = Math.max(0, lastAutoSummary.userMsgCountEnd);
+      userMsgCountEnd = countUserMessages(history);
+      targetMsgs = history.slice(historyStartIndex, historyEndIndex);
     }
     const effectiveUser = monoResolveUserIdentityProfile(p, { maskId: opts.userMaskId || '' });
     const userName = (effectiveUser && effectiveUser.name) ? effectiveUser.name : '用户';
@@ -88855,25 +89442,47 @@ generateAutoSummary = async function(p, isManual, opts) {
     const manualSource = opts.rangeLabel
       ? ('手动总结（' + opts.rangeLabel + '）')
       : ('手动总结' + (recentCount > 0 ? '（最近' + recentCount + '条）' : ''));
-    p.memoryCore.push({ content: summaryText, date: dateStr, auto: !isManual, source: isManual ? manualSource : ('每' + (p.autoSummaryInterval || 20) + '轮自动总结'), userMaskId: opts.userMaskId || '' });
+    const memoryEntry = {
+      content: summaryText,
+      date: dateStr,
+      auto: !isManual,
+      source: isManual ? manualSource : ('每' + (p.autoSummaryInterval || 20) + '轮自动总结'),
+      userMaskId: opts.userMaskId || ''
+    };
+    if (isManual) {
+      memoryEntry._summaryMode = opts.rangeLabel ? 'manual-range' : 'manual';
+      if (opts.rangeLabel) memoryEntry._rangeLabel = opts.rangeLabel;
+    } else {
+      memoryEntry._summaryMode = 'auto';
+      memoryEntry._historyStartIndex = historyStartIndex;
+      memoryEntry._historyEndIndex = historyEndIndex;
+      memoryEntry._userMsgCountStart = userMsgCountStart;
+      memoryEntry._userMsgCountEnd = userMsgCountEnd;
+    }
+    p.memoryCore.push(memoryEntry);
     saveData();
     if (currentId == p.id && typeof renderMemoryCoreList === 'function') renderMemoryCoreList(p.memoryCore);
     if (isManual) alert('总结完成，已写入角色记忆。');
   } catch(e) {
     if (isManual) alert('生成失败：' + e.message);
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '立即生成总结'; }
+    if (!isManual && window._monoAutoSummaryLocks) delete window._monoAutoSummaryLocks[p.id];
+    if (mainBtn) { mainBtn.disabled = false; mainBtn.textContent = '打开按日期总结'; }
+    if (rangeBtn) { rangeBtn.disabled = false; rangeBtn.textContent = '按当前日期范围生成总结'; }
   }
 };
-manualGenerateSummary = async function() {
+manualGenerateSummary = function() {
   if (!currentId) { alert('请先选择一个角色'); return; }
   const p = personas.find(function(x) { return x.id == currentId; });
   if (!p) return;
   if (!p.history || p.history.length === 0) { alert('该角色还没有任何对话记录。'); return; }
-  const input = prompt('想从最近多少条聊天室消息开始总结？\n输入 0 或留空 = 总结全部聊天室记录。', String(p.autoSummaryInterval || 20));
-  if (input === null) return;
-  const recentCount = Math.max(0, parseInt(String(input).trim() || '0', 10) || 0);
-  await generateAutoSummary(p, true, { recentCount: recentCount });
+  if (typeof window.monoOpenChatHistoryManager === 'function') {
+    window.monoOpenChatHistoryManager();
+    const rangeBtn = document.getElementById('monoSummaryByDateBtn');
+    if (rangeBtn) rangeBtn.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    return;
+  }
+  generateAutoSummary(p, true, { targetMessages: Array.isArray(p.history) ? p.history.slice() : [], rangeLabel: '全部聊天记录' });
 };
 
 function _monoBuildDiaryPrompt(p, upName, relCtx) {
@@ -90187,6 +90796,7 @@ if (document.readyState === 'loading') {
       + '<label style="display:flex;align-items:center;gap:7px;font-size:11px;color:#666;margin-top:10px;cursor:pointer;"><input id="monoChatIncludeUndated" type="checkbox" style="accent-color:#1a1a1a;">包含无日期消息</label>'
       + '<div id="monoChatDateChipWrap" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;">' + chipsHtml + '</div>'
       + '<div id="monoChatRangeSummary" style="font-size:10px;color:#888;line-height:1.6;margin-top:10px;padding-top:10px;border-top:1px dashed #ddd;"></div>'
+      + '<button type="button" id="monoSummaryByDateBtn" class="btn-cancel" style="margin-top:10px;width:100%;border-radius:12px;padding:11px 10px;background:#1a1a1a;border:1px solid #1a1a1a;color:#fff;font-weight:700;">按当前日期范围生成总结</button>'
       + '</div>'
       + '<div style="background:linear-gradient(180deg,#fafaf9 0%,#f4f1eb 100%);border:1px solid #ece6d9;border-radius:14px;padding:12px 12px 10px;margin:0 0 14px;text-align:left;">'
       + '<div style="font-size:10px;color:#9a8666;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">角色导入 / 导出</div>'
@@ -90246,6 +90856,10 @@ if (document.readyState === 'loading') {
         if (typeof window.monoImportPersonaPackage === 'function') window.monoImportPersonaPackage(event);
       });
     }
+    const summaryBtn = document.getElementById('monoSummaryByDateBtn');
+    if (summaryBtn) summaryBtn.addEventListener('click', function() {
+      if (typeof window.manualGenerateSummary === 'function') window.manualGenerateSummary();
+    });
     monoUpdateChatRangeSummary();
   };
 
@@ -90294,17 +90908,32 @@ if (document.readyState === 'loading') {
     if (!persona) return alert('请先选择一个角色');
     if (!Array.isArray(persona.history) || !persona.history.length) return alert('该角色还没有任何对话记录。');
     if (typeof window.generateAutoSummary === 'function') {
-      let targetMessages = [];
+      let targetMessages = Array.isArray(persona.history) ? persona.history.slice() : [];
       let rangeLabel = '全部聊天记录';
       let selectedMaskId = '';
-      if (typeof monoGetChatRangeSelection === 'function' && typeof monoGetMessagesByRange === 'function') {
+      const hasRangeControls = !!document.getElementById('monoChatDateStart') || !!document.getElementById('monoChatDateEnd') || !!document.getElementById('monoChatIncludeUndated');
+      if (!hasRangeControls) {
+        if (typeof window.monoOpenChatHistoryManager === 'function') {
+          window.monoOpenChatHistoryManager();
+          return;
+        }
+      }
+      if (hasRangeControls && typeof monoGetChatRangeSelection === 'function' && typeof monoGetMessagesByRange === 'function') {
         const range = monoGetChatRangeSelection();
+        if (range.start && range.end && range.start > range.end) {
+          alert('开始日期不能晚于结束日期。');
+          return;
+        }
         targetMessages = monoGetMessagesByRange(persona, range);
         if (range.start && range.end) rangeLabel = range.start + ' 至 ' + range.end;
         else if (range.start) rangeLabel = range.start + ' 之后';
         else if (range.end) rangeLabel = range.end + ' 之前';
+        else if (range.includeUndated) rangeLabel = '全部聊天记录（含无日期消息）';
+        if (!targetMessages.length) {
+          alert('当前日期范围内没有可总结的聊天记录。');
+          return;
+        }
       }
-      if (!targetMessages.length) targetMessages = Array.isArray(persona.history) ? persona.history.slice() : [];
       const currentGroupMaskSelect = document.getElementById('gcUserMaskSelect');
       if (currentGroupMaskSelect && currentGroupMaskSelect.value) selectedMaskId = currentGroupMaskSelect.value;
       await window.generateAutoSummary(persona, true, { targetMessages: targetMessages, rangeLabel: rangeLabel, userMaskId: selectedMaskId });

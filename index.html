@@ -19577,10 +19577,13 @@ body.editor-modal-open #chatPage .app-back-bar {
     <!-- 数据导出/导入 -->
     <div class="mt-4 p-4 border border-black rounded">
       <h3 class="text-sm font-bold uppercase tracking-widest mb-3"><i class="fas fa-database" style="margin-right:6px;"></i>数据管理</h3>
-      <p style="font-size:10px;color:#999;margin-bottom:12px;">导出所有数据为 JSON 文件备份，或从备份文件导入恢复数据</p>
+      <p style="font-size:10px;color:#999;margin-bottom:12px;">支持轻量导出与完整导出。轻量版更稳、更适合大体积资料；完整版会带上全部聊天与媒体内容。</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <button onclick="exportAllData()" class="action-btn" style="flex:1;min-width:120px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;padding:10px 16px;">
-          <i class="fas fa-download"></i> 导出数据
+        <button onclick="exportAllData('lite')" class="action-btn" style="flex:1;min-width:120px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;padding:10px 16px;">
+          <i class="fas fa-file-export"></i> 轻量导出
+        </button>
+        <button onclick="exportAllData('full')" class="action-btn" style="flex:1;min-width:120px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;padding:10px 16px;">
+          <i class="fas fa-download"></i> 完整导出
         </button>
         <button onclick="document.getElementById('importFileInput').click()" class="action-btn" style="flex:1;min-width:120px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;padding:10px 16px;background:#fff;color:#1a1a1a;border:2px solid #1a1a1a;">
           <i class="fas fa-upload"></i> 导入数据
@@ -23574,7 +23577,11 @@ function _monoSyncFullscreenViewportVars() {
 }
 function _monoShouldUseNativeBrowserFullscreen() {
   try {
-    return !/android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent || '');
+    const el = document.documentElement || {};
+    const hasApi = !!(el.requestFullscreen || el.webkitRequestFullscreen);
+    const ua = navigator.userAgent || '';
+    const isiOS = /iphone|ipad|ipod/i.test(ua);
+    return hasApi && !isiOS;
   } catch(e) {
     return false;
   }
@@ -39823,6 +39830,70 @@ function exportAllData() {
     statusEl.textContent = '✗ 导出失败: ' + e.message;
   });
 }
+function _monoYieldToUi() {
+  return new Promise(resolve => setTimeout(resolve, 0));
+}
+async function _monoStringifyExportData(payload) {
+  await _monoYieldToUi();
+  const compactFallback = function() { return JSON.stringify(payload); };
+  if (typeof Worker === 'undefined' || typeof Blob === 'undefined' || typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') {
+    return compactFallback();
+  }
+  return new Promise(function(resolve, reject) {
+    let settled = false;
+    let worker = null;
+    let workerUrl = null;
+    const finish = function(fn, value) {
+      if (settled) return;
+      settled = true;
+      try { if (worker) worker.terminate(); } catch(e) {}
+      try { if (workerUrl) URL.revokeObjectURL(workerUrl); } catch(e) {}
+      fn(value);
+    };
+    try {
+      workerUrl = URL.createObjectURL(new Blob([`
+        self.onmessage = function(event) {
+          try {
+            var text = JSON.stringify(event.data);
+            self.postMessage({ ok: true, text: text });
+          } catch (err) {
+            self.postMessage({ ok: false, error: err && err.message ? err.message : String(err) });
+          }
+        };
+      `], { type: 'application/javascript' }));
+      worker = new Worker(workerUrl);
+      const timer = setTimeout(function() {
+        finish(resolve, compactFallback());
+      }, 12000);
+      worker.onmessage = function(event) {
+        clearTimeout(timer);
+        const data = event && event.data ? event.data : {};
+        if (data.ok) finish(resolve, data.text || '');
+        else finish(reject, new Error(data.error || '导出序列化失败'));
+      };
+      worker.onerror = function() {
+        clearTimeout(timer);
+        finish(resolve, compactFallback());
+      };
+      worker.postMessage(payload);
+    } catch (err) {
+      finish(resolve, compactFallback());
+    }
+  });
+}
+function _monoDownloadJsonText(filename, text) {
+  const blob = new Blob([text], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function() {
+    try { URL.revokeObjectURL(url); } catch(e) {}
+  }, 1000);
+}
 async function _doExportAllData(statusEl) {
   // ── 导出前先将内存中的线下剧情状态落盘，确保导出时 _cache 是最新的 ──
   if (typeof _offlineState !== 'undefined' && _offlineState.sessions && Object.keys(_offlineState.sessions).length > 0) {
@@ -40232,19 +40303,13 @@ async function _doExportAllData(statusEl) {
       }
     });
     // 生成JSON并下载
-    statusEl.textContent = '正在生成备份文件...';
-    const jsonStr = JSON.stringify(exportObj, null, 2);
-    const blob = new Blob([jsonStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    statusEl.textContent = '正在压缩备份文件...';
+    await _monoYieldToUi();
+    const jsonStr = await _monoStringifyExportData(exportObj);
+    await _monoYieldToUi();
     const _exportDate = new Date();
     const dateStr = _exportDate.getFullYear() + String(_exportDate.getMonth()+1).padStart(2,'0') + String(_exportDate.getDate()).padStart(2,'0');
-    a.href = url;
-    a.download = 'mono_backup_' + dateStr + '.json';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    _monoDownloadJsonText('mono_backup_' + dateStr + '.json', jsonStr);
     statusEl.style.color = '#27ae60';
     statusEl.textContent = '\u2713 数据导出成功！文件已开始下载';
     setTimeout(() => { statusEl.style.display = 'none'; }, 4000);

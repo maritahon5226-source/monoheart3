@@ -1438,6 +1438,15 @@ window.onload = function() {
 <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@700&display=swap" rel="stylesheet">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Montserrat:wght@300;500;700&display=swap');
+:root {
+  --mono-live-vh: 100vh;
+  --mono-chat-footer-extra-bottom: 0px;
+}
+@supports (height: 100dvh) {
+  :root {
+    --mono-live-vh: 100dvh;
+  }
+}
 body {
   font-family: 'Montserrat', 'Noto Serif TC', serif;
   background: #ffffff;
@@ -4707,8 +4716,8 @@ body {
 .browser-url { font-size: calc(10px * var(--fs, 1)); color: #007aff; }
 .browser-time { font-size: calc(9px * var(--fs, 1)); color: #bbb; flex-shrink: 0; }
 /* iOS 全萤幕 */
-body.ios-fullscreen { background: #000; padding: 0; margin: 0; align-items: stretch; justify-content: stretch; }
-body.ios-fullscreen .phone-container { max-width: 100%; width: 100%; height: 100vh; max-height: 100vh; margin: 0; border: none; border-radius: 0; box-shadow: none; aspect-ratio: unset; }
+body.ios-fullscreen { background: #000; padding: 0; margin: 0; align-items: stretch; justify-content: stretch; min-height: var(--mono-live-vh, 100vh); }
+body.ios-fullscreen .phone-container { max-width: 100%; width: 100%; height: var(--mono-live-vh, 100vh); min-height: var(--mono-live-vh, 100vh); max-height: var(--mono-live-vh, 100vh); margin: 0; border: none; border-radius: 0; box-shadow: none; aspect-ratio: unset; }
 body.ios-fullscreen .phone-header { border-radius: 0; height: env(safe-area-inset-top, 44px); min-height: 44px; }
 body.ios-fullscreen .phone-notch { display: none; }
 body.ios-fullscreen .page { top: env(safe-area-inset-top, 44px); bottom: calc(60px + env(safe-area-inset-bottom, 0px)); }
@@ -4717,9 +4726,20 @@ body.ios-fullscreen .chat-header { margin-top: 0; }
 body.ios-fullscreen .contacts-drawer { top: env(safe-area-inset-top, 44px); height: calc(100% - env(safe-area-inset-top, 44px) - 60px - env(safe-area-inset-bottom, 0px)); }
 body.ios-fullscreen #chatPage.page {
   bottom: 0;
+  min-height: 0;
 }
 body.ios-fullscreen #chatPage .chat-footer {
-  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px) + var(--mono-chat-footer-extra-bottom, 0px));
+}
+body.ios-fullscreen #chatPage #inputBar {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  flex-wrap: nowrap;
+}
+body.ios-fullscreen #chatPage #userInput {
+  width: 0;
+  min-width: 0;
 }
 body.ios-fullscreen .menu-btn { top: calc(env(safe-area-inset-top, 44px) + 10px); }
 body.ios-fullscreen.chat-page-active .menu-btn { top: calc(env(safe-area-inset-top, 44px) + 4px); }
@@ -23533,10 +23553,55 @@ window.onload = () => {
 };
 // ===================== iOS 全萤幕 =====================
 let isIOSFullscreen = localStorage.getItem('mono_ios_fullscreen') === 'true';
+let _monoNativeFullscreenWanted = false;
+function _monoSyncFullscreenViewportVars() {
+  const root = document.documentElement;
+  if (!root) return;
+  let layoutHeight = Math.max(window.innerHeight || 0, document.documentElement.clientHeight || 0);
+  let visibleHeight = layoutHeight;
+  let bottomGap = 0;
+  try {
+    if (window.visualViewport) {
+      const vv = window.visualViewport;
+      visibleHeight = Math.round(vv.height || visibleHeight || 0);
+      const vvOffsetTop = Math.round(vv.offsetTop || 0);
+      bottomGap = Math.max(0, layoutHeight - Math.round((vv.height || 0) + vvOffsetTop));
+    }
+  } catch(e) {}
+  if (!visibleHeight) visibleHeight = layoutHeight || 0;
+  root.style.setProperty('--mono-live-vh', Math.max(0, visibleHeight) + 'px');
+  root.style.setProperty('--mono-chat-footer-extra-bottom', Math.max(0, bottomGap) + 'px');
+}
+function _monoShouldUseNativeBrowserFullscreen() {
+  try {
+    return !/android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent || '');
+  } catch(e) {
+    return false;
+  }
+}
+function _monoRequestNativeFullscreenFromGesture() {
+  if (!isIOSFullscreen || !_monoShouldUseNativeBrowserFullscreen()) return;
+  try {
+    const el = document.documentElement;
+    if (document.fullscreenElement) return;
+    if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+  } catch(e) {}
+}
+function _monoExitNativeFullscreen() {
+  try {
+    if (document.exitFullscreen && document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    } else if (document.webkitExitFullscreen) {
+      document.webkitExitFullscreen();
+    }
+  } catch(e) {}
+}
 function applyIOSFullscreenState() {
   const body = document.body;
   const icon = document.getElementById('profileFullscreenIcon');
   const label = document.getElementById('profileFullscreenLabel');
+  _monoSyncFullscreenViewportVars();
   if (isIOSFullscreen) {
     body.classList.add('ios-fullscreen');
     if (icon) icon.className = 'fas fa-compress';
@@ -23550,33 +23615,21 @@ function applyIOSFullscreenState() {
 function toggleIOSFullscreen() {
   isIOSFullscreen = !isIOSFullscreen;
   localStorage.setItem('mono_ios_fullscreen', isIOSFullscreen.toString());
+  _monoNativeFullscreenWanted = !!isIOSFullscreen && _monoShouldUseNativeBrowserFullscreen();
   applyIOSFullscreenState();
   if (isIOSFullscreen) {
-    const el = document.documentElement;
-    if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
-    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    _monoRequestNativeFullscreenFromGesture();
   } else {
-    if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
-    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    _monoExitNativeFullscreen();
   }
 }
 function _monoShouldRestoreFullscreen() {
-  try {
-    return !!isIOSFullscreen && /android/i.test(navigator.userAgent || '');
-  } catch(e) {
-    return false;
-  }
+  return !!isIOSFullscreen && !!_monoNativeFullscreenWanted && _monoShouldUseNativeBrowserFullscreen();
 }
 function _monoRestoreFullscreenSoon(reason) {
-  if (!_monoShouldRestoreFullscreen()) return;
   setTimeout(function() {
-    try {
-      if (!isIOSFullscreen || document.hidden || document.fullscreenElement) return;
-      const el = document.documentElement;
-      if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
-      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-    } catch(e) {}
-  }, 120);
+    _monoSyncFullscreenViewportVars();
+  }, 80);
 }
 (function() {
   if (window._monoNativeDialogsWrapped) return;
@@ -23607,17 +23660,28 @@ function _monoRestoreFullscreenSoon(reason) {
   }
 })();
 document.addEventListener('fullscreenchange', () => {
-  if (!document.fullscreenElement && isIOSFullscreen) {
-    // User exited fullscreen via browser/OS gesture
-    // Keep CSS state and localStorage - only toggle off when user clicks button
-    _monoRestoreFullscreenSoon('fullscreenchange');
-  }
+  if (!document.fullscreenElement) _monoNativeFullscreenWanted = false;
+  _monoRestoreFullscreenSoon('fullscreenchange');
 });
 window.addEventListener('focus', function() { _monoRestoreFullscreenSoon('focus'); });
 window.addEventListener('pageshow', function() { _monoRestoreFullscreenSoon('pageshow'); });
 document.addEventListener('visibilitychange', function() {
   if (!document.hidden) _monoRestoreFullscreenSoon('visibilitychange');
 });
+window.addEventListener('resize', _monoSyncFullscreenViewportVars);
+window.addEventListener('orientationchange', function() {
+  setTimeout(_monoSyncFullscreenViewportVars, 80);
+});
+document.addEventListener('focusin', function() {
+  setTimeout(_monoSyncFullscreenViewportVars, 60);
+});
+document.addEventListener('focusout', function() {
+  setTimeout(_monoSyncFullscreenViewportVars, 120);
+});
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', _monoSyncFullscreenViewportVars);
+  window.visualViewport.addEventListener('scroll', _monoSyncFullscreenViewportVars);
+}
 // ===================== 主屏幕换页模式 =====================
 let homePageMode = localStorage.getItem('mono_home_page_mode') || 'swipe'; // 'swipe' | 'flip'
 /* ── Tap handler called by the two invisible half-screen zones ── */
@@ -42342,13 +42406,7 @@ window.onload = function() {
     } catch(e) {}
   });
   try { applyIOSFullscreenState(); } catch(e) {}
-  try {
-    if (isIOSFullscreen) {
-      const el = document.documentElement;
-      if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
-      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-    }
-  } catch(e) {}
+  try { _monoSyncFullscreenViewportVars(); } catch(e) {}
 };
 // ===================== 串門 Visit App =====================
 let visitCurrentCharId = null;

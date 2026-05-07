@@ -23940,7 +23940,8 @@ function setQuoteMsg(idx, msg) {
   const preview = document.getElementById('quotePreview');
   const previewText = document.getElementById('quotePreviewText');
   const p = personas.find(x => x.id == currentId);
-  const author = msg.role === 'user' ? userProfile.name : (p ? p.name : '');
+  const effectiveUser = monoResolveUserIdentityProfile(p || null, { message: msg, maskId: msg && msg.userMaskId ? msg.userMaskId : '' });
+  const author = msg.role === 'user' ? (effectiveUser.name || userProfile.name) : (p ? p.name : '');
   previewText.textContent = `${author}：${msg.content.slice(0, 40)}${msg.content.length > 40 ? '…' : ''}`;
   preview.classList.add('show');
   document.getElementById('userInput').focus();
@@ -25867,8 +25868,10 @@ function _resetChatRenderWindow(personaId) {
 }
 function renderTakeoutCardBubble(m, idx, isUser, avatarSrc, authorName, isSelected) {
   const td = m.takeoutData || {};
-  const senderName = td.senderName || (isUser ? ((userProfile && userProfile.name) || '你') : (authorName || '角色'));
-  const recipientName = td.recipientName || (isUser ? (authorName || '角色') : ((userProfile && userProfile.name) || '你'));
+  const activePersona = (typeof currentId !== 'undefined' && Array.isArray(personas)) ? personas.find(function(x) { return x.id == currentId; }) : null;
+  const effectiveUser = monoResolveUserIdentityProfile(activePersona || null, { message: m });
+  const senderName = td.senderName || (isUser ? ((effectiveUser && effectiveUser.name) || ((userProfile && userProfile.name) || '你')) : (authorName || '角色'));
+  const recipientName = td.recipientName || (isUser ? (authorName || '角色') : ((effectiveUser && effectiveUser.name) || ((userProfile && userProfile.name) || '你')));
   const title = td.name || '暖心外卖';
   const kicker = isUser ? 'You Sent A Delivery' : 'Character Delivery';
   const sub = senderName + ' 送给 ' + recipientName;
@@ -25941,8 +25944,9 @@ function renderMessages(opts) {
     const quoteContent = m.quote ? _safeMsgText(m.quote.content) : '';
     const isUser = m.role === 'user';
     const isSelected = selectedMsgIndices.has(idx);
-    const avatarSrc = isUser ? userProfile.avatar : p.avatar;
-    const authorName = isUser ? userProfile.name : p.name;
+    const effectiveUserIdentity = monoResolveUserIdentityProfile(p, { message: m, maskId: m.userMaskId || '' });
+    const avatarSrc = isUser ? (effectiveUserIdentity.avatar || userProfile.avatar) : p.avatar;
+    const authorName = isUser ? (effectiveUserIdentity.name || userProfile.name) : p.name;
     const _bubbleExtraStyle = isUser ? (p.bubbleUserCss || '') : (p.bubbleAiCss || '');
     // ── 时间戳 & 已读状态 ──
     const _msgTimeStr = _fmtMsgTime(m.timestamp);
@@ -25992,8 +25996,8 @@ function renderMessages(opts) {
       const fwdBubble = `<div class="bubble-fwd ${isForumPost ? 'forum-share-card' : 'moments-share-card'}">
         <div class="bubble-fwd-header"><i class="fas fa-share-alt"></i>${sourceLabel}转发</div>
         <div class="bubble-fwd-source">
-          <img src="${fd.avatar || userProfile.avatar}" alt="">
-          ${fd.author || '未知用戶'} &nbsp;·&nbsp; ${sourceLabel}
+          <img src="${fd.avatar || effectiveUserIdentity.avatar || userProfile.avatar}" alt="">
+          ${fd.author || effectiveUserIdentity.name || '未知用戶'} &nbsp;·&nbsp; ${sourceLabel}
         </div>
         ${titleHtml}
         <div class="bubble-fwd-body">${fd.content || ''}</div>
@@ -26158,8 +26162,8 @@ function renderMessages(opts) {
     // 转帳消息
     if (m.msgType === 'intimate_invite') {
       const intimateBubbleHtml = renderIntimateInviteBubble(m, idx, m.role === 'user');
-      const _iAvatarSrc = m.role === 'user' ? (userProfile.avatar || '') : (p.avatar || '');
-      const _iAuthorName = m.role === 'user' ? (userProfile.name || '你') : (p.name || '角色');
+      const _iAvatarSrc = m.role === 'user' ? (effectiveUserIdentity.avatar || userProfile.avatar || '') : (p.avatar || '');
+      const _iAuthorName = m.role === 'user' ? (effectiveUserIdentity.name || userProfile.name || '你') : (p.name || '角色');
       if (m.role === 'user') {
         return '<div class="msg-row user" data-idx="' + idx + '"><div class="msg-content" style="align-items:flex-end;">' + intimateBubbleHtml + '</div><div class="msg-meta"><img src="' + _iAvatarSrc + '" class="msg-avatar"><span class="msg-name">' + _iAuthorName.substring(0,4) + '</span></div></div>';
       } else {
@@ -26171,7 +26175,7 @@ function renderMessages(opts) {
       var _topupStatus = { pending:'待回覆', accepted:'已增值 ✓', declined:'已拒绝 ✗' }[m.intimateStatus] || '待回覆';
       var _topupCls = m.intimateStatus === 'accepted' ? 'invite-status-accepted' : m.intimateStatus === 'declined' ? 'invite-status-declined' : 'invite-status-pending';
       var _topupBubble = '<div class="bubble-intimate-invite"><div class="invite-header"><i class="fas fa-plus-circle" style="margin-right:4px;"></i> 親密付增值请求</div><div class="invite-amount">¥' + parseFloat(m.intimateAmount || 0).toFixed(2) + '</div><div class="invite-note">请求增值親密付額度</div><span class="invite-status ' + _topupCls + '">' + _topupStatus + '</span></div>';
-      return '<div class="msg-row user" data-idx="' + idx + '"><div class="msg-content" style="align-items:flex-end;">' + _topupBubble + '</div><div class="msg-meta"><img src="' + (userProfile.avatar || '') + '" class="msg-avatar"><span class="msg-name">' + (userProfile.name || '你').substring(0,4) + '</span></div></div>';
+      return '<div class="msg-row user" data-idx="' + idx + '"><div class="msg-content" style="align-items:flex-end;">' + _topupBubble + '</div><div class="msg-meta"><img src="' + (effectiveUserIdentity.avatar || userProfile.avatar || '') + '" class="msg-avatar"><span class="msg-name">' + (effectiveUserIdentity.name || userProfile.name || '你').substring(0,4) + '</span></div></div>';
     }
     if (m.msgType === 'transfer') {
       return renderTransferBubble(m, idx, isUser, avatarSrc, authorName, isSelected);
@@ -26215,7 +26219,7 @@ function renderMessages(opts) {
     }
     let quoteHtml = '';
     if (m.quote) {
-      const qAuthor = m.quote.role === 'user' ? userProfile.name : p.name;
+      const qAuthor = m.quote.role === 'user' ? (effectiveUserIdentity.name || userProfile.name) : p.name;
       quoteHtml = `<div class="quote-block">${_formatChatBubbleHtml(qAuthor + '：' + quoteContent.slice(0,50))}${quoteContent.length>50?'…':''}</div>`;
     }
     // Extract prepended quote block from displayContent if present
@@ -52573,6 +52577,7 @@ function _getDatingOnlineStatus() {
 function renderDatingMessages(persona, session) {
   var bg = document.getElementById('datingChatBg');
   var history = session.history || [];
+  var datingUserIdentity = monoResolveUserIdentityProfile(persona || null);
   // 用户打开心动聊天室时，标记角色消息为已读
   var _dtChanged = false;
   history.forEach(function(msg) { if (msg.role !== 'user' && !msg._readByUser && !msg._recalled && !msg._hiddenContext) { msg._readByUser = true; _dtChanged = true; } });
@@ -52580,7 +52585,7 @@ function renderDatingMessages(persona, session) {
   var avatarHtml = persona.avatar
     ? '<img src="' + persona.avatar + '" style="width:100%;height:100%;object-fit:cover;">'
     : '<i class="fas fa-user" style="font-size:13px;color:#c8a0b0;"></i>';
-  var _dtUserAvSrc = (typeof userProfile !== 'undefined' && userProfile.avatar) ? userProfile.avatar : '';
+  var _dtUserAvSrc = (datingUserIdentity && datingUserIdentity.avatar) ? datingUserIdentity.avatar : ((typeof userProfile !== 'undefined' && userProfile.avatar) ? userProfile.avatar : '');
   var userAvatarHtml = _dtUserAvSrc
     ? '<div class="dating-user-avatar"><img src="' + _dtUserAvSrc + '" style="width:100%;height:100%;object-fit:cover;"></div>'
     : '<div class="dating-user-avatar"><i class="fas fa-user" style="font-size:13px;color:#888;"></i></div>';
@@ -52588,6 +52593,10 @@ function renderDatingMessages(persona, session) {
     // 隐藏上下文消息不在UI中显示
     if (msg._hiddenContext || msg._systemNote) return '';
     var isUser = msg.role === 'user';
+    var effectiveDatingUserIdentity = monoResolveUserIdentityProfile(persona || null, { message: msg, maskId: msg.userMaskId || '' });
+    var currentUserAvatarHtml = (effectiveDatingUserIdentity && effectiveDatingUserIdentity.avatar)
+      ? '<div class="dating-user-avatar"><img src="' + effectiveDatingUserIdentity.avatar + '" style="width:100%;height:100%;object-fit:cover;"></div>'
+      : userAvatarHtml;
     var _dtSenderLangCode = (!isUser && typeof _detectPersonaLang === 'function') ? _detectPersonaLang(persona) : '';
     var showTime = datingPrefs.timeSense !== '关閉';
     var selectedClass = datingIsMultiSelect && datingSelectedIdx.has(i) ? ' dating-selected' : '';
@@ -52602,7 +52611,7 @@ function renderDatingMessages(persona, session) {
     // ── 已撤回消息 ──
     if (msg._recalled) {
       if (isUser) {
-        return '<div class="dating-msg-row user' + selectedClass + selectableClass + '"' + rowAttrs + '><div style="font-size:11px;color:rgba(180,180,180,0.6);font-style:italic;padding:5px 10px;">你撤回了一条消息</div>' + _dtMetaEl + userAvatarHtml + '</div>';
+        return '<div class="dating-msg-row user' + selectedClass + selectableClass + '"' + rowAttrs + '><div style="font-size:11px;color:rgba(180,180,180,0.6);font-style:italic;padding:5px 10px;">你撤回了一条消息</div>' + _dtMetaEl + currentUserAvatarHtml + '</div>';
       }
       var showAvRc = i === 0 || history[i-1].role === 'user';
       return '<div class="dating-msg-row char' + selectedClass + selectableClass + '"' + rowAttrs + '>'
@@ -52628,7 +52637,7 @@ function renderDatingMessages(persona, session) {
         + (cDur ? '<div class="call-duration">' + cDur + '</div>' : '')
         + (cHasMsgs ? '<div class="call-view-hint">查看通话记录</div>' : '')
         + '</div></div>';
-      if (isUser) return '<div class="dating-msg-row user' + selectedClass + selectableClass + '"' + rowAttrs + '>' + userAvatarHtml + '<div style="display:flex;flex-direction:column;align-items:flex-end;">' + cBubble + '</div>' + timeEl + '</div>';
+      if (isUser) return '<div class="dating-msg-row user' + selectedClass + selectableClass + '"' + rowAttrs + '>' + currentUserAvatarHtml + '<div style="display:flex;flex-direction:column;align-items:flex-end;">' + cBubble + '</div>' + timeEl + '</div>';
       var showAvC = i===0 || history[i-1].role==='user';
       return '<div class="dating-msg-row char' + selectedClass + selectableClass + '"' + rowAttrs + '>'
         + (showAvC ? '<div class="dating-msg-avatar">' + avatarHtml + '</div>' : '<div style="width:32px;flex-shrink:0;"></div>')
@@ -52706,7 +52715,7 @@ function renderDatingMessages(persona, session) {
     var quoteHtml = '';
     if (msg.quote) {
       var persona2 = _getPersonaById(datingCurrentPid);
-      var qAuthor = msg.quote.role === 'user' ? (datingPrefs.userName||'我') : (persona2 ? persona2.name : '对方');
+      var qAuthor = msg.quote.role === 'user' ? ((effectiveDatingUserIdentity && effectiveDatingUserIdentity.name) || (datingUserIdentity && datingUserIdentity.name) || datingPrefs.userName || '我') : (persona2 ? persona2.name : '对方');
       quoteHtml = '<div class="dating-quote-block">' + qAuthor + '：' + _esc(msg.quote.content.slice(0,50)) + (msg.quote.content.length>50?'…':'') + '</div>';
     }
     // Translation for normal text bubble
@@ -52726,7 +52735,7 @@ function renderDatingMessages(persona, session) {
     var bubbleContent = specialBubble || ('<div class="dating-msg-bubble"' + _dtTAttrs + '>' + quoteHtml + _esc(msg.content) + _dtTrHtml + '</div>');
     if (isUser) {
       return '<div class="dating-msg-row user' + selectedClass + selectableClass + '"' + rowAttrs + ' ondblclick="_datingRecallUserMsg(' + i + ')">'
-        + userAvatarHtml
+        + currentUserAvatarHtml
         + '<div style="display:flex;flex-direction:column;align-items:flex-end;">' + bubbleContent + _dtMetaEl + '</div>'
         + timeEl + '</div>';
     }
@@ -52977,7 +52986,8 @@ async function sendDatingMessage() {
   var text = inputEl.value.trim();
   if (!text) return;
   var session = _getSession(datingCurrentPid);
-  var msgObj = { role:'user', content:text, ts:Date.now() };
+  var datingUserIdentity = monoResolveUserIdentityProfile(persona || null);
+  var msgObj = { role:'user', content:text, ts:Date.now(), userMaskId: datingUserIdentity.maskId || '' };
   if (datingQuoteMsg) {
     msgObj.quote = { role: datingQuoteMsg.role, content: datingQuoteMsg.content };
   }
@@ -63737,7 +63747,7 @@ function _renderPetMsgs() {
   var char   = PET_CHARS[_petChatRoom.petKey] || PET_CHARS.kitty;
   var chars  = typeof personas !== 'undefined' ? personas : [];
   var pChar  = _petChatRoom.personaId ? chars.find(function(x){ return x.id == _petChatRoom.personaId; }) : null;
-  var userProfile2 = typeof userProfile !== 'undefined' ? userProfile : { name: '主人', avatar: '' };
+  var userProfile2 = pChar ? monoResolveUserIdentityProfile(pChar) : ((typeof userProfile !== 'undefined' && userProfile) ? userProfile : { name: '主人', avatar: '' });
   if (!msgs.length) {
     msgsEl.innerHTML = '<div style="text-align:center;color:#ccc;font-size:11px;padding:24px 0;">说声 Hi 开始聊天吧～</div>';
     return;
@@ -63951,15 +63961,16 @@ async function sendPetChatMsg() {
   var text = inp.value.trim(); if (!text) return;
   inp.value = '';
   _petChatSending = true;
+  var chars = typeof personas !== 'undefined' ? personas : [];
+  var pCharForUser = _petChatRoom && _petChatRoom.personaId ? chars.find(function(x){ return x.id == _petChatRoom.personaId; }) : null;
   // Add user message
-  var userProfile2 = typeof userProfile !== 'undefined' ? userProfile : { name: '主人' };
-  var userMsg = { role:'user', sender:'user', content: text, senderName: userProfile2.name || '主人', ts: Date.now() };
+  var userProfile2 = pCharForUser ? monoResolveUserIdentityProfile(pCharForUser) : ((typeof userProfile !== 'undefined' && userProfile) ? userProfile : { name: '主人' });
+  var userMsg = { role:'user', sender:'user', content: text, senderName: userProfile2.name || '主人', userMaskId: userProfile2.maskId || '', ts: Date.now() };
   if (_petChatQuote) { userMsg.quote = _petChatQuote; }
   _petChatAddMsg(userMsg);
   _petChatCancelQuote();
   _renderPetMsgs();
   var char   = PET_CHARS[_petChatRoom.petKey] || PET_CHARS.kitty;
-  var chars  = typeof personas !== 'undefined' ? personas : [];
   var pChar  = _petChatRoom.personaId ? chars.find(function(x){ return x.id == _petChatRoom.personaId; }) : null;
   var pet    = _petState.pet && _petState.pet.key === _petChatRoom.petKey ? _petState.pet : (_petState.collection||[]).find(function(p){ return p.key === _petChatRoom.petKey; });
   var stages = ['幼崽期','成长期','完全体'];

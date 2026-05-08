@@ -50,19 +50,14 @@
 <script>
 // Generate inline PWA manifest
 (function() {
-  const manifestPageUrl = new URL(location.href);
-  manifestPageUrl.hash = '';
-  const manifestScope = manifestPageUrl.origin + manifestPageUrl.pathname.replace(/\/[^/]*$/, '/');
-  const manifestStartUrl = manifestPageUrl.origin + manifestPageUrl.pathname + manifestPageUrl.search;
   const manifest = {
-    id: manifestStartUrl,
     name: "Mono Heart",
     short_name: "Mono",
     description: "AI 角色聊天应用",
     lang: "zh-Hans",
     dir: "ltr",
-    start_url: manifestStartUrl,
-    scope: manifestScope,
+    start_url: "./",
+    scope: "./",
     display: "standalone",
     display_override: ["standalone", "minimal-ui", "browser"],
     background_color: "#ffffff",
@@ -77,6 +72,10 @@
   };
   // 将 manifest JSON 存储在 window 变量中，供 Service Worker 使用
   window._monoManifestJSON = JSON.stringify(manifest);
+  const manifestBlob = new Blob([window._monoManifestJSON], { type: 'application/json' });
+  const manifestUrl = URL.createObjectURL(manifestBlob);
+  window._monoManifestUrl = manifestUrl;
+  document.getElementById('pwaManifest').href = manifestUrl;
   window.addEventListener('beforeinstallprompt', function(e) {
     e.preventDefault();
     window._monoBeforeInstallPrompt = e;
@@ -532,11 +531,11 @@ self.addEventListener('notificationclick', e => {
       window._swFailed = false;
       reg.update();
 
-      // SW 激活后再挂载 manifest 链接，确保 Chrome 抓取 manifest.json 时 SW 必然已在线（首次加载也不会 404）
+      // Fallback: 如果 manifest 链接还没挂上，再补一次。
       function _activateManifestLink() {
         const link = document.getElementById('pwaManifest');
-        if (link && !link.href) {
-          link.href = 'manifest.json';
+        if (link && !link.getAttribute('href')) {
+          link.href = window._monoManifestUrl || 'manifest.json';
         }
       }
 

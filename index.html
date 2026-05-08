@@ -31,6 +31,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head><base href="https://d16ilfvy4mv02r.cloudfront.net/workspaces/sh0bDVYUIEw8H1dpwjAJvINuiJ6ETxg0/6c9a375e-adcc-44e2-9ec5-2d1ce63bc50b/files/">
@@ -7006,6 +7007,32 @@ body:not(.ios-fullscreen) .family-widget {
   display: none; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
 }
 .dating-gen-overlay.active { display: flex; }
+/* 局部 loading：只覆盖直播现场 panel */
+.dating-show-live-overlay {
+  display: none;
+  position: absolute; inset: 0;
+  background: rgba(255,255,255,0.88);
+  border-radius: inherit;
+  z-index: 10;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.dating-show-live-overlay.active { display: flex; }
+.dating-show-live-overlay-spinner {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 3px solid rgba(0,0,0,0.08);
+  border-top-color: #161616;
+  animation: datingSpinner 0.8s linear infinite;
+}
+.dating-show-live-overlay-title {
+  font-size: 13px; font-weight: 700; color: #161616;
+}
+.dating-show-live-overlay-sub {
+  font-size: 11px; color: rgba(24,24,24,0.55); text-align: center; line-height: 1.7; padding: 0 16px;
+}
 .dating-gen-overlay-text { font-size: 14px; color: #666; font-weight: 600; }
 .dating-gen-spinner {
   width: 36px; height: 36px; border: 3px solid #e0d5da;
@@ -7032,6 +7059,682 @@ body:not(.ios-fullscreen) .family-widget {
 }
 .dating-empty-state i { font-size: 48px; opacity: 0.4; }
 .dating-empty-state p { font-size: 14px; text-align: center; line-height: 1.6; }
+/* ===== 恋综 SHOW MODE ===== */
+.dating-show-scroll {
+  position: relative;
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 16px 124px;
+  background:
+    radial-gradient(circle at top left, rgba(255,255,255,0.95), rgba(245,245,245,0.96) 40%, rgba(235,235,235,0.98) 100%),
+    linear-gradient(180deg, #f7f7f7 0%, #ececec 100%);
+}
+.dating-show-scroll::-webkit-scrollbar { display: none; }
+.dating-show-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.dating-show-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 28px;
+  padding: 20px 18px 18px;
+  border: 1px solid rgba(255,255,255,0.8);
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.96), rgba(233,233,233,0.9)),
+    linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.05));
+  box-shadow:
+    0 18px 45px rgba(0,0,0,0.08),
+    inset 0 1px 0 rgba(255,255,255,0.7);
+}
+.dating-show-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(120deg, rgba(255,255,255,0.55), transparent 45%),
+    radial-gradient(circle at 85% 18%, rgba(255,255,255,0.5), transparent 32%);
+  pointer-events: none;
+}
+.dating-show-kicker {
+  position: relative;
+  font-size: 10px;
+  letter-spacing: 2.2px;
+  text-transform: uppercase;
+  color: rgba(30,30,30,0.45);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.dating-show-title {
+  position: relative;
+  font-size: 25px;
+  line-height: 1.15;
+  letter-spacing: -0.5px;
+  color: #161616;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.dating-show-subtitle {
+  position: relative;
+  font-size: 12px;
+  line-height: 1.8;
+  color: rgba(26,26,26,0.62);
+}
+.dating-show-chip-row {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+.dating-show-chip {
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.68);
+  border: 1px solid rgba(0,0,0,0.06);
+  color: #2d2d2d;
+  font-size: 11px;
+  font-weight: 700;
+  backdrop-filter: blur(8px);
+}
+.dating-show-chip.muted {
+  color: rgba(30,30,30,0.55);
+  font-weight: 600;
+}
+.dating-show-panel {
+  border-radius: 24px;
+  border: 1px solid rgba(255,255,255,0.85);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.96), rgba(241,241,241,0.93));
+  box-shadow: 0 16px 38px rgba(0,0,0,0.06);
+  overflow: hidden;
+}
+.dating-show-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px 12px;
+}
+.dating-show-panel-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #141414;
+  letter-spacing: -0.2px;
+}
+.dating-show-panel-desc {
+  font-size: 11px;
+  color: rgba(30,30,30,0.5);
+  margin-top: 4px;
+  line-height: 1.6;
+}
+.dating-show-barrage-wrap {
+  position: relative;
+  padding: 8px 0 10px;
+  overflow: hidden;
+}
+.dating-show-barrage-lane {
+  position: relative;
+  height: 108px;
+  overflow: hidden;
+}
+.dating-show-barrage-item {
+  position: absolute;
+  left: 100%;
+  white-space: nowrap;
+  padding: 6px 13px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.86);
+  border: 1px solid rgba(0,0,0,0.06);
+  color: #2e2e2e;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+  will-change: transform;
+  animation: datingShowBarrageSlide var(--barrage-duration, 13s) linear infinite;
+  animation-delay: var(--barrage-delay, 0s);
+}
+@keyframes datingShowBarrageSlide {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-200vw); }
+}
+.dating-show-live-log {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 16px 16px;
+}
+.dating-show-live-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0 16px 16px;
+}
+.dating-show-live-actions .dating-show-btn {
+  min-height: 46px;
+}
+.dating-show-log-item {
+  border-radius: 18px;
+  padding: 12px 13px;
+  background: rgba(255,255,255,0.82);
+  border: 1px solid rgba(0,0,0,0.045);
+}
+.dating-show-log-item.host,
+.dating-show-log-item.director {
+  background: linear-gradient(180deg, rgba(244,244,244,0.98), rgba(232,232,232,0.96));
+}
+.dating-show-log-item.user {
+  background: linear-gradient(180deg, rgba(235,235,235,0.98), rgba(224,224,224,0.96));
+}
+.dating-show-log-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+.dating-show-log-speaker {
+  font-size: 12px;
+  font-weight: 800;
+  color: #111;
+}
+.dating-show-log-type {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+  color: rgba(30,30,30,0.45);
+}
+.dating-show-log-body {
+  font-size: 12px;
+  line-height: 1.85;
+  color: rgba(24,24,24,0.82);
+  white-space: pre-wrap;
+}
+.dating-show-log-meta {
+  margin-top: 8px;
+  font-size: 10px;
+  color: rgba(30,30,30,0.48);
+}
+.dating-show-user-card {
+  padding: 0 16px 16px;
+}
+.dating-show-user-card-inner {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 12px;
+  align-items: center;
+  border-radius: 20px;
+  padding: 14px;
+  background: rgba(255,255,255,0.8);
+  border: 1px solid rgba(0,0,0,0.05);
+}
+.dating-show-user-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #f7f7f7, #d9d9d9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 800;
+  color: #1a1a1a;
+}
+.dating-show-user-name {
+  font-size: 15px;
+  font-weight: 800;
+  color: #141414;
+}
+.dating-show-user-meta {
+  font-size: 11px;
+  color: rgba(28,28,28,0.55);
+  margin-top: 4px;
+}
+.dating-show-user-bio {
+  margin-top: 8px;
+  font-size: 11px;
+  line-height: 1.7;
+  color: rgba(24,24,24,0.72);
+}
+.dating-show-participants {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0 16px 16px;
+}
+.dating-show-cast-card {
+  border-radius: 20px;
+  padding: 12px;
+  background: rgba(255,255,255,0.83);
+  border: 1px solid rgba(0,0,0,0.05);
+  min-width: 0;
+}
+.dating-show-cast-card.eliminated {
+  opacity: 0.5;
+  filter: grayscale(1);
+}
+.dating-show-cast-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.dating-show-cast-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #f1f1f1, #d9d9d9);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6f6f6f;
+  font-size: 16px;
+}
+.dating-show-cast-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.dating-show-cast-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: #141414;
+  line-height: 1.35;
+}
+.dating-show-cast-role {
+  font-size: 10px;
+  color: rgba(26,26,26,0.5);
+  margin-top: 3px;
+}
+.dating-show-cast-bio {
+  font-size: 10px;
+  line-height: 1.65;
+  color: rgba(24,24,24,0.7);
+  margin-bottom: 10px;
+  min-height: 34px;
+}
+.dating-show-stat {
+  margin-top: 7px;
+}
+.dating-show-stat-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 9px;
+  color: rgba(30,30,30,0.5);
+  margin-bottom: 4px;
+}
+.dating-show-stat-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.06);
+  overflow: hidden;
+}
+.dating-show-stat-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #9a9a9a, #323232);
+}
+.dating-show-mini-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 9px;
+}
+.dating-show-mini-tag {
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.04);
+  font-size: 9px;
+  color: rgba(24,24,24,0.56);
+}
+.dating-show-schedule {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 16px 16px;
+}
+.dating-show-schedule-item {
+  padding: 8px 11px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.82);
+  border: 1px solid rgba(0,0,0,0.05);
+  font-size: 11px;
+  color: #2c2c2c;
+}
+.dating-show-rel-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0 16px 16px;
+}
+.dating-show-rel-card {
+  border-radius: 20px;
+  padding: 12px;
+  background: rgba(255,255,255,0.82);
+  border: 1px solid rgba(0,0,0,0.05);
+}
+.dating-show-rel-pair {
+  font-size: 13px;
+  font-weight: 800;
+  color: #171717;
+}
+.dating-show-rel-status {
+  display: inline-flex;
+  margin-top: 7px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.04);
+  font-size: 9px;
+  color: rgba(24,24,24,0.58);
+}
+.dating-show-rel-summary {
+  margin-top: 8px;
+  font-size: 10px;
+  line-height: 1.7;
+  color: rgba(24,24,24,0.72);
+}
+.dating-show-rel-heat {
+  margin-top: 8px;
+  font-size: 9px;
+  color: rgba(24,24,24,0.5);
+}
+.dating-show-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0 16px 16px;
+}
+.dating-show-btn {
+  border: none;
+  border-radius: 18px;
+  padding: 13px 12px;
+  background: linear-gradient(180deg, #262626, #0f0f0f);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  box-shadow: 0 14px 28px rgba(0,0,0,0.12);
+}
+.dating-show-btn.ghost {
+  background: rgba(255,255,255,0.78);
+  color: #202020;
+  border: 1px solid rgba(0,0,0,0.06);
+  box-shadow: none;
+}
+.dating-show-btn:active { transform: scale(0.985); }
+.dating-show-composer {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  margin-top: auto;
+  padding: 8px 16px calc(8px + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, rgba(236,236,236,0), rgba(236,236,236,0.9) 24%, rgba(236,236,236,0.98));
+  backdrop-filter: blur(14px);
+}
+.dating-show-input-card {
+  border-radius: 20px;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.9);
+  border: 1px solid rgba(0,0,0,0.07);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.07);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dating-show-input-tip {
+  display: none;
+}
+.dating-show-textarea {
+  flex: 1;
+  min-height: 34px;
+  max-height: 80px;
+  border: none;
+  resize: none;
+  background: transparent;
+  outline: none;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #1a1a1a;
+  overflow-y: auto;
+}
+.dating-show-send-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+.dating-show-send-row .dating-show-btn {
+  width: auto;
+  min-width: 124px;
+  padding: 11px 16px;
+}
+.dating-show-empty-card {
+  border-radius: 28px;
+  padding: 20px 18px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.96), rgba(235,235,235,0.92));
+  border: 1px solid rgba(255,255,255,0.84);
+  box-shadow: 0 18px 42px rgba(0,0,0,0.07);
+}
+.dating-show-empty-grid {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+.dating-show-mode-card {
+  border-radius: 22px;
+  padding: 16px;
+  background: rgba(255,255,255,0.76);
+  border: 1px solid rgba(0,0,0,0.05);
+}
+.dating-show-mode-card-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #111;
+  margin-bottom: 6px;
+}
+.dating-show-mode-card-desc {
+  font-size: 11px;
+  line-height: 1.8;
+  color: rgba(24,24,24,0.65);
+}
+.dating-show-mode-card-list {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.dating-show-pill {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.045);
+  color: rgba(24,24,24,0.58);
+  font-size: 9px;
+}
+.dating-show-setup-sheet {
+  width: min(100%, 540px);
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 16px 16px 22px;
+  border-radius: 28px 28px 0 0;
+  background: linear-gradient(180deg, #fbfbfb, #ececec);
+}
+.dating-show-setup-sheet::-webkit-scrollbar { display: none; }
+.dating-show-form-section {
+  margin-top: 18px;
+}
+.dating-show-form-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #171717;
+  margin-bottom: 10px;
+}
+.dating-show-option-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.dating-show-option {
+  padding: 9px 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(0,0,0,0.06);
+  background: rgba(255,255,255,0.8);
+  color: #2c2c2c;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.dating-show-option.active {
+  background: linear-gradient(180deg, #1d1d1d, #111);
+  color: #fff;
+  border-color: #111;
+}
+.dating-show-field {
+  margin-top: 10px;
+}
+.dating-show-field label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(24,24,24,0.6);
+  margin-bottom: 7px;
+}
+.dating-show-field input,
+.dating-show-field select,
+.dating-show-field textarea {
+  width: 100%;
+  border-radius: 16px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: rgba(255,255,255,0.92);
+  padding: 12px 13px;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: 12px;
+  color: #171717;
+  outline: none;
+}
+.dating-show-field textarea {
+  min-height: 92px;
+  resize: vertical;
+  line-height: 1.8;
+}
+.dating-show-persona-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.dating-show-persona-card {
+  border-radius: 20px;
+  padding: 12px;
+  background: rgba(255,255,255,0.84);
+  border: 1px solid rgba(0,0,0,0.05);
+}
+.dating-show-persona-card.on {
+  border-color: rgba(0,0,0,0.16);
+  box-shadow: 0 10px 22px rgba(0,0,0,0.05);
+}
+.dating-show-persona-top {
+  display: grid;
+  grid-template-columns: auto 44px 1fr;
+  gap: 10px;
+  align-items: center;
+}
+.dating-show-check {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(0,0,0,0.15);
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: transparent;
+}
+.dating-show-persona-card.on .dating-show-check {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}
+.dating-show-persona-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #f1f1f1, #d9d9d9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #808080;
+}
+.dating-show-persona-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.dating-show-persona-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: #151515;
+}
+.dating-show-persona-desc {
+  font-size: 10px;
+  color: rgba(24,24,24,0.58);
+  margin-top: 4px;
+  line-height: 1.65;
+}
+.dating-show-persona-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.dating-show-sheet-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 18px;
+}
+.dating-show-overlay-card {
+  width: min(86vw, 320px);
+  border-radius: 28px;
+  padding: 24px 22px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.97), rgba(233,233,233,0.95));
+  box-shadow: 0 20px 50px rgba(0,0,0,0.12);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.dating-show-overlay-spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid rgba(0,0,0,0.08);
+  border-top-color: #161616;
+  animation: datingSpinner 0.8s linear infinite;
+}
+.dating-show-overlay-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #161616;
+}
+.dating-show-overlay-sub {
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.8;
+  color: rgba(24,24,24,0.6);
+}
+@media (max-width: 420px) {
+  .dating-show-participants,
+  .dating-show-rel-grid,
+  .dating-show-actions,
+  .dating-show-live-actions,
+  .dating-show-persona-controls,
+  .dating-show-sheet-actions {
+    grid-template-columns: 1fr;
+  }
+  .dating-show-title { font-size: 22px; }
+}
 /* Music app icon (same size as location & blackbox icon) */
 .ig-music-icon-wrap {
   display: flex;
@@ -40001,7 +40704,8 @@ async function _doExportAllData(statusEl) {
       datingApp: {
         sessions: JSON.parse(localStorage.getItem('mono_dating_sessions') || '{}'),
         prefs: JSON.parse(localStorage.getItem('mono_dating_prefs') || '{}'),
-        icon: localStorage.getItem('mono_icon_dating') || null
+        icon: localStorage.getItem('mono_icon_dating') || null,
+        showState: JSON.parse(localStorage.getItem('mono_dating_show_state_v1') || 'null')
       },
       // 寵物屋数据
       petHouse: {
@@ -40451,7 +41155,8 @@ function normalizeImportData(raw) {
     data.datingApp = {
       sessions: (raw.datingApp.sessions && typeof raw.datingApp.sessions === 'object') ? raw.datingApp.sessions : {},
       prefs:    (raw.datingApp.prefs    && typeof raw.datingApp.prefs    === 'object') ? raw.datingApp.prefs    : {},
-      icon:     raw.datingApp.icon || null
+      icon:     raw.datingApp.icon || null,
+      showState: (raw.datingApp.showState && typeof raw.datingApp.showState === 'object') ? raw.datingApp.showState : null
     };
   } else {
     data.datingApp = null;
@@ -52352,6 +53057,18 @@ function _extractDialogueForTranslation(text, charName) {
       </div>
     </div>
   </div>
+  <!-- Page 4: Dating Reality Show -->
+  <div class="dating-page" id="datingPageShow">
+    <div class="dating-show-scroll" id="datingShowScroll">
+      <div class="dating-show-shell" id="datingShowRoot"></div>
+    </div>
+    <div class="dating-show-composer" id="datingShowComposer" style="display:none;">
+      <div class="dating-show-input-card">
+        <textarea id="datingShowInput" class="dating-show-textarea" placeholder="输入你的互动…" rows="1" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px';"></textarea>
+        <button class="dating-show-btn" style="padding:8px 14px;min-width:64px;font-size:12px;flex-shrink:0;" onclick="datingShowSendInput()">发送</button>
+      </div>
+    </div>
+  </div>
   <div class="dating-bottom-nav">
     <div class="dating-nav-item active" id="datingNav0" onclick="switchDatingPage(0)">
       <i class="fas fa-comment-dots"></i><span>消息</span>
@@ -52361,6 +53078,9 @@ function _extractDialogueForTranslation(text, charName) {
     </div>
     <div class="dating-nav-item" id="datingNav2" onclick="switchDatingPage(2)">
       <i class="fas fa-user-circle"></i><span>我的</span>
+    </div>
+    <div class="dating-nav-item" id="datingNav3" onclick="switchDatingPage(3)">
+      <i class="fas fa-clapperboard"></i><span>恋综</span>
     </div>
   </div>
 </div>
@@ -52564,6 +53284,20 @@ function _extractDialogueForTranslation(text, charName) {
     <div class="dating-modal-btns"><button class="dating-modal-cancel" onclick="closeDatingSettingsModal()">取消</button></div>
   </div>
 </div>
+<div class="dating-modal-overlay" id="datingShowSetupModal">
+  <div class="dating-show-setup-sheet">
+    <div class="dating-modal-handle"></div>
+    <div class="dating-modal-title">恋综开局设定</div>
+    <div id="datingShowSetupBody"></div>
+  </div>
+</div>
+<div class="dating-gen-overlay" id="datingShowGenOverlay">
+  <div class="dating-show-overlay-card">
+    <div class="dating-show-overlay-spinner"></div>
+    <div class="dating-show-overlay-title" id="datingShowOverlayTitle">正在搭建恋综别墅</div>
+    <div class="dating-show-overlay-sub" id="datingShowOverlaySub">正在根据你选择的模式、角色与当前 API 生成开局内容，请稍等。</div>
+  </div>
+</div>
 <input type="file" id="datingBgInput"   accept="image/*" style="display:none;" onchange="handleDatingBgSelect(this)">
 <input type="file" id="datingIconInput" accept="image/*" style="display:none;" onchange="handleDatingIconSelect(this)">
 <script>
@@ -52587,14 +53321,35 @@ let datingCurrentCtxIdx     = null;
 let datingQuoteMsg          = null;
 let datingEditingIdx        = null;
 let _datingLongPressTimer   = null;
+const DATING_SHOW_KEY = 'mono_dating_show_state_v1';
+const DATING_SHOW_PHASES = ['清晨', '上午', '午后', '傍晚', '深夜'];
+const DATING_SHOW_LIBRARY = {
+  solo6: [
+    '心动选择二选一', '眼神锁定挑战', '礼物盲选心动', '吃醋观察局', '一日限定专属管家',
+    '秘密心事投递箱', '情敌优点互评', '雨夜双人共伞', '心动罪名投票', '模仿心动瞬间',
+    '禁止心动挑战', '换位心动座', '限时告白30秒', '情侣默契测试', '隐藏任务偷心计划',
+    '深夜留言墙', '好感反向淘汰', '蒙眼识人触碰', '秘密匿名告白', '约会抢夺战'
+  ],
+  battle6v6: [
+    '6v6心动积分赛', '双向盲选配对', '阵营守护任务', '最没好感投票', '双人默契闯关',
+    '心动卧底6v6版', '礼物盲盒互送', '抢占心动座位', '真心话交叉拷问', '一日交换阵营',
+    '修罗场CP换位夜', '阵营抢人大战', '匿名隔空告白', '蒙眼识人贴贴挑战', '情侣默契生死局',
+    '秘密守护暗任务', '限时当众告白', '雨夜共伞抉择', '深夜悄悄话投递箱', '好感反向淘汰局'
+  ]
+};
+let datingShowState = null;
+let datingShowDraft = null;
+let datingShowBusy = false;
 // ── Init ──
 function initDatingApp() {
   try { datingSessions = JSON.parse(localStorage.getItem(DATING_SESSIONS_KEY) || '{}'); } catch(e) { datingSessions = {}; }
   try { datingPrefs    = JSON.parse(localStorage.getItem(DATING_PREFS_KEY)    || '{}'); } catch(e) { datingPrefs = {}; }
   _datingPrefsDefaults();
+  datingShowLoad();
   _syncDatingPrefUI();
   renderDatingContacts();
   renderDatingPickList();
+  renderDatingShowPage();
   _checkDatingApiStatus();
   _loadDatingIcon();
   _scheduleDatingTimeSenseAll();
@@ -52605,6 +53360,7 @@ window.afterDB(function() {
   try { datingSessions = JSON.parse(localStorage.getItem(DATING_SESSIONS_KEY) || '{}'); } catch(e) { datingSessions = {}; }
   try { datingPrefs    = JSON.parse(localStorage.getItem(DATING_PREFS_KEY)    || '{}'); } catch(e) { datingPrefs = {}; }
   _datingPrefsDefaults();
+  datingShowLoad();
 });
 function _datingPrefsDefaults() {
   const d = { minReply:'1', maxReply:'3', timeSense:'开啟', userName:'' };
@@ -52630,6 +53386,59 @@ function _saveDatingBioCache(cache) {
 function _getSession(pid) {
   if (!datingSessions[pid]) datingSessions[pid] = { history:[], chatBg:null, bubbleAi:null, bubbleUser:null, unread:0 };
   return datingSessions[pid];
+}
+function datingShowDefaultState() {
+  return {
+    active: false,
+    terminated: false,
+    mode: 'solo6',
+    title: '',
+    subtitle: '',
+    day: 1,
+    phase: DATING_SHOW_PHASES[0],
+    intensity: 'warm',
+    userProfile: { name: '', gender: '', bio: '', orientation: '喜欢男生', battleStyle: '男女匹配' },
+    selectedPersonas: [],
+    participants: [],
+    relationships: [],
+    logs: [],
+    barrages: [],
+    schedule: [],
+    suggestions: [],
+    gameChoices: null,
+    headline: '',
+    usedGames: [],
+    storyBeats: [],
+    updatedAt: 0,
+    lastArchive: null
+  };
+}
+function datingShowLoad() {
+  var base = datingShowDefaultState();
+  try {
+    var raw = JSON.parse(localStorage.getItem(DATING_SHOW_KEY) || 'null');
+    if (raw && typeof raw === 'object') {
+      datingShowState = Object.assign(base, raw);
+    } else {
+      datingShowState = base;
+    }
+  } catch(e) {
+    datingShowState = base;
+  }
+  if (!datingShowState.userProfile) datingShowState.userProfile = base.userProfile;
+  datingShowState.participants = Array.isArray(datingShowState.participants) ? datingShowState.participants : [];
+  datingShowState.relationships = Array.isArray(datingShowState.relationships) ? datingShowState.relationships : [];
+  datingShowState.logs = Array.isArray(datingShowState.logs) ? datingShowState.logs : [];
+  datingShowState.barrages = Array.isArray(datingShowState.barrages) ? datingShowState.barrages : [];
+  datingShowState.schedule = Array.isArray(datingShowState.schedule) ? datingShowState.schedule : [];
+  datingShowState.suggestions = Array.isArray(datingShowState.suggestions) ? datingShowState.suggestions : [];
+  if (datingShowState.gameChoices !== undefined && datingShowState.gameChoices !== null && !Array.isArray(datingShowState.gameChoices)) datingShowState.gameChoices = null;
+  datingShowState.selectedPersonas = Array.isArray(datingShowState.selectedPersonas) ? datingShowState.selectedPersonas : [];
+}
+function datingShowSave() {
+  if (!datingShowState) datingShowState = datingShowDefaultState();
+  datingShowState.updatedAt = Date.now();
+  localStorage.setItem(DATING_SHOW_KEY, JSON.stringify(datingShowState));
 }
 // ── Persona helpers ──
 function _getDatingPersonas() {
@@ -52715,11 +53524,12 @@ function closeDatingApp() {
 }
 // ── Bottom nav ──
 function switchDatingPage(idx) {
-  ['datingPageContacts','datingPagePick','datingPageProfile'].forEach(function(pid, i) {
+  ['datingPageContacts','datingPagePick','datingPageProfile','datingPageShow'].forEach(function(pid, i) {
     document.getElementById(pid).classList.toggle('active', i === idx);
     document.getElementById('datingNav' + i).classList.toggle('active', i === idx);
   });
   if (idx === 1) renderDatingPickList();
+  if (idx === 3) renderDatingShowPage();
 }
 // ── Contacts list (active conversations) ──
 function renderDatingContacts() {
@@ -52794,6 +53604,787 @@ function renderDatingPickList() {
       + (hasSession ? '<button class="dating-match-skip-btn" style="color:#e74c3c;" onclick="confirmClearDatingSession(\'' + p.id + '\')">重置</button>' : '')
       + '</div></div>';
   }).join('');
+}
+// ── 恋综模式 ──
+function _datingShowGuessGender(persona) {
+  var raw = [
+    persona && persona.gender || '',
+    persona && persona.name || '',
+    persona && persona.persona || ''
+  ].join(' ');
+  var maleScore = 0;
+  var femaleScore = 0;
+  if (/男|先生|哥哥|弟弟|男友|他\b/.test(raw)) maleScore += 2;
+  if (/女|小姐|姐姐|妹妹|女友|她\b/.test(raw)) femaleScore += 2;
+  if (maleScore > femaleScore) return '男';
+  if (femaleScore > maleScore) return '女';
+  return '';
+}
+function _datingShowBattleTeamLabel(style, team) {
+  if (style === '男女匹配') return team === 'A' ? '男嘉宾阵营' : '女嘉宾阵营';
+  if (style === '男男匹配') return team === 'A' ? 'A组男嘉宾' : 'B组男嘉宾';
+  if (style === '女女匹配') return team === 'A' ? 'A组女嘉宾' : 'B组女嘉宾';
+  return team === 'A' ? 'A组' : 'B组';
+}
+function _datingShowBattleTeamGender(style, team) {
+  if (style === '男女匹配') return team === 'A' ? '男' : '女';
+  if (style === '男男匹配') return '男';
+  if (style === '女女匹配') return '女';
+  return '';
+}
+function _datingShowBuildDraft(presetMode) {
+  var personas = _getDatingPersonas();
+  var existing = (datingShowState && datingShowState.selectedPersonas) || [];
+  var userName = (datingShowState && datingShowState.userProfile && datingShowState.userProfile.name) || datingPrefs.userRealName || datingPrefs.userNickname || datingPrefs.userName || '';
+  var userGender = (datingShowState && datingShowState.userProfile && datingShowState.userProfile.gender) || datingPrefs.userGender || '';
+  var userBio = (datingShowState && datingShowState.userProfile && datingShowState.userProfile.bio) || datingPrefs.userBio || '';
+  var orientation = (datingShowState && datingShowState.userProfile && datingShowState.userProfile.orientation) || '喜欢男生';
+  var battleStyle = (datingShowState && datingShowState.userProfile && datingShowState.userProfile.battleStyle) || '男女匹配';
+  return {
+    mode: presetMode || (datingShowState && datingShowState.mode) || 'solo6',
+    userProfile: {
+      name: userName,
+      gender: userGender,
+      bio: userBio,
+      orientation: orientation,
+      battleStyle: battleStyle
+    },
+    personas: personas.map(function(p) {
+      var hit = existing.find(function(item){ return String(item.personaId) === String(p.id); }) || {};
+      return {
+        personaId: String(p.id),
+        enabled: !!hit.personaId,
+        gender: hit.gender || _datingShowGuessGender(p) || '',
+        team: hit.team || 'auto'
+      };
+    })
+  };
+}
+function openDatingShowSetup(presetMode) {
+  datingShowDraft = _datingShowBuildDraft(presetMode);
+  renderDatingShowSetup();
+  document.getElementById('datingShowSetupModal').classList.add('active');
+}
+function closeDatingShowSetup() {
+  document.getElementById('datingShowSetupModal').classList.remove('active');
+}
+function renderDatingShowSetup() {
+  if (!datingShowDraft) datingShowDraft = _datingShowBuildDraft('solo6');
+  var personas = _getDatingPersonas();
+  var isBattle = datingShowDraft.mode === 'battle6v6';
+  var body = document.getElementById('datingShowSetupBody');
+  if (!body) return;
+  body.innerHTML =
+    '<div class="dating-show-form-section">'
+      + '<div class="dating-show-form-title">选择恋综形式</div>'
+      + '<div class="dating-show-option-row">'
+        + '<div class="dating-show-option' + (datingShowDraft.mode === 'solo6' ? ' active' : '') + '" onclick="datingShowSetMode(\'solo6\')">一选多 · 6位追求者</div>'
+        + '<div class="dating-show-option' + (datingShowDraft.mode === 'battle6v6' ? ' active' : '') + '" onclick="datingShowSetMode(\'battle6v6\')">6v6 阵营对抗</div>'
+      + '</div>'
+    + '</div>'
+    + '<div class="dating-show-form-section">'
+      + '<div class="dating-show-form-title">你的恋综身份</div>'
+      + '<div class="dating-show-field"><label>名字</label><input value="' + _esc(datingShowDraft.userProfile.name || '') + '" oninput="datingShowDraftInput(\'name\', this.value)" placeholder="开始之前请填写你的名字"></div>'
+      + '<div class="dating-show-field"><label>性别</label><select onchange="datingShowDraftInput(\'gender\', this.value)">'
+        + '<option value="">请选择</option>'
+        + '<option value="男"' + (datingShowDraft.userProfile.gender === '男' ? ' selected' : '') + '>男</option>'
+        + '<option value="女"' + (datingShowDraft.userProfile.gender === '女' ? ' selected' : '') + '>女</option>'
+        + '<option value="其他"' + (datingShowDraft.userProfile.gender === '其他' ? ' selected' : '') + '>其他</option>'
+      + '</select></div>'
+      + '<div class="dating-show-field"><label>设定简介</label><textarea oninput="datingShowDraftInput(\'bio\', this.value)" placeholder="介绍你的性格、气场、身份、习惯和容易让人心动的点。">' + _esc(datingShowDraft.userProfile.bio || '') + '</textarea></div>'
+    + '</div>'
+    + '<div class="dating-show-form-section">'
+      + '<div class="dating-show-form-title">' + (isBattle ? '匹配赛制' : '性取向 / 偏好') + '</div>'
+      + '<div class="dating-show-option-row">'
+        + (isBattle
+          ? '<div class="dating-show-option' + (datingShowDraft.userProfile.battleStyle === '男女匹配' ? ' active' : '') + '" onclick="datingShowDraftInput(\'battleStyle\', \'男女匹配\')">男女匹配</div>'
+            + '<div class="dating-show-option' + (datingShowDraft.userProfile.battleStyle === '男男匹配' ? ' active' : '') + '" onclick="datingShowDraftInput(\'battleStyle\', \'男男匹配\')">男男匹配</div>'
+            + '<div class="dating-show-option' + (datingShowDraft.userProfile.battleStyle === '女女匹配' ? ' active' : '') + '" onclick="datingShowDraftInput(\'battleStyle\', \'女女匹配\')">女女匹配</div>'
+          : '<div class="dating-show-option' + (datingShowDraft.userProfile.orientation === '喜欢男生' ? ' active' : '') + '" onclick="datingShowDraftInput(\'orientation\', \'喜欢男生\')">喜欢男生</div>'
+            + '<div class="dating-show-option' + (datingShowDraft.userProfile.orientation === '喜欢女生' ? ' active' : '') + '" onclick="datingShowDraftInput(\'orientation\', \'喜欢女生\')">喜欢女生</div>'
+            + '<div class="dating-show-option' + (datingShowDraft.userProfile.orientation === '不限' ? ' active' : '') + '" onclick="datingShowDraftInput(\'orientation\', \'不限\')">不限</div>')
+      + '</div>'
+    + '</div>'
+    + '<div class="dating-show-form-section">'
+      + '<div class="dating-show-form-title">选择参与角色</div>'
+      + '<div style="font-size:11px;color:rgba(24,24,24,0.56);line-height:1.8;margin-bottom:10px;">你可以从聊天软件里已有的角色中勾选参与者。人数不足时，会由当前连接的 API 自动补足并生成完整设定。已选角色会保留原本的人设、背景、性格与语气。</div>'
+      + '<div class="dating-show-persona-list">' + (personas.length ? personas.map(function(p) {
+          var conf = (datingShowDraft.personas || []).find(function(item){ return String(item.personaId) === String(p.id); }) || { enabled:false, gender:'', team:'auto' };
+          var avatar = p.avatar ? '<img src="' + p.avatar + '">' : '<i class="fas fa-user"></i>';
+          return '<div class="dating-show-persona-card' + (conf.enabled ? ' on' : '') + '">'
+            + '<div class="dating-show-persona-top">'
+              + '<div class="dating-show-check" onclick="datingShowTogglePersona(\'' + p.id + '\')"><i class="fas fa-check"></i></div>'
+              + '<div class="dating-show-persona-avatar">' + avatar + '</div>'
+              + '<div><div class="dating-show-persona-name">' + _esc(p.name || '角色') + '</div><div class="dating-show-persona-desc">' + _esc((p.persona || '').replace(/\s+/g, ' ').slice(0, 90) || '会直接沿用该角色既有人设。') + '</div></div>'
+            + '</div>'
+            + '<div class="dating-show-persona-controls">'
+              + '<select onchange="datingShowSetPersonaGender(\'' + p.id + '\', this.value)">'
+                + '<option value="">嘉宾性别</option>'
+                + '<option value="男"' + (conf.gender === '男' ? ' selected' : '') + '>男</option>'
+                + '<option value="女"' + (conf.gender === '女' ? ' selected' : '') + '>女</option>'
+                + '<option value="其他"' + (conf.gender === '其他' ? ' selected' : '') + '>其他</option>'
+              + '</select>'
+              + (isBattle
+                ? '<select onchange="datingShowSetPersonaTeam(\'' + p.id + '\', this.value)">'
+                    + '<option value="auto"' + (conf.team === 'auto' ? ' selected' : '') + '>自动分组</option>'
+                    + '<option value="A"' + (conf.team === 'A' ? ' selected' : '') + '>' + _datingShowBattleTeamLabel(datingShowDraft.userProfile.battleStyle || '男女匹配', 'A') + '</option>'
+                    + '<option value="B"' + (conf.team === 'B' ? ' selected' : '') + '>' + _datingShowBattleTeamLabel(datingShowDraft.userProfile.battleStyle || '男女匹配', 'B') + '</option>'
+                  + '</select>'
+                : '<div class="dating-show-mini-tag" style="display:flex;align-items:center;justify-content:center;">入选后将作为追求者登场</div>')
+            + '</div>'
+          + '</div>';
+        }).join('') : '<div class="dating-empty-state" style="padding:24px 14px;"><i class="fas fa-user-slash"></i><p>请先在主 APP 里建立角色，再回来组局。</p></div>') + '</div>'
+    + '</div>'
+    + '<div class="dating-show-sheet-actions">'
+      + '<button class="dating-show-btn ghost" onclick="closeDatingShowSetup()">取消</button>'
+      + '<button class="dating-show-btn" onclick="startDatingShow()">开始恋综</button>'
+    + '</div>';
+}
+function datingShowSetMode(mode) {
+  if (!datingShowDraft) return;
+  datingShowDraft.mode = mode;
+  renderDatingShowSetup();
+}
+function datingShowDraftInput(key, value) {
+  if (!datingShowDraft) return;
+  datingShowDraft.userProfile[key] = String(value || '');
+  if (key === 'orientation' || key === 'battleStyle') renderDatingShowSetup();
+}
+function datingShowTogglePersona(pid) {
+  if (!datingShowDraft) return;
+  var hit = (datingShowDraft.personas || []).find(function(item){ return String(item.personaId) === String(pid); });
+  if (!hit) return;
+  hit.enabled = !hit.enabled;
+  renderDatingShowSetup();
+}
+function datingShowSetPersonaGender(pid, value) {
+  if (!datingShowDraft) return;
+  var hit = (datingShowDraft.personas || []).find(function(item){ return String(item.personaId) === String(pid); });
+  if (!hit) return;
+  hit.gender = value;
+}
+function datingShowSetPersonaTeam(pid, value) {
+  if (!datingShowDraft) return;
+  var hit = (datingShowDraft.personas || []).find(function(item){ return String(item.personaId) === String(pid); });
+  if (!hit) return;
+  hit.team = value;
+}
+function _datingShowSetOverlay(show, title, sub) {
+  var overlay = document.getElementById('datingShowGenOverlay');
+  if (!overlay) return;
+  document.getElementById('datingShowOverlayTitle').textContent = title || '正在生成恋综';
+  document.getElementById('datingShowOverlaySub').textContent = sub || '请稍等。';
+  overlay.classList.toggle('active', !!show);
+}
+function _datingShowSetLiveOverlay(show, title, sub) {
+  var overlay = document.getElementById('datingShowLiveOverlay');
+  if (!overlay) return;
+  if (title) {
+    var t = document.getElementById('datingShowLiveOverlayTitle');
+    if (t) t.textContent = title;
+  }
+  if (sub) {
+    var s = document.getElementById('datingShowLiveOverlaySub');
+    if (s) s.textContent = sub;
+  }
+  overlay.classList.toggle('active', !!show);
+}
+function _datingShowJsonParse(text) {
+  var raw = String(text || '').replace(/```json|```/g, '').trim();
+  try { return JSON.parse(raw); } catch(e) {}
+  var start = raw.indexOf('{');
+  var end = raw.lastIndexOf('}');
+  if (start >= 0 && end > start) {
+    return JSON.parse(raw.slice(start, end + 1));
+  }
+  throw new Error('JSON parse failed');
+}
+function _datingShowSeedList(draft) {
+  var personas = _getDatingPersonas();
+  return (draft.personas || []).filter(function(item){ return item.enabled; }).map(function(item) {
+    var persona = personas.find(function(p){ return String(p.id) === String(item.personaId); });
+    if (!persona) return null;
+    return {
+      id: 'persona_' + persona.id,
+      personaId: String(persona.id),
+      source: 'persona',
+      name: persona.name || '角色',
+      gender: item.gender || _datingShowGuessGender(persona) || '',
+      team: item.team || 'auto',
+      summary: String(persona.persona || '').replace(/\s+/g, ' ').slice(0, 260),
+      avatar: persona.avatar || ''
+    };
+  }).filter(Boolean);
+}
+function _datingShowNormalizeStats(input) {
+  input = input || {};
+  function clamp(v, fallback) {
+    var n = parseInt(v, 10);
+    if (!isFinite(n)) n = fallback;
+    return Math.max(0, Math.min(100, n));
+  }
+  return {
+    favor: clamp(input.favor, 48),
+    jealousy: clamp(input.jealousy, 22),
+    possession: clamp(input.possession, 28),
+    mindgame: clamp(input.mindgame, 18)
+  };
+}
+function _datingShowFallbackParticipant(draft, index, team) {
+  var namesA = ['池砚', '闻屿', '周临', '江妄', '沈度', '陆京', '许逢', '谢言'];
+  var namesB = ['裴汐', '林晩', '顾遥', '温澄', '姜漾', '祁雪', '苏梨', '宋织'];
+  var style = draft.userProfile.battleStyle || '男女匹配';
+  var gender = draft.mode === 'solo6'
+    ? (draft.userProfile.orientation === '喜欢女生' ? '女' : '男')
+    : _datingShowBattleTeamGender(style, team || 'A');
+  var namePool = gender === '女' ? namesB : namesA;
+  return {
+    id: 'auto_' + index + '_' + Date.now(),
+    personaId: '',
+    source: 'api',
+    name: namePool[index % namePool.length] || ('嘉宾' + (index + 1)),
+    gender: gender,
+    team: draft.mode === 'battle6v6' ? (team || 'A') : 'pursuer',
+    role: draft.mode === 'battle6v6' ? _datingShowBattleTeamLabel(style, team || 'A') : '追求者',
+    intro: '由当前 API 自动补足的嘉宾位，气场锋利，表达直接，极擅长在修罗场里抢镜。',
+    personality: '冷静、会撩、强势、擅长拉扯',
+    tags: ['自动补位', '修罗场', '高刺激'],
+    avatar: '',
+    eliminated: false,
+    stats: _datingShowNormalizeStats()
+  };
+}
+function _datingShowFinalizeParticipants(list, draft) {
+  var out = (list || []).filter(Boolean);
+  if (draft.mode === 'solo6') {
+    out.forEach(function(item) { item.team = 'pursuer'; item.role = '追求者'; });
+    while (out.length < 6) out.push(_datingShowFallbackParticipant(draft, out.length, 'pursuer'));
+    return out.slice(0, 6);
+  }
+  var style = draft.userProfile.battleStyle || '男女匹配';
+  out.forEach(function(item) {
+    if (item.team !== 'A' && item.team !== 'B') item.team = 'A';
+    item.role = _datingShowBattleTeamLabel(style, item.team);
+    if (!item.gender || item.gender === '未设定') item.gender = _datingShowBattleTeamGender(style, item.team) || item.gender || '';
+  });
+  var teamA = out.filter(function(item){ return item.team === 'A'; });
+  var teamB = out.filter(function(item){ return item.team === 'B'; });
+  while (teamA.length < 6) {
+    var addA = _datingShowFallbackParticipant(draft, teamA.length, 'A');
+    out.push(addA);
+    teamA.push(addA);
+  }
+  while (teamB.length < 6) {
+    var addB = _datingShowFallbackParticipant(draft, teamB.length + 6, 'B');
+    out.push(addB);
+    teamB.push(addB);
+  }
+  teamA = out.filter(function(item){ return item.team === 'A'; }).slice(0, 6);
+  teamB = out.filter(function(item){ return item.team === 'B'; }).slice(0, 6);
+  return teamA.concat(teamB);
+}
+function _datingShowNormalizeParticipant(raw, seedMap, draft, idx) {
+  raw = raw || {};
+  var seed = raw.id && seedMap[raw.id] ? seedMap[raw.id] : null;
+  if (!seed && raw.name) {
+    Object.keys(seedMap).some(function(k) {
+      if (seedMap[k] && seedMap[k].name === raw.name) { seed = seedMap[k]; return true; }
+      return false;
+    });
+  }
+  var persona = seed && seed.personaId ? _getPersonaById(seed.personaId) : null;
+  var team = draft.mode === 'battle6v6'
+    ? (raw.team === 'A' || raw.team === 'B' ? raw.team : (seed && seed.team !== 'auto' ? seed.team : 'A'))
+    : 'pursuer';
+  return {
+    id: seed ? seed.id : (raw.id || ('generated_' + idx + '_' + Date.now())),
+    personaId: seed ? seed.personaId : '',
+    source: seed ? 'persona' : 'api',
+    name: seed ? seed.name : (raw.name || ('嘉宾' + (idx + 1))),
+    gender: raw.gender || (seed && seed.gender) || _datingShowGuessGender(persona) || '',
+    team: team,
+    role: draft.mode === 'battle6v6' ? _datingShowBattleTeamLabel(draft.userProfile.battleStyle || '男女匹配', team) : '追求者',
+    intro: raw.intro || raw.profile || (persona ? _datingFallbackBio(persona) : '由当前 API 生成的恋综嘉宾。'),
+    personality: raw.personality || raw.trait || (persona ? String(persona.persona || '').replace(/\s+/g, ' ').slice(0, 80) : ''),
+    tags: Array.isArray(raw.tags) ? raw.tags.slice(0, 3) : [],
+    avatar: persona && persona.avatar ? persona.avatar : '',
+    eliminated: false,
+    stats: _datingShowNormalizeStats(raw.stats)
+  };
+}
+function _datingShowNormalizeLogs(payload) {
+  var logs = [];
+  if (payload.directorCue) logs.push({ type:'director', speaker:'导演组', text:String(payload.directorCue) });
+  if (payload.hostCue) logs.push({ type:'host', speaker:'主持人', text:String(payload.hostCue) });
+  (payload.sceneLog || payload.events || []).forEach(function(item) {
+    if (!item) return;
+    logs.push({
+      type: item.type || 'character',
+      speaker: item.speaker || (item.type === 'director' ? '导演组' : item.type === 'host' ? '主持人' : '嘉宾'),
+      text: String(item.text || item.content || ''),
+      action: String(item.action || ''),
+      emotion: String(item.emotion || '')
+    });
+  });
+  return logs.filter(function(item){ return item.text; });
+}
+function _datingShowIsUserSpeaker(speaker) {
+  var text = String(speaker || '').trim();
+  if (!text) return false;
+  var userName = String((datingShowState && datingShowState.userProfile && datingShowState.userProfile.name) || '').trim();
+  return text === userName || text === '你' || text === '用户' || text === '主角' || text === '女主' || text === '男主';
+}
+function _datingShowSanitizeEvents(events) {
+  return (events || []).filter(function(item) {
+    if (!item || !item.text) return false;
+    if (String(item.type || '').toLowerCase() === 'user') return false;
+    if (_datingShowIsUserSpeaker(item.speaker)) return false;
+    return true;
+  });
+}
+function _datingShowNormalizeRelationships(lines) {
+  return (lines || []).map(function(item) {
+    if (!item) return null;
+    return {
+      from: String(item.from || item.a || '').trim(),
+      to: String(item.to || item.b || '').trim(),
+      status: String(item.status || item.type || '').trim(),
+      summary: String(item.summary || item.note || item.desc || '').trim(),
+      heat: Math.max(0, Math.min(100, parseInt(item.heat, 10) || 48))
+    };
+  }).filter(function(item) {
+    return item && item.from && item.to && item.summary;
+  }).slice(0, 8);
+}
+async function _datingShowApiRequest(prompt, maxTokens) {
+  var api = _getCurrentActiveApiConfig();
+  if (!api || !api.url || !api.key) throw new Error('请先在主 APP 设置里连接 API');
+  var resp = await fetch(_datingApiEndpoint(api), {
+    method: 'POST',
+    headers: _datingApiHeaders(api),
+    body: JSON.stringify(_datingApiBody(api, prompt, maxTokens || 2400))
+  });
+  var data = await resp.json();
+  return _datingApiText(data);
+}
+async function startDatingShow() {
+  if (!datingShowDraft) datingShowDraft = _datingShowBuildDraft('solo6');
+  var draft = datingShowDraft;
+  var seeds = _datingShowSeedList(draft);
+  if (!draft.userProfile.name.trim() || !draft.userProfile.gender.trim() || !draft.userProfile.bio.trim()) {
+    alert('请先完整填写你的名字、性别和设定简介。');
+    return;
+  }
+  if (draft.mode === 'solo6' && seeds.length > 6) {
+    alert('一选多模式最多选择 6 个已有角色参与。');
+    return;
+  }
+  if (draft.mode === 'battle6v6' && seeds.length > 12) {
+    alert('6v6 模式最多选择 12 个已有角色参与。');
+    return;
+  }
+  datingShowBusy = true;
+  _datingShowSetOverlay(true, '正在搭建恋综别墅', '正在根据你选择的模式、角色与当前 API 生成嘉宾阵容、主持人开场、弹幕和首日剧情。');
+  try {
+    var targetCount = draft.mode === 'solo6' ? 6 : 12;
+    var prompt = (typeof LANG_SYSTEM_PREFIX !== 'undefined' ? LANG_SYSTEM_PREFIX : '')
+      + '你是一个高完成度恋综总导演、总编剧、主持人统筹与弹幕运营。请用简体中文、禁止使用 emoji，生成一个韩系灰白精致风、连续性极强、抓马感很足的互动恋综开局。'
+      + '所有内容都要适合在聊天软件里即时推进，角色必须保留既有人设、背景、性格、说话方式。'
+      + '节目模式：' + (draft.mode === 'solo6' ? '一选多，用户对 6 位追求者。' : '6v6 阵营对抗恋综。')
+      + (draft.mode === 'solo6'
+          ? '用户偏好：' + draft.userProfile.orientation + '。'
+          : '匹配制式：' + draft.userProfile.battleStyle + '。必须严格维持 6 对 6。用户不是唯一主角，不需要所有人都喜欢用户，请大量生成其他嘉宾之间的双向好感、单箭头、暧昧、旧线升温、临时组 CP、抢人失败后的换线等群像互动。心动对象可以随着游戏和接触变化，但必须有明确触发原因、前后逻辑和渐变过程，不能乱跳。')
+      + '用户资料：名字「' + draft.userProfile.name + '」，性别「' + draft.userProfile.gender + '」，设定简介：「' + draft.userProfile.bio + '」。'
+      + '绝对禁止生成用户的对白、动作、心理描写或替用户做选择；用户相关内容只能留给用户自己发送。你只能生成主持人、导演组、嘉宾、系统公告、赛程和弹幕。'
+      + '已选中的现有角色种子如下，请尽量保留这些角色的核心设定与语气，不够人数时再补足其余嘉宾：\n'
+      + JSON.stringify(seeds.map(function(item){ return { id:item.id, name:item.name, gender:item.gender, team:item.team, summary:item.summary }; }))
+      + '\n\n节目玩法库：' + DATING_SHOW_LIBRARY[draft.mode].join('、') + '。'
+      + '\n\n请只返回 JSON 对象，不要解释，不要 markdown。JSON 格式：'
+      + '{"showTitle":"","showSubtitle":"","day":1,"phase":"清晨/上午/午后/傍晚/深夜","headline":"","intensity":"calm/warm/charged/chaos","directorCue":"","hostCue":"","barrages":[""],"schedule":[""],"nextPromptSuggestions":[""],"participants":[{"id":"","name":"","gender":"","team":"A/B/pursuer","intro":"","personality":"","tags":[""],"stats":{"favor":0,"jealousy":0,"possession":0,"mindgame":0}}],"connectionLines":[{"from":"","to":"","status":"双向暧昧/单箭头/旧线升温/临时结盟/竞争翻车","summary":"","heat":0}],"sceneLog":[{"type":"director/host/character/system","speaker":"","action":"","emotion":"","text":""}]}'
+      + '。participants 总人数必须是 ' + targetCount + '。如果是 6v6，team 必须严格均衡为 A 与 B 各 6 人。';
+    var payload = _datingShowJsonParse(await _datingShowApiRequest(prompt, 3200));
+    var seedMap = {};
+    seeds.forEach(function(item){ seedMap[item.id] = item; });
+    var participants = (payload.participants || []).map(function(item, idx) {
+      return _datingShowNormalizeParticipant(item, seedMap, draft, idx);
+    });
+    seeds.forEach(function(seed, idx) {
+      var exists = participants.some(function(item){ return item.id === seed.id; });
+      if (!exists) participants.unshift(_datingShowNormalizeParticipant(seed, seedMap, draft, participants.length + idx));
+    });
+    participants = _datingShowFinalizeParticipants(participants, draft);
+    datingShowState = datingShowDefaultState();
+    datingShowState.active = true;
+    datingShowState.terminated = false;
+    datingShowState.mode = draft.mode;
+    datingShowState.title = payload.showTitle || (draft.mode === 'solo6' ? '心动别墅 · 一选多' : '心动战场 · 6v6');
+    datingShowState.subtitle = payload.showSubtitle || '全程由当前 API 生成的连续恋综剧情。';
+    datingShowState.day = parseInt(payload.day, 10) || 1;
+    datingShowState.phase = DATING_SHOW_PHASES.indexOf(payload.phase) >= 0 ? payload.phase : DATING_SHOW_PHASES[0];
+    datingShowState.intensity = payload.intensity || 'warm';
+    datingShowState.userProfile = {
+      name: draft.userProfile.name.trim(),
+      gender: draft.userProfile.gender.trim(),
+      bio: draft.userProfile.bio.trim(),
+      orientation: draft.userProfile.orientation || '喜欢男生',
+      battleStyle: draft.userProfile.battleStyle || '男女匹配'
+    };
+    datingShowState.selectedPersonas = seeds.map(function(seed) {
+      return { personaId: seed.personaId, name: seed.name, gender: seed.gender, team: seed.team };
+    });
+    datingShowState.participants = participants;
+    datingShowState.relationships = _datingShowNormalizeRelationships(payload.connectionLines);
+    datingShowState.logs = _datingShowNormalizeLogs(payload).filter(function(item) {
+      return !_datingShowIsUserSpeaker(item.speaker) && String(item.type || '').toLowerCase() !== 'user';
+    });
+    datingShowState.barrages = Array.isArray(payload.barrages) ? payload.barrages.slice(0, 8) : [];
+    datingShowState.schedule = Array.isArray(payload.schedule) ? payload.schedule.slice(0, 8) : [];
+    datingShowState.suggestions = Array.isArray(payload.nextPromptSuggestions) ? payload.nextPromptSuggestions.slice(0, 4) : [];
+    datingShowState.headline = payload.headline || '节目开局';
+    datingShowState.usedGames = [];
+    datingShowState.storyBeats = [];
+    datingShowSave();
+    closeDatingShowSetup();
+    switchDatingPage(3);
+    renderDatingShowPage();
+  } catch(e) {
+    alert('恋综开局生成失败：' + (e && e.message ? e.message : '请稍后再试'));
+  } finally {
+    datingShowBusy = false;
+    _datingShowSetOverlay(false);
+  }
+}
+function _datingShowAutoAdvancePhase(day, phase) {
+  var idx = DATING_SHOW_PHASES.indexOf(phase);
+  if (idx < 0) idx = 0;
+  if (idx >= DATING_SHOW_PHASES.length - 1) return { day: (parseInt(day, 10) || 1) + 1, phase: DATING_SHOW_PHASES[0] };
+  return { day: parseInt(day, 10) || 1, phase: DATING_SHOW_PHASES[idx + 1] };
+}
+function _datingShowUserInitials() {
+  var name = datingShowState && datingShowState.userProfile && datingShowState.userProfile.name || datingPrefs.userName || '你';
+  return String(name).trim().charAt(0) || '你';
+}
+function _datingShowParticipantSummary(part) {
+  var stats = part.stats || _datingShowNormalizeStats();
+  return part.name + '｜' + (part.role || '') + '｜好感' + stats.favor + '｜醋意' + stats.jealousy + '｜占有欲' + stats.possession + '｜心机值' + stats.mindgame + '｜' + (part.personality || part.intro || '');
+}
+function _datingExtractStoryBeat(payload, state, kind, pickedGame) {
+  var tag = '第' + state.day + '天·' + state.phase;
+  var parts = [tag];
+  // headline
+  if (payload.headline) parts.push('「' + String(payload.headline).substring(0, 30) + '」');
+  // game
+  if (kind === 'game' && pickedGame) parts.push('游戏：' + pickedGame);
+  // key events (director/host cues)
+  if (payload.directorCue) parts.push('导演：' + String(payload.directorCue).substring(0, 40));
+  if (payload.hostCue) parts.push('主持：' + String(payload.hostCue).substring(0, 40));
+  // relationship changes
+  var relLines = (payload.connectionLines || []).filter(function(l){ return l.from && l.to && l.status; });
+  if (relLines.length) {
+    parts.push('感情线：' + relLines.map(function(l){ return l.from + '→' + l.to + '(' + l.status + ')'; }).join('、'));
+  }
+  // stat changes (crushes)
+  var crushLines = (payload.statUpdates || []).filter(function(s){ return s.currentCrush; });
+  if (crushLines.length) {
+    parts.push('心动：' + crushLines.map(function(s){ return (s.id || '') + '→' + s.currentCrush; }).join('、'));
+  }
+  // eliminations
+  var outList = (payload.elimination && payload.elimination.out) || [];
+  if (outList.length) parts.push('淘汰：' + outList.join('、'));
+  // user input recorded
+  if (kind === 'user' && state.logs.length) {
+    var lastUser = state.logs.filter(function(l){ return l.type === 'user'; }).slice(-1)[0];
+    if (lastUser) parts.push('用户发言：「' + String(lastUser.text).substring(0, 30) + '」');
+  }
+  return parts.join('｜');
+}
+function _datingShowPickGame(state) {
+  var lib = (DATING_SHOW_LIBRARY[state.mode] || DATING_SHOW_LIBRARY.solo6).slice();
+  if (!Array.isArray(state.usedGames)) state.usedGames = [];
+  var available = lib.filter(function(g) { return state.usedGames.indexOf(g) < 0; });
+  if (!available.length) {
+    // 本季所有游戏都玩过了，重置记录重新来过
+    state.usedGames = [];
+    available = lib;
+  }
+  var picked = available[Math.floor(Math.random() * available.length)];
+  state.usedGames.push(picked);
+  return picked;
+}
+async function datingShowAdvance(kind, userInput) {
+  if (!datingShowState || !datingShowState.active || datingShowBusy) return;
+  datingShowBusy = true;
+  var inputText = String(userInput || '').trim();
+  var state = datingShowState;
+  if (kind === 'user' && inputText) {
+    state.logs.push({ type:'user', speaker: state.userProfile.name || '你', text: inputText });
+    state.gameChoices = null; // clear game choices once user acts
+  }
+  var actionMap = {
+    scene: '按当前时段自然推进节目流程，优先安排从早到晚的连续互动。',
+    game: '立即触发一个高刺激、抓马、会让多人同时上头或吃醋的恋综玩法。',
+    night: '推进到更私密的夜间环节，例如匿名心动短信、深夜夜聊、独处、对峙、天台、留言墙或淘汰前夜。',
+    user: '重点回应用户刚刚的互动，同时让主持人、导演和其他角色自然卷入。'
+  };
+  var nextAuto = _datingShowAutoAdvancePhase(state.day, state.phase);
+  var pickedGame = null;
+  if (kind === 'game') {
+    pickedGame = _datingShowPickGame(state);
+    actionMap.game = '立即触发游戏环节【' + pickedGame + '】，按照这个游戏的规则展开，由主持人宣布并组织，写出现场嘉宾的反应、争议和互动过程。';
+    datingShowSave();
+  }
+  _datingShowSetLiveOverlay(true, '恋综正在续写', '导演组正在根据当前局势推进新场次、更新弹幕和角色状态。');
+  try {
+    var prompt = (typeof LANG_SYSTEM_PREFIX !== 'undefined' ? LANG_SYSTEM_PREFIX : '')
+      + '你是恋综总导演、总编剧、主持人统筹与弹幕运营。请继续推进下面这档正在进行中的恋综。'
+      + '核心要求：全部用简体中文，禁止 emoji，所有角色的行为、语气和既有人设必须一致；要写动作描写、表情描写、现场反应和拉扯感。'
+      + '【重要：恋综不是只围绕用户的单线剧，而是所有嘉宾都有自己的感情线、目标、心机、暧昧对象和情绪起伏。】'
+      + (state.mode === 'solo6'
+          ? '模式：一选多。6 位嘉宾的核心目标是追求用户，但嘉宾之间会因竞争产生暧昧、摩擦和小动作，偶尔也会对其他嘉宾有短暂好感，但整体感情线仍以争取用户为主轴，不会轻易彻底转向别人。每次推进要写出至少 1 条嘉宾之间的竞争或摩擦线。'
+          : '模式：6v6 阵营恋综。男女匹配时 A 组全为男嘉宾、B 组全为女嘉宾，心动对象以跨组为主（男选女或女选男）；男男或女女同性恋综时两组随机分配，同样以跨组互选为主轴。但无论哪种形式，同组内也可以自然产生暗恋、心动或感情线，这些不需要刻意回避，顺势写出即可。用户只是众多嘉宾之一，所有角色都有完全自由的感情走向——可以被对面阵营的嘉宾吸引，也可以在同组里发现心仪的人。每次推进必须同时发展至少 2-3 条嘉宾之间的独立感情线，不要让所有人的目光都只盯着用户。'
+        )
+      + '当前是第 ' + state.day + ' 天，时段是 ' + state.phase + '。如无特殊情况，可以推进到 ' + nextAuto.phase + '。'
+      + '用户资料：名字「' + state.userProfile.name + '」，性别「' + state.userProfile.gender + '」，简介：「' + state.userProfile.bio + '」。'
+      + '绝对禁止代替用户发言，绝对禁止写出用户下一句说了什么、做了什么、心里怎么想；用户的台词和动作只能来自用户真实发送的输入。你只能写其他角色、主持人、导演组、系统公告和现场变化。'
+      + '\n当前嘉宾状态：\n' + state.participants.filter(function(item){ return !item.eliminated; }).map(_datingShowParticipantSummary).join('\n')
+      + '\n当前感情线：\n' + ((state.relationships || []).length ? state.relationships.map(function(item){ return item.from + ' -> ' + item.to + '｜' + item.status + '｜热度' + item.heat + '｜' + item.summary; }).join('\n') : '暂无明确公开感情线')
+      + ((state.storyBeats && state.storyBeats.length) ? '\n\n【本季完整剧情记录（所有角色必须记住）】\n' + state.storyBeats.join('\n') : '')
+      + '\n\n最近详细现场记录：\n' + state.logs.slice(-12).map(function(item){ return (item.speaker || item.type) + '：' + item.text + (item.action ? '【动作:' + item.action + '】' : '') + (item.emotion ? '【表情:' + item.emotion + '】' : ''); }).join('\n')
+      + '\n当前赛程候选：' + (state.schedule || []).join('、')
+      + '\n导演要求：' + actionMap[kind]
+      + (inputText ? '\n用户刚刚的输入：' + inputText : '')
+      + '\n请只返回 JSON，不要解释。格式：{"day":数字,"phase":"清晨/上午/午后/傍晚/深夜","headline":"","intensity":"calm/warm/charged/chaos","directorCue":"","hostCue":"","barrages":[""],"schedule":[""],"suggestedReplies":["最多4条，用户可能的临场反应，简短自然"],"gameChoices":null或{"prompt":"主持人/游戏当前要求用户做的选择或回应，一句话","options":["选项A","选项B","选项C"]},"events":[{"type":"director/host/character/system","speaker":"","action":"","emotion":"","text":""}],"statUpdates":[{"id":"","favorDelta":0,"jealousyDelta":0,"possessionDelta":0,"mindgameDelta":0,"currentCrush":"当前最心动的人名或空","currentMood":"当前状态词如：心动/尴尬/嫉妒/得意/患得患失","innerVoice":"内心独白一句话","note":""}],"connectionLines":[{"from":"","to":"","status":"双向暧昧/单箭头/旧线升温/临时结盟/竞争翻车/关系转向/暗中较劲","summary":"","heat":0}],"elimination":{"pending":["id"],"out":["id"],"note":""}}'
+      + '。必须让剧情顺滑连贯，不能跳出节目世界。所有嘉宾都要在 statUpdates 里更新状态，包括 currentCrush/currentMood/innerVoice。'
+      + (kind === 'game' ? '【本次是游戏环节，必须填写 gameChoices，给用户提供 2-4 个具体可选行动，让用户真正参与游戏决策。gameChoices.prompt 是主持人对用户说的话，options 是用户的选择项，要具体、有趣、有后果差异。游戏结束后将 gameChoices 设为 null。】' : '');
+    var payload = _datingShowJsonParse(await _datingShowApiRequest(prompt, 2600));
+    state.day = parseInt(payload.day, 10) || nextAuto.day;
+    state.phase = DATING_SHOW_PHASES.indexOf(payload.phase) >= 0 ? payload.phase : nextAuto.phase;
+    state.headline = payload.headline || state.headline || '节目推进';
+    state.intensity = payload.intensity || state.intensity || 'warm';
+    if (payload.directorCue) state.logs.push({ type:'director', speaker:'导演组', text:String(payload.directorCue) });
+    if (payload.hostCue) state.logs.push({ type:'host', speaker:'主持人', text:String(payload.hostCue) });
+    _datingShowSanitizeEvents(payload.events).forEach(function(item) {
+      if (!item || !item.text) return;
+      state.logs.push({
+        type: item.type || 'character',
+        speaker: item.speaker || '嘉宾',
+        text: String(item.text),
+        action: String(item.action || ''),
+        emotion: String(item.emotion || '')
+      });
+    });
+    (payload.statUpdates || []).forEach(function(change) {
+      var target = state.participants.find(function(item){ return item.id === change.id || item.name === change.id; });
+      if (!target) return;
+      var stats = target.stats || _datingShowNormalizeStats();
+      stats.favor = Math.max(0, Math.min(100, stats.favor + (parseInt(change.favorDelta, 10) || 0)));
+      stats.jealousy = Math.max(0, Math.min(100, stats.jealousy + (parseInt(change.jealousyDelta, 10) || 0)));
+      stats.possession = Math.max(0, Math.min(100, stats.possession + (parseInt(change.possessionDelta, 10) || 0)));
+      stats.mindgame = Math.max(0, Math.min(100, stats.mindgame + (parseInt(change.mindgameDelta, 10) || 0)));
+      target.stats = stats;
+      if (change.currentCrush !== undefined) target.currentCrush = change.currentCrush || '';
+      if (change.currentMood) target.currentMood = change.currentMood;
+      if (change.innerVoice) target.innerVoice = change.innerVoice;
+      if (change.note) state.logs.push({ type:'system', speaker:'系统', text: target.name + '：' + change.note });
+    });
+    if (payload.elimination && payload.elimination.out) {
+      (payload.elimination.out || []).forEach(function(outId) {
+        var target = state.participants.find(function(item){ return item.id === outId || item.name === outId; });
+        if (target) target.eliminated = true;
+      });
+      if (payload.elimination.note) state.logs.push({ type:'system', speaker:'淘汰公告', text:String(payload.elimination.note) });
+    }
+    state.barrages = Array.isArray(payload.barrages) && payload.barrages.length ? payload.barrages.slice(0, 8) : state.barrages;
+    state.schedule = Array.isArray(payload.schedule) && payload.schedule.length ? payload.schedule.slice(0, 8) : state.schedule;
+    state.suggestions = Array.isArray(payload.suggestedReplies) ? payload.suggestedReplies.slice(0, 4) : state.suggestions;
+    // gameChoices: only set when game kind, otherwise clear after user picks
+    if (kind === 'game' && payload.gameChoices && payload.gameChoices.options && payload.gameChoices.options.length) {
+      state.gameChoices = { prompt: String(payload.gameChoices.prompt || ''), options: payload.gameChoices.options.slice(0, 4).map(String) };
+    } else if (payload.gameChoices === null || kind !== 'game') {
+      state.gameChoices = null;
+    }
+    var normalizedConnections = _datingShowNormalizeRelationships(payload.connectionLines);
+    state.relationships = normalizedConnections.length ? normalizedConnections : state.relationships;
+    // Record this advance as a compact story beat for full-season memory
+    if (!Array.isArray(state.storyBeats)) state.storyBeats = [];
+    state.storyBeats.push(_datingExtractStoryBeat(payload, state, kind, pickedGame));
+    datingShowSave();
+    renderDatingShowPage();
+  } catch(e) {
+    alert('恋综推进失败：' + (e && e.message ? e.message : '请稍后再试'));
+  } finally {
+    datingShowBusy = false;
+    _datingShowSetOverlay(false);
+    _datingShowSetLiveOverlay(false);
+  }
+}
+function datingShowSendInput() {
+  var input = document.getElementById('datingShowInput');
+  if (!input) return;
+  var text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  datingShowAdvance('user', text);
+}
+function datingShowQuickReply(text) {
+  datingShowAdvance('user', text);
+}
+function datingShowPickGameChoice(text) {
+  if (datingShowState) datingShowState.gameChoices = null;
+  datingShowAdvance('user', text);
+}
+function datingShowTerminate() {
+  if (!datingShowState || !datingShowState.active) return;
+  datingShowState.lastArchive = {
+    title: datingShowState.title,
+    subtitle: datingShowState.subtitle,
+    day: datingShowState.day,
+    phase: datingShowState.phase,
+    logs: datingShowState.logs.slice(-6)
+  };
+  datingShowState.active = false;
+  datingShowState.terminated = true;
+  datingShowSave();
+  renderDatingShowPage();
+}
+var _DATING_EMOTION_ZH = {
+  happy:'开心', sad:'难过', angry:'生气', excited:'兴奋', nervous:'紧张',
+  embarrassed:'尴尬', jealous:'嫉妒', shy:'害羞', confused:'疑惑',
+  surprised:'惊讶', shocked:'震惊', proud:'得意', anxious:'焦虑',
+  lonely:'孤独', hopeful:'期待', disappointed:'失落', calm:'平静',
+  flirty:'调情', playful:'俏皮', smug:'自得', worried:'担忧',
+  curious:'好奇', smitten:'心动', bored:'无聊', flustered:'慌乱',
+  content:'满足', melancholy:'忧郁', elated:'雀跃', wistful:'惆怅',
+  tense:'紧绷', giddy:'晕乎', heartbroken:'心碎', infatuated:'着迷',
+  delighted:'喜悦', frustrated:'沮丧', smiling:'微笑', laughing:'欢笑',
+  crying:'哭泣', blushing:'脸红', sighing:'叹息', cheerful:'愉快',
+  sullen:'阴沉', eager:'迫切', ecstatic:'狂喜', dejected:'颓丧',
+  awkward:'局促', yearning:'渴望', passionate:'热情', indifferent:'冷淡',
+  amused:'好笑', affectionate:'深情', defensive:'戒备', regretful:'后悔',
+  relieved:'松了口气', determined:'坚定', hesitant:'犹豫', guilty:'内疚',
+  moved:'感动', touched:'动容', annoyed:'烦躁', bitter:'苦涩',
+  fearful:'害怕', hopeless:'绝望', nostalgic:'怀念', triumphant:'得胜',
+  flattered:'受宠若惊', insecure:'不安', obsessed:'执念', withdrawn:'冷淡'
+};
+function _datingEmotionZh(emotion) {
+  if (!emotion) return emotion;
+  var key = String(emotion).trim().toLowerCase();
+  return _DATING_EMOTION_ZH[key] || emotion;
+}
+function renderDatingShowPage() {
+  if (!datingShowState) datingShowLoad();
+  var root = document.getElementById('datingShowRoot');
+  var composer = document.getElementById('datingShowComposer');
+  if (!root || !composer) return;
+  if (!datingShowState.active) {
+    composer.style.display = 'none';
+    var archive = datingShowState.lastArchive;
+    root.innerHTML =
+      '<div class="dating-show-empty-card">'
+        + '<div class="dating-show-kicker">恋综模式</div>'
+        + '<div class="dating-show-title">恋综模式</div>'
+        + '<div class="dating-show-subtitle">把你在聊天软件里建立的角色直接拉进同一档高刺激恋综。你可以自由选择参与角色，不足人数会由当前连接的 API 自动补位，所有剧情、弹幕、主持人和导演推进都会连续生成。</div>'
+        + '<div class="dating-show-empty-grid">'
+          + '<div class="dating-show-mode-card"><div class="dating-show-mode-card-title">一选多 · 6位追求者</div><div class="dating-show-mode-card-desc">适合修罗场、抢约会、争风吃醋、深夜短信和淘汰压迫感。用户作为唯一主角，被 6 位强势嘉宾围绕。</div><div class="dating-show-mode-card-list"><span class="dating-show-pill">保留原有人设</span><span class="dating-show-pill">随时重开</span><span class="dating-show-pill">不足自动补位</span></div><div style="margin-top:12px;"><button class="dating-show-btn" style="width:100%;" onclick="openDatingShowSetup(\'solo6\')">开始一选多</button></div></div>'
+          + '<div class="dating-show-mode-card"><div class="dating-show-mode-card-title">6v6 阵营恋综</div><div class="dating-show-mode-card-desc">男女匹配时，男生一组、女生一组，主要选择对面阵营；男男或女女时，随机拆成两组互选。心动对象以跨组为主，但同组内也可以暗生情愫或发展感情线。</div><div class="dating-show-mode-card-list"><span class="dating-show-pill">两组对立互选</span><span class="dating-show-pill">同组也能心动</span><span class="dating-show-pill">主持人实时推进</span></div><div style="margin-top:12px;"><button class="dating-show-btn" style="width:100%;" onclick="openDatingShowSetup(\'battle6v6\')">开始 6v6</button></div></div>'
+        + '</div>'
+        + (archive ? '<div class="dating-show-panel" style="margin-top:14px;"><div class="dating-show-panel-head"><div><div class="dating-show-panel-title">上一季停留点</div><div class="dating-show-panel-desc">上次终止于第 ' + archive.day + ' 天 · ' + _esc(archive.phase || '') + '</div></div><button class="dating-show-btn ghost" onclick="openDatingShowSetup(\'' + (datingShowState.mode || 'solo6') + '\')">重新开局</button></div><div class="dating-show-live-log">' + archive.logs.map(function(item){ return '<div class="dating-show-log-item"><div class="dating-show-log-top"><div class="dating-show-log-speaker">' + _esc(item.speaker || '记录') + '</div><div class="dating-show-log-type">' + _esc(item.type || '') + '</div></div><div class="dating-show-log-body">' + _esc(item.text || '') + '</div></div>'; }).join('') + '</div></div>' : '')
+      + '</div>';
+    return;
+  }
+  composer.style.display = 'block';
+  var state = datingShowState;
+  var activeParticipants = (state.participants || []).filter(function(item){ return !item.eliminated; });
+  var profileTitle = state.mode === 'battle6v6' ? '你的嘉宾卡' : '你的主角卡';
+  var profileDesc = state.mode === 'battle6v6'
+    ? '在 6v6 里你只是其中一位参赛嘉宾。心动对象以对面阵营为主，但同组内的感情也可以自然发展。'
+    : '节目会把你的名字、性别和简介持续写入剧情。';
+  var uniqueBarrages = [];
+  (state.barrages || []).forEach(function(item) {
+    var text = String(item || '').trim();
+    if (!text) return;
+    if (uniqueBarrages.indexOf(text) >= 0) return;
+    uniqueBarrages.push(text);
+  });
+  var barrageHtml = (function() {
+    if (!uniqueBarrages.length) {
+      return '<div class="dating-show-barrage-item" style="top:10px;--barrage-duration:12s;--barrage-delay:0s;">节目还在升温，下一波弹幕马上出现。</div>';
+    }
+    // Distribute into 3 lanes (top positions: 8px, 42px, 76px)
+    var laneTop = [8, 42, 76];
+    // Each lane has staggered items; within same lane, delay them enough so they don't overlap
+    // Estimate item width ~150px; screen ~390px; travel = 200vw ≈ 780px; so at 12s speed, 1 item takes ~12s
+    // Within same lane, space items by duration/laneCount to spread them evenly
+    var laneItems = [[], [], []];
+    uniqueBarrages.forEach(function(item, idx) {
+      laneItems[idx % 3].push(item);
+    });
+    var result = '';
+    laneItems.forEach(function(items, laneIdx) {
+      var laneDuration = 11 + laneIdx * 1.2; // slightly different speeds per lane
+      var laneDelay = laneIdx * 2.8;         // each lane starts offset
+      items.forEach(function(text, i) {
+        // within same lane, space them by (duration / items.length) so they don't bunch up
+        var itemDelay = laneDelay + i * (laneDuration / Math.max(items.length, 1));
+        result += '<div class="dating-show-barrage-item" style="top:' + laneTop[laneIdx] + 'px;--barrage-duration:' + laneDuration + 's;--barrage-delay:' + itemDelay.toFixed(1) + 's;">' + _esc(text) + '</div>';
+      });
+    });
+    return result;
+  })();
+  root.innerHTML =
+    '<section class="dating-show-hero">'
+      + '<div class="dating-show-kicker">直播中</div>'
+      + '<div class="dating-show-title">' + _esc(state.title || '恋综进行中') + '</div>'
+      + '<div class="dating-show-subtitle">' + _esc(state.subtitle || '当前所有剧情都由你连接的 API 连续生成。') + '</div>'
+      + '<div class="dating-show-chip-row">'
+        + '<span class="dating-show-chip">' + (state.mode === 'solo6' ? '一选多' : '6v6') + '</span>'
+        + '<span class="dating-show-chip">第 ' + (state.day || 1) + ' 天 · ' + _esc(state.phase || '清晨') + '</span>'
+        + '<span class="dating-show-chip">' + _esc(state.headline || '剧情推进中') + '</span>'
+        + '<span class="dating-show-chip muted">当前剩余 ' + activeParticipants.length + ' 位嘉宾</span>'
+      + '</div>'
+    + '</section>'
+    + '<section class="dating-show-panel"><div class="dating-show-panel-head"><div><div class="dating-show-panel-title">实时弹幕</div><div class="dating-show-panel-desc">平静时较少，刺激时会明显增多，全部由当前 API 生成。</div></div></div><div class="dating-show-barrage-wrap"><div class="dating-show-barrage-lane">' + barrageHtml + '</div></div></section>'
+    + '<section class="dating-show-panel" style="position:relative;"><div class="dating-show-live-overlay" id="datingShowLiveOverlay"><div class="dating-show-live-overlay-spinner"></div><div class="dating-show-live-overlay-title" id="datingShowLiveOverlayTitle">恋综正在续写</div><div class="dating-show-live-overlay-sub" id="datingShowLiveOverlaySub">导演组正在推进新场次…</div></div><div class="dating-show-panel-head"><div><div class="dating-show-panel-title">直播现场</div><div class="dating-show-panel-desc">现场会一条一条往下走。你随时可以点生成继续推动，也可以自己发送互动，系统只会接着生成其他角色与剧情。</div></div><button class="dating-show-btn" style="min-width:132px;padding:11px 14px;" onclick="datingShowAdvance(\'scene\')">继续生成</button></div><div class="dating-show-live-log">' + (state.logs || []).slice(-20).map(function(item) {
+      var typeLabel = { director:'导演组', host:'主持人', character:'嘉宾', system:'系统', scene:'现场', user:'你' }[item.type] || _esc(item.type || '现场');
+      var colorMap = { host:'rgba(240,240,240,0.95)', director:'rgba(232,232,232,0.95)', user:'rgba(248,248,248,0.98)', system:'rgba(225,225,225,0.9)' };
+      var bg = colorMap[item.type] || 'rgba(255,255,255,0.82)';
+      return '<div class="dating-show-log-item ' + _esc(item.type || '') + '" style="background:' + bg + '"><div class="dating-show-log-top"><div class="dating-show-log-speaker">' + _esc(item.speaker || '现场') + '</div><div class="dating-show-log-type">' + typeLabel + '</div></div><div class="dating-show-log-body">' + _esc(item.text || '') + '</div>' + ((item.action || item.emotion) ? '<div class="dating-show-log-meta">' + (item.action ? '动作：' + _esc(item.action) : '') + (item.action && item.emotion ? ' · ' : '') + (item.emotion ? '表情：' + _esc(_datingEmotionZh(item.emotion)) : '') + '</div>' : '') + '</div>';
+    }).join('')
+    + ((state.gameChoices && state.gameChoices.options && state.gameChoices.options.length)
+        ? '<div style="margin:10px 0 4px;padding:14px 14px 10px;border-radius:18px;background:rgba(30,30,30,0.06);border:1.5px solid rgba(0,0,0,0.1);">'
+          + '<div style="font-size:11px;font-weight:800;color:#111;margin-bottom:10px;line-height:1.6;">' + _esc(state.gameChoices.prompt || '请选择你的行动') + '</div>'
+          + '<div style="display:flex;flex-direction:column;gap:7px;">'
+          + state.gameChoices.options.map(function(opt, i) {
+              var labels = ['甲', '乙', '丙', '丁'];
+              return '<button onclick="datingShowPickGameChoice(' + JSON.stringify(_esc(opt)) + ')" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:9px 12px;border-radius:12px;border:1.5px solid rgba(0,0,0,0.12);background:rgba(255,255,255,0.92);color:#111;font-family:inherit;cursor:pointer;font-size:12px;font-weight:600;">'
+                + '<span style="width:20px;height:20px;border-radius:6px;background:#1a1a1a;color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + labels[i] + '</span>'
+                + '<span>' + _esc(opt) + '</span>'
+                + '</button>';
+            }).join('')
+          + '</div></div>'
+        : ((state.suggestions && state.suggestions.length)
+            ? '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;">' + state.suggestions.map(function(s){ return '<button onclick="datingShowQuickReply(' + JSON.stringify(_esc(s)) + ')" style="font-size:10.5px;padding:6px 12px;border-radius:20px;border:1.5px solid rgba(0,0,0,0.12);background:rgba(255,255,255,0.9);color:#222;font-family:inherit;cursor:pointer;font-weight:600;">' + _esc(s) + '</button>'; }).join('') + '</div>'
+            : '')
+      )
+    + '</div><div class="dating-show-live-actions"><button class="dating-show-btn" onclick="datingShowAdvance(\'scene\')">推进当前时段</button><button class="dating-show-btn" onclick="datingShowAdvance(\'game\')">触发高能游戏</button><button class="dating-show-btn ghost" onclick="datingShowAdvance(\'night\')">切入夜间环节</button><button class="dating-show-btn ghost" onclick="datingShowTerminate()">终止本季恋综</button></div></section>'
+    + '<section class="dating-show-panel"><div class="dating-show-panel-head"><div><div class="dating-show-panel-title">' + profileTitle + '</div><div class="dating-show-panel-desc">' + profileDesc + '</div></div></div><div class="dating-show-user-card"><div class="dating-show-user-card-inner"><div class="dating-show-user-avatar">' + _esc(_datingShowUserInitials()) + '</div><div><div class="dating-show-user-name">' + _esc(state.userProfile.name || '你') + '</div><div class="dating-show-user-meta">' + _esc(state.userProfile.gender || '未设定') + ' · ' + _esc(state.mode === 'solo6' ? (state.userProfile.orientation || '不限') : (state.userProfile.battleStyle || '6v6')) + '</div><div class="dating-show-user-bio">' + _esc(state.userProfile.bio || '') + '</div></div></div></div></section>'
+    + '<section class="dating-show-panel"><div class="dating-show-panel-head"><div><div class="dating-show-panel-title">嘉宾状态</div><div class="dating-show-panel-desc">所有人的当前感受、好感对象与内心独白，剧情推进后实时更新。</div></div></div><div class="dating-show-participants">' + (state.participants || []).map(function(item) {
+      var stats = item.stats || _datingShowNormalizeStats();
+      var avatar = item.avatar ? '<img src="' + item.avatar + '">' : '<i class="fas fa-user"></i>';
+      var crushLine = item.currentCrush ? '<span class="dating-show-mini-tag" style="background:rgba(255,200,200,0.3);color:#c0404a;">心动 ' + _esc(item.currentCrush) + '</span>' : '';
+      var moodLine = item.currentMood ? '<span class="dating-show-mini-tag" style="background:rgba(200,220,255,0.3);color:#3a5a99;">' + _esc(item.currentMood) + '</span>' : '';
+      var innerVoice = item.innerVoice ? '<div style="margin-top:8px;font-size:10.5px;color:rgba(60,60,60,0.6);line-height:1.7;font-style:italic;padding:6px 10px;background:rgba(245,245,245,0.7);border-radius:10px;">"' + _esc(item.innerVoice) + '"</div>' : '';
+      return '<div class="dating-show-cast-card' + (item.eliminated ? ' eliminated' : '') + '">'
+        + '<div class="dating-show-cast-top"><div class="dating-show-cast-avatar">' + avatar + '</div><div style="min-width:0;"><div class="dating-show-cast-name">' + _esc(item.name || '嘉宾') + '</div><div class="dating-show-cast-role">' + _esc(item.role || '') + (item.source === 'persona' ? ' · 已选角色' : ' · 自动补位') + '</div></div></div>'
+        + '<div class="dating-show-cast-bio">' + _esc(item.intro || item.personality || '') + '</div>'
+        + '<div class="dating-show-stat"><div class="dating-show-stat-head"><span>好感度</span><span>' + stats.favor + '</span></div><div class="dating-show-stat-bar"><div class="dating-show-stat-fill" style="width:' + stats.favor + '%;"></div></div></div>'
+        + '<div class="dating-show-stat"><div class="dating-show-stat-head"><span>醋意</span><span>' + stats.jealousy + '</span></div><div class="dating-show-stat-bar"><div class="dating-show-stat-fill" style="width:' + stats.jealousy + '%;"></div></div></div>'
+        + '<div class="dating-show-mini-tags">' + crushLine + moodLine + '<span class="dating-show-mini-tag">占有欲 ' + stats.possession + '</span><span class="dating-show-mini-tag">心机值 ' + stats.mindgame + '</span>' + (item.gender ? '<span class="dating-show-mini-tag">' + _esc(item.gender) + '</span>' : '') + '</div>'
+        + innerVoice
+      + '</div>';
+    }).join('') + '</div></section>'
+    + '<section class="dating-show-panel"><div class="dating-show-panel-head"><div><div class="dating-show-panel-title">全场感情线</div><div class="dating-show-panel-desc">所有角色之间的暧昧、好感、竞争与转向，不止围绕一个人。</div></div></div><div class="dating-show-rel-grid">' + ((state.relationships || []).length ? state.relationships.map(function(item) { return '<div class="dating-show-rel-card"><div class="dating-show-rel-pair">' + _esc(item.from) + ' → ' + _esc(item.to) + '</div><div class="dating-show-rel-status">' + _esc(item.status || '关系变化') + '</div><div class="dating-show-rel-summary">' + _esc(item.summary || '') + '</div><div class="dating-show-rel-heat">热度 ' + (item.heat || 0) + '</div></div>'; }).join('') : '<div class="dating-show-rel-card"><div class="dating-show-rel-pair">感情线正在发酵</div><div class="dating-show-rel-summary">剧情推进后，这里会显示所有角色之间的感情动态。</div></div>') + '</div></section>'
+    + '<section class="dating-show-panel"><div class="dating-show-panel-head"><div><div class="dating-show-panel-title">今日流程</div><div class="dating-show-panel-desc">节目会按从早到晚的节奏推进，也会在高压时突然切进游戏、夜聊和淘汰环节。</div></div><button class="dating-show-btn ghost" style="min-width:132px;padding:11px 14px;" onclick="openDatingShowSetup(\'' + state.mode + '\')">重新选择角色</button></div><div class="dating-show-schedule">' + ((state.schedule || []).length ? state.schedule.map(function(item){ return '<div class="dating-show-schedule-item">' + _esc(item) + '</div>'; }).join('') : '<div class="dating-show-schedule-item">导演组正在排今日流程</div>') + '</div></section>';
 }
 // ── Start / open chat ──
 function startDatingWithPersona(pid) {
@@ -53870,15 +55461,23 @@ function getDatingExportData() {
   return {
     sessions: datingSessions,
     prefs: datingPrefs,
-    icon: localStorage.getItem('mono_icon_dating') || null
+    icon: localStorage.getItem('mono_icon_dating') || null,
+    showState: datingShowState
   };
 }
 function loadDatingImportData(data) {
   if (data.sessions) { datingSessions = data.sessions; saveDatingSessions(); }
   if (data.prefs)    { datingPrefs = data.prefs; saveDatingPrefs(); }
   if (data.icon)     { localStorage.setItem('mono_icon_dating', data.icon); _loadDatingIcon(); }
+  if (data.showState && typeof data.showState === 'object') {
+    datingShowState = Object.assign(datingShowDefaultState(), data.showState);
+    datingShowSave();
+  } else {
+    datingShowLoad();
+  }
   _syncDatingPrefUI();
   renderDatingContacts();
+  renderDatingShowPage();
 }
 // ============================================================
 // DATING PLUS PANEL — ALL FEATURES

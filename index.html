@@ -53790,14 +53790,49 @@ function _datingShowSetLiveOverlay(show, title, sub) {
   overlay.classList.toggle('active', !!show);
 }
 function _datingShowJsonParse(text) {
-  var raw = String(text || '').replace(/```json|```/g, '').trim();
-  try { return JSON.parse(raw); } catch(e) {}
+  // Step 1: strip markdown fences and leading "json" word
+  var raw = String(text || '')
+    .replace(/```json[\s\S]*?```/g, function(m){ return m.replace(/```json|```/g,''); })
+    .replace(/```/g, '')
+    .replace(/^\s*json\s*/i, '')   // strip bare "json" prefix (no backticks)
+    .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, '') // strip control chars
+    .trim();
+  // Step 2: extract { } block
   var start = raw.indexOf('{');
   var end = raw.lastIndexOf('}');
-  if (start >= 0 && end > start) {
-    return JSON.parse(raw.slice(start, end + 1));
+  var chunk = (start >= 0 && end > start) ? raw.slice(start, end + 1) : raw;
+  // Step 3: try direct parse
+  try { return JSON.parse(chunk); } catch(e) {}
+  // Step 4: JSON was truncated — try to auto-repair
+  // Count unclosed braces/brackets to figure out what's missing
+  function _repairJson(s) {
+    var stack = [];
+    var inStr = false, esc = false;
+    for (var i = 0; i < s.length; i++) {
+      var c = s[i];
+      if (esc) { esc = false; continue; }
+      if (c === '\\') { esc = true; continue; }
+      if (c === '"') { inStr = !inStr; continue; }
+      if (inStr) continue;
+      if (c === '{' || c === '[') stack.push(c);
+      else if (c === '}') { if (stack[stack.length-1]==='{') stack.pop(); }
+      else if (c === ']') { if (stack[stack.length-1]==='[') stack.pop(); }
+    }
+    // Trim trailing incomplete key/value (e.g. cut off mid-string)
+    var fixed = s.replace(/,\s*$/, '').replace(/:\s*"[^"]*$/, ':""').replace(/:\s*$/, ':null');
+    // Close open structures in reverse order
+    for (var j = stack.length - 1; j >= 0; j--) {
+      fixed += stack[j] === '{' ? '}' : ']';
+    }
+    return fixed;
   }
-  throw new Error('JSON parse failed');
+  try { return JSON.parse(_repairJson(chunk)); } catch(e) {}
+  // Step 5: last resort — try [ ] block
+  var astart = raw.indexOf('['), aend = raw.lastIndexOf(']');
+  if (astart >= 0 && aend > astart) {
+    try { return JSON.parse(raw.slice(astart, aend + 1)); } catch(e) {}
+  }
+  throw new Error('JSON parse failed: ' + raw.slice(0, 120));
 }
 function _datingShowSeedList(draft) {
   var personas = _getDatingPersonas();
@@ -53811,7 +53846,7 @@ function _datingShowSeedList(draft) {
       name: persona.name || '角色',
       gender: item.gender || _datingShowGuessGender(persona) || '',
       team: item.team || 'auto',
-      summary: String(persona.persona || '').replace(/\s+/g, ' ').slice(0, 260),
+      summary: String(persona.persona || '').replace(/\s+/g, ' ').slice(0, 260).replace(/相亲|相親|盲約|盲约|网恋|网戀|配對平台|配对平台|聊天平台/g, '朋友'),
       avatar: persona.avatar || ''
     };
   }).filter(Boolean);
@@ -53959,13 +53994,23 @@ function _datingShowNormalizeRelationships(lines) {
 async function _datingShowApiRequest(prompt, maxTokens) {
   var api = _getCurrentActiveApiConfig();
   if (!api || !api.url || !api.key) throw new Error('请先在主 APP 设置里连接 API');
-  var resp = await fetch(_datingApiEndpoint(api), {
-    method: 'POST',
-    headers: _datingApiHeaders(api),
-    body: JSON.stringify(_datingApiBody(api, prompt, maxTokens || 2400))
-  });
+  // 使用与主聊天相同的全兼容层，支持 Anthropic / Gemini / Azure / OpenAI / 各类反代
+  var payload = _applyApiModel({
+    messages: [{ role: 'user', content: prompt }],
+    max_tokens: maxTokens || 3000,
+    temperature: 1.0,
+    stream: false
+  }, api.model);
+  var resp = await _compatibleChatCompletion(api.url, api.key, payload, {});
+  if (!resp.ok) {
+    var errText = '';
+    try { errText = await resp.text(); } catch(e) {}
+    throw new Error('API 错误 ' + resp.status + (errText ? ': ' + errText.slice(0, 120) : ''));
+  }
   var data = await resp.json();
-  return _datingApiText(data);
+  var text = _extractAssistantMessageContent(data);
+  if (!text) throw new Error('API 无返回内容');
+  return text;
 }
 async function startDatingShow() {
   if (!datingShowDraft) datingShowDraft = _datingShowBuildDraft('solo6');
@@ -53993,16 +54038,17 @@ async function startDatingShow() {
       + '节目模式：' + (draft.mode === 'solo6' ? '一选多，用户对 6 位追求者。' : '6v6 阵营对抗恋综。')
       + (draft.mode === 'solo6'
           ? '用户偏好：' + draft.userProfile.orientation + '。'
-          : '匹配制式：' + draft.userProfile.battleStyle + '。必须严格维持 6 对 6。用户不是唯一主角，不需要所有人都喜欢用户，请大量生成其他嘉宾之间的双向好感、单箭头、暧昧、旧线升温、临时组 CP、抢人失败后的换线等群像互动。心动对象可以随着游戏和接触变化，但必须有明确触发原因、前后逻辑和渐变过程，不能乱跳。')
+          : '匹配制式：' + draft.userProfile.battleStyle + '。必须严格维持 6 对 6。用户不是唯一主角，不需要所有人都喜欢用户，请大量生成其他嘉宾之间的双向好感、单箭头、暧昧、旧线升温、临时组 CP、抢人失败后的换线等群像互动。心动对象可以随着游戏和接触变化，但必须有明确触发原因、前后逻辑和渐变过程，不能乱跳。' + (draft.userProfile.battleStyle === '男女匹配' ? '【强制·男女匹配】所有嘉宾的心动对象、追求对象、配对对象必须是异性：A组男嘉宾只能心动B组女嘉宾，B组女嘉宾只能心动A组男嘉宾。禁止同组或同性间产生心动/暧昧/追求关系。participants 里每个人的 currentCrush 只能填写异性嘉宾的名字。' : ''))
       + '用户资料：名字「' + draft.userProfile.name + '」，性别「' + draft.userProfile.gender + '」，设定简介：「' + draft.userProfile.bio + '」。'
+      + (draft.mode === 'battle6v6' && draft.userProfile.battleStyle === '男女匹配' ? '【用户阵营】用户性别为「' + draft.userProfile.gender + '」，因此用户属于' + (draft.userProfile.gender === '男' ? 'A组（男嘉宾阵营）' : draft.userProfile.gender === '女' ? 'B组（女嘉宾阵营）' : '请根据性别自动判断组别') + '。生成 participants 时，用户所在组的其余嘉宾性别必须与用户相同，对面组的嘉宾性别必须与用户相反。' : '')
       + '绝对禁止生成用户的对白、动作、心理描写或替用户做选择；用户相关内容只能留给用户自己发送。你只能生成主持人、导演组、嘉宾、系统公告、赛程和弹幕。'
-      + '已选中的现有角色种子如下，请尽量保留这些角色的核心设定与语气，不够人数时再补足其余嘉宾：\n'
+      + '已选中的现有角色种子如下，请完整保留这些角色的核心人设、性格、背景和说话方式，但在恋综节目里他们是第一次见到用户、第一次见到彼此，之前互不相识，绝对不带入任何私下聊天或相亲的记忆；不够人数时再补足其余嘉宾：\n'
       + JSON.stringify(seeds.map(function(item){ return { id:item.id, name:item.name, gender:item.gender, team:item.team, summary:item.summary }; }))
       + '\n\n节目玩法库：' + DATING_SHOW_LIBRARY[draft.mode].join('、') + '。'
       + '\n\n请只返回 JSON 对象，不要解释，不要 markdown。JSON 格式：'
       + '{"showTitle":"","showSubtitle":"","day":1,"phase":"清晨/上午/午后/傍晚/深夜","headline":"","intensity":"calm/warm/charged/chaos","directorCue":"","hostCue":"","barrages":[""],"schedule":[""],"nextPromptSuggestions":[""],"participants":[{"id":"","name":"","gender":"","team":"A/B/pursuer","intro":"","personality":"","tags":[""],"stats":{"favor":0,"jealousy":0,"possession":0,"mindgame":0}}],"connectionLines":[{"from":"","to":"","status":"双向暧昧/单箭头/旧线升温/临时结盟/竞争翻车","summary":"","heat":0}],"sceneLog":[{"type":"director/host/character/system","speaker":"","action":"","emotion":"","text":""}]}'
       + '。participants 总人数必须是 ' + targetCount + '。如果是 6v6，team 必须严格均衡为 A 与 B 各 6 人。';
-    var payload = _datingShowJsonParse(await _datingShowApiRequest(prompt, 3200));
+    var payload = _datingShowJsonParse(await _datingShowApiRequest(prompt, 4000));
     var seedMap = {};
     seeds.forEach(function(item){ seedMap[item.id] = item; });
     var participants = (payload.participants || []).map(function(item, idx) {
@@ -54141,10 +54187,11 @@ async function datingShowAdvance(kind, userInput) {
       + '【重要：恋综不是只围绕用户的单线剧，而是所有嘉宾都有自己的感情线、目标、心机、暧昧对象和情绪起伏。】'
       + (state.mode === 'solo6'
           ? '模式：一选多。6 位嘉宾的核心目标是追求用户，但嘉宾之间会因竞争产生暧昧、摩擦和小动作，偶尔也会对其他嘉宾有短暂好感，但整体感情线仍以争取用户为主轴，不会轻易彻底转向别人。每次推进要写出至少 1 条嘉宾之间的竞争或摩擦线。'
-          : '模式：6v6 阵营恋综。男女匹配时 A 组全为男嘉宾、B 组全为女嘉宾，心动对象以跨组为主（男选女或女选男）；男男或女女同性恋综时两组随机分配，同样以跨组互选为主轴。但无论哪种形式，同组内也可以自然产生暗恋、心动或感情线，这些不需要刻意回避，顺势写出即可。用户只是众多嘉宾之一，所有角色都有完全自由的感情走向——可以被对面阵营的嘉宾吸引，也可以在同组里发现心仪的人。每次推进必须同时发展至少 2-3 条嘉宾之间的独立感情线，不要让所有人的目光都只盯着用户。'
+          : '模式：6v6 阵营恋综。' + (state.userProfile.battleStyle === '男女匹配' ? 'A 组全为男嘉宾、B 组全为女嘉宾。【强制·男女匹配异性规则】所有嘉宾的心动对象、追求对象、配对对象必须是异性：A组男嘉宾的 currentCrush 只能是B组女嘉宾，B组女嘉宾的 currentCrush 只能是A组男嘉宾。禁止任何同性或同组间的心动/暧昧/追求关系出现在剧情或 statUpdates 里。每次推进必须同时发展至少 2-3 条跨组异性感情线，不要让所有人的目光都只盯着用户。' : '两组随机分配性别，以跨组互选为主轴，同组内也可自然产生心动或感情线。用户只是众多嘉宾之一，所有角色都有完全自由的感情走向。每次推进必须同时发展至少 2-3 条嘉宾之间的独立感情线，不要让所有人的目光都只盯着用户。')
         )
       + '当前是第 ' + state.day + ' 天，时段是 ' + state.phase + '。如无特殊情况，可以推进到 ' + nextAuto.phase + '。'
-      + '用户资料：名字「' + state.userProfile.name + '」，性别「' + state.userProfile.gender + '」，简介：「' + state.userProfile.bio + '」。'
+      + '用户资料：名字「' + state.userProfile.name + '」，性别「' + state.userProfile.gender + '」，简介：「' + state.userProfile.bio + '」。所有嘉宾在恋综里第一次认识用户，不带入任何私下聊天或相亲记忆，保留人设性格背景即可。'
+      + (state.mode === 'battle6v6' && state.userProfile.battleStyle === '男女匹配' ? '【用户阵营锚点】用户性别为「' + state.userProfile.gender + '」，属于' + (state.userProfile.gender === '男' ? 'A组（男嘉宾阵营）' : state.userProfile.gender === '女' ? 'B组（女嘉宾阵营）' : '对应组别') + '。剧情中涉及用户阵营时必须严格对应此设定，不能把用户写进对面阵营的剧情里。' : '')
       + '绝对禁止代替用户发言，绝对禁止写出用户下一句说了什么、做了什么、心里怎么想；用户的台词和动作只能来自用户真实发送的输入。你只能写其他角色、主持人、导演组、系统公告和现场变化。'
       + '\n当前嘉宾状态：\n' + state.participants.filter(function(item){ return !item.eliminated; }).map(_datingShowParticipantSummary).join('\n')
       + '\n当前感情线：\n' + ((state.relationships || []).length ? state.relationships.map(function(item){ return item.from + ' -> ' + item.to + '｜' + item.status + '｜热度' + item.heat + '｜' + item.summary; }).join('\n') : '暂无明确公开感情线')
@@ -54154,9 +54201,9 @@ async function datingShowAdvance(kind, userInput) {
       + '\n导演要求：' + actionMap[kind]
       + (inputText ? '\n用户刚刚的输入：' + inputText : '')
       + '\n请只返回 JSON，不要解释。格式：{"day":数字,"phase":"清晨/上午/午后/傍晚/深夜","headline":"","intensity":"calm/warm/charged/chaos","directorCue":"","hostCue":"","barrages":[""],"schedule":[""],"suggestedReplies":["最多4条，用户可能的临场反应，简短自然"],"gameChoices":null或{"prompt":"主持人/游戏当前要求用户做的选择或回应，一句话","options":["选项A","选项B","选项C"]},"events":[{"type":"director/host/character/system","speaker":"","action":"","emotion":"","text":""}],"statUpdates":[{"id":"","favorDelta":0,"jealousyDelta":0,"possessionDelta":0,"mindgameDelta":0,"currentCrush":"当前最心动的人名或空","currentMood":"当前状态词如：心动/尴尬/嫉妒/得意/患得患失","innerVoice":"内心独白一句话","note":""}],"connectionLines":[{"from":"","to":"","status":"双向暧昧/单箭头/旧线升温/临时结盟/竞争翻车/关系转向/暗中较劲","summary":"","heat":0}],"elimination":{"pending":["id"],"out":["id"],"note":""}}'
-      + '。必须让剧情顺滑连贯，不能跳出节目世界。所有嘉宾都要在 statUpdates 里更新状态，包括 currentCrush/currentMood/innerVoice。'
+      + '。必须让剧情顺滑连贯，不能跳出节目世界。所有嘉宾都要在 statUpdates 里更新状态，包括 currentCrush/currentMood/innerVoice。' + (state.userProfile.battleStyle === '男女匹配' && state.mode === 'battle6v6' ? '【男女匹配强制】statUpdates 里每个嘉宾的 currentCrush 只能填写异性嘉宾的名字（A组男只填B组女，B组女只填A组男），绝对不能填写同性或同组嘉宾。connectionLines 里的感情线 from/to 也必须跨组异性配对，禁止同性或同组感情线出现。' : '')
       + (kind === 'game' ? '【本次是游戏环节，必须填写 gameChoices，给用户提供 2-4 个具体可选行动，让用户真正参与游戏决策。gameChoices.prompt 是主持人对用户说的话，options 是用户的选择项，要具体、有趣、有后果差异。游戏结束后将 gameChoices 设为 null。】' : '');
-    var payload = _datingShowJsonParse(await _datingShowApiRequest(prompt, 2600));
+    var payload = _datingShowJsonParse(await _datingShowApiRequest(prompt, 4000));
     state.day = parseInt(payload.day, 10) || nextAuto.day;
     state.phase = DATING_SHOW_PHASES.indexOf(payload.phase) >= 0 ? payload.phase : nextAuto.phase;
     state.headline = payload.headline || state.headline || '节目推进';
@@ -54182,7 +54229,17 @@ async function datingShowAdvance(kind, userInput) {
       stats.possession = Math.max(0, Math.min(100, stats.possession + (parseInt(change.possessionDelta, 10) || 0)));
       stats.mindgame = Math.max(0, Math.min(100, stats.mindgame + (parseInt(change.mindgameDelta, 10) || 0)));
       target.stats = stats;
-      if (change.currentCrush !== undefined) target.currentCrush = change.currentCrush || '';
+      if (change.currentCrush !== undefined) {
+        var _newCrush = change.currentCrush || '';
+        // 男女匹配模式：强制校验 currentCrush 必须是异性（跨组）嘉宾
+        if (_newCrush && state.mode === 'battle6v6' && state.userProfile.battleStyle === '男女匹配') {
+          var _crushTarget = state.participants.find(function(pp){ return pp.name === _newCrush; });
+          if (_crushTarget && _crushTarget.team === target.team) {
+            _newCrush = ''; // 同组/同性，清空
+          }
+        }
+        target.currentCrush = _newCrush;
+      }
       if (change.currentMood) target.currentMood = change.currentMood;
       if (change.innerVoice) target.innerVoice = change.innerVoice;
       if (change.note) state.logs.push({ type:'system', speaker:'系统', text: target.name + '：' + change.note });
@@ -54204,6 +54261,15 @@ async function datingShowAdvance(kind, userInput) {
       state.gameChoices = null;
     }
     var normalizedConnections = _datingShowNormalizeRelationships(payload.connectionLines);
+    // 男女匹配模式：过滤掉同组/同性感情线
+    if (state.mode === 'battle6v6' && state.userProfile.battleStyle === '男女匹配') {
+      normalizedConnections = normalizedConnections.filter(function(rel) {
+        var fromP = state.participants.find(function(pp){ return pp.name === rel.from || pp.id === rel.from; });
+        var toP   = state.participants.find(function(pp){ return pp.name === rel.to   || pp.id === rel.to; });
+        if (!fromP || !toP) return true; // 找不到就保留（可能是用户等）
+        return fromP.team !== toP.team; // 只保留跨组感情线
+      });
+    }
     state.relationships = normalizedConnections.length ? normalizedConnections : state.relationships;
     // Record this advance as a compact story beat for full-season memory
     if (!Array.isArray(state.storyBeats)) state.storyBeats = [];
@@ -55547,8 +55613,8 @@ async function _datingHandleTransfer(idx) {
       var _trUserName = datingPrefs.userName || '对方';
       var _trIdentityNote = '你是对方的相親对象，你们透过相親平台在网上认识。称呼对方只用「' + _trUserName + '」，禁止親密称呼。禁止提出现实见面。' + (_trUProfileDesc ? '对方資料：' + _trUProfileDesc + '。' : '');
       var prompt = '你是「'+persona.name+'」，人设：'+(persona.persona||'').slice(0,120)+'。'+_trIdentityNote+_trUserName+'向你转了¥'+parseFloat(msg.transferAmt).toFixed(2)+noteStr+'。根据你的性格和你们的关係，你收下吗？回覆JSON：{"accept":true或false,"reply":"1-2句口语化繁体中文回应"} 只返回JSON。';
-      var resp = await fetch(_datingApiEndpoint(api), { method:'POST', headers:_datingApiHeaders(api), body:JSON.stringify(_datingApiBody(api, prompt, 150)) });
-      var result = JSON.parse(_datingApiText(await resp.json()).replace(/```json|```/g,'').trim());
+150var resp = await _compatibleChatCompletion(api.url, api.key, _applyApiModel({ messages:[{role:'user',content:prompt}], max_tokens:      , temperature:1.0, stream:false }, api.model), {});
+150var result = _datingShowJsonParse(_extractAssistantMessageContent(await resp.json()));
       accepted = result.accept; reply = result.reply || '';
     } catch(e) {}
   }
@@ -55588,8 +55654,8 @@ async function _datingHandleRequest(idx) {
       var _rqUProfileDesc = _buildDatingUserProfileDesc();
       var _rqIdentityNote = '你是对方的相親对象，你们透过相親平台认识。' + (_rqUProfileDesc ? '对方資料：' + _rqUProfileDesc + '。' : '');
       var prompt = '你是「'+persona.name+'」，人设：'+(persona.persona||'').slice(0,120)+'。'+_rqIdentityNote+(datingPrefs.userName||'对方')+'请你代付：'+msg.note+'（'+amtStr+'）。根据你的性格，你愿意吗？回覆JSON：{"paid":true或false,"reply":"1-2句口语化繁体中文回应"} 只返回JSON。';
-      var resp = await fetch(_datingApiEndpoint(api), { method:'POST', headers:_datingApiHeaders(api), body:JSON.stringify(_datingApiBody(api, prompt, 150)) });
-      var result = JSON.parse(_datingApiText(await resp.json()).replace(/```json|```/g,'').trim());
+150var resp = await _compatibleChatCompletion(api.url, api.key, _applyApiModel({ messages:[{role:'user',content:prompt}], max_tokens:      , temperature:1.0, stream:false }, api.model), {});
+150var result = _datingShowJsonParse(_extractAssistantMessageContent(await resp.json()));
       paid = result.paid; reply = result.reply || '';
     } catch(e) {}
   }
@@ -55633,8 +55699,8 @@ async function _datingHandleOrder(type, orderData) {
       var _shopUProfileDesc = _buildDatingUserProfileDesc();
       var _shopIdentityNote = '你是对方的相親对象，你们透过相親平台认识。' + (_shopUProfileDesc ? '对方資料：' + _shopUProfileDesc + '。' : '');
       var prompt = '你是「'+persona.name+'」，人设：'+(persona.persona||'').slice(0,120)+'。'+_shopIdentityNote+(datingPrefs.userName||'对方')+(situ[type]||'分享了：')+orderData.name+'（'+orderData.priceStr+'）。用你的性格和你们相親认识的关係，用1-2句口语化繁体中文回应。绝对不提自己是AI。只回覆讯息內容。';
-      var resp = await fetch(_datingApiEndpoint(api), { method:'POST', headers:_datingApiHeaders(api), body:JSON.stringify(_datingApiBody(api, prompt, 120)) });
-      reply = _datingApiText(await resp.json());
+120var resp = await _compatibleChatCompletion(api.url, api.key, _applyApiModel({ messages:[{role:'user',content:prompt}], max_tokens:      , temperature:1.0, stream:false }, api.model), {});
+120reply = _extractAssistantMessageContent(await resp.json());
     } catch(e) {}
   }
   if (!reply) { var d = {gift:'谢谢你～',request:'你是认真的吗哈哈',notify:'不错哦'}; reply = d[type]||'好的'; }
@@ -55652,8 +55718,8 @@ async function _checkDatingGift(session, persona) {
     var _giftUProfileDesc = _buildDatingUserProfileDesc();
     var _giftIdentityNote = '你是对方的相親对象，你们透过相親平台认识。' + (_giftUProfileDesc ? '对方資料：' + _giftUProfileDesc + '。' : '');
     var prompt = '你是「'+persona.name+'」，人设：'+(persona.persona||'').slice(0,100)+'。'+_giftIdentityNote+'你和'+(datingPrefs.userName||'对方')+'正处於相親认识后漸漸熟悉的階段。近期对话：'+recent+'。根据对话氛围，你是否想主动送礼或点外賣表达心意？回覆JSON：{"send":true,"type":"gift或takeout","name":"商品名","shop":"商家","price":数字,"note":"留给对方一句溫暖自然符合你性格的话"} 或 {"send":false} 只返回JSON。';
-    var resp = await fetch(_datingApiEndpoint(api), { method:'POST', headers:_datingApiHeaders(api), body:JSON.stringify(_datingApiBody(api, prompt, 200)) });
-    var result = JSON.parse(_datingApiText(await resp.json()).replace(/```json|```/g,'').trim());
+200var resp = await _compatibleChatCompletion(api.url, api.key, _applyApiModel({ messages:[{role:'user',content:prompt}], max_tokens:    , temperature:1.0, stream:false }, api.model), {});
+200var result = _datingShowJsonParse(_extractAssistantMessageContent(await resp.json()));
     if (!result.send) return;
     await _sleep(1000 + Math.random()*1500);
     session.history.push({ role:'char', msgType:'dating_gift', giftType:result.type||'gift', giftData:{name:result.name||'小礼物', shop:result.shop||'', price:result.price||0, note:result.note||''}, ts:Date.now(), content:'[送你一份礼物]' });
@@ -55756,8 +55822,8 @@ async function startCall(source) {
       var _callUProfileDesc = source === 'dating' ? _buildDatingUserProfileDesc() : '';
       var _callIdentityNote = source === 'dating' ? '你是对方的相親对象，' : '';
       var prompt = '你是' + persona.name + '，人设：' + (persona.persona||'').slice(0,120) + '。' + _buildPersonaIdentityPrompt(persona) + _callIdentityNote + (_callUProfileDesc ? '对方資料：' + _callUProfileDesc + '。' : '') + uName + '主动打电话给你。除非此刻有非常明确、强烈、合理的拒接原因（例如正在激烈争吵、明确拉黑、极度厌恶、现实危险场景），否则你通常都会接。回覆JSON：{"accept":true或false,"refuseLevel":0到100} 只返回JSON。';
-      var resp = await fetch(_datingApiEndpoint(api), {method:'POST', headers:_datingApiHeaders(api), body:JSON.stringify(_datingApiBody(api, prompt, 30))});
-      var result = JSON.parse(_datingApiText(await resp.json()).replace(/```json|```/g,'').trim());
+      var resp = await _compatibleChatCompletion(api.url, api.key, _applyApiModel({ messages:[{role:'user',content:prompt}], max_tokens:80, temperature:1.0, stream:false }, api.model), {});
+      var result = _datingShowJsonParse(_extractAssistantMessageContent(await resp.json()));
       var refuseLevel = Math.max(0, Math.min(100, Number(result && result.refuseLevel) || 0));
       if (result && result.accept === false) {
         willAccept = refuseLevel < 88;
@@ -56372,8 +56438,8 @@ async function _maybeProactiveCall(pid, source) {
     var _pcUProfileDesc = source === 'dating' ? _buildDatingUserProfileDesc() : '';
     var _pcIdentityNote = source === 'dating' ? '你是对方的相親对象，你们透过相親平台认识。' + (_pcUProfileDesc ? '对方資料：' + _pcUProfileDesc + '。' : '') : '';
     var prompt = '你是' + persona.name + '，人设：' + (persona.persona||'').slice(0,120) + '。' + _pcIdentityNote + '\n最近的对话：\n' + (recentStr||'（暫無）') + '\n\n根据你的性格、心情和最近的对话，你现在想主动打电话给' + uName + '吗？只返回JSON：{"call":true或false,"reason":"一句话理由"}';
-    var resp = await fetch(_datingApiEndpoint(api), {method:'POST', headers:_datingApiHeaders(api), body:JSON.stringify(_datingApiBody(api, prompt, 60))});
-    var result = JSON.parse(_datingApiText(await resp.json()).replace(/```json|```/g,'').trim());
+    var resp = await _compatibleChatCompletion(api.url, api.key, _applyApiModel({ messages:[{role:'user',content:prompt}], max_tokens:100, temperature:1.0, stream:false }, api.model), {});
+    var result = _datingShowJsonParse(_extractAssistantMessageContent(await resp.json()));
     if (!result.call) return;
   } catch(e) { return; }
   // Record cooldown
@@ -58987,29 +59053,15 @@ async function _generateOfflineResponse(session) {
     var reply = '';
     var maxContinuationRounds = isShort ? 1 : 2;
     for (var contRound = 0; contRound <= maxContinuationRounds; contRound++) {
-      var r = await fetch(api.url.replace(/\/$/, '') + '/chat/completions', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + api.key, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: api.model,
-          messages: requestMessages,
-          temperature: p.temperature || 1.1,
-          max_tokens: contRound === 0
-            ? offlineMaxTokens
-            : Math.max(
-                isShort ? 120 : 180,
-                Math.min(offlineMaxTokens, Math.floor(offlineMaxTokens * 0.65))
-              )
-        })
-      });
+      var _offMaxTok = contRound === 0 ? offlineMaxTokens : Math.max(isShort ? 120 : 180, Math.min(offlineMaxTokens, Math.floor(offlineMaxTokens * 0.65)));
+      var r = await _compatibleChatCompletion(api.url, api.key, _applyApiModel({ messages: requestMessages, temperature: p.temperature || 1.1, max_tokens: _offMaxTok, stream: false }, api.model), {});
       if (!r.ok) {
         var errText = '';
         try { errText = await r.text(); } catch(e2) {}
         throw new Error('API 错误 ' + r.status + (errText ? '：' + errText.slice(0, 100) : ''));
       }
       var data = await r.json();
-      if (!data.choices || !data.choices[0]) throw new Error('API 返回格式異常');
-      var piece = (((data.choices[0] || {}).message || {}).content || '').trim();
+      var piece = _extractAssistantMessageContent(data).trim();
       if (piece) {
         reply = _mergeOfflineReplyPiece(reply, piece);
       }
@@ -59131,20 +59183,10 @@ async function _generateOfflineSessionSummary(session, p, uName, isManual) {
     priorSummaries ? '此前已有的阶段总结（供衔接，不要重复照抄）：\n' + priorSummaries : '',
     '这次需要总结的新互动：\n' + dialogue
   ].filter(Boolean).join('\n');
-  var resp = await fetch(api.url.replace(/\/$/, '') + '/chat/completions', {
-    method: 'POST',
-    headers: { 'Authorization': 'Bearer ' + api.key, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: api.model,
-      messages: [{ role: 'user', content: summaryPrompt }],
-      temperature: 0.55,
-      max_tokens: 500
-    })
-  });
+  var resp = await _compatibleChatCompletion(api.url, api.key, _applyApiModel({ messages: [{ role: 'user', content: summaryPrompt }], temperature: 0.55, max_tokens: 500, stream: false }, api.model), {});
   if (!resp.ok) throw new Error('线下剧情总结生成失败：API ' + resp.status);
   var data = await resp.json();
-  var text = (((data || {}).choices || [])[0] || {}).message;
-  var summaryText = text && text.content ? text.content.trim() : '';
+  var summaryText = _extractAssistantMessageContent(data).trim();
   if (!summaryText) return null;
   if (!Array.isArray(session.memorySummaries)) session.memorySummaries = [];
   if (!Array.isArray(session.sessionMemory)) session.sessionMemory = [];
@@ -59226,19 +59268,10 @@ async function _rewriteOfflineReplyToTargetPov(reply, p, api, isShort) {
     '',
     rawReply
   ].join('\n');
-  var rr = await fetch(api.url.replace(/\/$/, '') + '/chat/completions', {
-    method: 'POST',
-    headers: { 'Authorization': 'Bearer ' + api.key, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: api.model,
-      messages: [{ role: 'user', content: rewritePrompt }],
-      temperature: 0.2,
-      max_tokens: Math.max(220, Math.min(2200, rawReply.length * 2))
-    })
-  });
+  var rr = await _compatibleChatCompletion(api.url, api.key, _applyApiModel({ messages: [{ role: 'user', content: rewritePrompt }], temperature: 0.2, max_tokens: Math.max(220, Math.min(2200, rawReply.length * 2)), stream: false }, api.model), {});
   if (!rr.ok) return String(reply || '').trim();
   var rewriteData = await rr.json();
-  var rewritten = ((((rewriteData || {}).choices || [])[0] || {}).message || {}).content || '';
+  var rewritten = _extractAssistantMessageContent(rewriteData);
   rewritten = String(rewritten || '').trim();
   if (!rewritten) return String(reply || '').trim();
   return heartVoiceSuffix ? (rewritten + '\n' + heartVoiceSuffix) : rewritten;

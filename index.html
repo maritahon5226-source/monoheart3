@@ -7255,6 +7255,509 @@ body:not(.ios-fullscreen) .family-widget {
   font-size: 10px;
   color: rgba(30,30,30,0.48);
 }
+/* ── 嘉宾身份弹窗 ── */
+.cast-id-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #111;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: none;
+  line-height: 1.3;
+}
+.cast-id-btn .cast-id-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.10);
+  color: rgba(0,0,0,0.45);
+  font-size: 8px;
+  font-weight: 900;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.cast-id-btn:active .cast-id-badge { background: rgba(0,0,0,0.22); }
+/* overlay */
+#castIdOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.42);
+  z-index: 9000;
+  align-items: flex-end;
+  justify-content: center;
+}
+#castIdOverlay.open { display: flex; }
+#castIdBox {
+  background: #fff;
+  width: 100%;
+  max-width: 480px;
+  border-radius: 26px 26px 0 0;
+  padding: 22px 20px 36px;
+  max-height: 82vh;
+  overflow-y: auto;
+}
+#castIdBox::-webkit-scrollbar { display: none; }
+.cast-id-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.cast-id-modal-avatar {
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: linear-gradient(180deg,#f1f1f1,#d9d9d9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+.cast-id-modal-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.cast-id-modal-name { font-size: 18px; font-weight: 900; color: #111; line-height: 1.3; }
+.cast-id-modal-role { font-size: 11px; color: #aaa; margin-top: 3px; }
+.cast-id-modal-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.cast-id-modal-tag {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: rgba(0,0,0,0.06);
+  color: #444;
+}
+.cast-id-modal-tag.crush { background: rgba(255,100,120,0.12); color: #c0404a; }
+.cast-id-modal-tag.mood  { background: rgba(80,120,255,0.10); color: #3a5a99; }
+.cast-id-modal-tag.gender { background: rgba(0,0,0,0.07); color: #555; }
+.cast-id-modal-bio {
+  font-size: 12px;
+  line-height: 1.8;
+  color: rgba(30,30,30,0.72);
+  background: rgba(245,245,245,0.8);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+.cast-id-stat-row { display: flex; flex-direction: column; gap: 9px; margin-bottom: 14px; }
+.cast-id-stat-item {}
+.cast-id-stat-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  font-weight: 700;
+  color: #555;
+  margin-bottom: 4px;
+}
+.cast-id-stat-bar {
+  height: 6px;
+  border-radius: 99px;
+  background: rgba(0,0,0,0.07);
+  overflow: hidden;
+}
+.cast-id-stat-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg,#1a1a1a,#555);
+  transition: width 0.4s ease;
+}
+.cast-id-inner-voice {
+  font-size: 11px;
+  line-height: 1.75;
+  color: rgba(60,60,60,0.65);
+  font-style: italic;
+  background: rgba(245,245,245,0.7);
+  border-radius: 12px;
+  padding: 10px 13px;
+  border-left: 3px solid rgba(0,0,0,0.12);
+  margin-bottom: 14px;
+}
+.cast-id-rel-section { margin-bottom: 10px; }
+.cast-id-rel-title { font-size: 10px; font-weight: 800; color: #aaa; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
+.cast-id-rel-card {
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.07);
+  padding: 9px 12px;
+  background: rgba(255,255,255,0.8);
+  margin-bottom: 7px;
+}
+.cast-id-rel-pair { font-size: 12px; font-weight: 700; color: #222; margin-bottom: 3px; }
+.cast-id-rel-status { font-size: 10px; color: #888; margin-bottom: 3px; }
+.cast-id-rel-summary { font-size: 11px; color: rgba(40,40,40,0.65); line-height: 1.6; }
+.cast-id-close-btn {
+  width: 100%;
+  padding: 13px;
+  border-radius: 16px;
+  border: 1.5px solid rgba(0,0,0,0.12);
+  background: none;
+  font-size: 13px;
+  font-weight: 700;
+  color: #888;
+  cursor: pointer;
+  margin-top: 6px;
+  font-family: inherit;
+}
+.cast-id-close-btn:active { background: rgba(0,0,0,0.05); }
+
+/* ══════════════════════════════════════════════
+   观察室 OBSERVER ROOM
+══════════════════════════════════════════════ */
+/* 入口按钮 — 悬浮在直播现场头部 */
+#obsRoomEntryBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  border: none;
+  background: linear-gradient(135deg,#2a0a18,#1a1a2e);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+  position: relative;
+  white-space: nowrap;
+}
+#obsRoomEntryBtn .obs-live-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #ff4060;
+  animation: obsBlink 1.2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes obsBlink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* 全屏观察室蒙层 */
+#obsRoomOverlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 52vh;
+  z-index: 8500;
+  background: linear-gradient(160deg, #0d0d1a 0%, #1a0a14 50%, #0a1020 100%);
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 6px 32px rgba(0,0,0,0.45);
+  border-bottom: 1.5px solid rgba(255,60,100,0.25);
+}
+#obsRoomOverlay.open { display: flex; }
+
+/* When obs room is open, push dating show content down */
+#datingPageShow.obs-split .dating-show-scroll {
+  padding-top: calc(52vh + 8px);
+}
+#datingPageShow.obs-split .dating-show-composer {
+  padding-top: calc(52vh);
+}
+
+/* Scene label in obs topbar */
+.obs-scene-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.55);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.obs-scene-label .obs-scene-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: #ff8c00;
+  flex-shrink: 0;
+}
+.obs-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Resize handle */
+#obsResizeHandle {
+  position: fixed;
+  left: 0; right: 0;
+  top: calc(52vh - 2px);
+  height: 12px;
+  z-index: 8600;
+  cursor: ns-resize;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+#obsResizeHandle.active { display: flex; }
+#obsResizeHandle::before {
+  content: '';
+  width: 40px; height: 4px;
+  border-radius: 4px;
+  background: rgba(255,100,120,0.5);
+}
+
+/* 顶栏 */
+.obs-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 10px;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+.obs-topbar-left { display: flex; align-items: center; gap: 10px; }
+.obs-live-chip {
+  display: flex; align-items: center; gap: 5px;
+  background: rgba(255,40,80,0.18);
+  border: 1px solid rgba(255,40,80,0.3);
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 9px; font-weight: 800; color: #ff6070; letter-spacing: 1px;
+}
+.obs-title-text { font-size: 13px; font-weight: 900; color: #fff; }
+.obs-close-btn {
+  background: rgba(255,255,255,0.1);
+  border: none; border-radius: 50%; width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(255,255,255,0.6); font-size: 14px; cursor: pointer;
+}
+.obs-close-btn:active { background: rgba(255,255,255,0.18); }
+
+/* 视角选择器 */
+.obs-role-strip {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px 10px;
+  overflow-x: auto;
+  flex-shrink: 0;
+  scrollbar-width: none;
+}
+.obs-role-strip::-webkit-scrollbar { display: none; }
+.obs-role-chip {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 9px 12px;
+  border-radius: 16px;
+  border: 1.5px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.05);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s;
+  min-width: 68px;
+}
+.obs-role-chip.active {
+  border-color: rgba(255,255,255,0.4);
+  background: rgba(255,255,255,0.12);
+}
+.obs-role-chip:active { transform: scale(0.96); }
+.obs-role-icon { font-size: 18px; line-height: 1; }
+.obs-role-name { font-size: 9px; font-weight: 800; color: rgba(255,255,255,0.7); letter-spacing: 0.3px; white-space: nowrap; }
+.obs-role-chip.active .obs-role-name { color: #fff; }
+
+/* 当前视角介绍条 */
+.obs-active-role-bar {
+  margin: 0 16px 10px;
+  padding: 10px 13px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.1);
+  flex-shrink: 0;
+}
+.obs-active-role-bar-name { font-size: 11px; font-weight: 800; color: #fff; margin-bottom: 3px; }
+.obs-active-role-bar-desc { font-size: 10px; color: rgba(255,255,255,0.5); line-height: 1.6; }
+
+/* 对话流区域 */
+.obs-feed {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  scrollbar-width: none;
+}
+.obs-feed::-webkit-scrollbar { display: none; }
+
+/* 观察员发言气泡 */
+.obs-bubble {
+  border-radius: 20px 20px 20px 6px;
+  padding: 13px 15px;
+  position: relative;
+  animation: obsSlideIn 0.32s cubic-bezier(0.22,1,0.36,1) both;
+}
+@keyframes obsSlideIn {
+  from { opacity:0; transform:translateY(18px) scale(0.97); }
+  to   { opacity:1; transform:translateY(0) scale(1); }
+}
+.obs-bubble-header {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+}
+.obs-bubble-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; flex-shrink: 0;
+}
+.obs-bubble-meta { display: flex; flex-direction: column; gap: 1px; }
+.obs-bubble-role { font-size: 10px; font-weight: 800; }
+.obs-bubble-tag { font-size: 9px; opacity: 0.6; }
+.obs-bubble-text {
+  font-size: 12px;
+  line-height: 1.85;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 视角色调 */
+.obs-bubble[data-role="mc"] { background: linear-gradient(135deg, rgba(255,220,60,0.12), rgba(255,200,0,0.07)); border: 1px solid rgba(255,210,50,0.2); }
+.obs-bubble[data-role="mc"] .obs-bubble-role { color: #f0c040; }
+.obs-bubble[data-role="mc"] .obs-bubble-text { color: rgba(255,255,255,0.88); }
+.obs-bubble[data-role="mc"] .obs-bubble-avatar { background: rgba(255,210,50,0.15); }
+
+.obs-bubble[data-role="analyst"] { background: linear-gradient(135deg, rgba(60,160,255,0.12), rgba(40,120,220,0.07)); border: 1px solid rgba(60,160,255,0.2); }
+.obs-bubble[data-role="analyst"] .obs-bubble-role { color: #60b0ff; }
+.obs-bubble[data-role="analyst"] .obs-bubble-text { color: rgba(255,255,255,0.88); }
+.obs-bubble[data-role="analyst"] .obs-bubble-avatar { background: rgba(60,160,255,0.15); }
+
+.obs-bubble[data-role="fangirl"] { background: linear-gradient(135deg, rgba(255,80,140,0.14), rgba(230,60,120,0.07)); border: 1px solid rgba(255,80,140,0.22); }
+.obs-bubble[data-role="fangirl"] .obs-bubble-role { color: #ff70a0; }
+.obs-bubble[data-role="fangirl"] .obs-bubble-text { color: rgba(255,255,255,0.88); }
+.obs-bubble[data-role="fangirl"] .obs-bubble-avatar { background: rgba(255,80,140,0.15); }
+
+.obs-bubble[data-role="bro"] { background: linear-gradient(135deg, rgba(100,220,160,0.12), rgba(60,180,120,0.07)); border: 1px solid rgba(100,220,160,0.2); }
+.obs-bubble[data-role="bro"] .obs-bubble-role { color: #60dda0; }
+.obs-bubble[data-role="bro"] .obs-bubble-text { color: rgba(255,255,255,0.88); }
+.obs-bubble[data-role="bro"] .obs-bubble-avatar { background: rgba(100,220,160,0.15); }
+
+.obs-bubble[data-role="netizen"] { background: linear-gradient(135deg, rgba(200,140,255,0.12), rgba(160,80,240,0.07)); border: 1px solid rgba(200,140,255,0.2); }
+.obs-bubble[data-role="netizen"] .obs-bubble-role { color: #c080ff; }
+.obs-bubble[data-role="netizen"] .obs-bubble-text { color: rgba(255,255,255,0.88); }
+.obs-bubble[data-role="netizen"] .obs-bubble-avatar { background: rgba(200,140,255,0.15); }
+
+/* 加载中气泡 */
+.obs-bubble-loading {
+  border-radius: 20px 20px 20px 6px;
+  padding: 14px 16px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; gap: 10px;
+}
+.obs-typing-dots { display: flex; gap: 4px; }
+.obs-typing-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(255,255,255,0.3);
+  animation: obsTyping 1.0s ease-in-out infinite;
+}
+.obs-typing-dot:nth-child(2) { animation-delay: 0.18s; }
+.obs-typing-dot:nth-child(3) { animation-delay: 0.36s; }
+@keyframes obsTyping { 0%,100%{transform:translateY(0);opacity:0.3} 50%{transform:translateY(-4px);opacity:1} }
+.obs-loading-label { font-size: 11px; color: rgba(255,255,255,0.4); font-style: italic; }
+
+/* 场景引用块 */
+.obs-scene-quote {
+  border-radius: 12px;
+  padding: 10px 13px;
+  background: rgba(255,255,255,0.04);
+  border-left: 3px solid rgba(255,255,255,0.15);
+  margin-bottom: 4px;
+  flex-shrink: 0;
+  animation: obsSlideIn 0.32s cubic-bezier(0.22,1,0.36,1) both;
+}
+/* 直播现场条目联动高亮 */
+.dating-show-log-item.obs-linked {
+  outline: 2px solid rgba(255,60,100,0.45);
+  background: rgba(255,60,100,0.07) !important;
+  transition: outline 0.2s, background 0.2s;
+}
+/* 观察室 feed item 联动高亮 */
+.obs-bubble.obs-linked,
+.obs-scene-quote.obs-linked {
+  outline: 2px solid rgba(255,160,60,0.5);
+  transition: outline 0.2s;
+}
+.obs-scene-quote-label { font-size: 9px; color: rgba(255,255,255,0.35); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 5px; }
+.obs-scene-quote-text { font-size: 11px; color: rgba(255,255,255,0.55); line-height: 1.7; }
+
+/* 底部操作栏 */
+.obs-action-bar {
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  border-top: 1px solid rgba(255,255,255,0.07);
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  background: rgba(0,0,0,0.3);
+  backdrop-filter: blur(12px);
+}
+.obs-action-btn {
+  flex: 1;
+  padding: 12px 8px;
+  border-radius: 16px;
+  border: none;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.2px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform 0.12s, opacity 0.12s;
+}
+.obs-action-btn:active { transform: scale(0.96); }
+.obs-action-btn.primary { background: rgba(255,255,255,0.9); color: #111; }
+.obs-action-btn.secondary { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.12); }
+.obs-action-btn:disabled { opacity: 0.4; cursor: default; }
+
+/* 快捷话题pills */
+.obs-prompt-pills {
+  display: flex; gap: 7px; overflow-x: auto; padding: 0 16px 10px; flex-shrink: 0;
+  scrollbar-width: none;
+}
+.obs-prompt-pills::-webkit-scrollbar { display: none; }
+.obs-prompt-pill {
+  padding: 6px 13px; border-radius: 20px; white-space: nowrap;
+  background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.65); font-size: 10px; font-weight: 700;
+  cursor: pointer; flex-shrink: 0; transition: all 0.12s;
+}
+.obs-prompt-pill:active { background: rgba(255,255,255,0.15); color: #fff; transform: scale(0.96); }
+
+/* 空态 */
+.obs-empty {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 12px; padding: 30px;
+}
+.obs-empty-icon { font-size: 42px; opacity: 0.25; }
+.obs-empty-title { font-size: 14px; font-weight: 800; color: rgba(255,255,255,0.35); text-align: center; }
+.obs-empty-sub { font-size: 11px; color: rgba(255,255,255,0.2); text-align: center; line-height: 1.7; }
+
+/* 分割线标签 */
+.obs-day-divider {
+  display: flex; align-items: center; gap: 10px;
+  padding: 4px 0 2px; flex-shrink: 0;
+}
+.obs-day-divider span { font-size: 9px; color: rgba(255,255,255,0.22); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; }
+.obs-day-divider::before, .obs-day-divider::after { content:''; flex:1; height:1px; background:rgba(255,255,255,0.08); }
+
+/* 新消息提示 */
+.obs-new-badge {
+  position: absolute; top: -4px; right: -4px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #ff4060; color: #fff;
+  font-size: 8px; font-weight: 900;
+  display: flex; align-items: center; justify-content: center;
+}
 .dating-show-user-card {
   padding: 0 16px 16px;
 }
@@ -54438,6 +54941,569 @@ function datingShowTerminate() {
   datingShowSave();
   renderDatingShowPage();
 }
+
+/* ── 嘉宾身份弹窗 ── */
+function datingShowOpenCastId(name) {
+  var state = datingShowState || {};
+  var participants = state.participants || [];
+  var relationships = state.relationships || [];
+  // find participant by name
+  var p = participants.find(function(x){ return _esc(x.name) === name || x.name === name; });
+  // build overlay if not exists
+  var overlay = document.getElementById('castIdOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'castIdOverlay';
+    overlay.innerHTML = '<div id="castIdBox"></div>';
+    overlay.addEventListener('click', function(e){ if(e.target === overlay) datingShowCloseCastId(); });
+    document.body.appendChild(overlay);
+  }
+  var box = document.getElementById('castIdBox');
+  if (!p) {
+    // non-participant (host/director) — show minimal card
+    box.innerHTML = '<div class="cast-id-modal-header"><div class="cast-id-modal-avatar"><i class="fas fa-user"></i></div><div><div class="cast-id-modal-name">' + name + '</div><div class="cast-id-modal-role">节目组成员</div></div></div><p style="font-size:12px;color:#aaa;margin:10px 0 16px;">该角色为节目组成员，无嘉宾档案。</p><button class="cast-id-close-btn" onclick="datingShowCloseCastId()">关闭</button>';
+    overlay.classList.add('open');
+    return;
+  }
+  var stats = p.stats || { favor:0, jealousy:0, possession:0, mindgame:0 };
+  var avatarHtml = p.avatar ? '<img src="' + p.avatar + '">' : '<i class="fas fa-user"></i>';
+  var relCards = relationships.filter(function(r){ return r.from === p.name || r.to === p.name; });
+  var relHtml = relCards.length ? '<div class="cast-id-rel-section"><div class="cast-id-rel-title">感情线</div>' + relCards.map(function(r){
+    return '<div class="cast-id-rel-card"><div class="cast-id-rel-pair">' + _esc(r.from) + ' → ' + _esc(r.to) + '</div><div class="cast-id-rel-status">' + _esc(r.status||'') + ' · 热度 ' + (r.heat||0) + '</div><div class="cast-id-rel-summary">' + _esc(r.summary||'') + '</div></div>';
+  }).join('') + '</div>' : '';
+  var tagsHtml = '<div class="cast-id-modal-tags">'
+    + (p.gender ? '<span class="cast-id-modal-tag gender">' + _esc(p.gender) + '</span>' : '')
+    + (p.team ? '<span class="cast-id-modal-tag">' + (p.team === 'A' ? 'A队' : p.team === 'B' ? 'B队' : p.team === 'pursuer' ? '追求者' : _esc(p.team)) + '</span>' : '')
+    + (p.currentCrush ? '<span class="cast-id-modal-tag crush">心动 ' + _esc(p.currentCrush) + '</span>' : '')
+    + (p.currentMood ? '<span class="cast-id-modal-tag mood">' + _esc(p.currentMood) + '</span>' : '')
+    + (p.eliminated ? '<span class="cast-id-modal-tag" style="background:rgba(255,50,50,0.1);color:#c44;">已淘汰</span>' : '<span class="cast-id-modal-tag" style="background:rgba(0,200,100,0.1);color:#286">在场</span>')
+    + (p.tags || []).map(function(t){ return '<span class="cast-id-modal-tag">' + _esc(t) + '</span>'; }).join('')
+    + '</div>';
+  box.innerHTML = '<div class="cast-id-modal-header"><div class="cast-id-modal-avatar">' + avatarHtml + '</div><div><div class="cast-id-modal-name">' + _esc(p.name||'嘉宾') + '</div><div class="cast-id-modal-role">' + _esc(p.role||'') + (p.source==='persona' ? ' · 已选角色' : ' · 自动补位') + '</div></div></div>'
+    + tagsHtml
+    + (p.intro||p.personality ? '<div class="cast-id-modal-bio">' + _esc(p.intro||p.personality||'') + '</div>' : '')
+    + '<div class="cast-id-stat-row">'
+    + '<div class="cast-id-stat-item"><div class="cast-id-stat-head"><span>好感度</span><span>' + stats.favor + '</span></div><div class="cast-id-stat-bar"><div class="cast-id-stat-fill" style="width:' + Math.min(stats.favor,100) + '%;background:linear-gradient(90deg,#e85580,#ff8fa3);"></div></div></div>'
+    + '<div class="cast-id-stat-item"><div class="cast-id-stat-head"><span>醋意</span><span>' + stats.jealousy + '</span></div><div class="cast-id-stat-bar"><div class="cast-id-stat-fill" style="width:' + Math.min(stats.jealousy,100) + '%;background:linear-gradient(90deg,#f97316,#fbbf24);"></div></div></div>'
+    + '<div class="cast-id-stat-item"><div class="cast-id-stat-head"><span>占有欲</span><span>' + stats.possession + '</span></div><div class="cast-id-stat-bar"><div class="cast-id-stat-fill" style="width:' + Math.min(stats.possession,100) + '%;background:linear-gradient(90deg,#7c3aed,#a78bfa);"></div></div></div>'
+    + '<div class="cast-id-stat-item"><div class="cast-id-stat-head"><span>心机值</span><span>' + stats.mindgame + '</span></div><div class="cast-id-stat-bar"><div class="cast-id-stat-fill" style="width:' + Math.min(stats.mindgame,100) + '%;background:linear-gradient(90deg,#374151,#9ca3af);"></div></div></div>'
+    + '</div>'
+    + (p.innerVoice ? '<div class="cast-id-inner-voice">"' + _esc(p.innerVoice) + '"</div>' : '')
+    + relHtml
+    + '<button class="cast-id-close-btn" onclick="datingShowCloseCastId()">关闭</button>';
+  overlay.classList.add('open');
+}
+function datingShowCloseCastId() {
+  var overlay = document.getElementById('castIdOverlay');
+  if (overlay) overlay.classList.remove('open');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   观察室 OBSERVER ROOM  —  完整实现
+═══════════════════════════════════════════════════════════ */
+var OBS_ROLES = [
+  {
+    id: 'mc',
+    icon: '🎙️',
+    name: '主持人',
+    shortDesc: '掌控全场节奏',
+    fullDesc: '控场、串流程、带话题、圆场、cue 嘉宾发言，掌控全场节奏。擅长把控关键时机，一句话就能点燃气氛或及时刹车。',
+    systemPrompt: '你是恋综节目的资深主持人，坐在观察室里实时点评正片。你负责控场、串流程、带话题，擅长用一两句话带动节奏，cue 嘉宾发言，及时圆场或制造话题。语气专业干练但有综艺感，偶尔调侃但不失分寸。说话简练，一段不超过150字，直接说你的主持人视角判断。',
+    pills: ['这段我来cue一下', '控评！现在该圆场了', '下一个环节我会这样设计', '谁最配被cue出来', '导播暂停！定格这个表情']
+  },
+  {
+    id: 'analyst',
+    icon: '🔬',
+    name: '情感分析师',
+    shortDesc: '拆解微表情与心理',
+    fullDesc: '拆解微表情、行为细节、恋爱心理、吃醋暗示、推拉心思，用专业心理学视角解读感情线。冷静、精准、不带偏见。',
+    systemPrompt: '你是恋综节目的情感分析师，坐在观察室里用专业视角点评正片。你擅长拆解微表情、肢体语言、潜台词、恋爱心理和推拉策略。语气理性专业，会引用心理学概念，但不掉书袋，说人话。找到最关键的细节进行精准解读，一段150字以内。',
+    pills: ['这个微表情说明什么', '潜台词是什么', '这是推拉还是真情绪', '吃醋信号分析', '这段肢体语言太明显了']
+  },
+  {
+    id: 'fangirl',
+    icon: '💗',
+    name: '嗑糖党',
+    shortDesc: '感性嗑CP专家',
+    fullDesc: '感性视角，专嗑暧昧细节、脸红对视、小温柔，负责共情、尖叫、嗑 CP。是观察室里最感性的存在，不需要理由，就是嗑定了。',
+    systemPrompt: '你是恋综观察室里的嗑糖党，感性、爱尖叫、专门捕捉暧昧细节和CP甜点。你会关注脸红、对视、小温柔、偶然触碰、欲言又止这些细节。语气活泼感性，允许用感叹号和口语，会用"啊啊啊""磕到了""cp感拉满"这类词，但不要刻意堆砌。真情实感地嗑，一段150字以内。',
+    pills: ['啊啊啊这一段！', '这个眼神对视细节', '这叫小温柔！', '我这对CP嗑定了', '这里慢放一下！']
+  },
+  {
+    id: 'bro',
+    icon: '🧢',
+    name: '兄弟视角',
+    shortDesc: '拆穿男生小心思',
+    fullDesc: '男生视角，看懂男生小心思、暗吃醋、口是心非、伪装淡定，拆穿男生套路。用直男逻辑翻译男生的隐晦行为。',
+    systemPrompt: '你是恋综观察室里的兄弟视角观察员，用男生的角度来解读节目里男生的行为。你能看穿男生假装淡定、暗自吃醋、口是心非的小心思，用直接的兄弟语气点评。语气直男、接地气、偶尔有点"翻译腔"，把男生行为直接翻译成真实意图。一段150字以内，不拐弯。',
+    pills: ['这男的在装什么', '兄弟内心独白翻译', '这是吃醋了没跑', '男生这行为翻译过来是', '口是心非指数爆表']
+  },
+  {
+    id: 'netizen',
+    icon: '📱',
+    name: '网友视角',
+    shortDesc: '懂梗爱八卦爱站队',
+    fullDesc: '网感强、懂梗、爱八卦、爱猜结局、爱站队，代表普通观众视角。弹幕、锐评、热搜体全部信手拈来。',
+    systemPrompt: '你是恋综观察室里的网友代表，网感强、爱八卦、懂梗、爱站队，代表最普通的观众视角。你会用弹幕语言、热搜体、网络梗来点评，说出大多数观众的心声。可以用"冲"、"yyds"、"这波操作"、"什么鬼剧情"等网络用语，但要自然不刻意。爱猜剧情走向、爱给人贴标签、爱发表强烈观点。一段150字以内。',
+    pills: ['这段必上热搜', '弹幕视角点评', '给TA贴个人设标签', '我站哪边我说清楚', '猜猜后续剧情走向']
+  }
+];
+
+var obsState = {
+  activeRole: 'fangirl',
+  feed: [],          // { role, text, sceneSnapshot, timestamp, type }
+  lastSceneHash: '', // 用于检测是否有新剧情
+  unread: 0,
+  busy: false
+};
+
+function openObsRoom() {
+  var overlay = document.getElementById('obsRoomOverlay');
+  if (!overlay) return;
+  // Toggle: if already open, close instead
+  if (overlay.classList.contains('open')) {
+    closeObsRoom();
+    return;
+  }
+  obsState.unread = 0;
+  _obsRenderRoleStrip();
+  _obsRenderActiveRoleBar();
+  _obsRenderPromptPills();
+  overlay.classList.add('open');
+  // Split-screen: push dating show content down
+  var showPage = document.getElementById('datingPageShow');
+  if (showPage) showPage.classList.add('obs-split');
+  // Show resize handle
+  var handle = document.getElementById('obsResizeHandle');
+  if (handle) handle.classList.add('active');
+  // Update scene label
+  _obsUpdateSceneLabel();
+  // Update entry button label
+  var entryBtn = document.getElementById('obsRoomEntryBtn');
+  if (entryBtn) entryBtn.innerHTML = '<span class="obs-live-dot"></span>关闭观察室';
+  // Clear feed DOM and re-render incrementally (slide-in)
+  var feed = document.getElementById('obsFeed');
+  if (feed) feed.innerHTML = '';
+  _obsRenderFeed();
+  // Bind scroll sync
+  _obsBindScrollSync();
+  // Scroll dating show to live log area
+  setTimeout(function() {
+    var scroll = document.getElementById('datingShowScroll');
+    if (scroll) {
+      var liveLog = scroll.querySelector('.dating-show-live-log');
+      if (liveLog) liveLog.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, 200);
+}
+
+function closeObsRoom() {
+  var overlay = document.getElementById('obsRoomOverlay');
+  if (overlay) overlay.classList.remove('open');
+  // Remove split-screen
+  var showPage = document.getElementById('datingPageShow');
+  if (showPage) showPage.classList.remove('obs-split');
+  var handle = document.getElementById('obsResizeHandle');
+  if (handle) handle.classList.remove('active');
+  // Restore entry button label
+  var entryBtn = document.getElementById('obsRoomEntryBtn');
+  if (entryBtn) entryBtn.innerHTML = '<span class="obs-live-dot"></span>观察室';
+}
+
+function _obsUpdateSceneLabel() {
+  var state = datingShowState || {};
+  var labelEl = document.getElementById('obsSceneLabelText');
+  if (!labelEl) return;
+  if (state.active) {
+    var day = state.day || 1;
+    var phase = state.phase || '';
+    var headline = state.headline || '';
+    var label = '第 ' + day + ' 天 · ' + phase;
+    if (headline) label += ' — ' + headline.slice(0, 14) + (headline.length > 14 ? '…' : '');
+    labelEl.textContent = label;
+  } else {
+    labelEl.textContent = '直播现场';
+  }
+}
+
+function obsSelectRole(roleId) {
+  obsState.activeRole = roleId;
+  _obsRenderRoleStrip();
+  _obsRenderActiveRoleBar();
+  _obsRenderPromptPills();
+}
+
+function _obsGetRole(id) {
+  return OBS_ROLES.find(function(r){ return r.id === id; }) || OBS_ROLES[2];
+}
+
+function _obsRenderRoleStrip() {
+  var strip = document.getElementById('obsRoleStrip');
+  if (!strip) return;
+  strip.innerHTML = OBS_ROLES.map(function(r) {
+    return '<div class="obs-role-chip' + (r.id === obsState.activeRole ? ' active' : '') + '" onclick="obsSelectRole(\'' + r.id + '\')">'
+      + '<span class="obs-role-icon">' + r.icon + '</span>'
+      + '<span class="obs-role-name">' + r.name + '</span>'
+      + '</div>';
+  }).join('');
+}
+
+function _obsRenderActiveRoleBar() {
+  var role = _obsGetRole(obsState.activeRole);
+  var nameEl = document.getElementById('obsActiveRoleName');
+  var descEl = document.getElementById('obsActiveRoleDesc');
+  if (nameEl) nameEl.textContent = role.icon + ' ' + role.name + ' — ' + role.shortDesc;
+  if (descEl) descEl.textContent = role.fullDesc;
+}
+
+function _obsRenderPromptPills() {
+  var role = _obsGetRole(obsState.activeRole);
+  var container = document.getElementById('obsPromptPills');
+  if (!container) return;
+  container.innerHTML = (role.pills || []).map(function(p) {
+    return '<div class="obs-prompt-pill" onclick="obsRoomCustomPrompt(' + JSON.stringify(p) + ')">' + _esc(p) + '</div>';
+  }).join('');
+}
+
+function _obsRenderFeed() {
+  var feed = document.getElementById('obsFeed');
+  if (!feed) return;
+  if (!obsState.feed.length) {
+    feed.innerHTML = '<div class="obs-empty"><div class="obs-empty-icon">🎬</div><div class="obs-empty-title">观察室待命中</div><div class="obs-empty-sub">选好视角，点击「解说当前剧情」开始直播间实时解说，或用快捷话题让观察员自由发挥。</div></div>';
+    return;
+  }
+  // Count already-rendered items (skip empty placeholder)
+  var rendered = feed.querySelectorAll('[data-feed-idx]').length;
+  var lastDay = rendered > 0
+    ? (feed.querySelector('[data-feed-idx="' + (rendered - 1) + '"]') || {}).dataset && feed.querySelector('[data-feed-idx="' + (rendered - 1) + '"]').dataset.day || null
+    : null;
+
+  // Remove empty placeholder if present
+  var empty = feed.querySelector('.obs-empty');
+  if (empty) empty.remove();
+
+  // Append only new items with staggered slide-in delay
+  for (var i = rendered; i < obsState.feed.length; i++) {
+    var item = obsState.feed[i];
+    var delay = (i - rendered) * 80; // stagger each new item by 80ms
+    var dayLabel = item.dayLabel || null;
+
+    if (dayLabel && dayLabel !== lastDay) {
+      var divider = document.createElement('div');
+      divider.className = 'obs-day-divider';
+      divider.dataset.feedIdx = 'day-' + i;
+      divider.innerHTML = '<span>' + _esc(dayLabel) + '</span>';
+      divider.style.animationDelay = delay + 'ms';
+      feed.appendChild(divider);
+      lastDay = dayLabel;
+    }
+
+    var el = document.createElement('div');
+    el.dataset.feedIdx = String(i);
+    if (item.logSnapshot !== undefined) el.dataset.logSnapshot = String(item.logSnapshot);
+    el.style.animationDelay = delay + 'ms';
+
+    if (item.type === 'quote') {
+      el.className = 'obs-scene-quote';
+      el.innerHTML = '<div class="obs-scene-quote-label">📺 直播现场片段</div><div class="obs-scene-quote-text">' + _esc(item.text) + '</div>';
+    } else {
+      var role = _obsGetRole(item.role);
+      el.className = 'obs-bubble';
+      el.setAttribute('data-role', item.role || '');
+      el.innerHTML = '<div class="obs-bubble-header">'
+        + '<div class="obs-bubble-avatar">' + role.icon + '</div>'
+        + '<div class="obs-bubble-meta"><div class="obs-bubble-role">' + _esc(role.name) + '</div><div class="obs-bubble-tag">' + _esc(role.shortDesc) + '</div></div>'
+        + '</div>'
+        + '<div class="obs-bubble-text">' + _esc(item.text) + '</div>';
+    }
+    feed.appendChild(el);
+  }
+  // Smooth scroll to bottom for new items
+  if (obsState.feed.length > rendered) {
+    setTimeout(function() { feed.scrollTo({ top: feed.scrollHeight, behavior: 'smooth' }); }, 60);
+  }
+}
+
+// Sync: when user scrolls the dating show log, highlight matching obs feed items
+function _obsBindScrollSync() {
+  var scroll = document.getElementById('datingShowScroll');
+  if (!scroll || scroll._obsSyncBound) return;
+  scroll._obsSyncBound = true;
+  scroll.addEventListener('scroll', function() {
+    if (!document.getElementById('obsRoomOverlay').classList.contains('open')) return;
+    _obsSyncFromLive();
+  }, { passive: true });
+}
+
+function _obsSyncFromLive() {
+  var scroll = document.getElementById('datingShowScroll');
+  var feed = document.getElementById('obsFeed');
+  if (!scroll || !feed) return;
+  var logItems = scroll.querySelectorAll('.dating-show-log-item[data-log-idx]');
+  if (!logItems.length) return;
+
+  // Find the log item most visible in the viewport
+  var scrollTop = scroll.scrollTop;
+  var scrollH = scroll.clientHeight;
+  var bestIdx = -1, bestVis = -1;
+  logItems.forEach(function(el) {
+    var elTop = el.offsetTop - scrollTop;
+    var elBot = elTop + el.offsetHeight;
+    var vis = Math.max(0, Math.min(elBot, scrollH) - Math.max(elTop, 0));
+    if (vis > bestVis) { bestVis = vis; bestIdx = parseInt(el.dataset.logIdx, 10); }
+  });
+  if (bestIdx < 0) return;
+
+  // Clear previous highlights
+  feed.querySelectorAll('.obs-linked').forEach(function(el) { el.classList.remove('obs-linked'); });
+  logItems.forEach(function(el) { el.classList.remove('obs-linked'); });
+
+  // Highlight matching log item
+  var activeLiveEl = scroll.querySelector('.dating-show-log-item[data-log-idx="' + bestIdx + '"]');
+  if (activeLiveEl) activeLiveEl.classList.add('obs-linked');
+
+  // Find obs feed items that reference this log snapshot
+  var obsItems = feed.querySelectorAll('[data-log-snapshot]');
+  var closestFeedEl = null;
+  var closestDiff = Infinity;
+  obsItems.forEach(function(el) {
+    var snap = parseInt(el.dataset.logSnapshot, 10);
+    var diff = Math.abs(snap - bestIdx);
+    if (diff < closestDiff) { closestDiff = diff; closestFeedEl = el; }
+  });
+  if (closestFeedEl && closestDiff <= 6) {
+    closestFeedEl.classList.add('obs-linked');
+    closestFeedEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+function _obsAddLoading() {
+  var feed = document.getElementById('obsFeed');
+  if (!feed) return;
+  // remove empty state
+  var empty = feed.querySelector('.obs-empty');
+  if (empty) empty.remove();
+  var loading = document.createElement('div');
+  loading.className = 'obs-bubble-loading';
+  loading.id = 'obsLoadingBubble';
+  loading.innerHTML = '<div class="obs-typing-dots"><div class="obs-typing-dot"></div><div class="obs-typing-dot"></div><div class="obs-typing-dot"></div></div><span class="obs-loading-label">观察员正在组织语言…</span>';
+  feed.appendChild(loading);
+  feed.scrollTop = feed.scrollHeight;
+}
+
+function _obsRemoveLoading() {
+  var el = document.getElementById('obsLoadingBubble');
+  if (el) el.remove();
+}
+
+function _obsSetBusy(busy) {
+  obsState.busy = busy;
+  ['obsBtnComment','obsBtnPredict','obsBtnDebate'].forEach(function(id) {
+    var btn = document.getElementById(id);
+    if (btn) btn.disabled = busy;
+  });
+  var pills = document.querySelectorAll('.obs-prompt-pill');
+  pills.forEach(function(p){ p.style.pointerEvents = busy ? 'none' : ''; p.style.opacity = busy ? '0.4' : ''; });
+}
+
+function _obsGetSceneContext() {
+  var state = datingShowState || {};
+  var logs = (state.logs || []).slice(-8);
+  var sceneText = logs.map(function(l){
+    return (l.speaker || l.type) + '：' + l.text + (l.action ? '【' + l.action + '】' : '') + (l.emotion ? '（' + l.emotion + '）' : '');
+  }).join('\n');
+  var participants = (state.participants || []).filter(function(p){ return !p.eliminated; });
+  var castText = participants.map(function(p){
+    var s = p.stats || {};
+    return p.name + '（好感度' + s.favor + '，醋意' + s.jealousy + (p.currentCrush ? '，心动:' + p.currentCrush : '') + (p.currentMood ? '，状态:' + p.currentMood : '') + (p.innerVoice ? '，内心:「' + p.innerVoice + '」' : '') + '）';
+  }).join('；');
+  var rels = (state.relationships || []).map(function(r){ return r.from + '→' + r.to + '「' + (r.status||'') + '」热度' + (r.heat||0); }).join('；');
+  return {
+    day: state.day || 1,
+    phase: state.phase || '未知',
+    headline: state.headline || '',
+    sceneText: sceneText || '（尚无直播记录）',
+    castText: castText || '（嘉宾信息暂无）',
+    rels: rels || '（暂无感情线）',
+    title: state.title || '恋综进行中'
+  };
+}
+
+async function obsRoomAct(actType) {
+  if (obsState.busy) return;
+  _obsUpdateSceneLabel();
+  var role = _obsGetRole(obsState.activeRole);
+  var ctx = _obsGetSceneContext();
+  var dayLabel = '第 ' + ctx.day + ' 天 · ' + ctx.phase;
+
+  // Add scene quote for 'comment' acts
+  if (actType === 'comment' && ctx.sceneText && ctx.sceneText !== '（尚无直播记录）') {
+    var _snapIdx = (datingShowState && datingShowState.logs ? Math.max(0, datingShowState.logs.length - 8) : 0);
+    obsState.feed.push({ type: 'quote', text: ctx.sceneText.slice(0, 300) + (ctx.sceneText.length > 300 ? '\u2026' : ''), dayLabel: dayLabel, logSnapshot: _snapIdx });
+  }
+
+  var promptMap = {
+    comment: '以下是恋综当前节目画面（直播现场）的最新片段，请用你的视角进行实时点评和解说。要有具体细节，不要泛泛而谈。',
+    predict: '结合以上嘉宾状态和感情线，请你大胆预判接下来最可能发生的感情走向。哪两个人最有可能突破，谁可能翻车，给出你的分析和理由。',
+    debate: '观察室现在开撕了。作为' + role.name + '，请你针对当前某条感情线或某位嘉宾的行为发表强烈观点，表明你的立场，并给出你支持这个判断的理由。'
+  };
+
+  var prompt = role.systemPrompt
+    + '\n\n【节目信息】\n节目：' + ctx.title + '  第' + ctx.day + '天 ' + ctx.phase
+    + '\n当前标题：' + ctx.headline
+    + '\n\n【直播现场最新片段】\n' + ctx.sceneText
+    + '\n\n【嘉宾当前状态】\n' + ctx.castText
+    + '\n\n【感情线】\n' + ctx.rels
+    + '\n\n' + promptMap[actType]
+    + '\n\n直接输出你的点评内容，不要有任何前缀、标题或解释，就像你在直播说话一样自然。不超过200字。';
+
+  _obsSetBusy(true);
+  _obsAddLoading();
+
+  try {
+    var text = await _obsCallApi(prompt);
+    _obsRemoveLoading();
+    var _snapIdx2 = (datingShowState && datingShowState.logs ? Math.max(0, datingShowState.logs.length - 8) : 0);
+    if (text) {
+      obsState.feed.push({ role: obsState.activeRole, text: text, dayLabel: dayLabel, type: 'comment', logSnapshot: _snapIdx2 });
+      _obsRenderFeed();
+    } else {
+      obsState.feed.push({ role: obsState.activeRole, text: '（观察员沉默了，请重试或检查 API）', dayLabel: dayLabel, type: 'comment', logSnapshot: _snapIdx2 });
+      _obsRenderFeed();
+    }
+  } catch(e) {
+    _obsRemoveLoading();
+    var _errMsg = e && e.message ? e.message : String(e);
+    obsState.feed.push({ role: obsState.activeRole, text: '（观察室信号中断：' + _errMsg.slice(0, 60) + '）', dayLabel: dayLabel, type: 'comment' });
+    _obsRenderFeed();
+  } finally {
+    _obsSetBusy(false);
+  }
+}
+
+
+async function obsRoomCustomPrompt(promptText) {
+  if (obsState.busy) return;
+  var role = _obsGetRole(obsState.activeRole);
+  var ctx = _obsGetSceneContext();
+  var dayLabel = '第 ' + ctx.day + ' 天 · ' + ctx.phase;
+  var _snapIdx = (datingShowState && datingShowState.logs ? Math.max(0, datingShowState.logs.length - 8) : 0);
+
+  var prompt = role.systemPrompt
+    + '\n\n【节目信息】\n节目：' + ctx.title + '  第' + ctx.day + '天 ' + ctx.phase
+    + '\n\n【直播现场最新片段】\n' + ctx.sceneText
+    + '\n\n【嘉宾状态】\n' + ctx.castText
+    + '\n\n【感情线】\n' + ctx.rels
+    + '\n\n现在观察室里有人说："' + promptText + '"，请你从你的视角回应这个话题，给出你的看法，不超过180字，直接说，不要前缀。';
+
+  _obsSetBusy(true);
+  _obsAddLoading();
+  try {
+    var text = await _obsCallApi(prompt);
+    _obsRemoveLoading();
+    if (text) {
+      obsState.feed.push({ role: obsState.activeRole, text: text, dayLabel: dayLabel, type: 'comment', logSnapshot: _snapIdx });
+      _obsRenderFeed();
+    } else { _obsRenderFeed(); }
+  } catch(e) {
+    _obsRemoveLoading();
+    var _errMsg = e && e.message ? e.message : String(e);
+    obsState.feed.push({ role: obsState.activeRole, text: '（观察室信号中断：' + _errMsg.slice(0, 60) + '）', dayLabel: dayLabel, type: 'comment' });
+    _obsRenderFeed();
+  } finally {
+    _obsSetBusy(false);
+  }
+}
+
+// ── 观察室统一API调用层（兼容所有已配置的接口供应商） ──
+async function _obsCallApi(prompt) {
+  // 1. 读取当前生效的API配置（同主APP共用）
+  var apiCfg = _getCurrentActiveApiConfig();
+  if (!_hasUsableApiConfig(apiCfg)) {
+    throw new Error('请先在设置中配置 API');
+  }
+
+  // 2. 构建消息体
+  var payload = {
+    messages: [{ role: 'user', content: prompt }],
+    max_tokens: 1000,
+    temperature: 0.9
+  };
+
+  // 3. 走兼容层（多供应商 × 多认证 × 多payload变体 自动重试）
+  var res = await _compatibleChatCompletion(apiCfg.url, apiCfg.key, payload);
+
+  // 4. 解析响应（兼容 OpenAI / Anthropic / Gemini 等多种格式）
+  if (!res.ok) {
+    var errText = '';
+    try { errText = await res.text(); } catch(e2) {}
+    // 尝试从错误体中提取可读信息
+    try {
+      var errJson = JSON.parse(errText);
+      var msg = (errJson.error && (errJson.error.message || errJson.error.msg || errJson.error.code))
+             || errJson.message || errJson.msg || errText.slice(0, 80);
+      throw new Error('API ' + res.status + ': ' + msg);
+    } catch(pe) {
+      if (pe.message && pe.message.startsWith('API ')) throw pe;
+      throw new Error('API 返回 ' + res.status + (errText ? '：' + errText.slice(0, 80) : ''));
+    }
+  }
+
+  var raw = '';
+  try { raw = await res.text(); } catch(e3) { throw new Error('读取响应失败'); }
+
+  // 5. 多格式JSON解析（先整体parse，再bracket提取，再SSE流处理）
+  var data = null;
+
+  // 5a. 标准JSON
+  try { data = JSON.parse(raw); } catch(e4) {}
+
+  // 5b. 可能是SSE流（忽略stream:false的情况）
+  if (data === null && raw.includes('data:')) {
+    var lines = raw.split('\n').filter(function(l) { return l.startsWith('data:') && !l.includes('[DONE]'); });
+    var accumulated = '';
+    for (var li = 0; li < lines.length; li++) {
+      try {
+        var chunk = JSON.parse(lines[li].replace(/^data:\s*/, ''));
+        var delta = chunk && chunk.choices && chunk.choices[0] && chunk.choices[0].delta;
+        if (delta && delta.content) accumulated += delta.content;
+      } catch(e5) {}
+    }
+    if (accumulated) return accumulated.trim();
+  }
+
+  // 5c. 括号提取（应对模型在JSON外加了说明文字的情况）
+  if (data === null) {
+    data = _parseJsonFromText(raw, null);
+  }
+
+  if (data === null) {
+    // 最后兜底：直接把响应当纯文本返回
+    var cleaned = raw.trim().replace(/^```[\w]*\n?/, '').replace(/\n?```$/, '');
+    return cleaned || null;
+  }
+
+  // 6. 统一提取文本（兼容 OpenAI choices / Anthropic content / Gemini candidates）
+  var text = _extractAssistantMessageContent(data);
+
+  // 若_extractAssistantMessageContent未匹配（Gemini candidates格式）
+  if (!text && data.candidates && data.candidates[0]) {
+    var cand = data.candidates[0];
+    if (cand.content && Array.isArray(cand.content.parts)) {
+      text = cand.content.parts.map(function(p) { return p.text || ''; }).join('').trim();
+    }
+  }
+
+  // Anthropic messages格式（data.content数组）
+  if (!text && Array.isArray(data.content)) {
+    text = data.content.filter(function(b) { return b.type === 'text'; })
+                       .map(function(b) { return b.text; }).join('').trim();
+  }
+
+  return text || null;
+}
+
+
 var _DATING_EMOTION_ZH = {
   happy:'开心', sad:'难过', angry:'生气', excited:'兴奋', nervous:'紧张',
   embarrassed:'尴尬', jealous:'嫉妒', shy:'害羞', confused:'疑惑',
@@ -54467,6 +55533,10 @@ function renderDatingShowPage() {
   var root = document.getElementById('datingShowRoot');
   var composer = document.getElementById('datingShowComposer');
   if (!root || !composer) return;
+  // Update obs room scene label if open
+  if (document.getElementById('obsRoomOverlay') && document.getElementById('obsRoomOverlay').classList.contains('open')) {
+    _obsUpdateSceneLabel();
+  }
   if (!datingShowState.active) {
     composer.style.display = 'none';
     var archive = datingShowState.lastArchive;
@@ -54535,12 +55605,17 @@ function renderDatingShowPage() {
       + '</div>'
     + '</section>'
     + '<section class="dating-show-panel"><div class="dating-show-panel-head"><div><div class="dating-show-panel-title">实时弹幕</div><div class="dating-show-panel-desc">平静时较少，刺激时会明显增多，全部由当前 API 生成。</div></div></div><div class="dating-show-barrage-wrap"><div class="dating-show-barrage-lane">' + barrageHtml + '</div></div></section>'
-    + '<section class="dating-show-panel" style="position:relative;"><div class="dating-show-live-overlay" id="datingShowLiveOverlay"><div class="dating-show-live-overlay-spinner"></div><div class="dating-show-live-overlay-title" id="datingShowLiveOverlayTitle">恋综正在续写</div><div class="dating-show-live-overlay-sub" id="datingShowLiveOverlaySub">导演组正在推进新场次…</div></div><div class="dating-show-panel-head"><div><div class="dating-show-panel-title">直播现场</div><div class="dating-show-panel-desc">现场会一条一条往下走。你随时可以点生成继续推动，也可以自己发送互动，系统只会接着生成其他角色与剧情。</div></div><button class="dating-show-btn" style="min-width:132px;padding:11px 14px;" onclick="datingShowAdvance(\'scene\')">继续生成</button></div><div class="dating-show-live-log">' + (state.logs || []).slice(-20).map(function(item) {
+    + '<section class="dating-show-panel" style="position:relative;"><div class="dating-show-live-overlay" id="datingShowLiveOverlay"><div class="dating-show-live-overlay-spinner"></div><div class="dating-show-live-overlay-title" id="datingShowLiveOverlayTitle">恋综正在续写</div><div class="dating-show-live-overlay-sub" id="datingShowLiveOverlaySub">导演组正在推进新场次…</div></div><div class="dating-show-panel-head"><div><div class="dating-show-panel-title">直播现场</div><div class="dating-show-panel-desc">现场会一条一条往下走。你随时可以点生成继续推动，也可以自己发送互动，系统只会接着生成其他角色与剧情。</div></div><div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;"><button id="obsRoomEntryBtn" onclick="openObsRoom()" title="进入观察室"><span class="obs-live-dot"></span>观察室</button><button class="dating-show-btn" style="min-width:132px;padding:11px 14px;" onclick="datingShowAdvance(\'scene\')">继续生成</button></div></div><div class="dating-show-live-log">' + (function(){ var logsSlice = (state.logs || []).slice(-20); return logsSlice.map(function(item, itemIdx) {
       var typeLabel = { director:'导演组', host:'主持人', character:'嘉宾', system:'系统', scene:'现场', user:'你' }[item.type] || _esc(item.type || '现场');
       var colorMap = { host:'rgba(240,240,240,0.95)', director:'rgba(232,232,232,0.95)', user:'rgba(248,248,248,0.98)', system:'rgba(225,225,225,0.9)' };
       var bg = colorMap[item.type] || 'rgba(255,255,255,0.82)';
-      return '<div class="dating-show-log-item ' + _esc(item.type || '') + '" style="background:' + bg + '"><div class="dating-show-log-top"><div class="dating-show-log-speaker">' + _esc(item.speaker || '现场') + '</div><div class="dating-show-log-type">' + typeLabel + '</div></div><div class="dating-show-log-body">' + _esc(item.text || '') + '</div>' + ((item.action || item.emotion) ? '<div class="dating-show-log-meta">' + (item.action ? '动作：' + _esc(item.action) : '') + (item.action && item.emotion ? ' · ' : '') + (item.emotion ? '表情：' + _esc(_datingEmotionZh(item.emotion)) : '') + '</div>' : '') + '</div>';
-    }).join('')
+      var speakerName = item.speaker || '现场';
+      var canClickSpeaker = (item.type === 'character' || item.type === 'scene') && speakerName && speakerName !== '现场';
+      var speakerHtml = canClickSpeaker
+        ? '<button class="cast-id-btn" onclick="datingShowOpenCastId(' + JSON.stringify(_esc(speakerName)) + ');event.stopPropagation();" title="查看身份">' + _esc(speakerName) + '<span class="cast-id-badge">i</span></button>'
+        : '<div class="dating-show-log-speaker">' + _esc(speakerName) + '</div>';
+      return '<div class="dating-show-log-item ' + _esc(item.type || '') + '" data-log-idx="' + itemIdx + '" style="background:' + bg + '"><div class="dating-show-log-top">' + speakerHtml + '<div class="dating-show-log-type">' + typeLabel + '</div></div><div class="dating-show-log-body">' + _esc(item.text || '') + '</div>' + ((item.action || item.emotion) ? '<div class="dating-show-log-meta">' + (item.action ? '动作：' + _esc(item.action) : '') + (item.action && item.emotion ? ' · ' : '') + (item.emotion ? '表情：' + _esc(_datingEmotionZh(item.emotion)) : '') + '</div>' : '') + '</div>';
+    }).join('')})()
     + ((state.gameChoices && state.gameChoices.options && state.gameChoices.options.length)
         ? '<div style="margin:10px 0 4px;padding:14px 14px 10px;border-radius:18px;background:rgba(30,30,30,0.06);border:1.5px solid rgba(0,0,0,0.1);">'
           + '<div style="font-size:11px;font-weight:800;color:#111;margin-bottom:10px;line-height:1.6;">' + _esc(state.gameChoices.prompt || '请选择你的行动') + '</div>'
@@ -94412,5 +95487,88 @@ if (document.readyState === 'loading') {
   _mmObs.observe(document.body, { childList: true, subtree: false });
 })();
 </script>
+<script>
+// ── 观察室分屏拖拽调整 ──
+(function() {
+  var isDragging = false;
+  var startY = 0;
+  var startVh = 52;
+  var currentVh = 52;
+
+  function onDragStart(e) {
+    var handle = document.getElementById('obsResizeHandle');
+    if (!handle || !handle.classList.contains('active')) return;
+    isDragging = true;
+    startY = (e.touches ? e.touches[0].clientY : e.clientY);
+    startVh = currentVh;
+    e.preventDefault();
+  }
+  function onDragMove(e) {
+    if (!isDragging) return;
+    var y = (e.touches ? e.touches[0].clientY : e.clientY);
+    var delta = y - startY;
+    var vh = startVh + (delta / window.innerHeight * 100);
+    vh = Math.max(30, Math.min(70, vh));
+    currentVh = vh;
+    _obsApplySplit(vh);
+    e.preventDefault();
+  }
+  function onDragEnd() { isDragging = false; }
+
+  function _obsApplySplit(vh) {
+    var overlay = document.getElementById('obsRoomOverlay');
+    var handle = document.getElementById('obsResizeHandle');
+    var showPage = document.getElementById('datingPageShow');
+    if (overlay) overlay.style.height = vh + 'vh';
+    if (handle) handle.style.top = 'calc(' + vh + 'vh - 2px)';
+    if (showPage) {
+      showPage.style.setProperty('--obs-split-vh', vh + 'vh');
+      var scroll = showPage.querySelector('.dating-show-scroll');
+      if (scroll) scroll.style.paddingTop = 'calc(' + vh + 'vh + 8px)';
+      var composer = showPage.querySelector('.dating-show-composer');
+      if (composer && composer.style.display !== 'none') composer.style.paddingTop = vh + 'vh';
+    }
+  }
+
+  document.addEventListener('mousedown', onDragStart);
+  document.addEventListener('mousemove', onDragMove);
+  document.addEventListener('mouseup', onDragEnd);
+  document.addEventListener('touchstart', onDragStart, { passive: false });
+  document.addEventListener('touchmove', onDragMove, { passive: false });
+  document.addEventListener('touchend', onDragEnd);
+})();
+</script>
+<!-- ══ 观察室 OBSERVER ROOM OVERLAY ══ -->
+<div id="obsResizeHandle"></div>
+<div id="obsRoomOverlay">
+  <div class="obs-topbar">
+    <div class="obs-topbar-left">
+      <div class="obs-live-chip"><span style="width:6px;height:6px;border-radius:50%;background:#ff4060;animation:obsBlink 1.2s infinite;display:inline-block;"></span> LIVE</div>
+      <span class="obs-title-text">恋综观察室</span>
+      <div class="obs-scene-label" id="obsSceneLabel"><span class="obs-scene-dot"></span><span id="obsSceneLabelText">直播现场</span></div>
+    </div>
+    <div class="obs-topbar-right">
+      <button class="obs-close-btn" onclick="closeObsRoom()"><i class="fas fa-times"></i></button>
+    </div>
+  </div>
+  <div class="obs-role-strip" id="obsRoleStrip"></div>
+  <div class="obs-active-role-bar" id="obsActiveRoleBar">
+    <div class="obs-active-role-bar-name" id="obsActiveRoleName">—</div>
+    <div class="obs-active-role-bar-desc" id="obsActiveRoleDesc">—</div>
+  </div>
+  <div class="obs-prompt-pills" id="obsPromptPills"></div>
+  <div class="obs-feed" id="obsFeed">
+    <div class="obs-empty">
+      <div class="obs-empty-icon">🎬</div>
+      <div class="obs-empty-title">观察室待命中</div>
+      <div class="obs-empty-sub">选好视角，点击「解说当前剧情」开始直播间实时解说，或用快捷话题让观察员自由发挥。</div>
+    </div>
+  </div>
+  <div class="obs-action-bar">
+    <button class="obs-action-btn secondary" id="obsBtnPredict" onclick="obsRoomAct('predict')">预判感情线</button>
+    <button class="obs-action-btn primary" id="obsBtnComment" onclick="obsRoomAct('comment')">解说当前剧情</button>
+    <button class="obs-action-btn secondary" id="obsBtnDebate" onclick="obsRoomAct('debate')">开撕辩论</button>
+  </div>
+</div>
 </body>
 </html>

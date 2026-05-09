@@ -53833,6 +53833,8 @@ function datingShowDefaultState() {
     headline: '',
     usedGames: [],
     storyBeats: [],
+    analysisEpoch: 0,
+    aiAnalysisCache: {},
     updatedAt: 0,
     lastArchive: null
   };
@@ -54415,98 +54417,16 @@ function _datingShowNormalizeRelationships(lines) {
     return item && item.from && item.to && item.summary;
   }).slice(0, 8);
 }
-/* ── _datingShowApiRequest：与聊天软件完全共用 _compatibleChatCompletion ──
-   支持：OpenAI / Anthropic / Gemini / Azure / 任意 OpenAI 兼容接口
-   支持：Bearer / x-api-key / api-key / x-goog-api-key / query-key 多种认证
-   支持：SSE 流式响应自动收集、非 200 状态码友好错误提示
-   支持：JSON 容错解析（markdown fence / 截断修复 / 括号平衡）
-*/
 async function _datingShowApiRequest(prompt, maxTokens) {
   var api = _getCurrentActiveApiConfig();
   if (!api || !api.url || !api.key) throw new Error('请先在主 APP 设置里连接 API');
-
-  var payload = _applyApiModel({
-    messages: [{ role: 'user', content: String(prompt) }],
-    max_tokens: maxTokens || 2400,
-    temperature: 0.85,
-    stream: false
-  }, api.model);
-
-  /* 优先走聊天软件里的完整兼容层 */
-  var resp;
-  if (typeof _compatibleChatCompletion === 'function') {
-    resp = await _compatibleChatCompletion(api.url, api.key, payload);
-  } else {
-    /* 降级：简单 fetch（应该不会走到这里） */
-    resp = await fetch(_datingApiEndpoint(api), {
-      method: 'POST',
-      headers: _datingApiHeaders(api),
-      body: JSON.stringify(payload)
-    });
-  }
-
-  /* ── 响应文本提取：兼容 OpenAI / Anthropic / SSE / 纯文本 ── */
-  var rawText = '';
-  var ct = (resp.headers && resp.headers.get && resp.headers.get('content-type')) || '';
-
-  if (ct.includes('text/event-stream')) {
-    /* SSE 流：按行收集 delta.content */
-    rawText = await resp.text();
-    var collected = '';
-    rawText.split('\n').forEach(function(line) {
-      if (!line.startsWith('data:') || line.includes('[DONE]')) return;
-      try {
-        var chunk = JSON.parse(line.replace(/^data:\s*/, ''));
-        var delta = chunk && chunk.choices && chunk.choices[0] && chunk.choices[0].delta;
-        if (delta && delta.content) collected += delta.content;
-      } catch(e) {}
-    });
-    return collected.trim() || rawText.trim();
-  }
-
-  /* JSON 响应 */
-  var bodyText = '';
-  try { bodyText = await resp.text(); } catch(e) { bodyText = ''; }
-
-  if (!resp.ok) {
-    /* 解析错误信息 */
-    var errMsg = '请求失败（HTTP ' + resp.status + '）';
-    try {
-      var errJson = JSON.parse(bodyText);
-      var detail = (errJson && (
-        (errJson.error && (errJson.error.message || JSON.stringify(errJson.error))) ||
-        errJson.message || errJson.detail || errJson.msg
-      ));
-      if (detail) errMsg = String(detail);
-    } catch(e) {
-      if (bodyText && bodyText.length < 300) errMsg += '：' + bodyText.trim();
-    }
-    throw new Error(errMsg);
-  }
-
-  var data = null;
-  try { data = JSON.parse(bodyText); } catch(e) {
-    /* 可能是纯文本响应 */
-    return bodyText.trim();
-  }
-
-  /* OpenAI 格式 */
-  if (data && data.choices && data.choices[0]) {
-    var msg = data.choices[0].message || data.choices[0].delta || {};
-    return String(msg.content || '').trim();
-  }
-  /* Anthropic 格式 */
-  if (data && data.content && data.content[0]) {
-    return String(data.content[0].text || '').trim();
-  }
-  /* Gemini 原生格式 */
-  if (data && data.candidates && data.candidates[0]) {
-    var parts = data.candidates[0].content && data.candidates[0].content.parts;
-    if (parts && parts[0]) return String(parts[0].text || '').trim();
-  }
-  /* 其他格式：序列化后给上层 JSON parse */
-  if (data && data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-  return bodyText.trim();
+  var resp = await fetch(_datingApiEndpoint(api), {
+    method: 'POST',
+    headers: _datingApiHeaders(api),
+    body: JSON.stringify(_datingApiBody(api, prompt, maxTokens || 2400))
+  });
+  var data = await resp.json();
+  return _datingApiText(data);
 }
 async function startDatingShow() {
   if (!datingShowDraft) datingShowDraft = _datingShowBuildDraft('solo6');
@@ -54525,8 +54445,6 @@ async function startDatingShow() {
     return;
   }
   datingShowBusy = true;
-  // 新开局时清空所有嘉宾分析缓存
-  if (typeof window._castAIClearCache === 'function') window._castAIClearCache();
   _datingShowSetOverlay(true, '正在搭建恋综别墅', '正在根据你选择的模式、角色与当前 API 生成嘉宾阵容、主持人开场、弹幕和首日剧情。');
   try {
     var targetCount = draft.mode === 'solo6' ? 6 : 12;
@@ -54588,10 +54506,16 @@ async function startDatingShow() {
     datingShowState.headline = payload.headline || '节目开局';
     datingShowState.usedGames = [];
     datingShowState.storyBeats = [];
+    datingShowState.analysisEpoch = Date.now();
+    datingShowState.aiAnalysisCache = {};
+    window._castAiRuntimeCache = {};
     datingShowSave();
     closeDatingShowSetup();
     switchDatingPage(3);
     renderDatingShowPage();
+    setTimeout(function() {
+      if (typeof window._castAIPreseedAll === 'function') window._castAIPreseedAll();
+    }, 60);
   } catch(e) {
     alert('恋综开局生成失败：' + (e && e.message ? e.message : '请稍后再试'));
   } finally {
@@ -54659,8 +54583,6 @@ function _datingShowPickGame(state) {
 async function datingShowAdvance(kind, userInput) {
   if (!datingShowState || !datingShowState.active || datingShowBusy) return;
   datingShowBusy = true;
-  // 清空所有嘉宾 AI 分析缓存，让下次打开 i 按钮重新生成
-  if (typeof window._castAIClearCache === 'function') window._castAIClearCache();
   var inputText = String(userInput || '').trim();
   var state = datingShowState;
   if (kind === 'user' && inputText) {
@@ -54767,8 +54689,19 @@ async function datingShowAdvance(kind, userInput) {
     // Record this advance as a compact story beat for full-season memory
     if (!Array.isArray(state.storyBeats)) state.storyBeats = [];
     state.storyBeats.push(_datingExtractStoryBeat(payload, state, kind, pickedGame));
+    state.analysisEpoch = Date.now();
+    state.aiAnalysisCache = {};
+    window._castAiRuntimeCache = {};
     datingShowSave();
     renderDatingShowPage();
+    if (typeof window._castAIPreseedAll === 'function') {
+      window._castAIPreseedAll(window._castAiCurrentName || '');
+    }
+    if (window._castAiCurrentName && document.getElementById('castIdOverlay') && document.getElementById('castIdOverlay').classList.contains('open') && typeof window._castAIPreload === 'function') {
+      setTimeout(function() {
+        window._castAIPreload(window._castAiCurrentName, window._castAiActiveType || 'deep');
+      }, 90);
+    }
   } catch(e) {
     alert('恋综推进失败：' + (e && e.message ? e.message : '请稍后再试'));
   } finally {
@@ -94970,72 +94903,64 @@ if (document.readyState === 'loading') {
   letter-spacing: 1px;
 }
 
-/* ── AI Tab 标签栏 ── */
-.cast-id-ai-tabs {
+/* ── AI 按钮组（2列网格）── */
+.cast-id-ai-btn-group {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
-  gap: 0;
-  margin: 0 22px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  margin: 0 22px 12px;
 }
-.cast-id-ai-tab {
-  padding: 9px 4px 8px;
-  background: transparent;
-  color: rgba(255,255,255,0.32);
-  border: none;
-  border-bottom: 2px solid transparent;
-  font-size: 9px;
+.cast-id-ai-btn {
+  width: 100%;
+  padding: 13px 13px 11px;
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.65);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-top: 1px solid rgba(255,255,255,0.14);
+  border-radius: 10px;
+  font-size: 10.5px;
   font-weight: 700;
-  letter-spacing: 0.2px;
+  letter-spacing: 0.4px;
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  transition: background 0.16s, border-color 0.16s, transform 0.12s;
   font-family: inherit;
-  text-align: center;
-  line-height: 1.4;
-  transition: color 0.15s, border-color 0.15s;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  text-align: left;
+  line-height: 1.5;
   position: relative;
+  overflow: hidden;
 }
-.cast-id-ai-tab:hover { color: rgba(255,255,255,0.6); }
-.cast-id-ai-tab.active {
-  color: rgba(255,255,255,0.9);
-  border-bottom-color: rgba(255,255,255,0.7);
+.cast-id-ai-btn:hover {
+  background: rgba(255,255,255,0.09);
+  border-color: rgba(255,255,255,0.18);
+  color: rgba(255,255,255,0.85);
 }
-.cast-id-ai-tab.loading { color: rgba(255,255,255,0.4); }
-.cast-id-ai-tab.done { color: rgba(255,255,255,0.55); }
-/* 生成中小点 */
-.cast-id-ai-tab-dot {
-  display: inline-block;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.4);
-  margin-left: 3px;
-  vertical-align: middle;
-  animation: _castBlink 1.2s infinite;
+.cast-id-ai-btn:active { transform: scale(0.97); opacity: 0.75; }
+.cast-id-ai-btn:disabled { opacity: 0.22; cursor: not-allowed; }
+.cast-id-ai-btn.active {
+  background: rgba(255,255,255,0.14);
+  border-color: rgba(255,255,255,0.24);
+  color: rgba(255,255,255,0.94);
 }
+.cast-id-ai-btn-icon { display: none; }
 
-/* ── AI 结果区（多面板）── */
-.cast-id-ai-panels {
+/* ── AI 结果区 ── */
+.cast-id-ai-result {
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.09);
-  border-top: none;
-  border-radius: 0 0 12px 12px;
+  border-top: 1px solid rgba(255,255,255,0.15);
+  border-radius: 12px;
+  padding: 16px 16px;
   margin: 0 22px 12px;
-  min-height: 60px;
-}
-.cast-id-ai-panel {
-  display: none;
-  padding: 15px 16px;
   font-size: 12px;
   color: rgba(255,255,255,0.6);
   line-height: 1.85;
-  animation: castFadeUp 0.22s both ease;
+  display: none;
+  animation: castFadeUp 0.3s both ease;
 }
-.cast-id-ai-panel.active { display: block; }
-/* 旧单结果区兼容 */
-.cast-id-ai-result { display: none; }
 .cast-id-ai-result.visible { display: block; }
 .cast-id-ai-result-title {
   font-size: 8.5px;
@@ -95134,62 +95059,258 @@ if (document.readyState === 'loading') {
     }).length;
   }
 
-  /* ── AI 调用：与聊天软件 API 完全对齐 ──────────────────────────────
-     • 走 _datingShowApiRequest（内部已调用 _compatibleChatCompletion）
-     • 多端点重试 × 多认证方式 × Anthropic/OpenAI/Gemini 三格式提取
-     • SSE 流式自动收集 • 完整错误信息展示 • JSON 容错 parse
-  ── */
-  async function callAI(prompt, resultEl, titleText) {
+  var CAST_AI_TYPES = ['deep', 'next', 'relation', 'tagline'];
+  var CAST_AI_TITLES = {
+    deep: '深度人物解读',
+    next: '下一步行动预测',
+    relation: '与你的关系解读',
+    tagline: '嘉宾档案旁白'
+  };
+  var CAST_AI_BUTTON_IDS = {
+    deep: 'castAiDeep',
+    next: 'castAiNext',
+    relation: 'castAiRelation',
+    tagline: 'castAiTagline'
+  };
+
+  function castAiState() {
+    return window.datingShowState || (typeof datingShowState !== 'undefined' ? datingShowState : null) || {};
+  }
+
+  function castAiEpoch(state) {
+    return Number((state && state.analysisEpoch) || (state && state.updatedAt) || 0) || 0;
+  }
+
+  function castAiStore(state) {
+    if (!state.aiAnalysisCache || typeof state.aiAnalysisCache !== 'object') state.aiAnalysisCache = {};
+    return state.aiAnalysisCache;
+  }
+
+  function castAiRuntimeStore() {
+    if (!window._castAiRuntimeCache || typeof window._castAiRuntimeCache !== 'object') window._castAiRuntimeCache = {};
+    return window._castAiRuntimeCache;
+  }
+
+  function castAiCacheKey(name, epoch) {
+    return String(name || '') + '::' + String(epoch || 0);
+  }
+
+  function castAiGetEntry(state, name) {
+    var epoch = castAiEpoch(state);
+    var runtime = castAiRuntimeStore();
+    var key = castAiCacheKey(name, epoch);
+    if (runtime[key] && runtime[key].epoch === epoch) return runtime[key];
+    var stored = castAiStore(state)[name];
+    if (stored && stored.epoch === epoch && stored.deep && stored.next && stored.relation && stored.tagline) {
+      runtime[key] = stored;
+      return stored;
+    }
+    return null;
+  }
+
+  function castAiSetEntry(state, name, entry) {
+    var epoch = castAiEpoch(state);
+    entry.epoch = epoch;
+    castAiStore(state)[name] = entry;
+    castAiRuntimeStore()[castAiCacheKey(name, epoch)] = entry;
+    return entry;
+  }
+
+  function castAiSetButtons(activeType, disabled) {
+    CAST_AI_TYPES.forEach(function(type) {
+      var btn = document.getElementById(CAST_AI_BUTTON_IDS[type]);
+      if (!btn) return;
+      btn.disabled = !!disabled;
+      btn.classList.toggle('active', type === activeType);
+    });
+  }
+
+  function castAiRenderResult(name, type, entry) {
+    if (window._castAiCurrentName !== name) return;
+    var resultEl = document.getElementById('castAiResult');
+    if (!resultEl) return;
+    var text = entry && entry[type] ? String(entry[type]).trim() : '';
     resultEl.style.display = 'block';
     resultEl.className = 'cast-id-ai-result visible';
+    resultEl.innerHTML = '<div class="cast-id-ai-result-title">' + esc(CAST_AI_TITLES[type] || 'AI 分析') + '</div>'
+      + '<div>' + esc(text || '（结果为空，请重试）').replace(/\n/g, '<br>') + '</div>';
+    castAiSetButtons(type, false);
+  }
 
-    /* 加载态：闪烁点动画 */
-    resultEl.innerHTML = '<div class="cast-id-ai-result-title">' + esc(titleText) + '</div>'
-      + '<div style="color:rgba(255,255,255,0.30);font-size:11px;letter-spacing:1px;display:flex;align-items:center;gap:4px;">'
-      + '<span id="_castDot1" style="animation:_castBlink 1.2s infinite 0s;">●</span>'
-      + '<span id="_castDot2" style="animation:_castBlink 1.2s infinite 0.4s;">●</span>'
-      + '<span id="_castDot3" style="animation:_castBlink 1.2s infinite 0.8s;">●</span>'
-      + '<style>@keyframes _castBlink{0%,80%,100%{opacity:.15}40%{opacity:.9}}</style>'
-      + '</div>';
+  function castAiRenderLoading(name, type) {
+    if (window._castAiCurrentName !== name) return;
+    var resultEl = document.getElementById('castAiResult');
+    if (!resultEl) return;
+    resultEl.style.display = 'block';
+    resultEl.className = 'cast-id-ai-result visible';
+    resultEl.innerHTML = '<div class="cast-id-ai-result-title">' + esc(CAST_AI_TITLES[type] || 'AI 分析') + '</div>'
+      + '<div style="color:rgba(255,255,255,0.28);font-size:11px;letter-spacing:0.8px;">正在一次性生成 4 项分析…</div>';
+    castAiSetButtons(type, true);
+  }
+
+  function castAiRenderIdle(name, type, msg) {
+    if (window._castAiCurrentName !== name) return;
+    var resultEl = document.getElementById('castAiResult');
+    if (!resultEl) return;
+    resultEl.style.display = 'block';
+    resultEl.className = 'cast-id-ai-result visible';
+    resultEl.innerHTML = '<div class="cast-id-ai-result-title">' + esc(CAST_AI_TITLES[type] || 'AI 分析') + '</div>'
+      + '<div style="color:rgba(255,255,255,0.42);font-size:11px;line-height:1.8;">' + esc(msg || '当前还没有可查看的分析内容。请先让恋综剧情推进一轮。') + '</div>';
+    castAiSetButtons(type, false);
+  }
+
+  function castAiRenderError(name, type, msg) {
+    if (window._castAiCurrentName !== name) return;
+    var resultEl = document.getElementById('castAiResult');
+    if (!resultEl) return;
+    resultEl.style.display = 'block';
+    resultEl.className = 'cast-id-ai-result visible';
+    resultEl.innerHTML = '<div class="cast-id-ai-result-title">' + esc(CAST_AI_TITLES[type] || 'AI 分析') + '</div>'
+      + '<div style="color:rgba(255,90,90,0.8);font-size:11px;">' + esc(msg || '连接失败，请检查 API 设置后重试。') + '</div>';
+    castAiSetButtons(type, false);
+  }
+
+  function castAiNormalizeField(value, fallbackLabel) {
+    if (Array.isArray(value)) {
+      return value.map(function(item, idx) {
+        return typeof item === 'string' ? ((idx + 1) + '. ' + item) : '';
+      }).filter(Boolean).join('\n');
+    }
+    if (value && typeof value === 'object') {
+      return JSON.stringify(value);
+    }
+    var text = String(value || '').trim();
+    return text || fallbackLabel || '';
+  }
+
+  function castAiNormalizeBundle(raw) {
+    var obj = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+    return {
+      deep: castAiNormalizeField(obj.deep || obj.analysis || obj.character || obj['深度人物解读']),
+      next: castAiNormalizeField(obj.next || obj.prediction || obj.actions || obj['下一步行动预测']),
+      relation: castAiNormalizeField(obj.relation || obj.relationship || obj.userRelation || obj['与你的关系解读']),
+      tagline: castAiNormalizeField(obj.tagline || obj.narration || obj.caption || obj['嘉宾档案旁白'])
+    };
+  }
+
+  async function castAiBatchRequest(prompt, maxTokens) {
+    var api = typeof _getCurrentActiveApiConfig === 'function' ? _getCurrentActiveApiConfig() : (typeof apiConfig !== 'undefined' ? apiConfig : {});
+    if (!api || !api.url || !api.key) throw new Error('请先在主 APP 设置里连接 API');
+    var payload = _applyApiModel({
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.82,
+      max_tokens: maxTokens || 1800,
+      stream: false
+    }, api.model);
+    var resp;
+    if (typeof _compatibleChatCompletion === 'function') {
+      resp = await _compatibleChatCompletion(api.url, api.key, payload, {});
+    } else {
+      var endpoint = (typeof _buildApiChatCandidates === 'function' ? (_buildApiChatCandidates(api.url)[0] || '') : '');
+      if (!endpoint) endpoint = String(api.url || '').replace(/\/+$/, '') + '/chat/completions';
+      resp = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + api.key },
+        body: JSON.stringify(payload)
+      });
+    }
+    if (!resp || !resp.ok) {
+      var errText = resp && typeof resp.text === 'function' ? await resp.text().catch(function(){ return ''; }) : '';
+      throw new Error('API 请求失败：' + (resp ? resp.status : '未知错误') + (errText ? (' ' + errText.slice(0, 160)) : ''));
+    }
+    var data = await resp.json();
+    return typeof _extractAssistantMessageContent === 'function' ? _extractAssistantMessageContent(data).trim() : _datingApiText(data);
+  }
+
+  async function castAiGenerateEntry(name, epoch) {
+    var liveState = castAiState();
+    if (castAiEpoch(liveState) !== epoch) return null;
+    var existing = castAiGetEntry(liveState, name);
+    if (existing) return existing;
+
+    window._castAiPending = window._castAiPending || {};
+    if (window._castAiPending[name] && window._castAiPending[name].epoch === epoch) {
+      try {
+        return await window._castAiPending[name].promise;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    var participants = liveState.participants || [];
+    var p = participants.find(function(x){ return x.name === name; });
+    if (!p) return null;
+    var prompt = castAiBuildPrompt(name, liveState, p);
+
+    var job = (async function() {
+      var rawText = await castAiBatchRequest(prompt, 1800);
+      var parsed = typeof _parseJsonFromText === 'function'
+        ? _parseJsonFromText(rawText, {}, 'object')
+        : (function(){ try { return JSON.parse(rawText); } catch(e) { return {}; } })();
+      var bundle = castAiNormalizeBundle(parsed);
+      if (!bundle.deep || !bundle.next || !bundle.relation || !bundle.tagline) {
+        throw new Error('AI 返回内容无法完整解析为四个分析标签。');
+      }
+      var stateNow = castAiState();
+      if (castAiEpoch(stateNow) !== epoch) return null;
+      bundle.updatedAt = Date.now();
+      bundle.lastType = window._castAiActiveType || 'deep';
+      castAiSetEntry(stateNow, name, bundle);
+      if (typeof datingShowSave === 'function') datingShowSave();
+      if (window._castAiCurrentName === name) {
+        castAiRenderResult(name, window._castAiActiveType || 'deep', bundle);
+      }
+      return bundle;
+    })();
+
+    window._castAiPending[name] = { epoch: epoch, promise: job };
 
     try {
-      /* 核心调用：走完整多接口兼容层 */
-      var text = await _datingShowApiRequest(prompt, 800);
-
-      /* 容错 JSON strip：有些接口会把纯文本套在 ```json``` 里返回 */
-      if (typeof text === 'string') {
-        text = text
-          .replace(/^```json\s*/i, '')
-          .replace(/^```\s*/,      '')
-          .replace(/\s*```$/,      '')
-          .trim();
-        /* 如果剩下的是 JSON 对象/数组，尝试取 text / content / result 字段 */
-        if (text.startsWith('{') || text.startsWith('[')) {
-          try {
-            var parsed = JSON.parse(text);
-            if (parsed && typeof parsed === 'object') {
-              text = parsed.text || parsed.content || parsed.result ||
-                     parsed.output || parsed.response || parsed.reply ||
-                     (typeof parsed === 'string' ? parsed : text);
-            }
-          } catch(e2) { /* 保持原文 */ }
-        }
+      return await job;
+    } catch (e) {
+      if (window._castAiCurrentName === name) {
+        castAiRenderError(name, window._castAiActiveType || 'deep', (e && e.message) ? e.message : '连接失败，请检查 API 设置后重试。');
       }
-
-      resultEl.innerHTML = '<div class="cast-id-ai-result-title">' + esc(titleText) + '</div>'
-        + '<div style="line-height:1.7;">'
-        + esc(text || '（结果为空，请检查 API 设置后重试）').replace(/\n/g, '<br>')
-        + '</div>';
-
-    } catch(e) {
-      var msg = (e && e.message) ? e.message : '连接失败，请检查 API 设置后重试。';
-      /* 截断过长错误（如 JSON 原文被塞进 message） */
-      if (msg.length > 200) msg = msg.slice(0, 200) + '…';
-      resultEl.innerHTML = '<div class="cast-id-ai-result-title">' + esc(titleText) + '</div>'
-        + '<div style="color:rgba(255,100,100,0.9);font-size:11px;line-height:1.6;">'
-        + '<span style="font-size:13px;">⚠️</span> ' + esc(msg)
-        + '</div>';
+      throw e;
+    } finally {
+      if (window._castAiPending[name] && window._castAiPending[name].epoch === epoch) {
+        delete window._castAiPending[name];
+      }
     }
+  }
+
+  function castAiBuildPrompt(name, state, p) {
+    var stats = p.stats || {};
+    var userName = (state.userProfile && state.userProfile.name) || '你';
+    var relationships = state.relationships || [];
+    var relDesc = relationships.filter(function(r){ return r.from===name || r.to===name; })
+      .map(function(r){ return r.from+'→'+r.to+'（'+(r.status||'')+' 热度'+(r.heat||0)+'）：'+(r.summary||''); })
+      .join('\n');
+    var recentLogs = getRecentLogs(name, state.logs || []).map(function(item) {
+      var meta = [item.type || 'character', item.speaker || '', item.action || ''].filter(Boolean).join(' · ');
+      return meta + '：' + String(item.text || '').slice(0, 100);
+    }).join('\n');
+    var charBase = '嘉宾：'+name
+      + '\n人设：'+(p.intro||p.personality||'无')
+      + '\n心情：'+(p.currentMood||'未知')
+      + '\n心动：'+(p.currentCrush||'暂无')
+      + '\n独白：'+(p.innerVoice||'无')
+      + '\n好感度：'+(stats.favor||0)
+      + '\n醋意：'+(stats.jealousy||0)
+      + '\n占有欲：'+(stats.possession||0)
+      + '\n心机值：'+(stats.mindgame||0)
+      + '\n感情线：\n'+(relDesc||'暂无')
+      + '\n近期动向：\n'+(recentLogs||'暂无');
+    return '你是恋综人物分析总控，请根据以下嘉宾数据，一次性生成 4 个分析字段，并且只返回 JSON 对象，不要解释，不要 markdown，不要代码块。'
+      + '\nJSON 格式必须是：{"deep":"","next":"","relation":"","tagline":""}'
+      + '\n要求：'
+      + '\n1. deep：150字左右，犀利真实，像娱乐评论员专栏。'
+      + '\n2. next：预测接下来3步最可能行动；用换行分成3条，每条一句并带原因。'
+      + '\n3. relation：专门分析嘉宾「'+name+'」对用户「'+userName+'」的真实态度，约120字。'
+      + '\n4. tagline：一句20字内的综艺档案旁白。'
+      + '\n5. 所有字段都必须是简体中文字符串；如果字段里有引号要正确转义。'
+      + '\n6. 不允许输出 JSON 以外的任何内容。'
+      + '\n\n嘉宾资料如下：\n' + charBase;
   }
 
   /* ── 主函数（覆盖原版） ─────────────────────────────────── */
@@ -95303,21 +95424,17 @@ if (document.readyState === 'loading') {
           }).join('');
     }
 
-    /* AI Tab区域 */
-    var _pn = esc(p.name);
+    var safeName = esc(p.name || '').replace(/'/g, "\\'");
+
+    /* AI 按钮组 */
     var aiHtml = '<div class="cast-id-section-title">AI 深度分析</div>'
-      +'<div class="cast-id-ai-tabs" id="castAiTabs">'
-      +'<button class="cast-id-ai-tab active" id="castAiTabDeep"     onclick="window._castAISwitchTab(\'deep\')"    >深度解读<span class="cast-id-ai-tab-dot" id="castAiDotDeep"></span></button>'
-      +'<button class="cast-id-ai-tab"        id="castAiTabNext"     onclick="window._castAISwitchTab(\'next\')"    >行动预测<span class="cast-id-ai-tab-dot" id="castAiDotNext"></span></button>'
-      +'<button class="cast-id-ai-tab"        id="castAiTabRelation" onclick="window._castAISwitchTab(\'relation\')" >关系解读<span class="cast-id-ai-tab-dot" id="castAiDotRelation"></span></button>'
-      +'<button class="cast-id-ai-tab"        id="castAiTabTagline"  onclick="window._castAISwitchTab(\'tagline\')" >档案旁白<span class="cast-id-ai-tab-dot" id="castAiDotTagline"></span></button>'
+      +'<div class="cast-id-ai-btn-group">'
+      +'<button class="cast-id-ai-btn" id="castAiDeep"     onclick="window._castAISwitch(\'deep\',\''+safeName+'\')"    >深度人物解读</button>'
+      +'<button class="cast-id-ai-btn" id="castAiNext"     onclick="window._castAISwitch(\'next\',\''+safeName+'\')"    >下一步行动预测</button>'
+      +'<button class="cast-id-ai-btn" id="castAiRelation" onclick="window._castAISwitch(\'relation\',\''+safeName+'\')" >与你的关系解读</button>'
+      +'<button class="cast-id-ai-btn" id="castAiTagline"  onclick="window._castAISwitch(\'tagline\',\''+safeName+'\')" >生成档案旁白</button>'
       +'</div>'
-      +'<div class="cast-id-ai-panels">'
-      +'<div class="cast-id-ai-panel active" id="castAiPanelDeep"></div>'
-      +'<div class="cast-id-ai-panel"        id="castAiPanelNext"></div>'
-      +'<div class="cast-id-ai-panel"        id="castAiPanelRelation"></div>'
-      +'<div class="cast-id-ai-panel"        id="castAiPanelTagline"></div>'
-      +'</div>';
+      +'<div class="cast-id-ai-result" id="castAiResult"></div>';
 
     /* 组装 */
     box.innerHTML =
@@ -95338,163 +95455,104 @@ if (document.readyState === 'loading') {
       +'<button class="cast-id-close-btn" onclick="window.datingShowCloseCastId()">关闭</button>';
 
     overlay.classList.add('open');
-
-    // 打开面板后立即并行生成全部四项
-    setTimeout(function(){ window._castAIGenerateAll(p.name); }, 120);
+    window._castAiCurrentName = p.name;
+    window._castAiActiveType = 'deep';
+    setTimeout(function(){ window._castAIPreload(p.name, 'deep'); }, 120);
   };
 
-  /* ── AI 分析缓存（key = 嘉宾名称，每次推动剧情后会清空）── */
-  window._castAICache = {};
-
-  /* ── Tab 切换（仅切换显示，不触发生成）── */
-  window._castAISwitchTab = function(type) {
-    var types = ['deep','next','relation','tagline'];
-    types.forEach(function(t) {
-      var tab   = document.getElementById('castAiTab'   + t.charAt(0).toUpperCase() + t.slice(1));
-      var panel = document.getElementById('castAiPanel' + t.charAt(0).toUpperCase() + t.slice(1));
-      if (tab)   tab.classList.toggle('active',   t === type);
-      if (panel) panel.classList.toggle('active', t === type);
-    });
-  };
-
-  /* ── 单项渲染到面板 ── */
-  function _castAIRenderPanel(type, html) {
-    var ids = { deep:'Deep', next:'Next', relation:'Relation', tagline:'Tagline' };
-    var key = ids[type];
-    var panel = document.getElementById('castAiPanel' + key);
-    var dot   = document.getElementById('castAiDot'   + key);
-    var tab   = document.getElementById('castAiTab'   + key);
-    if (panel) panel.innerHTML = html;
-    if (dot)   dot.style.display = 'none';
-    if (tab)   { tab.classList.remove('loading'); tab.classList.add('done'); }
-  }
-
-  /* ── 生成单项（带加载态）── */
-  async function _castAIGenerateOne(type, prompts) {
-    var ids = { deep:'Deep', next:'Next', relation:'Relation', tagline:'Tagline' };
-    var key = ids[type];
-    var panel = document.getElementById('castAiPanel' + key);
-    var dot   = document.getElementById('castAiDot'   + key);
-    var tab   = document.getElementById('castAiTab'   + key);
-    if (!panel) return '';
-
-    // 加载态
-    if (dot) dot.style.display = 'inline-block';
-    if (tab) tab.classList.add('loading');
-    panel.innerHTML = '<div style="color:rgba(255,255,255,0.22);font-size:11px;padding:4px 0;display:flex;align-items:center;gap:5px;">'
-      +'<span style="animation:_castBlink 1.2s infinite 0s;">●</span>'
-      +'<span style="animation:_castBlink 1.2s infinite 0.4s;">●</span>'
-      +'<span style="animation:_castBlink 1.2s infinite 0.8s;">●</span>'
-      +'<style>@keyframes _castBlink{0%,80%,100%{opacity:.15}40%{opacity:.9}}</style>'
-      +'</div>';
-
-    var text = '';
-    try {
-      text = await _datingShowApiRequest(prompts[type], 800);
-      if (typeof text === 'string') {
-        text = text.replace(/^```json\s*/i,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
-        if (text.startsWith('{') || text.startsWith('[')) {
-          try {
-            var parsed = JSON.parse(text);
-            if (parsed && typeof parsed === 'object') {
-              text = parsed.text||parsed.content||parsed.result||parsed.output||parsed.response||parsed.reply||(typeof parsed==='string'?parsed:text);
-            }
-          } catch(e2) {}
-        }
-      }
-      var html = '<div style="line-height:1.75;">' + esc(text||'（结果为空，请重试）').replace(/
-/g,'<br>') + '</div>';
-      _castAIRenderPanel(type, html);
-      return text;
-    } catch(e) {
-      var msg = (e && e.message) ? e.message : '连接失败';
-      if (msg.length > 200) msg = msg.slice(0,200)+'…';
-      var errHtml = '<div style="color:rgba(255,100,100,0.9);font-size:11px;">⚠️ ' + esc(msg) + '</div>';
-      _castAIRenderPanel(type, errHtml);
-      return '';
-    }
-  }
-
-  /* ── 并行生成全部四项，结果缓存到 _castAICache[name] ── */
-  window._castAIGenerateAll = async function(name) {
-    var state = window.datingShowState || (typeof datingShowState !== 'undefined' ? datingShowState : null) || {};
+  window._castAIPreload = async function(name, preferredType) {
+    var state = castAiState();
     var participants = state.participants || [];
-    var relationships = state.relationships || [];
-    var p = participants.find(function(x){ return x.name===name; });
-    if (!p) return;
+    var p = participants.find(function(x){ return x.name === name; });
+    if (!p) return null;
 
-    // 如果有缓存，直接渲染，不重新生成
-    var cached = window._castAICache[name];
+    var activeType = CAST_AI_TITLES[preferredType] ? preferredType : (window._castAiActiveType || 'deep');
+    window._castAiCurrentName = name;
+    window._castAiActiveType = activeType;
+
+    var epoch = castAiEpoch(state);
+    var cached = castAiGetEntry(state, name);
     if (cached) {
-      var types = ['deep','next','relation','tagline'];
-      var ids   = { deep:'Deep', next:'Next', relation:'Relation', tagline:'Tagline' };
-      types.forEach(function(t) {
-        var panel = document.getElementById('castAiPanel' + ids[t]);
-        var dot   = document.getElementById('castAiDot'   + ids[t]);
-        var tab   = document.getElementById('castAiTab'   + ids[t]);
-        if (panel && cached[t]) {
-          panel.innerHTML = '<div style="line-height:1.75;">' + esc(cached[t]).replace(/
-/g,'<br>') + '</div>';
-        }
-        if (dot) dot.style.display = 'none';
-        if (tab) { tab.classList.remove('loading'); tab.classList.add('done'); }
-      });
+      cached.lastType = activeType;
+      castAiRenderResult(name, activeType, cached);
+      return cached;
+    }
+
+    window._castAiPending = window._castAiPending || {};
+    if (window._castAiPending[name] && window._castAiPending[name].epoch === epoch) {
+      castAiRenderLoading(name, activeType);
+      try {
+        await window._castAiPending[name].promise;
+      } catch (e) {}
+      var waited = castAiGetEntry(state, name);
+      if (waited) {
+        castAiRenderResult(name, activeType, waited);
+        return waited;
+      }
+      castAiRenderIdle(name, activeType, '本轮剧情的分析生成还没完成，请稍等。');
+      return null;
+    }
+
+    castAiRenderIdle(name, activeType, '这个嘉宾的分析不会在你点开标签时重新生成。请先点击“开始恋综 / 继续生成 / 推动剧情”，系统会在那时后台整组更新。');
+    return null;
+  };
+
+  window._castAISwitch = function(type, name) {
+    var activeType = CAST_AI_TITLES[type] ? type : 'deep';
+    window._castAiCurrentName = name;
+    window._castAiActiveType = activeType;
+    var state = castAiState();
+    var cached = castAiGetEntry(state, name);
+    if (cached && cached[activeType]) {
+      cached.lastType = activeType;
+      castAiRenderResult(name, activeType, cached);
       return;
     }
+    window._castAIPreload(name, activeType);
+  };
 
-    var stats = p.stats || {};
-    var userName = (state.userProfile && state.userProfile.name) || '你';
-    var relDesc = (relationships||[]).filter(function(r){ return r.from===name||r.to===name; })
-      .map(function(r){ return r.from+'→'+r.to+'（'+(r.status||'')+' 热度'+(r.heat||0)+'）：'+(r.summary||''); }).join('
-');
-    var charBase = '嘉宾：'+name+'
-人设：'+(p.intro||p.personality||'无')+'
-心情：'+(p.currentMood||'未知')+'
-心动：'+(p.currentCrush||'暂无')+'
-独白：'+(p.innerVoice||'无')+'
-好感度：'+(stats.favor||0)+' 醋意：'+(stats.jealousy||0)+' 占有欲：'+(stats.possession||0)+' 心机值：'+(stats.mindgame||0)+'
-感情线：
-'+(relDesc||'暂无');
+  window._castAIPreseedAll = function(priorityName) {
+    var state = castAiState();
+    var epoch = castAiEpoch(state);
+    var participants = (state.participants || []).filter(function(item) {
+      return item && item.name;
+    });
+    if (!participants.length) return Promise.resolve();
 
-    var prompts = {
-      deep:     '你是一个恋综深度分析师。根据以下嘉宾数据，用简体中文写150字左右的人物深度解读，语气犀利真实，像娱乐评论员专栏风格。直接输出段落，不加标题。
+    var names = participants.map(function(item){ return item.name; });
+    if (priorityName) {
+      names = [priorityName].concat(names.filter(function(name){ return name !== priorityName; }));
+    }
 
-'+charBase,
-      next:     '你是一个恋综剧情预测师。根据以下嘉宾数据，预测 TA 接下来3步最可能做的具体行动（每步一句，带分析原因），用简体中文，语气像节目内部导演分析。
+    if (window._castAiPreseedRun && window._castAiPreseedRun.epoch === epoch) {
+      return window._castAiPreseedRun.promise;
+    }
 
-'+charBase,
-      relation: '你是一个恋综关系分析师。根据以下数据，专门分析嘉宾「'+name+'」对用户「'+userName+'」的真实态度：是真心、策略性接近、还是只是维持礼貌？有没有潜在风险？用简体中文，约120字，直接写段落。
+    var job = (async function() {
+      for (var i = 0; i < names.length; i++) {
+        if (castAiEpoch(castAiState()) !== epoch) break;
+        try {
+          await castAiGenerateEntry(names[i], epoch);
+        } catch (e) {}
+      }
+      return true;
+    })();
 
-'+charBase,
-      tagline:  '你是一个综艺节目策划。根据以下嘉宾数据，为 TA 生成一句"档案旁白"（20字内），风格像综艺花字或人物定场词，犀利、有记忆点、直击人物本质。只输出这一句话，不加任何说明。
+    window._castAiPreseedRun = { epoch: epoch, promise: job };
+    return job;
+  };
 
-'+charBase
+  window._castAI = window._castAISwitch;
+
+  if (typeof window.datingShowCloseCastId === 'function') {
+    var _datingShowCloseCastIdOriginal = window.datingShowCloseCastId;
+    window.datingShowCloseCastId = function() {
+      window._castAiCurrentName = '';
+      window._castAiActiveType = 'deep';
+      return _datingShowCloseCastIdOriginal.apply(this, arguments);
     };
+  }
 
-    // 四项并行发起，互不等待
-    var results = {};
-    var types = ['deep','next','relation','tagline'];
-    await Promise.all(types.map(async function(t) {
-      var text = await _castAIGenerateOne(t, prompts);
-      results[t] = text;
-    }));
-
-    // 缓存结果
-    window._castAICache[name] = results;
-  };
-
-  /* ── 保留旧接口兼容（外部代码可能调用 _castAI，但现在不再重新生成）── */
-  window._castAI = function(type, name) {
-    // 仅切换 tab，生成已在 generateAll 完成
-    window._castAISwitchTab(type);
-  };
-
-  /* ── 清除某嘉宾缓存（推动剧情时调用，让下次打开重新生成）── */
-  window._castAIClearCache = function(name) {
-    if (name) { delete window._castAICache[name]; }
-    else { window._castAICache = {}; }
-  };
-
-  console.log('[增强 i 按钮 v4] 全分析模块已加载 ✓ | Tab式UI | 四项并行生成 | 缓存复用 | 推动剧情后自动失效');
+  console.log('[增强 i 按钮 v2] 全分析模块已加载 ✓');
 })();
 </script>

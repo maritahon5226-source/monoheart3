@@ -23116,16 +23116,40 @@ window._monoMemoryFilter = 'all';
 function _monoMemoryCategory(item) {
   if (!item || typeof item !== 'object') return 'add';
   const source = item.source || '';
+
+  // 手动添加（明确标注）
   if (source === '手动添加') return 'add';
-  if (source === '手动总结' || (!item.auto && (item._summaryMode === 'manual' || item._summaryMode === 'manual-range'))) return 'manual';
-  if (/^每\d+轮自动总结/.test(source)) return 'auto';
+
+  // 手动总结 / 范围总结
+  if (/^手动总结/.test(source) || source === '按日期总结' || source === '范围总结'
+      || (!item.auto && (item._summaryMode === 'manual' || item._summaryMode === 'manual-range'))) return 'manual';
+
+  // 自动总结（每N轮）
+  if (/^每\d+轮自动总结/.test(source) || source === '自动总结') return 'auto';
+
+  // AI自刻记忆
   if (source === 'AI自刻记忆') return 'ai_write';
-  if (source === '通话记录') return 'call';
-  if (source === '线下剧情' || /^线下剧情/.test(source) || item._offlineMemoryType) return 'offline';
-  if (source === '论坛' || item._forumMemoryKey) return 'forum';
-  if (source === '反向查岗' || source === '情侣空间' || source === '角色间私聊') return 'interact';
-  if (source === '朋友圈') return 'moments';
+
+  // 通话记录
+  if (source === '通话记录' || source === '通话') return 'call';
+
+  // 线下剧情（source前缀匹配 或 _offlineMemoryType标记）
+  if (/^线下剧情/.test(source) || item._offlineMemoryType) return 'offline';
+
+  // 论坛（source前缀匹配 或 _forumMemoryKey标记）
+  if (/^论坛/.test(source) || item._forumMemoryKey) return 'forum';
+
+  // 互动类（反向查岗 / 情侣空间 / 角色间私聊）
+  if (source === '反向查岗' || source === '情侣空间' || source === '角色间私聊'
+      || source === '角色间对话' || source === '群聊记忆') return 'interact';
+
+  // 朋友圈
+  if (source === '朋友圈' || /^朋友圈/.test(source)) return 'moments';
+
+  // 自动生成（通用fallback）
   if (item.auto) return 'auto';
+
+  // 其余无source且非auto → 手动添加
   return 'add';
 }
 function _monoMemoryCategoryColor(cat) {

@@ -294,15 +294,6 @@ self.addEventListener('activate', e => {
 });
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
-  // 拦截 manifest.json 请求，直接返回内嵌的 manifest 内容（解决 blob: URL 不被浏览器接受的问题）
-  const reqUrl = new URL(e.request.url);
-  if (reqUrl.pathname.endsWith('/manifest.json')) {
-    e.respondWith(new Response(MANIFEST_JSON, {
-      status: 200,
-      headers: { 'Content-Type': 'application/manifest+json' }
-    }));
-    return;
-  }
   e.respondWith(
     fetch(e.request).catch(() => caches.match(e.request).then(r => r || fetch(e.request)))
   );

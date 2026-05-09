@@ -22271,6 +22271,14 @@ body.editor-modal-open #chatPage .app-back-bar {
         <button type="button" onclick="monoFilterMemory('interact')" id="monoMemFilter_interact" style="border:none;border-radius:999px;padding:4px 12px;font-size:11px;cursor:pointer;font-family:inherit;background:#f4f4f4;color:#555;">互动</button>
         <button type="button" onclick="monoFilterMemory('moments')" id="monoMemFilter_moments" style="border:none;border-radius:999px;padding:4px 12px;font-size:11px;cursor:pointer;font-family:inherit;background:#f4f4f4;color:#555;">朋友圈</button>
       </div>
+      <!-- 按日期跳转 -->
+      <div id="memoryCoreDateJumpWrap" style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
+        <span style="font-size:10px;color:#aaa;white-space:nowrap;">跳转到日期：</span>
+        <select id="memoryCoreJumpDateSelect" onchange="monoJumpMemoryToDate(this.value)" style="flex:1;min-width:0;border:1px solid #e0e0e0;border-radius:8px;padding:4px 8px;font-size:11px;font-family:inherit;background:#fafafa;color:#444;cursor:pointer;">
+          <option value="">-- 选择日期 --</option>
+        </select>
+        <button type="button" onclick="monoJumpMemoryToDate('')" style="border:none;background:#f4f4f4;color:#888;border-radius:6px;padding:3px 8px;font-size:10px;cursor:pointer;font-family:inherit;">清除</button>
+      </div>
       <!-- 记忆列表 -->
       <div id="memoryCoreList" style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;"></div>
       <p id="memoryCoreEmpty" style="font-size:10px;color:#ccc;text-align:center;padding:12px 0;display:none;">还没有任何核心记忆。</p>
@@ -22622,6 +22630,7 @@ function _monoMemoryCategoryColor(cat) {
 }
 function monoFilterMemory(type) {
   window._monoMemoryFilter = type || 'all';
+  window._monoMemoryJumpDate = ''; // 切换分类时清除日期跳转
   ['all','auto','manual','add','ai_write','offline','call','forum','interact','moments'].forEach(function(t) {
     const btn = document.getElementById('monoMemFilter_' + t);
     if (!btn) return;
@@ -22631,17 +22640,49 @@ function monoFilterMemory(type) {
   const p = personas.find(function(x) { return x.id == currentId; });
   if (p) renderMemoryCoreList(p.memoryCore);
 }
+function monoJumpMemoryToDate(dateVal) {
+  window._monoMemoryJumpDate = dateVal || '';
+  const p = personas.find(function(x) { return x.id == currentId; });
+  if (p) {
+    renderMemoryCoreList(p.memoryCore);
+    // 跳到列表顶部
+    const listEl = document.getElementById('memoryCoreList');
+    if (listEl) listEl.scrollTop = 0;
+  }
+}
 function renderMemoryCoreList(items) {
   const list = document.getElementById('memoryCoreList');
   const empty = document.getElementById('memoryCoreEmpty');
   if (!list) return;
   list.innerHTML = '';
   const filter = window._monoMemoryFilter || 'all';
+  const jumpDate = window._monoMemoryJumpDate || '';
   const indexMap = [];
   (items || []).forEach(function(item, idx) {
     const cat = _monoMemoryCategory(item);
-    if (filter === 'all' || cat === filter) indexMap.push(idx);
+    if (filter !== 'all' && cat !== filter) return;
+    if (jumpDate) {
+      const itemDate = typeof item === 'object' && item.date ? item.date.replace(/\//g, '-') : '';
+      if (!itemDate.startsWith(jumpDate)) return;
+    }
+    indexMap.push(idx);
   });
+  // 填充日期跳转下拉框（收集全部日期，去重排序）
+  const jumpSelect = document.getElementById('memoryCoreJumpDateSelect');
+  if (jumpSelect) {
+    const allDates = new Set();
+    (items || []).forEach(function(item) {
+      const cat = _monoMemoryCategory(item);
+      if (filter !== 'all' && cat !== filter) return;
+      if (typeof item === 'object' && item.date) allDates.add(item.date.replace(/\//g, '-').slice(0, 10));
+    });
+    const sortedDates = Array.from(allDates).filter(Boolean).sort().reverse();
+    const prevVal = jumpSelect.value;
+    jumpSelect.innerHTML = '<option value="">-- 跳转到日期 --</option>'
+      + sortedDates.map(function(d) {
+          return '<option value="' + d + '"' + (d === prevVal ? ' selected' : '') + '>' + d + '</option>';
+        }).join('');
+  }
   if (!indexMap.length) {
     if (empty) empty.style.display = 'block';
     return;
@@ -32164,6 +32205,7 @@ function postMoments() {
     authorType: authorIdentity.maskId ? 'mask' : 'user',
     authorProfileName: authorIdentity.momentsNickname || authorIdentity.name,
     userMaskId: authorIdentity.maskId || '',
+    isAnonymous: false,
     content: content || '',
     images: hasImage ? [_momentsPendingImage] : [],
     imageDescs: hasImage ? [_momentsPendingImageDesc] : [],
@@ -32182,7 +32224,11 @@ function postMoments() {
   if (typeof taskTrackMomentPost === 'function') taskTrackMomentPost(newPost.time);
   if (currentId) {
     const p = personas.find(x => x.id == currentId);
-    if (p && Math.random() > 0.3) {
+    // 面具匹配：只有角色绑定面具与发帖身份面具一致的角色才点赞
+    const _postMaskId = newPost.userMaskId || '';
+    const _pMaskId = p ? String(p.userMaskId || '') : '';
+    const _likeAllowed = _postMaskId === '' ? _pMaskId === '' : _pMaskId === _postMaskId;
+    if (p && _likeAllowed && Math.random() > 0.3) {
       setTimeout(() => {
         const item = momentsData.find(m => m.id === newPost.id);
         if (item) {
@@ -32195,6 +32241,12 @@ function postMoments() {
     }
   }
   if (currentId && apiConfig.url && apiConfig.key && apiConfig.model) {
+    // 面具匹配检查：只有面具匹配的角色才评论
+    const _commentPersona = personas.find(x => x.id == currentId);
+    const _cPostMaskId = newPost.userMaskId || '';
+    const _cPMaskId = _commentPersona ? String(_commentPersona.userMaskId || '') : '';
+    const _commentAllowed = _cPostMaskId === '' ? _cPMaskId === '' : _cPMaskId === _cPostMaskId;
+    if (!_commentAllowed) return;
     setTimeout(async () => {
       // Build context including image description if available
       const imageContext = (newPost.imageDescs && newPost.imageDescs[0])
@@ -32215,13 +32267,21 @@ function postMoments() {
           localStorage.setItem('mono_moments', JSON.stringify(momentsData));
           renderMoments();
           // 写入记忆：用户发了什么 + 角色自己评论了什么
+          // 规则：只有「角色绑定的userMaskId与发帖面具匹配」的角色才写入核心记忆。
+          //       - 发帖身份为默认用户资料（无面具）时，角色的 userMaskId 也必须为空才写入。
+          //       - 发帖身份为某面具时，只有该角色的 userMaskId === 发布面具ID 才写入。
           if (commentText) {
-            if (!p.memoryCore) p.memoryCore = [];
-            const now = new Date();
-            const ds = now.getFullYear() + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + String(now.getDate()).padStart(2,'0');
-            const postSummary = (content || '') + (newPost.imageDescs && newPost.imageDescs[0] ? '（附图：' + newPost.imageDescs[0] + '）' : '');
-            p.memoryCore.push({ content: authorIdentity.name + '在朋友圈发了：「' + postSummary + '」，我评论了：「' + commentText + '」', date: ds, auto: true, source: '朋友圈' });
-            if (typeof saveData === 'function') saveData();
+            const postMaskId = newPost.userMaskId || '';
+            const personaMaskId = String(p.userMaskId || '');
+            const maskMatches = postMaskId === '' ? personaMaskId === '' : personaMaskId === postMaskId;
+            if (maskMatches) {
+              if (!p.memoryCore) p.memoryCore = [];
+              const now = new Date();
+              const ds = now.getFullYear() + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + String(now.getDate()).padStart(2,'0');
+              const postSummary = (content || '') + (newPost.imageDescs && newPost.imageDescs[0] ? '（附图：' + newPost.imageDescs[0] + '）' : '');
+              p.memoryCore.push({ content: authorIdentity.name + '在朋友圈发了：「' + postSummary + '」，我评论了：「' + commentText + '」', date: ds, auto: true, source: '朋友圈' });
+              if (typeof saveData === 'function') saveData();
+            }
           }
         }
       }
@@ -32235,6 +32295,12 @@ async function maybeProactiveDMFromMoment(post) {
   if (!currentId || !apiConfig.url || !apiConfig.key || !apiConfig.model) return;
   const p = personas.find(x => x.id == currentId);
   if (!p) return;
+  // 面具匹配：角色只对自己"认识的身份"发的帖子做出私聊反应
+  // 若帖子有面具ID，角色绑定的 userMaskId 必须匹配；无面具则角色也必须无绑定面具
+  const postMaskId = post.userMaskId || '';
+  const personaMaskId = String(p.userMaskId || '');
+  const maskMatches = postMaskId === '' ? personaMaskId === '' : personaMaskId === postMaskId;
+  if (!maskMatches) return;
   try {
     const _cLang = typeof _detectPersonaLang === 'function' ? _detectPersonaLang(p) : '';
     const _cLangOv = typeof _langOverridePrompt === 'function' ? _langOverridePrompt(_cLang) : '';
@@ -57948,7 +58014,19 @@ async function _offlineApiRequest(api, messages, maxTokens, temperature) {
     body = bodyObj2;
   }
   _offlineAbortController = new AbortController();
-  var r = await fetch(endpoint, { method:'POST', headers:headers, body:JSON.stringify(body), signal: _offlineAbortController.signal });
+  // 超时保护：默认 90 秒，防止无响应时永远挂起
+  const _offlineTimeoutId = setTimeout(function() {
+    if (_offlineAbortController) {
+      try { _offlineAbortController.abort(); } catch(e) {}
+    }
+  }, 90000);
+  try {
+    var r = await fetch(endpoint, { method:'POST', headers:headers, body:JSON.stringify(body), signal: _offlineAbortController.signal });
+  } catch(fetchErr) {
+    clearTimeout(_offlineTimeoutId);
+    throw fetchErr;
+  }
+  clearTimeout(_offlineTimeoutId);
   if (!r.ok) {
     var errText = ''; try { errText = await r.text(); } catch(e2) {}
     throw new Error('API 错误 ' + r.status + (errText ? '：' + errText.slice(0, 120) : ''));
@@ -91509,6 +91587,7 @@ generateAutoSummary = async function(p, isManual, opts) {
     };
     const resolveLastAutoSummaryState = function() {
       const items = Array.isArray(p.memoryCore) ? p.memoryCore : [];
+      // 优先找有完整索引字段的新格式自动总结条目
       for (let i = items.length - 1; i >= 0; i--) {
         const item = items[i];
         if (!item || typeof item !== 'object' || !item.auto) continue;
@@ -91524,6 +91603,22 @@ generateAutoSummary = async function(p, isManual, opts) {
           historyEndIndex: historyEndIndex,
           userMsgCountStart: Math.max(0, parseInt(item._userMsgCountStart, 10) || 0),
           userMsgCountEnd: userMsgCountEnd
+        };
+      }
+      // 没有新格式条目时：检查是否有旧格式自动总结（无索引字段）
+      // 旧格式总结说明历史内容已被总结过，用总消息数作为起点，只总结新增内容
+      const hasOldAutoSummary = items.some(function(item) {
+        return item && typeof item === 'object' && item.auto &&
+          !Number.isFinite(parseInt(item._historyEndIndex, 10));
+      });
+      if (hasOldAutoSummary) {
+        // 估算：取当前消息总数，触发器会负责判断是否有足够新消息
+        const totalUserMsgs = countUserMessages(history);
+        return {
+          historyStartIndex: history.length,
+          historyEndIndex: history.length,
+          userMsgCountStart: totalUserMsgs,
+          userMsgCountEnd: totalUserMsgs
         };
       }
       return { historyStartIndex: 0, historyEndIndex: 0, userMsgCountStart: 0, userMsgCountEnd: 0 };
@@ -93045,16 +93140,24 @@ if (document.readyState === 'loading') {
             const list = Array.isArray(hist) ? hist : [];
             const cur = list[idx];
             const ts = cur && cur.timestamp;
-            const direct = ts ? new Date(ts).toISOString().slice(0, 10) : '';
+            // ⚠️ 修复：使用本地日期而非 toISOString()（后者是UTC，会导致时区偏差）
+            const toLocalDate = function(timestamp) {
+              if (!timestamp) return '';
+              const d = new Date(timestamp);
+              return d.getFullYear() + '-'
+                + String(d.getMonth() + 1).padStart(2, '0') + '-'
+                + String(d.getDate()).padStart(2, '0');
+            };
+            const direct = ts ? toLocalDate(ts) : '';
             if (direct && direct !== 'undated') return direct;
             for (let i = idx - 1; i >= 0; i--) {
               const t = list[i] && list[i].timestamp;
-              const k = t ? new Date(t).toISOString().slice(0, 10) : '';
+              const k = t ? toLocalDate(t) : '';
               if (k) return k;
             }
             for (let i = idx + 1; i < list.length; i++) {
               const t = list[i] && list[i].timestamp;
-              const k = t ? new Date(t).toISOString().slice(0, 10) : '';
+              const k = t ? toLocalDate(t) : '';
               if (k) return k;
             }
             return 'undated';

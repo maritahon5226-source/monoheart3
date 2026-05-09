@@ -7288,7 +7288,7 @@ body:not(.ios-fullscreen) .family-widget {
 /* overlay */
 #castIdOverlay {
   display: none;
-  position: fixed;
+  position: absolute;
   inset: 0;
   background: rgba(0,0,0,0.42);
   z-index: 9000;
@@ -7408,6 +7408,7 @@ body:not(.ios-fullscreen) .family-widget {
   font-family: inherit;
 }
 .cast-id-close-btn:active { background: rgba(0,0,0,0.05); }
+.dating-show-user-card {
   padding: 0 16px 16px;
 }
 .dating-show-user-card-inner {
@@ -54629,7 +54630,8 @@ function datingShowOpenCastId(name) {
     overlay.id = 'castIdOverlay';
     overlay.innerHTML = '<div id="castIdBox"></div>';
     overlay.addEventListener('click', function(e){ if(e.target === overlay) datingShowCloseCastId(); });
-    document.body.appendChild(overlay);
+    var _pc = document.querySelector('.phone-container') || document.body;
+    _pc.appendChild(overlay);
   }
   var box = document.getElementById('castIdBox');
   if (!p) {

@@ -73,10 +73,10 @@
   };
   // 将 manifest JSON 存储在 window 变量中，供 Service Worker 使用
   window._monoManifestJSON = JSON.stringify(manifest);
-  const manifestBlob = new Blob([window._monoManifestJSON], { type: 'application/json' });
-  const manifestUrl = URL.createObjectURL(manifestBlob);
-  window._monoManifestUrl = manifestUrl;
-  document.getElementById('pwaManifest').href = manifestUrl;
+  // 直接使用 manifest.json 路径（由 Service Worker 拦截并返回内嵌 JSON）
+  // blob: URL 无法被浏览器识别为有效 PWA manifest，导致无法以 webapp 模式安装
+  window._monoManifestUrl = './manifest.json';
+  document.getElementById('pwaManifest').href = './manifest.json';
   window.addEventListener('beforeinstallprompt', function(e) {
     e.preventDefault();
     window._monoBeforeInstallPrompt = e;
@@ -294,6 +294,15 @@ self.addEventListener('activate', e => {
 });
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  // 拦截 manifest.json 请求，直接返回内嵌的 manifest 内容（解决 blob: URL 不被浏览器接受的问题）
+  const reqUrl = new URL(e.request.url);
+  if (reqUrl.pathname.endsWith('/manifest.json')) {
+    e.respondWith(new Response(MANIFEST_JSON, {
+      status: 200,
+      headers: { 'Content-Type': 'application/manifest+json' }
+    }));
+    return;
+  }
   e.respondWith(
     fetch(e.request).catch(() => caches.match(e.request).then(r => r || fetch(e.request)))
   );
@@ -523,11 +532,13 @@ self.addEventListener('notificationclick', e => {
       window._swFailed = false;
       reg.update();
 
-      // Fallback: 如果 manifest 链接还没挂上，再补一次。
+      // Fallback: 确认 manifest 链接正确指向 manifest.json（非 blob URL）。
       function _activateManifestLink() {
         const link = document.getElementById('pwaManifest');
-        if (link && !link.getAttribute('href')) {
-          link.href = window._monoManifestUrl || 'manifest.json';
+        if (link) {
+          if (!link.getAttribute('href') || link.getAttribute('href').startsWith('blob:')) {
+            link.href = './manifest.json';
+          }
         }
       }
 

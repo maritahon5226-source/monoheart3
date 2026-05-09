@@ -7255,11 +7255,11 @@ body:not(.ios-fullscreen) .family-widget {
   font-size: 10px;
   color: rgba(30,30,30,0.48);
 }
-/* ── 嘉宾身份弹窗 ── */
+/* ── 嘉宾身份弹窗 · 韩系黑白灰 ── */
 .cast-id-btn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   font-size: 12px;
   font-weight: 800;
   color: #111;
@@ -7274,140 +7274,245 @@ body:not(.ios-fullscreen) .family-widget {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 15px;
-  height: 15px;
-  border-radius: 50%;
-  background: rgba(0,0,0,0.10);
-  color: rgba(0,0,0,0.45);
-  font-size: 8px;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: rgba(0,0,0,0.08);
+  color: rgba(0,0,0,0.4);
+  font-size: 7.5px;
   font-weight: 900;
   flex-shrink: 0;
-  transition: background 0.15s;
+  transition: background 0.12s;
+  letter-spacing: 0;
 }
-.cast-id-btn:active .cast-id-badge { background: rgba(0,0,0,0.22); }
+.cast-id-btn:active .cast-id-badge { background: rgba(0,0,0,0.18); }
+
 /* overlay */
 #castIdOverlay {
   display: none;
   position: absolute;
   inset: 0;
-  background: rgba(0,0,0,0.42);
+  background: rgba(0,0,0,0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   z-index: 9000;
   align-items: flex-end;
   justify-content: center;
 }
-#castIdOverlay.open { display: flex; }
+#castIdOverlay.open {
+  display: flex;
+  animation: castOverlayFadeIn 0.25s ease both;
+}
+@keyframes castOverlayFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* modal box */
 #castIdBox {
-  background: #fff;
+  background: #0d0d0d;
   width: 100%;
   max-width: 480px;
-  border-radius: 26px 26px 0 0;
-  padding: 22px 20px 36px;
-  max-height: 82vh;
+  border-radius: 24px 24px 0 0;
+  padding: 0 0 44px;
+  max-height: 88vh;
   overflow-y: auto;
+  position: relative;
+  animation: castBoxSlideUp 0.36s cubic-bezier(0.22,1,0.36,1) both;
+  border-top: 1px solid rgba(255,255,255,0.08);
 }
 #castIdBox::-webkit-scrollbar { display: none; }
+@keyframes castBoxSlideUp {
+  from { transform: translateY(100%); opacity: 0.3; }
+  to   { transform: translateY(0);   opacity: 1; }
+}
+
+/* drag handle */
+#castIdBox::before {
+  content: '';
+  display: block;
+  width: 32px;
+  height: 3px;
+  background: rgba(255,255,255,0.12);
+  border-radius: 2px;
+  margin: 14px auto 22px;
+}
+
+/* header */
 .cast-id-modal-header {
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 14px;
+  gap: 16px;
+  padding: 0 22px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  margin-bottom: 0;
+  animation: castFadeUp 0.4s 0.05s both;
 }
 .cast-id-modal-avatar {
-  width: 58px;
-  height: 58px;
-  border-radius: 18px;
+  width: 60px;
+  height: 60px;
+  border-radius: 14px;
   overflow: hidden;
-  background: linear-gradient(180deg,#f1f1f1,#d9d9d9);
+  background: #1c1c1c;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #999;
-  font-size: 22px;
+  color: rgba(255,255,255,0.2);
+  font-size: 20px;
   flex-shrink: 0;
+  border: 1px solid rgba(255,255,255,0.06);
 }
 .cast-id-modal-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.cast-id-modal-name { font-size: 18px; font-weight: 900; color: #111; line-height: 1.3; }
-.cast-id-modal-role { font-size: 11px; color: #aaa; margin-top: 3px; }
-.cast-id-modal-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.cast-id-modal-name {
+  font-size: 22px;
+  font-weight: 900;
+  color: #f2f2f2;
+  line-height: 1.2;
+  letter-spacing: -0.4px;
+}
+.cast-id-modal-role {
+  font-size: 9.5px;
+  color: rgba(255,255,255,0.3);
+  margin-top: 5px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+/* tags */
+.cast-id-modal-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 16px 22px 0;
+  animation: castFadeUp 0.4s 0.08s both;
+}
 .cast-id-modal-tag {
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 700;
   padding: 4px 10px;
-  border-radius: 20px;
-  background: rgba(0,0,0,0.06);
-  color: #444;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.45);
+  letter-spacing: 0.4px;
 }
-.cast-id-modal-tag.crush { background: rgba(255,100,120,0.12); color: #c0404a; }
-.cast-id-modal-tag.mood  { background: rgba(80,120,255,0.10); color: #3a5a99; }
-.cast-id-modal-tag.gender { background: rgba(0,0,0,0.07); color: #555; }
+.cast-id-modal-tag.crush {
+  background: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.72);
+}
+.cast-id-modal-tag.mood {
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.45);
+}
+.cast-id-modal-tag.gender {
+  background: transparent;
+  color: rgba(255,255,255,0.35);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* bio */
 .cast-id-modal-bio {
   font-size: 12px;
-  line-height: 1.8;
-  color: rgba(30,30,30,0.72);
-  background: rgba(245,245,245,0.8);
-  border-radius: 14px;
-  padding: 12px 14px;
-  margin-bottom: 14px;
+  line-height: 1.85;
+  color: rgba(255,255,255,0.42);
+  background: rgba(255,255,255,0.04);
+  border-radius: 10px;
+  padding: 13px 15px;
+  margin: 14px 22px 0;
+  animation: castFadeUp 0.4s 0.11s both;
 }
-.cast-id-stat-row { display: flex; flex-direction: column; gap: 9px; margin-bottom: 14px; }
+
+/* stats */
+.cast-id-stat-row {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  padding: 16px 22px 0;
+  animation: castFadeUp 0.4s 0.14s both;
+}
 .cast-id-stat-item {}
 .cast-id-stat-head {
   display: flex;
   justify-content: space-between;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
-  color: #555;
-  margin-bottom: 4px;
+  color: rgba(255,255,255,0.3);
+  margin-bottom: 7px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
 }
 .cast-id-stat-bar {
-  height: 6px;
+  height: 2px;
   border-radius: 99px;
-  background: rgba(0,0,0,0.07);
+  background: rgba(255,255,255,0.07);
   overflow: hidden;
 }
 .cast-id-stat-fill {
   height: 100%;
   border-radius: 99px;
-  background: linear-gradient(90deg,#1a1a1a,#555);
-  transition: width 0.4s ease;
+  background: rgba(255,255,255,0.75);
+  transition: width 0.9s cubic-bezier(0.22,1,0.36,1);
 }
+
+/* inner voice */
 .cast-id-inner-voice {
-  font-size: 11px;
-  line-height: 1.75;
-  color: rgba(60,60,60,0.65);
+  font-size: 11.5px;
+  line-height: 1.9;
+  color: rgba(255,255,255,0.35);
   font-style: italic;
-  background: rgba(245,245,245,0.7);
-  border-radius: 12px;
-  padding: 10px 13px;
-  border-left: 3px solid rgba(0,0,0,0.12);
-  margin-bottom: 14px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  padding: 14px 22px;
+  margin-top: 16px;
+  animation: castFadeUp 0.4s 0.17s both;
 }
+
+/* rel section (old version compat) */
 .cast-id-rel-section { margin-bottom: 10px; }
-.cast-id-rel-title { font-size: 10px; font-weight: 800; color: #aaa; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
+.cast-id-rel-title {
+  font-size: 8.5px;
+  font-weight: 800;
+  color: rgba(255,255,255,0.25);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  padding: 18px 22px 0;
+}
 .cast-id-rel-card {
-  border-radius: 12px;
-  border: 1px solid rgba(0,0,0,0.07);
-  padding: 9px 12px;
-  background: rgba(255,255,255,0.8);
-  margin-bottom: 7px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.07);
+  padding: 11px 14px;
+  background: rgba(255,255,255,0.04);
+  margin: 0 22px 8px;
 }
-.cast-id-rel-pair { font-size: 12px; font-weight: 700; color: #222; margin-bottom: 3px; }
-.cast-id-rel-status { font-size: 10px; color: #888; margin-bottom: 3px; }
-.cast-id-rel-summary { font-size: 11px; color: rgba(40,40,40,0.65); line-height: 1.6; }
+.cast-id-rel-pair { font-size: 12px; font-weight: 700; color: #e8e8e8; margin-bottom: 3px; }
+.cast-id-rel-status { font-size: 10px; color: rgba(255,255,255,0.35); margin-bottom: 3px; }
+.cast-id-rel-summary { font-size: 11px; color: rgba(255,255,255,0.4); line-height: 1.55; }
+
+/* close button */
 .cast-id-close-btn {
-  width: 100%;
-  padding: 13px;
-  border-radius: 16px;
-  border: 1.5px solid rgba(0,0,0,0.12);
-  background: none;
-  font-size: 13px;
+  display: block;
+  width: calc(100% - 44px);
+  margin: 8px 22px 0;
+  padding: 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.09);
+  background: rgba(255,255,255,0.04);
+  font-size: 11px;
   font-weight: 700;
-  color: #888;
+  color: rgba(255,255,255,0.3);
   cursor: pointer;
-  margin-top: 6px;
   font-family: inherit;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  transition: all 0.18s;
 }
-.cast-id-close-btn:active { background: rgba(0,0,0,0.05); }
+.cast-id-close-btn:active { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.5); }
+
+/* animations */
+@keyframes castFadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 .dating-show-user-card {
   padding: 0 16px 16px;
 }
@@ -54310,16 +54415,98 @@ function _datingShowNormalizeRelationships(lines) {
     return item && item.from && item.to && item.summary;
   }).slice(0, 8);
 }
+/* ── _datingShowApiRequest：与聊天软件完全共用 _compatibleChatCompletion ──
+   支持：OpenAI / Anthropic / Gemini / Azure / 任意 OpenAI 兼容接口
+   支持：Bearer / x-api-key / api-key / x-goog-api-key / query-key 多种认证
+   支持：SSE 流式响应自动收集、非 200 状态码友好错误提示
+   支持：JSON 容错解析（markdown fence / 截断修复 / 括号平衡）
+*/
 async function _datingShowApiRequest(prompt, maxTokens) {
   var api = _getCurrentActiveApiConfig();
   if (!api || !api.url || !api.key) throw new Error('请先在主 APP 设置里连接 API');
-  var resp = await fetch(_datingApiEndpoint(api), {
-    method: 'POST',
-    headers: _datingApiHeaders(api),
-    body: JSON.stringify(_datingApiBody(api, prompt, maxTokens || 2400))
-  });
-  var data = await resp.json();
-  return _datingApiText(data);
+
+  var payload = _applyApiModel({
+    messages: [{ role: 'user', content: String(prompt) }],
+    max_tokens: maxTokens || 2400,
+    temperature: 0.85,
+    stream: false
+  }, api.model);
+
+  /* 优先走聊天软件里的完整兼容层 */
+  var resp;
+  if (typeof _compatibleChatCompletion === 'function') {
+    resp = await _compatibleChatCompletion(api.url, api.key, payload);
+  } else {
+    /* 降级：简单 fetch（应该不会走到这里） */
+    resp = await fetch(_datingApiEndpoint(api), {
+      method: 'POST',
+      headers: _datingApiHeaders(api),
+      body: JSON.stringify(payload)
+    });
+  }
+
+  /* ── 响应文本提取：兼容 OpenAI / Anthropic / SSE / 纯文本 ── */
+  var rawText = '';
+  var ct = (resp.headers && resp.headers.get && resp.headers.get('content-type')) || '';
+
+  if (ct.includes('text/event-stream')) {
+    /* SSE 流：按行收集 delta.content */
+    rawText = await resp.text();
+    var collected = '';
+    rawText.split('\n').forEach(function(line) {
+      if (!line.startsWith('data:') || line.includes('[DONE]')) return;
+      try {
+        var chunk = JSON.parse(line.replace(/^data:\s*/, ''));
+        var delta = chunk && chunk.choices && chunk.choices[0] && chunk.choices[0].delta;
+        if (delta && delta.content) collected += delta.content;
+      } catch(e) {}
+    });
+    return collected.trim() || rawText.trim();
+  }
+
+  /* JSON 响应 */
+  var bodyText = '';
+  try { bodyText = await resp.text(); } catch(e) { bodyText = ''; }
+
+  if (!resp.ok) {
+    /* 解析错误信息 */
+    var errMsg = '请求失败（HTTP ' + resp.status + '）';
+    try {
+      var errJson = JSON.parse(bodyText);
+      var detail = (errJson && (
+        (errJson.error && (errJson.error.message || JSON.stringify(errJson.error))) ||
+        errJson.message || errJson.detail || errJson.msg
+      ));
+      if (detail) errMsg = String(detail);
+    } catch(e) {
+      if (bodyText && bodyText.length < 300) errMsg += '：' + bodyText.trim();
+    }
+    throw new Error(errMsg);
+  }
+
+  var data = null;
+  try { data = JSON.parse(bodyText); } catch(e) {
+    /* 可能是纯文本响应 */
+    return bodyText.trim();
+  }
+
+  /* OpenAI 格式 */
+  if (data && data.choices && data.choices[0]) {
+    var msg = data.choices[0].message || data.choices[0].delta || {};
+    return String(msg.content || '').trim();
+  }
+  /* Anthropic 格式 */
+  if (data && data.content && data.content[0]) {
+    return String(data.content[0].text || '').trim();
+  }
+  /* Gemini 原生格式 */
+  if (data && data.candidates && data.candidates[0]) {
+    var parts = data.candidates[0].content && data.candidates[0].content.parts;
+    if (parts && parts[0]) return String(parts[0].text || '').trim();
+  }
+  /* 其他格式：序列化后给上层 JSON parse */
+  if (data && data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+  return bodyText.trim();
 }
 async function startDatingShow() {
   if (!datingShowDraft) datingShowDraft = _datingShowBuildDraft('solo6');
@@ -54338,6 +54525,8 @@ async function startDatingShow() {
     return;
   }
   datingShowBusy = true;
+  // 新开局时清空所有嘉宾分析缓存
+  if (typeof window._castAIClearCache === 'function') window._castAIClearCache();
   _datingShowSetOverlay(true, '正在搭建恋综别墅', '正在根据你选择的模式、角色与当前 API 生成嘉宾阵容、主持人开场、弹幕和首日剧情。');
   try {
     var targetCount = draft.mode === 'solo6' ? 6 : 12;
@@ -54470,6 +54659,8 @@ function _datingShowPickGame(state) {
 async function datingShowAdvance(kind, userInput) {
   if (!datingShowState || !datingShowState.active || datingShowBusy) return;
   datingShowBusy = true;
+  // 清空所有嘉宾 AI 分析缓存，让下次打开 i 按钮重新生成
+  if (typeof window._castAIClearCache === 'function') window._castAIClearCache();
   var inputText = String(userInput || '').trim();
   var state = datingShowState;
   if (kind === 'user' && inputText) {
@@ -54778,7 +54969,7 @@ function renderDatingShowPage() {
       var speakerName = item.speaker || '现场';
       var canClickSpeaker = (item.type === 'character' || item.type === 'scene') && speakerName && speakerName !== '现场';
       var speakerHtml = canClickSpeaker
-        ? '<button class="cast-id-btn" onclick="datingShowOpenCastId(' + JSON.stringify(_esc(speakerName)) + ');event.stopPropagation();" title="查看身份">' + _esc(speakerName) + '<span class="cast-id-badge">i</span></button>'
+        ? '<button class="cast-id-btn" onclick="datingShowOpenCastId(\'' + _esc(speakerName).replace(/'/g, "\\''") + '\');event.stopPropagation();" title="查看身份">' + _esc(speakerName) + '<span class="cast-id-badge">i</span></button>'
         : '<div class="dating-show-log-speaker">' + _esc(speakerName) + '</div>';
       return '<div class="dating-show-log-item ' + _esc(item.type || '') + '" data-log-idx="' + itemIdx + '" style="background:' + bg + '"><div class="dating-show-log-top">' + speakerHtml + '<div class="dating-show-log-type">' + typeLabel + '</div></div><div class="dating-show-log-body">' + _esc(item.text || '') + '</div>' + ((item.action || item.emotion) ? '<div class="dating-show-log-meta">' + (item.action ? '动作：' + _esc(item.action) : '') + (item.action && item.emotion ? ' · ' : '') + (item.emotion ? '表情：' + _esc(_datingEmotionZh(item.emotion)) : '') + '</div>' : '') + '</div>';
     }).join('')})()
@@ -94651,5 +94842,659 @@ if (document.readyState === 'loading') {
   // Re-init after music bar becomes visible
   var _mmObs = new MutationObserver(function() { if (!bar) initDrag(); });
   _mmObs.observe(document.body, { childList: true, subtree: false });
+})();
+</script>
+
+<!-- =====================================================
+     增强版 i 按钮 v2 — 全分析模块注入
+===================================================== -->
+<style>
+/* ── 分区小标题 ── */
+.cast-id-section-title {
+  font-size: 8.5px;
+  font-weight: 800;
+  color: rgba(255,255,255,0.25);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin: 18px 22px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cast-id-section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255,255,255,0.06);
+}
+
+/* ── 情绪轨迹 ── */
+.cast-id-mood-track {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin: 0 22px 14px;
+}
+.cast-id-mood-dot {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 10px;
+  color: rgba(255,255,255,0.5);
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+  animation: castDotPop 0.25s both ease;
+}
+@keyframes castDotPop {
+  from { opacity: 0; transform: scale(0.82); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.cast-id-mood-arrow { color: rgba(255,255,255,0.18); font-size: 9px; }
+
+/* ── 竞争 / 配对卡 ── */
+.cast-id-rival-card, .cast-id-match-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 13px 15px;
+  margin: 0 22px 10px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.45);
+  line-height: 1.65;
+}
+.cast-id-rival-card   { border-left: 2px solid rgba(255,255,255,0.3); }
+.cast-id-match-card   { border-left: 2px solid rgba(255,255,255,0.6); }
+.cast-id-rival-name, .cast-id-match-name {
+  font-weight: 900;
+  font-size: 13px;
+  margin-bottom: 4px;
+  letter-spacing: -0.2px;
+  color: #f0f0f0;
+}
+
+/* ── 感情线卡 ── */
+.cast-id-rel-card {
+  margin: 0 22px 8px !important;
+  background: rgba(255,255,255,0.04) !important;
+  border-radius: 10px !important;
+  padding: 12px 14px !important;
+  border: 1px solid rgba(255,255,255,0.07) !important;
+}
+.cast-id-rel-direction {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #e8e8e8;
+  margin-bottom: 4px;
+}
+.cast-id-rel-arrow { font-size: 10px; color: rgba(255,255,255,0.25) !important; }
+.cast-id-rel-status { font-size: 10px !important; color: rgba(255,255,255,0.3) !important; margin-bottom: 5px !important; }
+.cast-id-rel-summary { font-size: 11px !important; color: rgba(255,255,255,0.38) !important; line-height: 1.55 !important; margin-top: 5px !important; }
+.cast-id-rel-heat-bar {
+  height: 2px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 2px;
+  margin: 7px 0 2px;
+  overflow: hidden;
+}
+.cast-id-rel-heat-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.55);
+  transition: width 0.9s cubic-bezier(0.22,1,0.36,1);
+}
+
+/* ── 近期动向 ── */
+.cast-id-recent-item {
+  background: rgba(255,255,255,0.03);
+  border-radius: 8px;
+  padding: 9px 12px;
+  margin: 0 22px 7px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.45);
+  line-height: 1.55;
+  border-left: 2px solid rgba(255,255,255,0.1);
+}
+.cast-id-recent-item.type-host      { border-left-color: rgba(255,255,255,0.45); }
+.cast-id-recent-item.type-character { border-left-color: rgba(255,255,255,0.65); }
+.cast-id-recent-item.type-director  { border-left-color: rgba(255,255,255,0.2); }
+.cast-id-recent-meta {
+  font-size: 8.5px;
+  color: rgba(255,255,255,0.22);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* ── AI Tab 标签栏 ── */
+.cast-id-ai-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 0;
+  margin: 0 22px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.cast-id-ai-tab {
+  padding: 9px 4px 8px;
+  background: transparent;
+  color: rgba(255,255,255,0.32);
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: center;
+  line-height: 1.4;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  position: relative;
+}
+.cast-id-ai-tab:hover { color: rgba(255,255,255,0.6); }
+.cast-id-ai-tab.active {
+  color: rgba(255,255,255,0.9);
+  border-bottom-color: rgba(255,255,255,0.7);
+}
+.cast-id-ai-tab.loading { color: rgba(255,255,255,0.4); }
+.cast-id-ai-tab.done { color: rgba(255,255,255,0.55); }
+/* 生成中小点 */
+.cast-id-ai-tab-dot {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.4);
+  margin-left: 3px;
+  vertical-align: middle;
+  animation: _castBlink 1.2s infinite;
+}
+
+/* ── AI 结果区（多面板）── */
+.cast-id-ai-panels {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  margin: 0 22px 12px;
+  min-height: 60px;
+}
+.cast-id-ai-panel {
+  display: none;
+  padding: 15px 16px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.6);
+  line-height: 1.85;
+  animation: castFadeUp 0.22s both ease;
+}
+.cast-id-ai-panel.active { display: block; }
+/* 旧单结果区兼容 */
+.cast-id-ai-result { display: none; }
+.cast-id-ai-result.visible { display: block; }
+.cast-id-ai-result-title {
+  font-size: 8.5px;
+  font-weight: 800;
+  color: rgba(255,255,255,0.28);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+</style>
+
+<script>
+(function () {
+  /* ── 工具 ─────────────────────────────────────────── */
+  function esc(s){ if(!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  /* ── 最强竞争对手 ── */
+  function findRival(p, participants, relationships) {
+    if (!p.currentCrush) return null;
+    var crush = p.currentCrush;
+    // 找同样心动该 crush 的其他人
+    var rivals = participants.filter(function(x){
+      return x.name !== p.name && x.currentCrush === crush;
+    });
+    if (!rivals.length) return null;
+    // 取关系热度最高者
+    rivals.sort(function(a,b){
+      var ra = (relationships||[]).find(function(r){ return (r.from===a.name&&r.to===crush)||(r.to===a.name&&r.from===crush); });
+      var rb = (relationships||[]).find(function(r){ return (r.from===b.name&&r.to===crush)||(r.to===b.name&&r.from===crush); });
+      return ((rb&&rb.heat)||0) - ((ra&&ra.heat)||0);
+    });
+    var rival = rivals[0];
+    var rel = (relationships||[]).find(function(r){ return (r.from===rival.name&&r.to===crush)||(r.to===rival.name&&r.from===crush); });
+    return { name: rival.name, heat: (rel&&rel.heat)||0, status: (rel&&rel.status)||'' };
+  }
+
+  /* ── 最可能配对 ── */
+  function findBestMatch(p, relationships) {
+    var rels = (relationships||[]).filter(function(r){ return r.from===p.name||r.to===p.name; });
+    if (!rels.length) return null;
+    rels.sort(function(a,b){ return (b.heat||0)-(a.heat||0); });
+    var top = rels[0];
+    var partner = top.from === p.name ? top.to : top.from;
+    return { name: partner, heat: top.heat||0, status: top.status||'' };
+  }
+
+  /* ── 情绪轨迹（从 logs 里抓 statUpdates 里的 mood 变化）── */
+  function buildMoodTrack(name, state) {
+    // 尝试从 state.moodHistory 或者 logs 里取
+    var logs = state.logs || [];
+    var moods = [];
+    // statUpdates 一般直接在 state.participants 里只留最新，但 logs 里的 currentMood 事件可能有记录
+    // 这里从 logs 文字里提取该角色出现的心情词
+    var moodMap = {
+      '开心':1,'难过':1,'生气':1,'兴奋':1,'紧张':1,'尴尬':1,'嫉妒':1,'害羞':1,'疑惑':1,
+      '惊讶':1,'震惊':1,'得意':1,'焦虑':1,'孤独':1,'期待':1,'失落':1,'平静':1,
+      '调情':1,'俏皮':1,'担忧':1,'好奇':1,'心动':1,'无聊':1,'慌乱':1,'满足':1,
+      '患得患失':1,'心碎':1,'着迷':1,'沮丧':1,'脸红':1,'叹息':1,'愉快':1
+    };
+    logs.forEach(function(item){
+      if (!item) return;
+      var isAbout = item.speaker === name || (item.text||'').indexOf(name) !== -1;
+      if (!isAbout) return;
+      // check for mood tag in text
+      var txt = item.text || '';
+      Object.keys(moodMap).forEach(function(mood){
+        if (txt.indexOf(mood) !== -1 && moods[moods.length-1] !== mood) {
+          moods.push(mood);
+        }
+      });
+    });
+    // also push current mood at the end
+    var curMood = state.participants && state.participants.find && (state.participants.find(function(x){ return x.name===name; })||{}).currentMood;
+    if (curMood && moods[moods.length-1] !== curMood) moods.push(curMood);
+    return moods.slice(-5); // last 5 states
+  }
+
+  /* ── 近期动向（从 logs 抓） ── */
+  function getRecentLogs(name, logs) {
+    var found = [];
+    for (var i=(logs||[]).length-1; i>=0 && found.length<3; i--) {
+      var item = logs[i];
+      if (!item) continue;
+      var text = (item.text||'')+(item.action||'');
+      if (item.speaker===name || text.indexOf(name)!==-1) found.push(item);
+    }
+    return found;
+  }
+
+  /* ── 出场频率 ── */
+  function countAppearances(name, logs) {
+    return (logs||[]).filter(function(item){
+      return item && (item.speaker===name || ((item.text||'').indexOf(name)!==-1));
+    }).length;
+  }
+
+  /* ── AI 调用：与聊天软件 API 完全对齐 ──────────────────────────────
+     • 走 _datingShowApiRequest（内部已调用 _compatibleChatCompletion）
+     • 多端点重试 × 多认证方式 × Anthropic/OpenAI/Gemini 三格式提取
+     • SSE 流式自动收集 • 完整错误信息展示 • JSON 容错 parse
+  ── */
+  async function callAI(prompt, resultEl, titleText) {
+    resultEl.style.display = 'block';
+    resultEl.className = 'cast-id-ai-result visible';
+
+    /* 加载态：闪烁点动画 */
+    resultEl.innerHTML = '<div class="cast-id-ai-result-title">' + esc(titleText) + '</div>'
+      + '<div style="color:rgba(255,255,255,0.30);font-size:11px;letter-spacing:1px;display:flex;align-items:center;gap:4px;">'
+      + '<span id="_castDot1" style="animation:_castBlink 1.2s infinite 0s;">●</span>'
+      + '<span id="_castDot2" style="animation:_castBlink 1.2s infinite 0.4s;">●</span>'
+      + '<span id="_castDot3" style="animation:_castBlink 1.2s infinite 0.8s;">●</span>'
+      + '<style>@keyframes _castBlink{0%,80%,100%{opacity:.15}40%{opacity:.9}}</style>'
+      + '</div>';
+
+    try {
+      /* 核心调用：走完整多接口兼容层 */
+      var text = await _datingShowApiRequest(prompt, 800);
+
+      /* 容错 JSON strip：有些接口会把纯文本套在 ```json``` 里返回 */
+      if (typeof text === 'string') {
+        text = text
+          .replace(/^```json\s*/i, '')
+          .replace(/^```\s*/,      '')
+          .replace(/\s*```$/,      '')
+          .trim();
+        /* 如果剩下的是 JSON 对象/数组，尝试取 text / content / result 字段 */
+        if (text.startsWith('{') || text.startsWith('[')) {
+          try {
+            var parsed = JSON.parse(text);
+            if (parsed && typeof parsed === 'object') {
+              text = parsed.text || parsed.content || parsed.result ||
+                     parsed.output || parsed.response || parsed.reply ||
+                     (typeof parsed === 'string' ? parsed : text);
+            }
+          } catch(e2) { /* 保持原文 */ }
+        }
+      }
+
+      resultEl.innerHTML = '<div class="cast-id-ai-result-title">' + esc(titleText) + '</div>'
+        + '<div style="line-height:1.7;">'
+        + esc(text || '（结果为空，请检查 API 设置后重试）').replace(/\n/g, '<br>')
+        + '</div>';
+
+    } catch(e) {
+      var msg = (e && e.message) ? e.message : '连接失败，请检查 API 设置后重试。';
+      /* 截断过长错误（如 JSON 原文被塞进 message） */
+      if (msg.length > 200) msg = msg.slice(0, 200) + '…';
+      resultEl.innerHTML = '<div class="cast-id-ai-result-title">' + esc(titleText) + '</div>'
+        + '<div style="color:rgba(255,100,100,0.9);font-size:11px;line-height:1.6;">'
+        + '<span style="font-size:13px;">⚠️</span> ' + esc(msg)
+        + '</div>';
+    }
+  }
+
+  /* ── 主函数（覆盖原版） ─────────────────────────────────── */
+  window.datingShowOpenCastId = function(name) {
+    var state = window.datingShowState || (typeof datingShowState !== 'undefined' ? datingShowState : null) || {};
+    var participants = state.participants || [];
+    var relationships = state.relationships || [];
+    var logs = state.logs || [];
+
+    var p = participants.find(function(x){ return x.name===name; });
+
+    var overlay = document.getElementById('castIdOverlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'castIdOverlay';
+      overlay.innerHTML = '<div id="castIdBox"></div>';
+      overlay.addEventListener('click', function(e){ if(e.target===overlay) window.datingShowCloseCastId(); });
+      (document.querySelector('.phone-container')||document.body).appendChild(overlay);
+    }
+    var box = document.getElementById('castIdBox');
+
+    if (!p) {
+      box.innerHTML = '<div class="cast-id-modal-header"><div class="cast-id-modal-avatar"><i class="fas fa-user"></i></div><div><div class="cast-id-modal-name">'+esc(name)+'</div><div class="cast-id-modal-role">节目组成员</div></div></div><p style="font-size:12px;color:#aaa;margin:10px 0 16px;">该角色为节目组成员，无嘉宾档案。</p><button class="cast-id-close-btn" onclick="window.datingShowCloseCastId()">关闭</button>';
+      overlay.classList.add('open');
+      return;
+    }
+
+    var stats = p.stats || { favor:0, jealousy:0, possession:0, mindgame:0 };
+    var rival       = findRival(p, participants, relationships);
+    var bestMatch   = findBestMatch(p, relationships);
+    var moodTrack   = buildMoodTrack(p.name, state);
+    var recentLogs  = getRecentLogs(p.name, logs);
+    var appearances = countAppearances(p.name, logs);
+
+    var avatarHtml = p.avatar ? '<img src="'+p.avatar+'">' : '<i class="fas fa-user"></i>';
+
+    /* 标签行 */
+    var tagsHtml = '<div class="cast-id-modal-tags">'
+      +(p.gender?'<span class="cast-id-modal-tag gender">'+esc(p.gender)+'</span>':'')
+      +(p.team?'<span class="cast-id-modal-tag">'+(p.team==='A'?'A队':p.team==='B'?'B队':p.team==='pursuer'?'追求者':esc(p.team))+'</span>':'')
+      +(p.currentCrush?'<span class="cast-id-modal-tag crush">心动 '+esc(p.currentCrush)+'</span>':'')
+      +(p.currentMood?'<span class="cast-id-modal-tag mood">'+esc(p.currentMood)+'</span>':'')
+      +(p.eliminated?'<span class="cast-id-modal-tag" style="background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.35);">已淘汰</span>':'<span class="cast-id-modal-tag" style="background:rgba(255,255,255,0.09);color:rgba(255,255,255,0.65);">在场</span>')
+      +(p.tags||[]).map(function(t){ return '<span class="cast-id-modal-tag">'+esc(t)+'</span>'; }).join('')
+      +'</div>';
+
+    /* 四项数值 */
+    var statsHtml = '<div class="cast-id-stat-row">'
+      +'<div class="cast-id-stat-item"><div class="cast-id-stat-head"><span>好感度</span><span>'+stats.favor+'</span></div><div class="cast-id-stat-bar"><div class="cast-id-stat-fill" style="width:'+Math.min(stats.favor,100)+'%;"></div></div></div>'
+      +'<div class="cast-id-stat-item"><div class="cast-id-stat-head"><span>醋意</span><span>'+stats.jealousy+'</span></div><div class="cast-id-stat-bar"><div class="cast-id-stat-fill" style="width:'+Math.min(stats.jealousy,100)+'%;opacity:0.8;"></div></div></div>'
+      +'<div class="cast-id-stat-item"><div class="cast-id-stat-head"><span>占有欲</span><span>'+stats.possession+'</span></div><div class="cast-id-stat-bar"><div class="cast-id-stat-fill" style="width:'+Math.min(stats.possession,100)+'%;opacity:0.65;"></div></div></div>'
+      +'<div class="cast-id-stat-item"><div class="cast-id-stat-head"><span>心机值</span><span>'+stats.mindgame+'</span></div><div class="cast-id-stat-bar"><div class="cast-id-stat-fill" style="width:'+Math.min(stats.mindgame,100)+'%;opacity:0.45;"></div></div></div>'
+      +'</div>';
+
+    /* 情绪轨迹 */
+    var moodHtml = '';
+    if (moodTrack.length) {
+      moodHtml = '<div class="cast-id-section-title">情绪轨迹</div><div class="cast-id-mood-track">'
+        + moodTrack.map(function(m,i){
+            return '<span class="cast-id-mood-dot">'+esc(m)+'</span>'+(i<moodTrack.length-1?'<span class="cast-id-mood-arrow">›</span>':'');
+          }).join('')
+        +'</div>';
+    }
+
+    /* 竞争对手 */
+    var rivalHtml = '';
+    if (rival) {
+      rivalHtml = '<div class="cast-id-section-title">最强竞争对手</div>'
+        +'<div class="cast-id-rival-card"><div class="cast-id-rival-name">'+esc(rival.name)+'</div>'
+        +'<div>同样心动 <strong>'+esc(p.currentCrush)+'</strong>，关系热度 '+rival.heat+'/10</div>'
+        +(rival.status?'<div style="font-size:10px;color:#aaa;margin-top:3px;">'+esc(rival.status)+'</div>':'')
+        +'</div>';
+    }
+
+    /* 最可能配对 */
+    var matchHtml = '';
+    if (bestMatch) {
+      matchHtml = '<div class="cast-id-section-title">最可能配对</div>'
+        +'<div class="cast-id-match-card"><div class="cast-id-match-name">'+esc(bestMatch.name)+'</div>'
+        +'<div>当前热度最高的关系线：'+bestMatch.heat+'/10</div>'
+        +(bestMatch.status?'<div style="font-size:10px;color:#aaa;margin-top:3px;">'+esc(bestMatch.status)+'</div>':'')
+        +'</div>';
+    }
+
+    /* 近期动向 */
+    var recentHtml = '';
+    if (recentLogs.length) {
+      var typeLabels = { director:'导演', host:'主持人', character:'嘉宾', system:'系统' };
+      recentHtml = '<div class="cast-id-section-title">近期动向 · 出场 '+appearances+' 次</div>'
+        + recentLogs.map(function(item){
+            var cls = 'cast-id-recent-item type-'+(item.type||'');
+            var meta = (typeLabels[item.type]||item.type||'')+(item.speaker?' · '+esc(item.speaker):'');
+            return '<div class="'+cls+'"><div class="cast-id-recent-meta">'+esc(meta)+'</div>'
+              +esc((item.text||'').slice(0,80)+((item.text||'').length>80?'…':''))
+              +'</div>';
+          }).join('');
+    }
+
+    /* 感情线 */
+    var relCards = relationships.filter(function(r){ return r.from===p.name||r.to===p.name; });
+    var relHtml = '';
+    if (relCards.length) {
+      relHtml = '<div class="cast-id-section-title">感情线</div>'
+        + relCards.map(function(r){
+            return '<div class="cast-id-rel-card">'
+              +'<div class="cast-id-rel-direction"><span>'+esc(r.from)+'</span><span class="cast-id-rel-arrow">→</span><span>'+esc(r.to)+'</span></div>'
+              +'<div class="cast-id-rel-status">'+esc(r.status||'')+' · 热度 '+(r.heat||0)+'/10</div>'
+              +'<div class="cast-id-rel-heat-bar"><div class="cast-id-rel-heat-fill" style="width:'+Math.min(100,(r.heat||0)*10)+'%;"></div></div>'
+              +(r.summary?'<div class="cast-id-rel-summary">'+esc(r.summary)+'</div>':'')
+              +'</div>';
+          }).join('');
+    }
+
+    /* AI Tab区域 */
+    var _pn = esc(p.name);
+    var aiHtml = '<div class="cast-id-section-title">AI 深度分析</div>'
+      +'<div class="cast-id-ai-tabs" id="castAiTabs">'
+      +'<button class="cast-id-ai-tab active" id="castAiTabDeep"     onclick="window._castAISwitchTab(\'deep\')"    >深度解读<span class="cast-id-ai-tab-dot" id="castAiDotDeep"></span></button>'
+      +'<button class="cast-id-ai-tab"        id="castAiTabNext"     onclick="window._castAISwitchTab(\'next\')"    >行动预测<span class="cast-id-ai-tab-dot" id="castAiDotNext"></span></button>'
+      +'<button class="cast-id-ai-tab"        id="castAiTabRelation" onclick="window._castAISwitchTab(\'relation\')" >关系解读<span class="cast-id-ai-tab-dot" id="castAiDotRelation"></span></button>'
+      +'<button class="cast-id-ai-tab"        id="castAiTabTagline"  onclick="window._castAISwitchTab(\'tagline\')" >档案旁白<span class="cast-id-ai-tab-dot" id="castAiDotTagline"></span></button>'
+      +'</div>'
+      +'<div class="cast-id-ai-panels">'
+      +'<div class="cast-id-ai-panel active" id="castAiPanelDeep"></div>'
+      +'<div class="cast-id-ai-panel"        id="castAiPanelNext"></div>'
+      +'<div class="cast-id-ai-panel"        id="castAiPanelRelation"></div>'
+      +'<div class="cast-id-ai-panel"        id="castAiPanelTagline"></div>'
+      +'</div>';
+
+    /* 组装 */
+    box.innerHTML =
+      '<div class="cast-id-modal-header"><div class="cast-id-modal-avatar">'+avatarHtml+'</div><div>'
+        +'<div class="cast-id-modal-name">'+esc(p.name||'嘉宾')+'</div>'
+        +'<div class="cast-id-modal-role">'+esc(p.role||'')+(p.source==='persona'?' · 已选角色':' · 自动补位')+'</div>'
+      +'</div></div>'
+      + tagsHtml
+      +(p.intro||p.personality?'<div class="cast-id-modal-bio">'+esc(p.intro||p.personality||'')+'</div>':'')
+      + statsHtml
+      +(p.innerVoice?'<div class="cast-id-inner-voice">"'+esc(p.innerVoice)+'"</div>':'')
+      + moodHtml
+      + rivalHtml
+      + matchHtml
+      + recentHtml
+      + relHtml
+      + aiHtml
+      +'<button class="cast-id-close-btn" onclick="window.datingShowCloseCastId()">关闭</button>';
+
+    overlay.classList.add('open');
+
+    // 打开面板后立即并行生成全部四项
+    setTimeout(function(){ window._castAIGenerateAll(p.name); }, 120);
+  };
+
+  /* ── AI 分析缓存（key = 嘉宾名称，每次推动剧情后会清空）── */
+  window._castAICache = {};
+
+  /* ── Tab 切换（仅切换显示，不触发生成）── */
+  window._castAISwitchTab = function(type) {
+    var types = ['deep','next','relation','tagline'];
+    types.forEach(function(t) {
+      var tab   = document.getElementById('castAiTab'   + t.charAt(0).toUpperCase() + t.slice(1));
+      var panel = document.getElementById('castAiPanel' + t.charAt(0).toUpperCase() + t.slice(1));
+      if (tab)   tab.classList.toggle('active',   t === type);
+      if (panel) panel.classList.toggle('active', t === type);
+    });
+  };
+
+  /* ── 单项渲染到面板 ── */
+  function _castAIRenderPanel(type, html) {
+    var ids = { deep:'Deep', next:'Next', relation:'Relation', tagline:'Tagline' };
+    var key = ids[type];
+    var panel = document.getElementById('castAiPanel' + key);
+    var dot   = document.getElementById('castAiDot'   + key);
+    var tab   = document.getElementById('castAiTab'   + key);
+    if (panel) panel.innerHTML = html;
+    if (dot)   dot.style.display = 'none';
+    if (tab)   { tab.classList.remove('loading'); tab.classList.add('done'); }
+  }
+
+  /* ── 生成单项（带加载态）── */
+  async function _castAIGenerateOne(type, prompts) {
+    var ids = { deep:'Deep', next:'Next', relation:'Relation', tagline:'Tagline' };
+    var key = ids[type];
+    var panel = document.getElementById('castAiPanel' + key);
+    var dot   = document.getElementById('castAiDot'   + key);
+    var tab   = document.getElementById('castAiTab'   + key);
+    if (!panel) return '';
+
+    // 加载态
+    if (dot) dot.style.display = 'inline-block';
+    if (tab) tab.classList.add('loading');
+    panel.innerHTML = '<div style="color:rgba(255,255,255,0.22);font-size:11px;padding:4px 0;display:flex;align-items:center;gap:5px;">'
+      +'<span style="animation:_castBlink 1.2s infinite 0s;">●</span>'
+      +'<span style="animation:_castBlink 1.2s infinite 0.4s;">●</span>'
+      +'<span style="animation:_castBlink 1.2s infinite 0.8s;">●</span>'
+      +'<style>@keyframes _castBlink{0%,80%,100%{opacity:.15}40%{opacity:.9}}</style>'
+      +'</div>';
+
+    var text = '';
+    try {
+      text = await _datingShowApiRequest(prompts[type], 800);
+      if (typeof text === 'string') {
+        text = text.replace(/^```json\s*/i,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
+        if (text.startsWith('{') || text.startsWith('[')) {
+          try {
+            var parsed = JSON.parse(text);
+            if (parsed && typeof parsed === 'object') {
+              text = parsed.text||parsed.content||parsed.result||parsed.output||parsed.response||parsed.reply||(typeof parsed==='string'?parsed:text);
+            }
+          } catch(e2) {}
+        }
+      }
+      var html = '<div style="line-height:1.75;">' + esc(text||'（结果为空，请重试）').replace(/
+/g,'<br>') + '</div>';
+      _castAIRenderPanel(type, html);
+      return text;
+    } catch(e) {
+      var msg = (e && e.message) ? e.message : '连接失败';
+      if (msg.length > 200) msg = msg.slice(0,200)+'…';
+      var errHtml = '<div style="color:rgba(255,100,100,0.9);font-size:11px;">⚠️ ' + esc(msg) + '</div>';
+      _castAIRenderPanel(type, errHtml);
+      return '';
+    }
+  }
+
+  /* ── 并行生成全部四项，结果缓存到 _castAICache[name] ── */
+  window._castAIGenerateAll = async function(name) {
+    var state = window.datingShowState || (typeof datingShowState !== 'undefined' ? datingShowState : null) || {};
+    var participants = state.participants || [];
+    var relationships = state.relationships || [];
+    var p = participants.find(function(x){ return x.name===name; });
+    if (!p) return;
+
+    // 如果有缓存，直接渲染，不重新生成
+    var cached = window._castAICache[name];
+    if (cached) {
+      var types = ['deep','next','relation','tagline'];
+      var ids   = { deep:'Deep', next:'Next', relation:'Relation', tagline:'Tagline' };
+      types.forEach(function(t) {
+        var panel = document.getElementById('castAiPanel' + ids[t]);
+        var dot   = document.getElementById('castAiDot'   + ids[t]);
+        var tab   = document.getElementById('castAiTab'   + ids[t]);
+        if (panel && cached[t]) {
+          panel.innerHTML = '<div style="line-height:1.75;">' + esc(cached[t]).replace(/
+/g,'<br>') + '</div>';
+        }
+        if (dot) dot.style.display = 'none';
+        if (tab) { tab.classList.remove('loading'); tab.classList.add('done'); }
+      });
+      return;
+    }
+
+    var stats = p.stats || {};
+    var userName = (state.userProfile && state.userProfile.name) || '你';
+    var relDesc = (relationships||[]).filter(function(r){ return r.from===name||r.to===name; })
+      .map(function(r){ return r.from+'→'+r.to+'（'+(r.status||'')+' 热度'+(r.heat||0)+'）：'+(r.summary||''); }).join('
+');
+    var charBase = '嘉宾：'+name+'
+人设：'+(p.intro||p.personality||'无')+'
+心情：'+(p.currentMood||'未知')+'
+心动：'+(p.currentCrush||'暂无')+'
+独白：'+(p.innerVoice||'无')+'
+好感度：'+(stats.favor||0)+' 醋意：'+(stats.jealousy||0)+' 占有欲：'+(stats.possession||0)+' 心机值：'+(stats.mindgame||0)+'
+感情线：
+'+(relDesc||'暂无');
+
+    var prompts = {
+      deep:     '你是一个恋综深度分析师。根据以下嘉宾数据，用简体中文写150字左右的人物深度解读，语气犀利真实，像娱乐评论员专栏风格。直接输出段落，不加标题。
+
+'+charBase,
+      next:     '你是一个恋综剧情预测师。根据以下嘉宾数据，预测 TA 接下来3步最可能做的具体行动（每步一句，带分析原因），用简体中文，语气像节目内部导演分析。
+
+'+charBase,
+      relation: '你是一个恋综关系分析师。根据以下数据，专门分析嘉宾「'+name+'」对用户「'+userName+'」的真实态度：是真心、策略性接近、还是只是维持礼貌？有没有潜在风险？用简体中文，约120字，直接写段落。
+
+'+charBase,
+      tagline:  '你是一个综艺节目策划。根据以下嘉宾数据，为 TA 生成一句"档案旁白"（20字内），风格像综艺花字或人物定场词，犀利、有记忆点、直击人物本质。只输出这一句话，不加任何说明。
+
+'+charBase
+    };
+
+    // 四项并行发起，互不等待
+    var results = {};
+    var types = ['deep','next','relation','tagline'];
+    await Promise.all(types.map(async function(t) {
+      var text = await _castAIGenerateOne(t, prompts);
+      results[t] = text;
+    }));
+
+    // 缓存结果
+    window._castAICache[name] = results;
+  };
+
+  /* ── 保留旧接口兼容（外部代码可能调用 _castAI，但现在不再重新生成）── */
+  window._castAI = function(type, name) {
+    // 仅切换 tab，生成已在 generateAll 完成
+    window._castAISwitchTab(type);
+  };
+
+  /* ── 清除某嘉宾缓存（推动剧情时调用，让下次打开重新生成）── */
+  window._castAIClearCache = function(name) {
+    if (name) { delete window._castAICache[name]; }
+    else { window._castAICache = {}; }
+  };
+
+  console.log('[增强 i 按钮 v4] 全分析模块已加载 ✓ | Tab式UI | 四项并行生成 | 缓存复用 | 推动剧情后自动失效');
 })();
 </script>

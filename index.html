@@ -73,8 +73,6 @@
   };
   // 将 manifest JSON 存储在 window 变量中，供 Service Worker 使用
   window._monoManifestJSON = JSON.stringify(manifest);
-  // 直接使用 manifest.json 路径（由 Service Worker 拦截并返回内嵌 JSON）
-  // blob: URL 无法被浏览器识别为有效 PWA manifest，导致无法以 webapp 模式安装
   window._monoManifestUrl = './manifest.json';
   document.getElementById('pwaManifest').href = './manifest.json';
   window.addEventListener('beforeinstallprompt', function(e) {
@@ -532,7 +530,6 @@ self.addEventListener('notificationclick', e => {
       window._swFailed = false;
       reg.update();
 
-      // Fallback: 确认 manifest 链接正确指向 manifest.json（非 blob URL）。
       function _activateManifestLink() {
         const link = document.getElementById('pwaManifest');
         if (link) {
@@ -22261,6 +22258,19 @@ body.editor-modal-open #chatPage .app-back-bar {
         <input type="text" id="pNewMemoryInput" placeholder="手动输入记忆内容..." style="flex:1;border:1px solid #ccc;border-radius:8px;padding:8px 10px;font-size:12px;outline:none;">
         <button type="button" onclick="addMemoryCoreItem()" style="background:#1a1a1a;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12px;cursor:pointer;white-space:nowrap;">+ 添加</button>
       </div>
+      <!-- 记忆分类筛选 -->
+      <div id="memoryCoreFilterBar" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+        <button type="button" onclick="monoFilterMemory('all')" id="monoMemFilter_all" style="border:none;border-radius:999px;padding:4px 12px;font-size:11px;cursor:pointer;font-family:inherit;background:#1a1a1a;color:#fff;font-weight:600;">全部</button>
+        <button type="button" onclick="monoFilterMemory('auto')" id="monoMemFilter_auto" style="border:none;border-radius:999px;padding:4px 12px;font-size:11px;cursor:pointer;font-family:inherit;background:#f4f4f4;color:#555;">自动总结</button>
+        <button type="button" onclick="monoFilterMemory('manual')" id="monoMemFilter_manual" style="border:none;border-radius:999px;padding:4px 12px;font-size:11px;cursor:pointer;font-family:inherit;background:#f4f4f4;color:#555;">手动总结</button>
+        <button type="button" onclick="monoFilterMemory('add')" id="monoMemFilter_add" style="border:none;border-radius:999px;padding:4px 12px;font-size:11px;cursor:pointer;font-family:inherit;background:#f4f4f4;color:#555;">手动添加</button>
+        <button type="button" onclick="monoFilterMemory('ai_write')" id="monoMemFilter_ai_write" style="border:none;border-radius:999px;padding:4px 12px;font-size:11px;cursor:pointer;font-family:inherit;background:#f4f4f4;color:#555;">角色自刻</button>
+        <button type="button" onclick="monoFilterMemory('offline')" id="monoMemFilter_offline" style="border:none;border-radius:999px;padding:4px 12px;font-size:11px;cursor:pointer;font-family:inherit;background:#f4f4f4;color:#555;">线下剧情</button>
+        <button type="button" onclick="monoFilterMemory('call')" id="monoMemFilter_call" style="border:none;border-radius:999px;padding:4px 12px;font-size:11px;cursor:pointer;font-family:inherit;background:#f4f4f4;color:#555;">通话</button>
+        <button type="button" onclick="monoFilterMemory('forum')" id="monoMemFilter_forum" style="border:none;border-radius:999px;padding:4px 12px;font-size:11px;cursor:pointer;font-family:inherit;background:#f4f4f4;color:#555;">论坛</button>
+        <button type="button" onclick="monoFilterMemory('interact')" id="monoMemFilter_interact" style="border:none;border-radius:999px;padding:4px 12px;font-size:11px;cursor:pointer;font-family:inherit;background:#f4f4f4;color:#555;">互动</button>
+        <button type="button" onclick="monoFilterMemory('moments')" id="monoMemFilter_moments" style="border:none;border-radius:999px;padding:4px 12px;font-size:11px;cursor:pointer;font-family:inherit;background:#f4f4f4;color:#555;">朋友圈</button>
+      </div>
       <!-- 记忆列表 -->
       <div id="memoryCoreList" style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;"></div>
       <p id="memoryCoreEmpty" style="font-size:10px;color:#ccc;text-align:center;padding:12px 0;display:none;">还没有任何核心记忆。</p>
@@ -22591,40 +22601,78 @@ const HEART_VOICE_INSTRUCTION = `
 // ═══════════════════════════════════════════════════════════════
 // 记忆核心 UI 管理函数
 // ═══════════════════════════════════════════════════════════════
+window._monoMemoryFilter = 'all';
+function _monoMemoryCategory(item) {
+  if (!item || typeof item !== 'object') return 'add';
+  const source = item.source || '';
+  if (source === '手动添加') return 'add';
+  if (source === '手动总结' || (!item.auto && (item._summaryMode === 'manual' || item._summaryMode === 'manual-range'))) return 'manual';
+  if (/^每\d+轮自动总结/.test(source)) return 'auto';
+  if (source === 'AI自刻记忆') return 'ai_write';
+  if (source === '通话记录') return 'call';
+  if (source === '线下剧情' || /^线下剧情/.test(source) || item._offlineMemoryType) return 'offline';
+  if (source === '论坛' || item._forumMemoryKey) return 'forum';
+  if (source === '反向查岗' || source === '情侣空间' || source === '角色间私聊') return 'interact';
+  if (source === '朋友圈') return 'moments';
+  if (item.auto) return 'auto';
+  return 'add';
+}
+function _monoMemoryCategoryColor(cat) {
+  return { auto:'#81c784', manual:'#ce93d8', add:'#90caf9', ai_write:'#80cbc4', call:'#ffb74d', offline:'#ff8a65', forum:'#4db6ac', interact:'#f06292', moments:'#64b5f6' }[cat] || '#bbb';
+}
+function monoFilterMemory(type) {
+  window._monoMemoryFilter = type || 'all';
+  ['all','auto','manual','add','ai_write','offline','call','forum','interact','moments'].forEach(function(t) {
+    const btn = document.getElementById('monoMemFilter_' + t);
+    if (!btn) return;
+    if (t === type) { btn.style.background = '#1a1a1a'; btn.style.color = '#fff'; btn.style.fontWeight = '600'; }
+    else { btn.style.background = '#f4f4f4'; btn.style.color = '#555'; btn.style.fontWeight = 'normal'; }
+  });
+  const p = personas.find(function(x) { return x.id == currentId; });
+  if (p) renderMemoryCoreList(p.memoryCore);
+}
 function renderMemoryCoreList(items) {
   const list = document.getElementById('memoryCoreList');
   const empty = document.getElementById('memoryCoreEmpty');
   if (!list) return;
   list.innerHTML = '';
-  if (!items || items.length === 0) {
+  const filter = window._monoMemoryFilter || 'all';
+  const indexMap = [];
+  (items || []).forEach(function(item, idx) {
+    const cat = _monoMemoryCategory(item);
+    if (filter === 'all' || cat === filter) indexMap.push(idx);
+  });
+  if (!indexMap.length) {
     if (empty) empty.style.display = 'block';
     return;
   }
   if (empty) empty.style.display = 'none';
-  items.forEach((item, idx) => {
+  indexMap.forEach(function(realIdx) {
+    const item = items[realIdx];
     const content = typeof item === 'string' ? item : (item.content || '');
     const dateStr = typeof item === 'object' && item.date ? item.date : '';
-    const source = typeof item === 'object' && item.source ? item.source : (item.auto ? '自动' : '手动');
-    const sourceColor = source.includes('总结') || source === '自动' ? '#81c784' : '#90caf9';
+    const source = typeof item === 'object' && item.source ? item.source : (item && item.auto ? '自动' : '手动添加');
+    const cat = _monoMemoryCategory(item);
+    const color = _monoMemoryCategoryColor(cat);
     const row = document.createElement('div');
     row.style.cssText = 'background:#fff;border:1px solid #eee;border-radius:10px;padding:10px 12px;font-size:12px;margin-bottom:2px;';
     row.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
           ${dateStr ? `<span style="font-size:9px;color:#aaa;">${dateStr}</span>` : ''}
-          <span style="font-size:9px;background:${sourceColor}22;color:${sourceColor};border-radius:4px;padding:1px 6px;font-weight:600;">${source}</span>
+          <span style="font-size:9px;background:${color}22;color:${color};border-radius:4px;padding:1px 6px;font-weight:600;">${source}</span>
         </div>
         <div style="display:flex;gap:6px;">
-          <button onclick="editMemoryCoreItem(${idx})" style="border:none;background:#f5f5f5;color:#666;cursor:pointer;font-size:11px;padding:2px 8px;border-radius:5px;">编辑</button>
-          <button onclick="deleteMemoryCoreItem(${idx})" style="border:none;background:#fff0f0;color:#e57373;cursor:pointer;font-size:11px;padding:2px 8px;border-radius:5px;">删除</button>
+          <button onclick="editMemoryCoreItem(${realIdx})" style="border:none;background:#f5f5f5;color:#666;cursor:pointer;font-size:11px;padding:2px 8px;border-radius:5px;">编辑</button>
+          <button onclick="deleteMemoryCoreItem(${realIdx})" style="border:none;background:#fff0f0;color:#e57373;cursor:pointer;font-size:11px;padding:2px 8px;border-radius:5px;">删除</button>
         </div>
       </div>
-      <div id="memitem-text-${idx}" style="line-height:1.6;color:#333;white-space:pre-wrap;word-break:break-all;">${content}</div>
-      <div id="memitem-edit-${idx}" style="display:none;">
-        <textarea id="memitem-textarea-${idx}" style="width:100%;border:1px solid #ddd;border-radius:6px;padding:6px;font-size:12px;line-height:1.6;outline:none;resize:vertical;min-height:80px;">${content}</textarea>
+      <div id="memitem-text-${realIdx}" style="line-height:1.6;color:#333;white-space:pre-wrap;word-break:break-all;">${content}</div>
+      <div id="memitem-edit-${realIdx}" style="display:none;">
+        <textarea id="memitem-textarea-${realIdx}" style="width:100%;border:1px solid #ddd;border-radius:6px;padding:6px;font-size:12px;line-height:1.6;outline:none;resize:vertical;min-height:80px;">${content}</textarea>
         <div style="display:flex;gap:6px;margin-top:6px;">
-          <button onclick="saveMemoryCoreEdit(${idx})" style="flex:1;background:#1a1a1a;color:#fff;border:none;border-radius:6px;padding:6px;font-size:11px;cursor:pointer;">保存</button>
-          <button onclick="cancelMemoryCoreEdit(${idx})" style="flex:1;background:#f5f5f5;color:#666;border:none;border-radius:6px;padding:6px;font-size:11px;cursor:pointer;">取消</button>
+          <button onclick="saveMemoryCoreEdit(${realIdx})" style="flex:1;background:#1a1a1a;color:#fff;border:none;border-radius:6px;padding:6px;font-size:11px;cursor:pointer;">保存</button>
+          <button onclick="cancelMemoryCoreEdit(${realIdx})" style="flex:1;background:#f5f5f5;color:#666;border:none;border-radius:6px;padding:6px;font-size:11px;cursor:pointer;">取消</button>
         </div>
       </div>`;
     list.appendChild(row);
@@ -31658,7 +31706,7 @@ function postMomentsComment(itemId) {
           const freshItem = momentsData.find(m => m.id === itemId);
           if (freshItem) {
             if (!freshItem.comments) freshItem.comments = [];
-            // reply can be string or {text, translation} object
+            const replyText = typeof reply === 'object' && reply.text ? reply.text : (typeof reply === 'string' ? reply : '');
             if (typeof reply === 'object' && reply.text) {
               freshItem.comments.push({ author: persona.name, text: reply.text, content: reply.text, translation: reply.translation, time: Date.now(), replies: [] });
             } else {
@@ -31668,6 +31716,14 @@ function postMomentsComment(itemId) {
             renderMoments();
             const box = document.getElementById(`momentsComments_${itemId}`);
             if (box) box.classList.add('open');
+            // 写入记忆：用户评论了什么 + 角色回复了什么
+            if (replyText) {
+              if (!persona.memoryCore) persona.memoryCore = [];
+              const now = new Date();
+              const ds = now.getFullYear() + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + String(now.getDate()).padStart(2,'0');
+              persona.memoryCore.push({ content: userProfile.name + '在我的朋友圈「' + (freshItem.content || '').slice(0, 30) + (freshItem.content && freshItem.content.length > 30 ? '…' : '') + '」下评论了：「' + text + '」，我回复了：「' + replyText + '」', date: ds, auto: true, source: '朋友圈' });
+              if (typeof saveData === 'function') saveData();
+            }
           }
         }
       }, 1000 + Math.random() * 2000);
@@ -32150,6 +32206,7 @@ function postMoments() {
         const item = momentsData.find(m => m.id === newPost.id);
         if (item && p) {
           if (!item.comments) item.comments = [];
+          const commentText = typeof comment === 'object' && comment.text ? comment.text : (typeof comment === 'string' ? comment : '');
           if (typeof comment === 'object' && comment.text) {
             item.comments.push({ author: p.name, content: comment.text, text: comment.text, translation: comment.translation, time: Date.now() });
           } else {
@@ -32157,6 +32214,15 @@ function postMoments() {
           }
           localStorage.setItem('mono_moments', JSON.stringify(momentsData));
           renderMoments();
+          // 写入记忆：用户发了什么 + 角色自己评论了什么
+          if (commentText) {
+            if (!p.memoryCore) p.memoryCore = [];
+            const now = new Date();
+            const ds = now.getFullYear() + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + String(now.getDate()).padStart(2,'0');
+            const postSummary = (content || '') + (newPost.imageDescs && newPost.imageDescs[0] ? '（附图：' + newPost.imageDescs[0] + '）' : '');
+            p.memoryCore.push({ content: authorIdentity.name + '在朋友圈发了：「' + postSummary + '」，我评论了：「' + commentText + '」', date: ds, auto: true, source: '朋友圈' });
+            if (typeof saveData === 'function') saveData();
+          }
         }
       }
       // 朋友圈看到后，角色可能会主动私聊用户
@@ -40209,7 +40275,7 @@ ${modePrompt}${quoteTip}${fwdContext}${timeContext}${transferContext}${wbInjecti
         if (!p.memoryCore) p.memoryCore = [];
         const now2 = new Date();
         const ds = `${now2.getFullYear()}/${String(now2.getMonth()+1).padStart(2,'0')}/${String(now2.getDate()).padStart(2,'0')}`;
-        p.memoryCore.push({ content: memContent, date: ds, auto: false });
+        p.memoryCore.push({ content: memContent, date: ds, auto: true, source: 'AI自刻记忆' });
         // 不限制记忆数量，所有记忆永久保留（用户可手动删除）
       }
     }
@@ -46506,6 +46572,14 @@ async function generateAutoMomentsPost(personaId) {
     localStorage.setItem('mono_moments', JSON.stringify(momentsData));
     renderMoments();
     dispatchNotification(p.id, p.name, '发布了新的朋友圈动态', p.avatar);
+    // 写入朋友圈发布记忆
+    (function() {
+      if (!p.memoryCore) p.memoryCore = [];
+      const now = new Date();
+      const ds = now.getFullYear() + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + String(now.getDate()).padStart(2,'0');
+      p.memoryCore.push({ content: '我在朋友圈发了一条动态：' + momentsContent, date: ds, auto: true, source: '朋友圈' });
+      if (typeof saveData === 'function') saveData();
+    })();
   } catch(e) { _hideMomentsLoadingCard(); console.warn('Auto-moments failed:', e.message); _showApiErrorToast('自动朋友圈发布失败', e); }
 }
 // ---- Initialize all auto systems on load ----
@@ -57841,6 +57915,13 @@ function _createNewSession(mode) {
 }
 // ── Open / Close ──
 // ── 线下模式多 API 适配器（兼容 Anthropic / OpenAI-compatible 所有接口）──
+var _offlineAbortController = null;
+function stopOfflineGeneration() {
+  if (_offlineAbortController) {
+    try { _offlineAbortController.abort(); } catch(e) {}
+    _offlineAbortController = null;
+  }
+}
 async function _offlineApiRequest(api, messages, maxTokens, temperature) {
   var isAnt = typeof _isAnthropicApi === 'function' ? _isAnthropicApi(api) : (api.url||'').toLowerCase().indexOf('anthropic.com') !== -1 || (api.model||'').toLowerCase().indexOf('claude-') === 0;
   var endpoint, headers, body;
@@ -57866,7 +57947,8 @@ async function _offlineApiRequest(api, messages, maxTokens, temperature) {
     if (effectiveModel) bodyObj2.model = effectiveModel;
     body = bodyObj2;
   }
-  var r = await fetch(endpoint, { method:'POST', headers:headers, body:JSON.stringify(body) });
+  _offlineAbortController = new AbortController();
+  var r = await fetch(endpoint, { method:'POST', headers:headers, body:JSON.stringify(body), signal: _offlineAbortController.signal });
   if (!r.ok) {
     var errText = ''; try { errText = await r.text(); } catch(e2) {}
     throw new Error('API 错误 ' + r.status + (errText ? '：' + errText.slice(0, 120) : ''));
@@ -59132,9 +59214,12 @@ async function _generateOfflineResponse(session) {
       content.appendChild(errDiv);
     }
   } finally {
+    _offlineAbortController = null;
     _offlineState.generating = false;
     if (sendBtn) { sendBtn.classList.remove('generating'); sendBtn.querySelector('i').className = 'fas fa-arrow-up'; }
     if (replyBtn) { replyBtn.classList.remove('generating'); }
+    var typingEl2 = document.getElementById('offlineTyping');
+    if (typingEl2) typingEl2.style.display = 'none';
   }
 }
 function startNewOfflineSession(fromSettings) {
@@ -59897,6 +59982,7 @@ window.addEventListener('beforeunload', function() {
     <div id="offlineTyping" style="display:none;" class="offline-typing">
       <div class="offline-typing-dots"><span></span><span></span><span></span></div>
       <span class="offline-typing-label" id="offlineTypingLabel">正在生成剧情…</span>
+      <button id="offlineStopBtn" onclick="stopOfflineGeneration()" style="border:none;background:#fff0f0;color:#e57373;border-radius:6px;padding:2px 10px;font-size:11px;cursor:pointer;font-family:inherit;margin-left:6px;">停止</button>
     </div>
   </div>
   <!-- Input area -->
@@ -91459,6 +91545,11 @@ generateAutoSummary = async function(p, isManual, opts) {
       userMsgCountStart = Math.max(0, lastAutoSummary.userMsgCountEnd);
       userMsgCountEnd = countUserMessages(history);
       targetMsgs = history.slice(historyStartIndex, historyEndIndex);
+      // 防止重复：如果从上次总结结束点到现在没有新消息，直接跳过
+      if (targetMsgs.length === 0) {
+        if (window._monoAutoSummaryLocks) delete window._monoAutoSummaryLocks[p.id];
+        return;
+      }
     }
     const effectiveUser = monoResolveUserIdentityProfile(p, { maskId: opts.userMaskId || '' });
     const userName = (effectiveUser && effectiveUser.name) ? effectiveUser.name : '用户';
@@ -92933,7 +93024,57 @@ if (document.readyState === 'loading') {
     }
     const summaryBtn = document.getElementById('monoSummaryByDateBtn');
     if (summaryBtn) summaryBtn.addEventListener('click', function() {
-      if (typeof window.manualGenerateSummary === 'function') window.manualGenerateSummary();
+      const persona = monoGetCurrentPersona();
+      if (!persona) { alert('请先选择一个角色'); return; }
+      const startEl = document.getElementById('monoChatDateStart');
+      const endEl = document.getElementById('monoChatDateEnd');
+      const includeUndatedEl = document.getElementById('monoChatIncludeUndated');
+      const range = {
+        start: startEl ? String(startEl.value || '').trim() : '',
+        end: endEl ? String(endEl.value || '').trim() : '',
+        includeUndated: !!(includeUndatedEl && includeUndatedEl.checked)
+      };
+      // 用日期范围筛选消息，而不是全部记录
+      const targetMessages = (function(p, r) {
+        if (!p || !Array.isArray(p.history)) return [];
+        const start = r && r.start ? r.start : '';
+        const end = r && r.end ? r.end : '';
+        const includeUndated = !!(r && r.includeUndated);
+        return p.history.filter(function(m, index, history) {
+          const key = (function(hist, idx) {
+            const list = Array.isArray(hist) ? hist : [];
+            const cur = list[idx];
+            const ts = cur && cur.timestamp;
+            const direct = ts ? new Date(ts).toISOString().slice(0, 10) : '';
+            if (direct && direct !== 'undated') return direct;
+            for (let i = idx - 1; i >= 0; i--) {
+              const t = list[i] && list[i].timestamp;
+              const k = t ? new Date(t).toISOString().slice(0, 10) : '';
+              if (k) return k;
+            }
+            for (let i = idx + 1; i < list.length; i++) {
+              const t = list[i] && list[i].timestamp;
+              const k = t ? new Date(t).toISOString().slice(0, 10) : '';
+              if (k) return k;
+            }
+            return 'undated';
+          })(history, index);
+          if (key === 'undated') return includeUndated;
+          if (start && key < start) return false;
+          if (end && key > end) return false;
+          return !!key;
+        });
+      })(persona, range);
+      if (!targetMessages.length) {
+        alert('当前日期范围内没有可总结的聊天记录。');
+        return;
+      }
+      const startLabel = range.start || '最早';
+      const endLabel = range.end || '最新';
+      const rangeLabel = startLabel + ' 至 ' + endLabel;
+      if (typeof window.generateAutoSummary === 'function') {
+        window.generateAutoSummary(persona, true, { targetMessages: targetMessages, rangeLabel: rangeLabel });
+      }
     });
     monoUpdateChatRangeSummary();
   };

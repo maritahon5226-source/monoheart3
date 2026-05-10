@@ -98935,5 +98935,446 @@ if (document.readyState === 'loading') {
 })();
 </script>
 
+
+<script>
+// ===================== v16 PATCH: Couple location references today's chat only when user manually generates =====================
+(function(){
+  if (window.__monoV16LocationReferenceOnlyPatch) return;
+  window.__monoV16LocationReferenceOnlyPatch = true;
+
+  function _v16Toast(msg){
+    try { if (typeof showToast === 'function') return showToast(msg, 2400); } catch(e) {}
+    try { if (typeof showMonoNotifToast === 'function') return showMonoNotifToast('Mono', msg, ''); } catch(e) {}
+    try { console.log('[Mono]', msg); } catch(e) {}
+  }
+  function _v16TodayKey(d){
+    d = d ? new Date(d) : new Date();
+    if (isNaN(d.getTime())) d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  function _v16MsgDate(m){
+    if (!m) return null;
+    var raw = m.timestamp || m.createdAt || m.timeMs || m.timeStamp || m.date || m.isoDate || m.created_at || m.ts;
+    if (!raw) return null;
+    var d = new Date(raw);
+    if (isNaN(d.getTime()) && typeof raw === 'number') d = new Date(raw);
+    if (isNaN(d.getTime())) return null;
+    return d;
+  }
+  function _v16GetPersona(pid){
+    try { return (typeof personas !== 'undefined' && Array.isArray(personas)) ? personas.find(function(p){ return String(p.id) === String(pid); }) : null; } catch(e) { return null; }
+  }
+  function _v16CleanText(s){
+    return String(s || '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .replace(/^[\s:：,，。.!！?？-]+|[\s:：,，。.!！?？-]+$/g, '')
+      .slice(0, 150);
+  }
+  function _v16CollectTodayChatReference(persona){
+    if (!persona || !Array.isArray(persona.history)) return '';
+    var today = _v16TodayKey();
+    var lines = [];
+    persona.history.forEach(function(m){
+      if (!m || !m.content) return;
+      var d = _v16MsgDate(m);
+      // Important: without a reliable date, do NOT use the message for location generation,
+      // otherwise yesterday/older chats may leak into today's trace.
+      if (!d || _v16TodayKey(d) !== today) return;
+      var role = (m.role === 'user') ? '用户' : (persona.name || '角色');
+      var content = _v16CleanText(m.content);
+      if (!content) return;
+      // Keep the context broad enough for the model to reason, but do not force every line to become a trace.
+      lines.push(role + '：' + content);
+    });
+    if (!lines.length) return '';
+    return lines.slice(-24).join('\n');
+  }
+  function _v16BuildLocationTraceInstruction(persona){
+    var ref = _v16CollectTodayChatReference(persona);
+    if (!ref) return '';
+    return '\n\n【当天聊天参考】\n' + ref + '\n\n【参考规则】\n' +
+      '1. 上面只作为参考，不要复制粘贴聊天原句，也不要把每句话都强行变成行踪。\n' +
+      '2. 只采用与“今天同日期”的地点、时间、计划、正在做的事、之后要去哪里有关的内容。昨天或更早的内容不要混入。\n' +
+      '3. 如果聊天没有明确提到行踪，就按原本情侣定位逻辑自由生成。\n' +
+      '4. 如果聊天提到“下午回学校/晚上去餐厅/等下回家/现在在咖啡厅”等，请把它按大概时间合理 fit 进半小时行踪点里；不要改变原本每隔半小时一条的格式。\n' +
+      '5. 参考聊天时要符合逻辑：时间顺序、地点移动、事件连续性要自然；不能突然从很远的地方无理由瞬移，也不能和已提到的安排冲突。';
+  }
+  function _v16NormalizeTraceTimes(traces, slots){
+    traces = Array.isArray(traces) ? traces : [];
+    var allowed = {};
+    slots.forEach(function(t){ allowed[t] = true; });
+    var seen = {};
+    var out = [];
+    traces.forEach(function(t){
+      if (!t) return;
+      var time = String(t.time || '').trim();
+      // Keep the original half-hour slots only. This prevents chat references from creating extra non-slot entries.
+      if (!allowed[time] || seen[time]) return;
+      seen[time] = true;
+      out.push({
+        time: time,
+        place: String(t.place || t.address || '未知地点').slice(0, 28),
+        activity: String(t.activity || t.event || t.desc || '日常活动').slice(0, 38),
+        isoDate: new Date().toLocaleDateString('zh-TW'),
+        _v16ReferenceOnly: true
+      });
+    });
+    out.sort(function(a,b){ return String(a.time).localeCompare(String(b.time)); });
+    return out;
+  }
+  function _v16SlotsFromStartToNow(startTimeStr){
+    var now = new Date();
+    var cur;
+    if (startTimeStr) {
+      var parts = String(startTimeStr || '00:00').split(':').map(Number);
+      cur = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parts[0] || 0, parts[1] || 0, 0);
+      cur = new Date(cur.getTime() + 30 * 60 * 1000);
+    } else {
+      cur = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    }
+    var slots = [];
+    while (cur <= now) {
+      slots.push(cur.toLocaleTimeString('zh-TW', { hour:'2-digit', minute:'2-digit', hour12:false }));
+      cur = new Date(cur.getTime() + 30 * 60 * 1000);
+    }
+    return slots;
+  }
+  async function _v16CallChatCompletion(prompt, maxTokens){
+    if (!apiConfig?.url || !apiConfig?.key || !apiConfig?.model) return '';
+    var fetchFn = window.__monoV15OriginalFetch || window.fetch;
+    try {
+      var r = await fetchFn(apiConfig.url.replace(/\/+$/,'') + '/chat/completions', {
+        method:'POST',
+        headers:{ 'Authorization': 'Bearer ' + apiConfig.key, 'Content-Type':'application/json' },
+        body: JSON.stringify({
+          model: apiConfig.model,
+          messages:[{ role:'user', content: prompt }],
+          temperature:0.82,
+          max_tokens:maxTokens || 800
+        })
+      });
+      if (!r.ok) return '';
+      var data = await r.json();
+      return (data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
+    } catch(e) { return ''; }
+  }
+
+  // Stop v14's automatic chat -> trace mutation. Chat is only referenced when the user presses 更新行踪.
+  window.monoSyncChatEventsToLocationTrace = function(){ return false; };
+  window.monoRefreshSmartLocationFacts = function(){ return false; };
+
+  // Replace trace generators with a reference-only version. It still starts at 00:00 and keeps 30-minute slots.
+  var _v16Full = async function(persona, regionText){
+    if (!apiConfig?.url || !apiConfig?.key || !apiConfig?.model) return [];
+    var now = new Date();
+    var slots = _v16SlotsFromStartToNow(null);
+    if (!slots.length) return [];
+    var recentChat = ((persona.history || []).slice(-8)).map(function(m){ return (m.role === 'user' ? '用户' : persona.name) + ': ' + String(m.content || '').slice(0,60); }).join('\n');
+    var prompt = '你是' + persona.name + '，人设：' + (persona.persona || '普通人') + '，所在地区：' + (regionText || '未知地区') + '。今天是' + now.toLocaleDateString('zh-TW') + '。\n' +
+      (recentChat ? '最近聊天氛围（只用于语气，不一定用于行踪）：\n' + recentChat + '\n' : '') +
+      _v16BuildLocationTraceInstruction(persona) + '\n\n' +
+      '【语言要求：无论角色人设如何，行踪记录必须全程使用简体中文】\n' +
+      '请生成以下时间点的当日行踪：' + slots.join('、') + '\n' +
+      '必须保持每隔半小时一条，从当天 00:00 开始到当前时间。\n' +
+      '格式（每行一条）：HH:MM | 地点名称 | 正在做的事（15字以内）\n' +
+      '只需给行踪列表，不要解释。';
+    var raw = await _v16CallChatCompletion(prompt, 900);
+    var parsed = (typeof _parseTraceLines === 'function') ? _parseTraceLines(raw, now) : [];
+    return _v16NormalizeTraceTimes(parsed, slots);
+  };
+  var _v16Inc = async function(persona, regionText, fromTimeStr){
+    if (!apiConfig?.url || !apiConfig?.key || !apiConfig?.model) return [];
+    var now = new Date();
+    var slots = _v16SlotsFromStartToNow(fromTimeStr || '00:00');
+    if (!slots.length) return [];
+    var recentChat = ((persona.history || []).slice(-8)).map(function(m){ return (m.role === 'user' ? '用户' : persona.name) + ': ' + String(m.content || '').slice(0,60); }).join('\n');
+    var prompt = '你是' + persona.name + '，人设：' + (persona.persona || '普通人') + '，所在地区：' + (regionText || '未知地区') + '。今天是' + now.toLocaleDateString('zh-TW') + '。\n' +
+      (recentChat ? '最近聊天氛围（只用于语气，不一定用于行踪）：\n' + recentChat + '\n' : '') +
+      _v16BuildLocationTraceInstruction(persona) + '\n\n' +
+      '【语言要求：无论角色人设如何，行踪记录必须全程使用简体中文】\n' +
+      '继续生成以下时间点的行踪：' + slots.join('、') + '\n' +
+      '必须保持每隔半小时一条，只补充这些时间点，不要新增其他时间。\n' +
+      '格式：HH:MM | 地点名称 | 正在做的事（15字以内）\n' +
+      '只需给行踪列表，不要解释。';
+    var raw = await _v16CallChatCompletion(prompt, 700);
+    var parsed = (typeof _parseTraceLines === 'function') ? _parseTraceLines(raw, now) : [];
+    return _v16NormalizeTraceTimes(parsed, slots);
+  };
+  try { window.generateFullDayTrace = _v16Full; eval('generateFullDayTrace = _v16Full'); } catch(e) {}
+  try { window.generateIncrementalTrace = _v16Inc; eval('generateIncrementalTrace = _v16Inc'); } catch(e) {}
+
+  // Chat replies should remember today's generated couple-location trace, but this does not create/modify traces.
+  function _v16BuildChatContext(persona){
+    if (!persona || typeof locDailyTraces === 'undefined') return '';
+    var today = new Date().toLocaleDateString('zh-TW');
+    var traces = (locDailyTraces[persona.id] || []).filter(function(t){ return !t.isoDate || t.isoDate === today; });
+    if (!traces.length) return '';
+    traces = traces.slice().sort(function(a,b){ return String(a.time||'00:00').localeCompare(String(b.time||'00:00')); });
+    var now = new Date();
+    var nowMin = now.getHours() * 60 + now.getMinutes();
+    var current = null, next = null;
+    traces.forEach(function(t){
+      var parts = String(t.time || '').split(':').map(Number);
+      var m = (parts[0] || 0) * 60 + (parts[1] || 0);
+      if (m <= nowMin + 20) current = t;
+      if (!next && m > nowMin + 20) next = t;
+    });
+    var lines = traces.slice(-18).map(function(t){ return '- ' + (t.time || '') + '｜' + (t.place || '') + '｜' + (t.activity || ''); }).join('\n');
+    return '【今日情侣定位行踪，仅供角色回复时参考】\n当前时间：' + now.toLocaleString() + '\n' +
+      (current ? '当前/最近行踪：' + current.time + ' 在 ' + current.place + '，' + current.activity + '。\n' : '') +
+      (next ? '之后计划：' + next.time + ' 在/去 ' + next.place + '，' + next.activity + '。\n' : '') +
+      lines + '\n规则：当用户问“现在在哪/在干嘛/之后去哪/今天做了什么”等，优先参考这些行踪回答；不要说出和行踪冲突的时间、地点、事件。若用户没有问行踪，不要生硬提起。';
+  }
+  window.monoGetSmartLocationContextForChat = _v16BuildChatContext;
+
+  // Replace v15's broad fetch wrapper with a gentler one that only injects generated location traces into normal chat replies.
+  try {
+    var rawFetch = window.__monoV15OriginalFetch || window.fetch;
+    window.fetch = function(input, init){
+      try {
+        var url = (typeof input === 'string') ? input : (input && input.url) || '';
+        if (/\/chat\/completions/.test(url) && init && init.body && typeof init.body === 'string') {
+          var body = JSON.parse(init.body);
+          if (body && Array.isArray(body.messages)) {
+            var allText = body.messages.map(function(m){ return String(m && m.content || ''); }).join('\n').slice(0,4000);
+            var isHelper = /翻译|翻譯|只返回翻译|只返回翻譯|总结成|記憶整理助手|记忆整理助手|不要回复用户|当日行踪|生成以下时间点的行踪|继续生成以下时间点的行踪/.test(allText);
+            var p = _v16GetPersona((typeof currentId !== 'undefined') ? currentId : null);
+            var ctx = (!isHelper && p) ? _v16BuildChatContext(p) : '';
+            if (ctx) {
+              body.messages.unshift({ role:'system', content: ctx });
+              init = Object.assign({}, init, { body: JSON.stringify(body) });
+            }
+          }
+        }
+      } catch(e) {}
+      return rawFetch(input, init);
+    };
+  } catch(e) {}
+
+  _v16Toast('情侣定位已改为：只在手动更新行踪时参考当天聊天内容。');
+})();
+</script>
+
+
+<script>
+// === v17: Couple-location reference refinement ===
+// Goal:
+// 1) Couple location only references same-day chat when user manually generates traces.
+// 2) It should not copy chat text, should not force unrelated chat into traces, and should avoid illogical jumps.
+// 3) Chat replies use the current half-hour range instead of exact minute matching.
+(function(){
+  'use strict';
+  function _v17Toast(msg){
+    try { if (typeof showToast === 'function') return showToast(msg); } catch(e) {}
+    try { if (typeof _v16Toast === 'function') return _v16Toast(msg); } catch(e) {}
+    console.log('[v17]', msg);
+  }
+  function _v17TodayKey(d){
+    d = d || new Date();
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  function _v17MsgDate(m){
+    var raw = m && (m.timestamp || m.time || m.createdAt || m.date || m.sentAt);
+    if (!raw) return null;
+    var d = null;
+    if (raw instanceof Date) d = raw;
+    else if (typeof raw === 'number') d = new Date(raw);
+    else if (/^\d+$/.test(String(raw))) d = new Date(Number(raw));
+    else d = new Date(raw);
+    if (!d || isNaN(d.getTime())) return null;
+    return d;
+  }
+  function _v17CleanText(s){
+    return String(s || '')
+      .replace(/\[heart_voice\][\s\S]*?\[\/heart_voice\]/g, ' ')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 180);
+  }
+  function _v17HasTraceSignal(text){
+    text = String(text || '');
+    var hasTime = /(凌晨|早上|上午|中午|下午|傍晚|晚上|今晚|等下|待会|一会|之后|稍后|现在|刚刚|剛刚|已经|今天|明天|\d{1,2}\s*(点|時|时|:|：))/.test(text);
+    var hasPlaceMove = /(在|到|去|回|离开|出门|路上|到达|抵达|经过|附近|楼下|门口|学校|公司|家|宿舍|咖啡|餐厅|饭店|商场|超市|医院|图书馆|车站|机场|地铁|公交|公园|电影院|店|办公室|教室)/.test(text);
+    var hasAction = /(上课|下课|上班|下班|吃饭|喝|买|看|写|做|等|见|开会|学习|工作|休息|睡|回家|回去|出发|坐车|开车|走路|散步|逛|拿|送|接|准备)/.test(text);
+    return (hasPlaceMove && (hasTime || hasAction));
+  }
+  function _v17CollectTodayChatReference(persona){
+    if (!persona || !Array.isArray(persona.history)) return '';
+    var today = _v17TodayKey();
+    var lines = [];
+    persona.history.forEach(function(m){
+      if (!m || !m.content) return;
+      var d = _v17MsgDate(m);
+      // No reliable date = do not reference it for location.
+      if (!d || _v17TodayKey(d) !== today) return;
+      var content = _v17CleanText(m.content);
+      if (!content || !_v17HasTraceSignal(content)) return;
+      var role = (m.role === 'user') ? '用户' : (persona.name || '角色');
+      var timeLabel = d.toLocaleTimeString('zh-TW', { hour:'2-digit', minute:'2-digit', hour12:false });
+      lines.push(timeLabel + ' ' + role + '：' + content);
+    });
+    return lines.slice(-18).join('\n');
+  }
+  function _v17BuildLocationTraceInstruction(persona){
+    var ref = _v17CollectTodayChatReference(persona);
+    if (!ref) return '';
+    return '\n\n【当天聊天参考，只能作为轻参考】\n' + ref + '\n\n【参考规则】\n' +
+      '1. 只在生成行踪时参考上面的同日期聊天；不要复制粘贴聊天原句，不要把聊天内容逐字写进行踪。\n' +
+      '2. 不是一定要参考：只有当聊天明确提到今天的地点、时间、正在做的事、之后计划，才可影响对应时间段。无关闲聊忽略。\n' +
+      '3. 保持原本情侣定位生成逻辑：从当天 00:00 开始，每隔半小时一条，不新增非半小时点。\n' +
+      '4. 如果聊天提到大概时间，比如“下午回学校”“等下去餐厅”“晚上回家”，请只把它自然 fit 到最接近的半小时区间附近。\n' +
+      '5. 行踪不能跳脱：移动要有顺序，地点变化要自然。不要突然从很远地点瞬移；必要时用“路上/准备出发/刚到附近/在车上”等过渡。\n' +
+      '6. 如果聊天内容和原本行踪逻辑冲突，优先选择更合理、较模糊但不冲突的安排，不要硬塞。';
+  }
+  function _v17SlotsFromStartToNow(startTimeStr){
+    var now = new Date();
+    var cur;
+    if (startTimeStr) {
+      var parts = String(startTimeStr || '00:00').split(':').map(Number);
+      cur = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parts[0] || 0, parts[1] || 0, 0);
+      cur = new Date(cur.getTime() + 30 * 60 * 1000);
+    } else {
+      cur = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    }
+    var slots = [];
+    while (cur <= now) {
+      slots.push(cur.toLocaleTimeString('zh-TW', { hour:'2-digit', minute:'2-digit', hour12:false }));
+      cur = new Date(cur.getTime() + 30 * 60 * 1000);
+    }
+    return slots;
+  }
+  function _v17NormalizeTraceTimes(traces, slots){
+    traces = Array.isArray(traces) ? traces : [];
+    var allowed = {}; slots.forEach(function(t){ allowed[t] = true; });
+    var seen = {}, out = [];
+    traces.forEach(function(t){
+      if (!t) return;
+      var time = String(t.time || '').trim();
+      if (!allowed[time] || seen[time]) return;
+      seen[time] = true;
+      var place = String(t.place || t.address || '未知地点').replace(/[\n\r|]/g,' ').trim().slice(0, 28);
+      var activity = String(t.activity || t.event || t.desc || '日常活动').replace(/[\n\r|]/g,' ').trim().slice(0, 38);
+      out.push({ time:time, place:place || '未知地点', activity:activity || '日常活动', isoDate:new Date().toLocaleDateString('zh-TW'), _v17RangeLogic:true });
+    });
+    out.sort(function(a,b){ return String(a.time).localeCompare(String(b.time)); });
+    return out;
+  }
+  async function _v17CallChatCompletion(prompt, maxTokens){
+    if (!apiConfig?.url || !apiConfig?.key || !apiConfig?.model) return '';
+    var fetchFn = window.__monoV15OriginalFetch || window.fetch;
+    try {
+      var r = await fetchFn(apiConfig.url.replace(/\/+$/,'') + '/chat/completions', {
+        method:'POST',
+        headers:{ 'Authorization':'Bearer ' + apiConfig.key, 'Content-Type':'application/json' },
+        body:JSON.stringify({ model:apiConfig.model, messages:[{role:'user', content:prompt}], temperature:0.78, max_tokens:maxTokens || 850 })
+      });
+      if (!r.ok) return '';
+      var data = await r.json();
+      return (data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
+    } catch(e) { return ''; }
+  }
+  async function _v17Full(persona, regionText){
+    if (!apiConfig?.url || !apiConfig?.key || !apiConfig?.model) return [];
+    var now = new Date();
+    var slots = _v17SlotsFromStartToNow(null);
+    if (!slots.length) return [];
+    var prompt = '你是' + persona.name + '，人设：' + (persona.persona || '普通人') + '，所在地区：' + (regionText || '未知地区') + '。今天是' + now.toLocaleDateString('zh-TW') + '。\n' +
+      _v17BuildLocationTraceInstruction(persona) + '\n\n' +
+      '【语言要求：无论角色人设如何，行踪记录必须全程使用简体中文】\n' +
+      '请生成以下时间点的当日行踪：' + slots.join('、') + '\n' +
+      '必须保持每隔半小时一条，从当天 00:00 开始到当前时间。\n' +
+      '格式（每行一条）：HH:MM | 地点名称 | 正在做的事（15字以内）\n' +
+      '只需给行踪列表，不要解释。';
+    var raw = await _v17CallChatCompletion(prompt, 900);
+    var parsed = (typeof _parseTraceLines === 'function') ? _parseTraceLines(raw, now) : [];
+    return _v17NormalizeTraceTimes(parsed, slots);
+  }
+  async function _v17Inc(persona, regionText, fromTimeStr){
+    if (!apiConfig?.url || !apiConfig?.key || !apiConfig?.model) return [];
+    var now = new Date();
+    var slots = _v17SlotsFromStartToNow(fromTimeStr || '00:00');
+    if (!slots.length) return [];
+    var prompt = '你是' + persona.name + '，人设：' + (persona.persona || '普通人') + '，所在地区：' + (regionText || '未知地区') + '。今天是' + now.toLocaleDateString('zh-TW') + '。\n' +
+      _v17BuildLocationTraceInstruction(persona) + '\n\n' +
+      '【语言要求：无论角色人设如何，行踪记录必须全程使用简体中文】\n' +
+      '继续生成以下时间点的行踪：' + slots.join('、') + '\n' +
+      '必须保持每隔半小时一条，只补充这些时间点，不要新增其他时间。\n' +
+      '格式：HH:MM | 地点名称 | 正在做的事（15字以内）\n' +
+      '只需给行踪列表，不要解释。';
+    var raw = await _v17CallChatCompletion(prompt, 750);
+    var parsed = (typeof _parseTraceLines === 'function') ? _parseTraceLines(raw, now) : [];
+    return _v17NormalizeTraceTimes(parsed, slots);
+  }
+  function _v17Minutes(t){
+    var p = String(t || '00:00').split(':').map(Number);
+    return (p[0] || 0) * 60 + (p[1] || 0);
+  }
+  function _v17GetPersona(pid){
+    try { return (typeof personas !== 'undefined' && Array.isArray(personas)) ? personas.find(function(p){ return String(p.id) === String(pid); }) : null; } catch(e) { return null; }
+  }
+  function _v17BuildChatContext(persona){
+    if (!persona || typeof locDailyTraces === 'undefined') return '';
+    var today = new Date().toLocaleDateString('zh-TW');
+    var traces = (locDailyTraces[persona.id] || []).filter(function(t){ return !t.isoDate || t.isoDate === today; });
+    if (!traces.length) return '';
+    traces = traces.slice().sort(function(a,b){ return String(a.time || '00:00').localeCompare(String(b.time || '00:00')); });
+    var now = new Date();
+    var nowMin = now.getHours() * 60 + now.getMinutes();
+    var current = null, next = null, rangeStart = null, rangeEnd = null;
+    for (var i=0;i<traces.length;i++) {
+      var t = traces[i];
+      var start = _v17Minutes(t.time);
+      var end = (i + 1 < traces.length) ? _v17Minutes(traces[i+1].time) : start + 30;
+      if (nowMin >= start && nowMin < end) { current = t; next = traces[i+1] || null; rangeStart = start; rangeEnd = end; break; }
+      if (start <= nowMin) current = t;
+      if (!next && start > nowMin) next = t;
+    }
+    function fmt(min){ return String(Math.floor(min/60)).padStart(2,'0') + ':' + String(min%60).padStart(2,'0'); }
+    var rangeText = (rangeStart != null) ? (fmt(rangeStart) + '-' + fmt(rangeEnd || rangeStart + 30)) : '当前附近时间段';
+    var lines = traces.slice(-18).map(function(t){ return '- ' + (t.time || '') + '｜' + (t.place || '') + '｜' + (t.activity || ''); }).join('\n');
+    return '【今日情侣定位行踪，仅供角色回复时参考】\n当前时间：' + now.toLocaleString() + '\n' +
+      (current ? '当前所在半小时区间：' + rangeText + '；这段时间大概在 ' + current.place + '，' + current.activity + '。\n' : '') +
+      (next ? '之后较近的计划：' + next.time + ' 左右在/去 ' + next.place + '，' + next.activity + '。\n' : '') +
+      lines + '\n规则：当用户问“现在在哪/在干嘛/之后去哪/今天做了什么”等，按情侣定位的半小时区间大概回答即可，不需要精确到具体分钟；可以说“差不多/大概/这会儿/等下”。不要说出和行踪冲突的时间、地点、事件。若用户没有问行踪，不要生硬提起。';
+  }
+  // Keep v16's manual-only design and replace the actual generator/context functions with the refined version.
+  window.monoSyncChatEventsToLocationTrace = function(){ return false; };
+  window.monoRefreshSmartLocationFacts = function(){ return false; };
+  try { window.generateFullDayTrace = _v17Full; eval('generateFullDayTrace = _v17Full'); } catch(e) {}
+  try { window.generateIncrementalTrace = _v17Inc; eval('generateIncrementalTrace = _v17Inc'); } catch(e) {}
+  window.monoGetSmartLocationContextForChat = _v17BuildChatContext;
+
+  // Re-wrap fetch so chat replies get the v17 range-based context. Avoid helper/location-generation calls.
+  try {
+    var rawFetch = window.__monoV17RawFetch || window.__monoV15OriginalFetch || window.fetch;
+    window.__monoV17RawFetch = rawFetch;
+    window.fetch = function(input, init){
+      try {
+        var url = (typeof input === 'string') ? input : (input && input.url) || '';
+        if (/\/chat\/completions/.test(url) && init && init.body && typeof init.body === 'string') {
+          var body = JSON.parse(init.body);
+          if (body && Array.isArray(body.messages)) {
+            var allText = body.messages.map(function(m){ return String(m && m.content || ''); }).join('\n').slice(0,5000);
+            var isHelper = /翻译|翻譯|只返回翻译|只返回翻譯|总结成|記憶整理助手|记忆整理助手|不要回复用户|当日行踪|生成以下时间点的行踪|继续生成以下时间点的行踪|地点名称 \| 正在做的事/.test(allText);
+            var p = _v17GetPersona((typeof currentId !== 'undefined') ? currentId : null);
+            var ctx = (!isHelper && p) ? _v17BuildChatContext(p) : '';
+            if (ctx) {
+              // Remove older v16/v15 location context if it was already injected by another wrapper.
+              body.messages = body.messages.filter(function(m){ return !(m && m.role === 'system' && /今日情侣定位行踪/.test(String(m.content || ''))); });
+              body.messages.unshift({ role:'system', content:ctx });
+              init = Object.assign({}, init, { body:JSON.stringify(body) });
+            }
+          }
+        }
+      } catch(e) {}
+      return rawFetch(input, init);
+    };
+  } catch(e) {}
+  _v17Toast('已优化情侣定位：手动生成时轻参考当天聊天，聊天回复按半小时区间参考行踪。');
+})();
+</script>
+
 </body>
 </html>

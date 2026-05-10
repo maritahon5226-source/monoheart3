@@ -98197,5 +98197,177 @@ if (document.readyState === 'loading') {
 })();
 </script>
 
+
+
+<script id="mono-role-wechat-v13-npc-editor-toast-hotfix">
+// ===== MONO PATCH v13: fix NPC setting popup visibility + add user-contact feedback toast =====
+(function(){
+  'use strict';
+
+  function getOverlay(){ return document.getElementById('npcEditorOverlay'); }
+  function esc(v){
+    return String(v == null ? '' : v)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+  function getPersona(ownerPersonaId){
+    try { if (typeof monoGetPersonaById === 'function') return monoGetPersonaById(ownerPersonaId); } catch(e) {}
+    try {
+      var list = JSON.parse(localStorage.getItem('mono_personas') || '[]') || [];
+      return list.find(function(p){ return p && String(p.id) === String(ownerPersonaId); }) || null;
+    } catch(e) { return null; }
+  }
+  function getNpc(npcId){
+    try { if (typeof monoFindRoleNpcById === 'function') return monoFindRoleNpcById(npcId); } catch(e) {}
+    try {
+      var store = JSON.parse(localStorage.getItem('mono_role_npcs_v1') || '{}') || {};
+      var keys = Object.keys(store || {});
+      for (var i=0;i<keys.length;i++) {
+        var arr = Array.isArray(store[keys[i]]) ? store[keys[i]] : [];
+        var hit = arr.find(function(n){ return n && String(n.id) === String(npcId); });
+        if (hit) return hit;
+      }
+    } catch(e) {}
+    return null;
+  }
+  function isNpcInUserContacts(npcId){
+    try {
+      var list = JSON.parse(localStorage.getItem('mono_personas') || '[]') || [];
+      return list.some(function(p){ return p && String(p._roleNpcId || '') === String(npcId); });
+    } catch(e) { return false; }
+  }
+  function ensureNpcEditorLayer(){
+    var overlay = getOverlay();
+    if (!overlay) return;
+    overlay.classList.add('open');
+    overlay.style.display = 'flex';
+    overlay.style.pointerEvents = 'auto';
+    overlay.style.zIndex = '100820';
+    var sheet = overlay.querySelector('.npc-editor-sheet');
+    if (sheet) {
+      sheet.style.pointerEvents = 'auto';
+      sheet.style.position = sheet.style.position || 'relative';
+      sheet.style.zIndex = '1';
+    }
+    Array.prototype.slice.call(overlay.querySelectorAll('button,input,textarea,select')).forEach(function(el){
+      el.style.pointerEvents = 'auto';
+    });
+  }
+  function hideNpcEditor(){
+    var overlay = getOverlay();
+    if (!overlay) return false;
+    overlay.classList.remove('open');
+    overlay.style.display = 'none';
+    overlay.style.pointerEvents = 'none';
+    return false;
+  }
+  function toast(title, note){
+    title = String(title || '已完成');
+    note = String(note || '');
+    try {
+      if (typeof showMonoNotifToast === 'function') showMonoNotifToast(title, note, '');
+    } catch(e) {}
+    var box = document.getElementById('monoRolePhoneActionToast');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'monoRolePhoneActionToast';
+      box.style.cssText = 'position:fixed;left:50%;bottom:84px;transform:translateX(-50%) translateY(12px);z-index:200000;max-width:82%;padding:11px 16px;border-radius:18px;background:rgba(20,20,24,.92);color:#fff;font-size:12px;font-weight:700;line-height:1.5;box-shadow:0 12px 34px rgba(0,0,0,.24);opacity:0;pointer-events:none;transition:opacity .18s ease, transform .18s ease;text-align:center;backdrop-filter:blur(12px);';
+      document.body.appendChild(box);
+    }
+    box.innerHTML = '<div>' + esc(title) + '</div>' + (note ? '<div style="font-size:10px;font-weight:500;color:rgba(255,255,255,.78);margin-top:2px;">' + esc(note) + '</div>' : '');
+    clearTimeout(window._monoRolePhoneToastTimer);
+    requestAnimationFrame(function(){
+      box.style.opacity = '1';
+      box.style.transform = 'translateX(-50%) translateY(0)';
+    });
+    window._monoRolePhoneToastTimer = setTimeout(function(){
+      box.style.opacity = '0';
+      box.style.transform = 'translateX(-50%) translateY(12px)';
+    }, 1800);
+  }
+
+  // v10 hid the editor with inline display:none; the old NPC setting opener only added .open.
+  // Wrap both custom-new and edit-existing openers so the popup is made visible every time.
+  var prevOpenEdit = (typeof window.monoOpenNpcEditor === 'function') ? window.monoOpenNpcEditor : null;
+  if (prevOpenEdit) {
+    window.monoOpenNpcEditor = function(ownerPersonaId, npcId){
+      var result;
+      try { result = prevOpenEdit.call(window, ownerPersonaId, npcId); }
+      catch(err) { console.error('[v13 NPC设定弹窗打开失败]', err); alert('NPC 设定打开失败：' + (err && err.message ? err.message : '请重新进入角色微信后再试。')); return false; }
+      setTimeout(ensureNpcEditorLayer, 0);
+      return result;
+    };
+  }
+  var prevOpenCustom = (typeof window.monoOpenCustomNpcEditor === 'function') ? window.monoOpenCustomNpcEditor : null;
+  if (prevOpenCustom) {
+    window.monoOpenCustomNpcEditor = function(ownerPersonaId, evt){
+      var result;
+      try { result = prevOpenCustom.call(window, ownerPersonaId, evt); }
+      catch(err) { console.error('[v13 自定义NPC弹窗打开失败]', err); alert('自定义 NPC 打开失败：' + (err && err.message ? err.message : '请重新进入角色微信后再试。')); return false; }
+      setTimeout(ensureNpcEditorLayer, 0);
+      return result;
+    };
+  }
+
+  var prevClose = (typeof window.closeNpcEditorOverlay === 'function') ? window.closeNpcEditorOverlay : null;
+  window.closeNpcEditorOverlay = function(){
+    try { if (prevClose && prevClose !== window.closeNpcEditorOverlay) prevClose.call(window); } catch(e) {}
+    return hideNpcEditor();
+  };
+
+  // Capture fallback for the NPC setting button specifically, in case inline onclick is blocked by card/list click handlers.
+  document.addEventListener('click', function(e){
+    var target = e.target;
+    if (!target || !target.closest) return;
+    var btn = target.closest('.role-phone-mini-btn');
+    if (!btn) return;
+    var txt = (btn.textContent || '').replace(/\s+/g,'');
+    var handler = btn.getAttribute('onclick') || '';
+    if (txt === '设定' && handler.indexOf('monoOpenNpcEditor') >= 0) {
+      var m = handler.match(/monoOpenNpcEditor\('([^']+)'\s*,\s*'([^']+)'\)/);
+      if (m) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.monoOpenNpcEditor(m[1], m[2]);
+      }
+    }
+  }, true);
+
+  // Add clear feedback when adding/removing an NPC from the user's normal contact list.
+  var prevToggle = (typeof window.monoToggleRoleNpcUserContact === 'function') ? window.monoToggleRoleNpcUserContact : null;
+  window.monoToggleRoleNpcUserContact = function(ownerPersonaId, npcId){
+    var wasAdded = isNpcInUserContacts(npcId);
+    var npc = getNpc(npcId) || {};
+    var owner = getPersona(ownerPersonaId) || {};
+    try {
+      if (prevToggle && prevToggle !== window.monoToggleRoleNpcUserContact) {
+        prevToggle.call(window, ownerPersonaId, npcId);
+      }
+    } catch(err) {
+      console.error('[v13 用户联络人添加/移出失败]', err);
+      toast('操作失败', err && err.message ? err.message : '请重新打开角色微信后再试');
+      return false;
+    }
+    setTimeout(function(){
+      var nowAdded = isNpcInUserContacts(npcId);
+      if (wasAdded && !nowAdded) {
+        toast('已移出用户联络人', npc.name ? ('「' + npc.name + '」已从用户联络人移出') : '已从用户联络人移出');
+      } else if (!wasAdded && nowAdded) {
+        toast('已添加到用户联络人', npc.name ? ('「' + npc.name + '」已加入用户联络人') : '已加入用户联络人');
+      } else {
+        toast('已更新', owner.name ? ('已刷新「' + owner.name + '」角色微信') : '操作已执行');
+      }
+    }, 80);
+    return false;
+  };
+
+  // If a popup is already open when this patch loads, repair its layer immediately.
+  setTimeout(function(){
+    var overlay = getOverlay();
+    if (overlay && overlay.classList.contains('open')) ensureNpcEditorLayer();
+  }, 0);
+})();
+</script>
+
 </body>
 </html>

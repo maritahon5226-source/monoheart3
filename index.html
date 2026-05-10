@@ -98369,5 +98369,571 @@ if (document.readyState === 'loading') {
 })();
 </script>
 
+
+<script>
+// ===================== v14 PATCH: Memory summary hard delete + Chat/Location bidirectional sync =====================
+(function(){
+  if (window.__monoV14MemoryLocationPatch) return;
+  window.__monoV14MemoryLocationPatch = true;
+
+  function _v14Toast(msg){
+    try { if (typeof showToast === 'function') return showToast(msg, 2600); } catch(e) {}
+    try { if (typeof showMonoNotifToast === 'function') return showMonoNotifToast('Mono', msg, ''); } catch(e) {}
+    try { alert(msg); } catch(e) {}
+  }
+  function _v14Esc(s){
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function(ch){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[ch]; });
+  }
+  function _v14GetPersonasFromRaw(raw){
+    try { var arr = JSON.parse(raw || '[]'); return Array.isArray(arr) ? arr : []; } catch(e) { return []; }
+  }
+  function _v14SetPersonasToKey(key, arr){
+    try { localStorage.setItem(key, JSON.stringify(arr)); } catch(e) {}
+    try {
+      if (window._monoRawLocalStorage && window._monoRawLocalStorage.setItem) {
+        // If the key is already world-prefixed or shared, write the exact key as a physical backup too.
+        if (/^mono_mw_/.test(key) || key === 'mono_personas') window._monoRawLocalStorage.setItem(key, JSON.stringify(arr));
+      }
+    } catch(e) {}
+  }
+  function _v14MemoryCat(item){
+    try { if (typeof _monoMemoryCategory === 'function') return _monoMemoryCategory(item); } catch(e) {}
+    if (!item || typeof item !== 'object') return 'add';
+    var source = item.source || '';
+    if (source === '手动添加') return 'add';
+    if (/^手动总结/.test(source) || source === '按日期总结' || source === '范围总结') return 'manual';
+    if (/^每\d+轮自动总结/.test(source) || source === '自动总结' || item.auto) return 'auto';
+    if (source === 'AI自刻记忆') return 'ai_write';
+    if (/^线下剧情/.test(source) || item._offlineMemoryType) return 'offline';
+    if (/^论坛/.test(source) || item._forumMemoryKey) return 'forum';
+    if (source === '通话记录' || source === '通话') return 'call';
+    if (source === '朋友圈' || /^朋友圈/.test(source)) return 'moments';
+    if (source === '反向查岗' || source === '情侣空间' || source === '角色间私聊' || source === '角色间对话' || source === '群聊记忆') return 'interact';
+    return 'add';
+  }
+  function _v14CategoryLabel(cat){
+    return ({all:'全部',auto:'自动总结',manual:'手动总结',add:'手动添加',ai_write:'角色自刻',offline:'线下剧情',call:'通话',forum:'论坛',interact:'互动',moments:'朋友圈'})[cat] || cat;
+  }
+  function _v14FilterMemoryCore(list, cat){
+    if (!Array.isArray(list)) return [];
+    if (!cat || cat === 'all') return [];
+    return list.filter(function(item){ return _v14MemoryCat(item) !== cat; });
+  }
+  function _v14DeleteFromPersonaObject(p, cat){
+    if (!p || !Array.isArray(p.memoryCore)) return 0;
+    var before = p.memoryCore.length;
+    p.memoryCore = (cat && cat !== 'all') ? _v14FilterMemoryCore(p.memoryCore, cat) : [];
+    // also wipe small derived summary fields if any future/old versions added them
+    if (!cat || cat === 'all') {
+      ['memorySummary','coreMemorySummary','lastMemorySummary','autoMemorySummaryCache','memoryCoreCache'].forEach(function(k){ if (k in p) delete p[k]; });
+    }
+    return before - p.memoryCore.length;
+  }
+  function _v14UpdatePersonaArray(arr, personaId, cat){
+    var removed = 0;
+    if (!Array.isArray(arr)) return 0;
+    arr.forEach(function(p){
+      if (!personaId || String(p.id) === String(personaId)) removed += _v14DeleteFromPersonaObject(p, cat);
+    });
+    return removed;
+  }
+  async function _v14HardDeleteMemory(personaId, cat){
+    var removed = 0;
+    // 1) live memory
+    try { if (Array.isArray(window.personas)) removed += _v14UpdatePersonaArray(window.personas, personaId, cat); } catch(e) {}
+    try { if (typeof personas !== 'undefined' && Array.isArray(personas)) removed += _v14UpdatePersonaArray(personas, personaId, cat); } catch(e) {}
+
+    // 2) current-world persona metadata through localStorage proxy -> localStorage + IndexedDB kv
+    try {
+      var ps = _v14GetPersonasFromRaw(localStorage.getItem('mono_personas') || '[]');
+      _v14UpdatePersonaArray(ps, personaId, cat);
+      _v14SetPersonasToKey('mono_personas', ps);
+    } catch(e) {}
+
+    // 3) all multi-world persona blobs, so switching world / exporting old worlds cannot resurrect summaries
+    try {
+      var worlds = (typeof mwGetWorlds === 'function') ? mwGetWorlds() : [];
+      if (Array.isArray(worlds)) {
+        worlds.forEach(function(w){
+          if (!w || !w.id) return;
+          var key = 'mono_mw_' + w.id + '_personas';
+          var raw = null;
+          try { raw = localStorage.getItem(key); } catch(e) {}
+          if (!raw && window._monoRawLocalStorage) { try { raw = window._monoRawLocalStorage.getItem(key); } catch(e) {} }
+          if (!raw) return;
+          var arr = _v14GetPersonasFromRaw(raw);
+          _v14UpdatePersonaArray(arr, personaId, cat);
+          _v14SetPersonasToKey(key, arr);
+        });
+      }
+    } catch(e) {}
+
+    // 4) pending import/preview data, if a backup is loaded but not imported yet
+    try {
+      if (window._pendingImportData && window._pendingImportData.chat && Array.isArray(window._pendingImportData.chat.personas)) {
+        _v14UpdatePersonaArray(window._pendingImportData.chat.personas, personaId, cat);
+      }
+    } catch(e) {}
+    try {
+      if (typeof _pendingImportData !== 'undefined' && _pendingImportData && _pendingImportData.chat && Array.isArray(_pendingImportData.chat.personas)) {
+        _v14UpdatePersonaArray(_pendingImportData.chat.personas, personaId, cat);
+      }
+    } catch(e) {}
+
+    // 5) save using app's normal path so the proxy writes to IndexedDB; then re-render
+    try { if (typeof saveData === 'function') saveData(); } catch(e) {}
+    try {
+      var p = (typeof personas !== 'undefined' && Array.isArray(personas)) ? personas.find(function(x){ return String(x.id) === String(personaId); }) : null;
+      if (p && typeof renderMemoryCoreList === 'function') renderMemoryCoreList(p.memoryCore || []);
+    } catch(e) {}
+    return removed;
+  }
+  window.monoDeleteAllMemoryCoreSummaries = async function(){
+    var p = (typeof personas !== 'undefined' && Array.isArray(personas)) ? personas.find(function(x){ return String(x.id) === String(currentId); }) : null;
+    if (!p) return _v14Toast('请先打开一个角色设置。');
+    var ok = true;
+    try {
+      if (window.monoInAppConfirm) ok = await window.monoInAppConfirm({ title:'删除全部记忆总结', note:'会彻底删除该角色记忆核心列表里的全部内容，并同步清除 localStorage、IndexedDB 缓存和导出来源。删除后无法恢复。', confirmText:'全部删除', cancelText:'取消', danger:true });
+      else ok = confirm('确定删除该角色全部记忆总结？删除后无法恢复。');
+    } catch(e) { ok = confirm('确定删除该角色全部记忆总结？删除后无法恢复。'); }
+    if (!ok) return;
+    await _v14HardDeleteMemory(p.id, 'all');
+    _v14Toast('已彻底删除全部记忆总结，不会留在缓存或导出数据里。');
+  };
+  window.monoDeleteMemoryCoreByTag = async function(cat){
+    var p = (typeof personas !== 'undefined' && Array.isArray(personas)) ? personas.find(function(x){ return String(x.id) === String(currentId); }) : null;
+    if (!p) return _v14Toast('请先打开一个角色设置。');
+    cat = cat || (document.getElementById('monoDeleteMemoryTagSelect') || {}).value || 'auto';
+    if (cat === 'all') return window.monoDeleteAllMemoryCoreSummaries();
+    var label = _v14CategoryLabel(cat);
+    var count = Array.isArray(p.memoryCore) ? p.memoryCore.filter(function(item){ return _v14MemoryCat(item) === cat; }).length : 0;
+    if (!count) return _v14Toast('该标签下没有可删除的记忆总结。');
+    var ok = true;
+    try {
+      if (window.monoInAppConfirm) ok = await window.monoInAppConfirm({ title:'删除「' + label + '」记忆', note:'将彻底删除该标签下的 ' + count + ' 条记忆总结，并同步清除缓存和导出来源。删除后无法恢复。', confirmText:'删除该标签', cancelText:'取消', danger:true });
+      else ok = confirm('确定删除「' + label + '」下的 ' + count + ' 条记忆总结？');
+    } catch(e) { ok = confirm('确定删除「' + label + '」下的 ' + count + ' 条记忆总结？'); }
+    if (!ok) return;
+    await _v14HardDeleteMemory(p.id, cat);
+    _v14Toast('已彻底删除「' + label + '」下的记忆总结。');
+  };
+  function _v14InsertMemoryDeleteUI(){
+    var section = document.getElementById('memoryCoreSection');
+    if (!section || document.getElementById('monoMemoryDeletePanel')) return;
+    var anchor = document.getElementById('memoryCoreFilterBar') || document.getElementById('memoryCoreList');
+    var panel = document.createElement('div');
+    panel.id = 'monoMemoryDeletePanel';
+    panel.style.cssText = 'background:#fff7f7;border:1px solid #ffd6d6;border-radius:10px;padding:10px;margin:8px 0 10px;display:flex;flex-direction:column;gap:8px;';
+    panel.innerHTML = '<div style="font-size:11px;color:#b94a48;line-height:1.5;font-weight:600;"><i class="fas fa-trash-alt" style="margin-right:5px;"></i>记忆总结清理</div>'+
+      '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">'+
+      '<button type="button" id="monoDeleteAllMemoryCoreBtn" style="flex:1;min-width:130px;border:none;background:#e74c3c;color:#fff;border-radius:8px;padding:8px 10px;font-size:11px;font-weight:700;cursor:pointer;">一键删除全部记忆总结</button>'+
+      '<select id="monoDeleteMemoryTagSelect" style="flex:1;min-width:110px;border:1px solid #f1b5b5;border-radius:8px;padding:7px 8px;font-size:11px;background:#fff;color:#7a3333;">'+
+      '<option value="auto">自动总结</option><option value="manual">手动总结</option><option value="add">手动添加</option><option value="ai_write">角色自刻</option><option value="offline">线下剧情</option><option value="call">通话</option><option value="forum">论坛</option><option value="interact">互动</option><option value="moments">朋友圈</option></select>'+
+      '<button type="button" id="monoDeleteTagMemoryCoreBtn" style="border:none;background:#fff0f0;color:#d84343;border-radius:8px;padding:8px 10px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid #ffc9c9;">删除该标签</button></div>'+
+      '<div style="font-size:9px;color:#c78383;line-height:1.5;">删除会同步清理当前角色资料、localStorage / IndexedDB 代理缓存和之后导出的备份数据。</div>';
+    if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(panel, anchor.nextSibling); else section.appendChild(panel);
+    var b1 = document.getElementById('monoDeleteAllMemoryCoreBtn');
+    var b2 = document.getElementById('monoDeleteTagMemoryCoreBtn');
+    if (b1) b1.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); window.monoDeleteAllMemoryCoreSummaries(); }, true);
+    if (b2) b2.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); window.monoDeleteMemoryCoreByTag(); }, true);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _v14InsertMemoryDeleteUI);
+  else setTimeout(_v14InsertMemoryDeleteUI, 50);
+  document.addEventListener('click', function(e){
+    var t = e.target && e.target.closest ? e.target.closest('#monoDeleteAllMemoryCoreBtn,#monoDeleteTagMemoryCoreBtn') : null;
+    if (!t) return;
+    e.preventDefault(); e.stopPropagation();
+    if (t.id === 'monoDeleteAllMemoryCoreBtn') window.monoDeleteAllMemoryCoreSummaries();
+    if (t.id === 'monoDeleteTagMemoryCoreBtn') window.monoDeleteMemoryCoreByTag();
+  }, true);
+
+  // ---------- Chat ↔ Couple Location sync ----------
+  function _v14TodayKey(){ try { return new Date().toLocaleDateString('zh-TW'); } catch(e) { return new Date().toISOString().slice(0,10); } }
+  function _v14MsgIsToday(m){
+    if (!m) return false;
+    var ts = m.timestamp || m.time || m.createdAt || m.date;
+    if (!ts) return true; // legacy messages: allow recent messages to influence current trace
+    var d = new Date(ts); if (isNaN(d.getTime())) return true;
+    var now = new Date(); return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth() && d.getDate()===now.getDate();
+  }
+  function _v14NormalizeTimeFromText(text, fallbackTs){
+    text = String(text || '');
+    var m = text.match(/(凌晨|早上|上午|中午|下午|傍晚|晚上|今晚)?\s*(\d{1,2})[:：点時时]\s*(\d{1,2})?/);
+    var h, min;
+    if (m) {
+      h = parseInt(m[2],10); min = m[3] ? parseInt(m[3],10) : 0;
+      var seg = m[1] || '';
+      if ((seg === '下午' || seg === '傍晚' || seg === '晚上' || seg === '今晚') && h < 12) h += 12;
+      if (seg === '中午' && h < 11) h += 12;
+    } else if (fallbackTs) {
+      var d = new Date(fallbackTs); if (!isNaN(d.getTime())) { h = d.getHours(); min = d.getMinutes(); }
+    }
+    if (h == null || isNaN(h)) { var n = new Date(); h = n.getHours(); min = n.getMinutes(); }
+    h = Math.max(0, Math.min(23, h)); min = Math.max(0, Math.min(59, min || 0));
+    // round to nearest 30 minutes so it can merge with generated trace slots
+    min = min < 15 ? 0 : (min < 45 ? 30 : 0);
+    if (min === 0 && /45|50|55/.test(String(m && m[3] || ''))) h = Math.min(23, h + 1);
+    return String(h).padStart(2,'0') + ':' + String(min).padStart(2,'0');
+  }
+  function _v14ExtractPlace(text){
+    text = String(text || '').replace(/\s+/g,' ');
+    var patterns = [
+      /(?:我(?:现在|剛刚|刚刚|已经|今天|正在)?|现在|刚到|到了|到达|抵达|在)\s*([^，。！？!?,\n]{2,18}?)(?:里|附近|门口|楼下|这边|那边)?(?:，|。|！|!|\?|？|$)/,
+      /(?:地点|位置|坐标)[:：]\s*([^，。！？!?,\n]{2,20})/,
+      /(?:去|回|到)\s*([^，。！？!?,\n]{2,18}?)(?:了|啦|咯|$|，|。)/
+    ];
+    for (var i=0;i<patterns.length;i++) { var mm = text.match(patterns[i]); if (mm && mm[1]) return mm[1].replace(/^(了|在|去|到)/,'').trim(); }
+    return '';
+  }
+  function _v14ExtractActivity(text){
+    text = String(text || '').replace(/\[[^\]]+\]/g,'').replace(/\s+/g,' ');
+    var m = text.match(/(?:在|正在|刚刚|剛刚|准备|打算|要去|已经|一边)([^，。！？!?,\n]{2,22})(?:，|。|！|!|\?|？|$)/);
+    var act = m && m[1] ? m[1] : text.slice(0,24);
+    act = act.replace(/^(这里|那边|那裡|这边|我|现在|今天)/,'').trim();
+    return act.slice(0,28) || '和聊天内容保持一致';
+  }
+  function _v14ExtractChatEvents(persona){
+    if (!persona || !Array.isArray(persona.history)) return [];
+    var events = [];
+    persona.history.slice(-80).forEach(function(m){
+      if (!m || m.role !== 'assistant' || !_v14MsgIsToday(m)) return;
+      var text = String(m.content || '').replace(/\[heart_voice\][\s\S]*?\[\/heart_voice\]/g,'').trim();
+      if (!text) return;
+      var hasAction = /(我|现在|今天|刚刚|剛刚|已经|正在|到了|在|去|回|路上|出门|下班|上课|咖啡|学校|公司|家|店|餐厅|医院|车站|机场|图书馆|公园|商场|宿舍)/.test(text);
+      if (!hasAction) return;
+      var place = _v14ExtractPlace(text);
+      var activity = _v14ExtractActivity(text);
+      if (!place && !/(到了|正在|路上|出门|回家|上课|下班|吃|喝|等|买|看|写|做|走|坐车|开车)/.test(text)) return;
+      events.push({
+        time: _v14NormalizeTimeFromText(text, m.timestamp || m.time),
+        place: place || '聊天中提到的地点',
+        activity: activity,
+        isoDate: _v14TodayKey(),
+        source: 'chat-sync',
+        _msgTs: m.timestamp || m.time || Date.now(),
+        _msgText: text.slice(0,120)
+      });
+    });
+    // de-duplicate by source message / time+place+activity
+    var seen = {}, out = [];
+    events.forEach(function(ev){
+      var key = (ev._msgTs || '') + '|' + ev.time + '|' + ev.place + '|' + ev.activity;
+      if (seen[key]) return; seen[key] = true; out.push(ev);
+    });
+    return out.slice(-12);
+  }
+  function _v14MergeTraceWithChatEvents(persona, traces){
+    traces = Array.isArray(traces) ? traces.slice() : [];
+    var events = _v14ExtractChatEvents(persona);
+    if (!events.length) return traces;
+    var byTime = {};
+    traces.forEach(function(t){ if (t && t.time) byTime[t.time] = t; });
+    events.forEach(function(ev){
+      if (byTime[ev.time]) {
+        byTime[ev.time].place = ev.place || byTime[ev.time].place;
+        byTime[ev.time].activity = ev.activity || byTime[ev.time].activity;
+        byTime[ev.time].source = 'chat-sync';
+        byTime[ev.time]._chatAligned = true;
+      } else {
+        traces.push(ev);
+        byTime[ev.time] = ev;
+      }
+    });
+    traces.sort(function(a,b){ return String(a.time||'00:00').localeCompare(String(b.time||'00:00')); });
+    return traces;
+  }
+  window.monoSyncChatEventsToLocationTrace = function(persona){
+    try {
+      if (!persona || typeof locDailyTraces === 'undefined') return false;
+      var before = JSON.stringify(locDailyTraces[persona.id] || []);
+      locDailyTraces[persona.id] = _v14MergeTraceWithChatEvents(persona, locDailyTraces[persona.id] || []);
+      var after = JSON.stringify(locDailyTraces[persona.id] || []);
+      if (before !== after) {
+        try {
+          var latest = (locDailyTraces[persona.id] || []).slice(-1)[0];
+          if (latest && typeof locCharLocations !== 'undefined') {
+            if (!locCharLocations[persona.id]) locCharLocations[persona.id] = [];
+            locCharLocations[persona.id].push({ address: latest.place, time: new Date().toISOString(), source:'chat-sync' });
+            if (locCharLocations[persona.id].length > 48) locCharLocations[persona.id] = locCharLocations[persona.id].slice(-48);
+          }
+        } catch(e) {}
+        try { if (typeof saveLocData === 'function') saveLocData(); } catch(e) {}
+        return true;
+      }
+    } catch(e) {}
+    return false;
+  };
+  window.monoBuildChatLocationFacts = function(persona){
+    var events = _v14ExtractChatEvents(persona);
+    if (!events.length) return '';
+    return events.map(function(ev){ return ev.time + ' | ' + ev.place + ' | ' + ev.activity; }).join('\n');
+  };
+
+  // Wrap trace generators so the prompt has chat facts and the result is forced to align.
+  function _v14WrapGenerator(name){
+    var old = window[name] || (typeof globalThis !== 'undefined' ? globalThis[name] : null);
+    try { old = eval(name); } catch(e) {}
+    if (typeof old !== 'function' || old.__v14Wrapped) return;
+    var wrapped = async function(persona, regionText){
+      var facts = window.monoBuildChatLocationFacts(persona);
+      var richerRegion = regionText || '';
+      if (facts) richerRegion += '\n\n【必须优先遵守的今日聊天行踪事实】\n' + facts + '\n生成行踪时，凡是聊天里已经说过的事件、时间、地点、行动，必须保持一致，不可以改成另一个地点或时间。';
+      var result = await old.apply(this, [persona, richerRegion].concat(Array.prototype.slice.call(arguments, 2)));
+      result = _v14MergeTraceWithChatEvents(persona, result || []);
+      try { window.monoSyncChatEventsToLocationTrace(persona); } catch(e) {}
+      return result;
+    };
+    wrapped.__v14Wrapped = true;
+    try { window[name] = wrapped; } catch(e) {}
+    try { eval(name + ' = wrapped'); } catch(e) {}
+  }
+  setTimeout(function(){ _v14WrapGenerator('generateFullDayTrace'); _v14WrapGenerator('generateIncrementalTrace'); }, 100);
+
+  // Wrap render/update/save so chat facts continuously influence location, not only when pressing update.
+  function _v14SyncAllBound(){
+    try {
+      if (typeof locRelations === 'undefined' || !Array.isArray(locRelations)) return;
+      locRelations.forEach(function(rel){
+        var p = (typeof personas !== 'undefined' && Array.isArray(personas)) ? personas.find(function(x){ return String(x.id) === String(rel.personaId); }) : null;
+        if (p) window.monoSyncChatEventsToLocationTrace(p);
+      });
+    } catch(e) {}
+  }
+  function _v14WrapFn(name, before, after){
+    var old = null; try { old = eval(name); } catch(e) {}
+    if (typeof old !== 'function' || old.__v14Wrapped) return;
+    var wrapped = function(){
+      try { if (before) before.apply(this, arguments); } catch(e) {}
+      var res = old.apply(this, arguments);
+      try { if (after) after.apply(this, arguments); } catch(e) {}
+      return res;
+    };
+    wrapped.__v14Wrapped = true;
+    try { window[name] = wrapped; } catch(e) {}
+    try { eval(name + ' = wrapped'); } catch(e) {}
+  }
+  setTimeout(function(){
+    _v14WrapFn('renderLocTrace', _v14SyncAllBound, null);
+    _v14WrapFn('saveData', _v14SyncAllBound, null);
+    _v14WrapFn('openLocationApp', _v14SyncAllBound, null);
+  }, 150);
+})();
+</script>
+
+
+<script>
+// ===================== v15 PATCH: Smarter Chat ↔ Couple Location fact table + prompt context =====================
+(function(){
+  if (window.__monoV15SmartLocationChatSyncPatch) return;
+  window.__monoV15SmartLocationChatSyncPatch = true;
+
+  var KEY = 'mono_location_facts_v15';
+  function safeParse(s, fb){ try { var v = JSON.parse(s || ''); return v == null ? fb : v; } catch(e){ return fb; } }
+  function saveStore(store){ try { localStorage.setItem(KEY, JSON.stringify(store || {})); } catch(e){} }
+  function loadStore(){ return safeParse(localStorage.getItem(KEY), {}); }
+  function dayKey(ts){ var d = ts ? new Date(ts) : new Date(); if (isNaN(d.getTime())) d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function nowMin(){ var d=new Date(); return d.getHours()*60+d.getMinutes(); }
+  function minToTime(m){ m=Math.max(0,Math.min(1439,Math.round(m/10)*10)); return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'); }
+  function timeToMin(t){ var m=String(t||'').match(/(\d{1,2})[:：](\d{1,2})/); return m?Math.max(0,Math.min(1439,parseInt(m[1])*60+parseInt(m[2]))):null; }
+  function clean(s){ return String(s==null?'':s).replace(/[\r\n]+/g,' ').replace(/\[[^\]]+\]/g,'').replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim(); }
+  function badPlace(s){ s=clean(s); return !s || /^(哪|哪里|哪裡|什么|甚麼|啥|那里|那裡|这里|這裡|那边|這边|这边|地方|干嘛|做什么|嗎|吗|呢|呀|吧)$/.test(s) || s.length>24; }
+  function normalizeTime(text, ts){
+    text=clean(text); var base = ts ? new Date(ts) : new Date(); if (isNaN(base.getTime())) base = new Date();
+    var exact=text.match(/(凌晨|早上|上午|中午|下午|傍晚|晚上|今晚)?\s*(\d{1,2})\s*(?:[:：点時时])\s*(\d{1,2})?/);
+    if (exact){ var h=parseInt(exact[2],10), mi=exact[3]?parseInt(exact[3],10):0, seg=exact[1]||''; if (/下午|傍晚|晚上|今晚/.test(seg)&&h<12) h+=12; if (/中午/.test(seg)&&h<11) h+=12; return minToTime(h*60+mi); }
+    if (/凌晨/.test(text)) return '01:00';
+    if (/早上|上午/.test(text)) return '09:00';
+    if (/中午|午饭|午餐/.test(text)) return '12:00';
+    if (/下午/.test(text)) return '15:00';
+    if (/傍晚/.test(text)) return '18:00';
+    if (/晚上|今晚|晚饭|晚餐/.test(text)) return '20:00';
+    if (/现在|目前|此刻|刚刚|剛剛|刚到|剛到|正在/.test(text)) return minToTime(base.getHours()*60+base.getMinutes());
+    if (/等下|等一下|待会|待會|一会|一會|之后|之後|晚点|晚點/.test(text)) return minToTime(base.getHours()*60+base.getMinutes()+75);
+    if (/今天/.test(text)) return minToTime(base.getHours()*60+base.getMinutes()+45);
+    return minToTime(base.getHours()*60+base.getMinutes());
+  }
+  function extractPlaceAndActivity(sentence){
+    var s=clean(sentence); var place='', act='';
+    var patterns=[
+      /(?:我)?(?:现在|目前|此刻|刚刚|剛剛|已经|已經|正在)?\s*(?:在|到|到了|抵达|抵達|到达|到達)\s*([^，。！？!?、,]{2,22})(?:附近|门口|門口|楼下|樓下|这边|這邊|那边|那邊|里面|裡面|里)?/,
+      /(?:等下|等一下|待会|待會|一会|一會|之后|之後|今天|下午|晚上|今晚|明早|晚点|晚點)?\s*(?:要|会|會|准备|準備|打算|想|可能会|可能會)?\s*(?:去|回|回去|过去|過去|到)\s*([^，。！？!?、,]{2,22})/,
+      /(?:地点|位置|坐标|坐標)[:：]\s*([^，。！？!?、,]{2,22})/
+    ];
+    for (var i=0;i<patterns.length;i++){ var m=s.match(patterns[i]); if(m&&m[1]&&!badPlace(m[1])){ place=clean(m[1]).replace(/^(在|去|到|回)/,''); break; } }
+    var after=''; if (place){ var idx=s.indexOf(place); if(idx>=0) after=s.slice(idx+place.length); }
+    var ma = after.match(/(?:去|要|会|會|准备|準備|打算|正在|继续|繼續|开始|開始)?\s*([^，。！？!?、,]{2,24})/);
+    if (ma && ma[1] && !/^(了|啦|咯|呢|吗|嗎|吧)$/.test(clean(ma[1]))) act=clean(ma[1]).replace(/^(了|啦|咯|，|。)/,'');
+    if (!act){
+      var m2=s.match(/(?:在|正在|准备|準備|打算|要|会|會|继续|繼續)([^，。！？!?、,]{2,26})/);
+      if(m2) act=clean(m2[1]);
+    }
+    if (!act) act=s.slice(0,32);
+    act=act.replace(/^(这里|這裡|那里|那裡|这边|這邊|我|现在|目前|今天|下午|晚上|等下|待会|待會)/,'').trim();
+    return { place: place, activity: act.slice(0,36) };
+  }
+  function isQuestion(s){ return /[?？]|(在哪|哪里|哪裡|干嘛|做什么|做甚麼|会去哪|會去哪|之后去哪|之後去哪)/.test(s); }
+  function splitSentences(text){ return clean(text).split(/(?<=[。！？!?])|[\n；;]/).map(clean).filter(Boolean); }
+  function extractFactsFromText(persona, text, ts, source){
+    var out=[], pid=persona&&persona.id; if(!pid) return out;
+    splitSentences(text).forEach(function(sent){
+      // Assistant statements are factual. User questions are not written as facts, but quoted reminders can still be useful.
+      if (source === 'user' && isQuestion(sent)) return;
+      var meaningful = /(现在|目前|此刻|今天|下午|晚上|今晚|中午|早上|上午|等下|待会|待會|之后|之後|晚点|晚點|刚刚|剛剛|已经|已經|正在|到了|到达|到達|抵达|抵達|在|去|回|回去|路上|出门|出門|上课|上課|下课|下課|下班|学校|學校|公司|家|宿舍|咖啡|餐厅|餐廳|店|商场|商場|图书馆|圖書館|医院|醫院|车站|車站|机场|機場|公园|公園)/.test(sent);
+      if (!meaningful) return;
+      var pa=extractPlaceAndActivity(sent);
+      if (!pa.place && !/(路上|出门|出門|回家|上课|上課|下课|下課|下班|吃饭|吃飯|开会|開會|等你|找你)/.test(sent)) return;
+      var confidence = (pa.place ? 0.86 : 0.68) + (source==='location'?0.08:0) + (source==='assistant'?0.06:0);
+      out.push({ id: 'lf_'+Date.now()+'_'+Math.random().toString(36).slice(2,8), personaId:String(pid), day:dayKey(ts), time:normalizeTime(sent, ts), place: pa.place || '未明确地点', activity: pa.activity || '与聊天内容一致的安排', text: sent.slice(0,160), source: source||'chat', ts: ts || Date.now(), confidence: Math.min(0.98, confidence) });
+    });
+    return out;
+  }
+  function upsertFacts(facts){
+    if (!facts || !facts.length) return 0;
+    var store=loadStore(), n=0;
+    facts.forEach(function(f){
+      var pid=String(f.personaId||''), day=f.day||dayKey(f.ts); if(!pid) return;
+      store[pid]=store[pid]||{}; store[pid][day]=Array.isArray(store[pid][day])?store[pid][day]:[];
+      var arr=store[pid][day];
+      var tm=timeToMin(f.time), replaced=false;
+      for(var i=0;i<arr.length;i++){
+        var old=arr[i], om=timeToMin(old.time);
+        var near = tm!=null && om!=null && Math.abs(tm-om)<=40;
+        var samePlace = f.place && old.place && f.place===old.place;
+        var sameText = f.text && old.text && f.text===old.text;
+        if (sameText || near || samePlace){
+          // Keep the more specific and higher confidence fact; merge missing details instead of overwriting user/previous relationship-like details.
+          arr[i] = Object.assign({}, old, {
+            time: (f.confidence >= (old.confidence||0) || !old.time) ? f.time : old.time,
+            place: (!old.place || old.place==='未明确地点' || f.confidence >= (old.confidence||0)) ? (f.place || old.place) : old.place,
+            activity: (!old.activity || /一致的安排/.test(old.activity) || f.confidence >= (old.confidence||0)) ? (f.activity || old.activity) : old.activity,
+            text: (String(f.text||'').length > String(old.text||'').length) ? f.text : old.text,
+            source: (old.source||'') + '+' + (f.source||'chat'),
+            confidence: Math.max(old.confidence||0, f.confidence||0),
+            ts: Math.max(old.ts||0, f.ts||0)
+          });
+          replaced=true; break;
+        }
+      }
+      if(!replaced){ arr.push(f); n++; }
+      arr.sort(function(a,b){ return String(a.time||'00:00').localeCompare(String(b.time||'00:00')); });
+      if(arr.length>40) store[pid][day]=arr.slice(-40);
+    });
+    saveStore(store); return n;
+  }
+  function getPersona(pid){ try { return (typeof personas!=='undefined'&&Array.isArray(personas)) ? personas.find(function(p){return String(p.id)===String(pid);}) : null; } catch(e){ return null; } }
+  function ingestPersonaHistory(persona){
+    if(!persona||!Array.isArray(persona.history)) return;
+    var facts=[];
+    persona.history.slice(-160).forEach(function(m){
+      if(!m||!m.content) return;
+      var role = m.role === 'user' ? 'user' : 'assistant';
+      if (role !== 'assistant' && !/你不是说|你剛剛說|你刚刚说|你说过|你說過/.test(String(m.content))) return;
+      facts = facts.concat(extractFactsFromText(persona, m.content, m.timestamp||m.time||m.createdAt||Date.now(), role));
+    });
+    upsertFacts(facts);
+  }
+  function ingestLocTrace(persona){
+    try{
+      if(!persona || typeof locDailyTraces==='undefined') return;
+      var arr = locDailyTraces[persona.id] || []; var facts=[];
+      arr.forEach(function(t){ if(!t) return; facts.push({ id:'loc_'+persona.id+'_'+(t.time||'')+'_'+Math.random().toString(36).slice(2,6), personaId:String(persona.id), day:dayKey(), time:t.time||minToTime(nowMin()), place:t.place||t.address||'未明确地点', activity:t.activity||t.event||t.desc||'情侣定位生成的当日行踪', text:(t.time||'')+' '+(t.place||'')+' '+(t.activity||t.event||''), source:'location', ts:Date.now(), confidence:0.78 }); });
+      upsertFacts(facts);
+    }catch(e){}
+  }
+  function getTodayFacts(persona){
+    if(!persona) return [];
+    try { ingestPersonaHistory(persona); ingestLocTrace(persona); } catch(e){}
+    var store=loadStore(); var arr=(((store[String(persona.id)]||{})[dayKey()])||[]).slice();
+    return arr.sort(function(a,b){ return String(a.time||'00:00').localeCompare(String(b.time||'00:00')); }).slice(-20);
+  }
+  function buildContext(persona){
+    var facts=getTodayFacts(persona); if(!facts.length) return '';
+    var n=nowMin();
+    var current=null,next=null;
+    facts.forEach(function(f){ var m=timeToMin(f.time); if(m==null)return; if(m<=n+35) current=f; if(!next && m>n+35) next=f; });
+    var lines=facts.map(function(f){ return '- '+(f.time||'时间未定')+'｜'+(f.place||'地点未定')+'｜'+(f.activity||'行动未定')+'（来源：'+(f.source||'记录')+'；依据：'+(f.text||'')+'）'; }).join('\n');
+    return '【今日行踪连续性事实表】\n当前时间：'+new Date().toLocaleString()+'\n'+
+      (current?'当前/最近状态：'+current.time+' 在 '+current.place+'，'+current.activity+'。\n':'')+
+      (next?'之后计划：'+next.time+' 去/在 '+next.place+'，'+next.activity+'。\n':'')+
+      lines+'\n规则：回复用户询问“现在在哪/在干嘛/之后去哪/之后做什么”时，必须优先参考以上事实表；如果聊天里已经说过今天下午、晚上、之后的安排，不能改成另一个时间、地点或事件。若事实表没有明确地点，才可以自然补充，但要与已知事实逻辑相容。';
+  }
+  window.monoGetSmartLocationContextForChat = buildContext;
+  window.monoRefreshSmartLocationFacts = function(pid){ var p=getPersona(pid||currentId); if(p){ ingestPersonaHistory(p); ingestLocTrace(p); } };
+
+  // Make v14 location facts use the smarter fact table too.
+  var oldBuild = window.monoBuildChatLocationFacts;
+  window.monoBuildChatLocationFacts = function(persona){
+    var facts=getTodayFacts(persona);
+    var smart=facts.map(function(f){ return (f.time||'')+' | '+(f.place||'')+' | '+(f.activity||'')+' | '+(f.text||''); }).join('\n');
+    var old=''; try { if (typeof oldBuild==='function') old=oldBuild(persona)||''; } catch(e){}
+    return [smart, old].filter(Boolean).join('\n');
+  };
+
+  // Wrap fetch so normal chat replies remember couple-location traces and location generation remembers chat facts.
+  if (!window.__monoV15OriginalFetch && typeof window.fetch === 'function') {
+    window.__monoV15OriginalFetch = window.fetch.bind(window);
+    window.fetch = function(input, init){
+      try{
+        var url = (typeof input === 'string') ? input : (input && input.url) || '';
+        if (/\/chat\/completions/.test(url) && init && init.body && typeof init.body === 'string') {
+          var body = JSON.parse(init.body);
+          if (body && Array.isArray(body.messages)) {
+            var allText = body.messages.map(function(m){ return String(m && m.content || ''); }).join('\n').slice(0,4000);
+            var skip = /翻译|翻譯|只返回翻译|只返回翻譯|总结成|記憶整理助手|记忆整理助手|不要回复用户/.test(allText);
+            var p = getPersona((typeof currentId!=='undefined') ? currentId : null);
+            if (!skip && p) {
+              var ctx = buildContext(p);
+              if (ctx) {
+                body.messages.unshift({ role:'system', content: ctx });
+                init = Object.assign({}, init, { body: JSON.stringify(body) });
+              }
+            }
+          }
+        }
+      }catch(e){}
+      return window.__monoV15OriginalFetch(input, init);
+    };
+  }
+
+  // Keep fact table updated whenever app saves / location renders / user opens location app.
+  function wrapFn(name, before, after){
+    var old=null; try { old=eval(name); } catch(e){} if(typeof old!=='function'||old.__v15Wrapped) return;
+    var wrapped=function(){ try{ if(before) before.apply(this,arguments); }catch(e){} var res=old.apply(this,arguments); try{ if(after) after.apply(this,arguments); }catch(e){} return res; };
+    wrapped.__v15Wrapped=true; try{ window[name]=wrapped; }catch(e){} try{ eval(name+' = wrapped'); }catch(e){}
+  }
+  function syncCurrent(){ var p=getPersona((typeof currentId!=='undefined')?currentId:null); if(p){ ingestPersonaHistory(p); ingestLocTrace(p); } }
+  function syncAllBound(){
+    try{
+      if (typeof locRelations!=='undefined' && Array.isArray(locRelations)) locRelations.forEach(function(rel){ var p=getPersona(rel.personaId); if(p){ ingestPersonaHistory(p); ingestLocTrace(p); } });
+      else if (typeof personas!=='undefined' && Array.isArray(personas)) personas.forEach(function(p){ ingestPersonaHistory(p); });
+    }catch(e){}
+  }
+  setTimeout(function(){ wrapFn('saveData', syncCurrent, null); wrapFn('renderMessages', syncCurrent, null); wrapFn('renderLocTrace', syncAllBound, null); wrapFn('saveLocData', syncAllBound, null); wrapFn('openLocationApp', syncAllBound, null); }, 200);
+
+  // Also strengthen generated trace arrays after any generator returns.
+  function mergeFactsIntoTrace(persona, traces){
+    traces=Array.isArray(traces)?traces.slice():[]; var facts=getTodayFacts(persona); if(!facts.length) return traces;
+    var map={}; traces.forEach(function(t){ if(t&&t.time) map[t.time]=t; });
+    facts.forEach(function(f){
+      if(map[f.time]){ map[f.time].place=f.place||map[f.time].place; map[f.time].activity=f.activity||map[f.time].activity; map[f.time]._smartAligned=true; }
+      else traces.push({ time:f.time, place:f.place, activity:f.activity, source:'smart-fact', _smartAligned:true });
+    });
+    traces.sort(function(a,b){ return String(a.time||'00:00').localeCompare(String(b.time||'00:00')); }); return traces;
+  }
+  function wrapGenerator(name){
+    var old=null; try{ old=eval(name); }catch(e){} if(typeof old!=='function'||old.__v15Wrapped) return;
+    var wrapped=async function(persona, regionText){
+      var ctx=buildContext(persona); var rich=regionText||'';
+      if(ctx) rich+='\n\n'+ctx+'\n生成当日行踪时必须把这些事实当成已经发生或已经承诺的安排，不可冲突；可以补充空白时间，但不能覆盖聊天中已确认的时间、地点、事件。';
+      var res=await old.apply(this,[persona,rich].concat(Array.prototype.slice.call(arguments,2)));
+      res=mergeFactsIntoTrace(persona,res); try{ if(persona&&typeof locDailyTraces!=='undefined') locDailyTraces[persona.id]=res; if(typeof saveLocData==='function') saveLocData(); }catch(e){}
+      return res;
+    };
+    wrapped.__v15Wrapped=true; try{ window[name]=wrapped; }catch(e){} try{ eval(name+' = wrapped'); }catch(e){}
+  }
+  setTimeout(function(){ wrapGenerator('generateFullDayTrace'); wrapGenerator('generateIncrementalTrace'); syncAllBound(); }, 300);
+})();
+</script>
+
 </body>
 </html>

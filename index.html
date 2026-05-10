@@ -4303,6 +4303,68 @@ body {
 .wechat-bubble { padding: 8px 10px; border-radius: 4px; font-size: calc(12px * var(--fs, 1)); line-height: 1.5; max-width: 180px; word-break: break-word; }
 .wechat-bubble.them { background: #fff; border-radius: 0 8px 8px 8px; }
 .wechat-bubble.me { background: #95ec69; border-radius: 8px 0 8px 8px; }
+.role-phone-page { position: fixed; inset: 0; z-index: 9450; background: linear-gradient(180deg, #f5f5f7 0%, #ececef 100%); display: none; flex-direction: column; }
+.role-phone-page.open { display: flex; }
+.role-phone-header { height: 52px; display: flex; align-items: center; gap: 10px; padding: 0 14px; background: rgba(245,245,247,0.94); backdrop-filter: blur(14px); border-bottom: 0.5px solid #d9d9de; flex-shrink: 0; }
+.role-phone-back { width: 30px; height: 30px; border-radius: 50%; border: 1px solid #d7d7dc; background: #fff; color: #3d3d46; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+.role-phone-title-wrap { flex: 1; min-width: 0; }
+.role-phone-title { font-size: calc(14px * var(--fs, 1)); font-weight: 700; color: #15151a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.role-phone-subtitle { font-size: calc(10px * var(--fs, 1)); color: #8f8f98; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.role-phone-body { flex: 1; overflow-y: auto; padding: 14px 12px 20px; }
+.role-phone-body::-webkit-scrollbar { display: none; }
+.role-phone-hero { background: linear-gradient(180deg, #ffffff 0%, #f4f4f6 100%); border: 1px solid #e3e3e8; border-radius: 22px; padding: 14px; box-shadow: 0 10px 30px rgba(28,28,35,0.06); margin-bottom: 12px; }
+.role-phone-hero-top { display: flex; align-items: center; gap: 12px; }
+.role-phone-avatar { width: 52px; height: 52px; border-radius: 16px; object-fit: cover; flex-shrink: 0; background: #d8d8dd; border: 1px solid #ececf1; }
+.role-phone-avatar-fallback { width: 52px; height: 52px; border-radius: 16px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: #595966; color: #fff; font-size: calc(18px * var(--fs, 1)); font-weight: 700; }
+.role-phone-hero-meta { flex: 1; min-width: 0; }
+.role-phone-hero-name { font-size: calc(15px * var(--fs, 1)); font-weight: 800; color: #131318; }
+.role-phone-hero-desc { font-size: calc(11px * var(--fs, 1)); color: #8a8a94; line-height: 1.6; margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.role-phone-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.role-phone-btn { border: 1px solid #dedee4; background: #fff; color: #2f2f36; border-radius: 14px; padding: 10px 12px; font-size: calc(11px * var(--fs, 1)); font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.role-phone-btn.primary { background: #42424f; color: #fff; border-color: #42424f; }
+.role-phone-btn.danger { color: #a73f50; border-color: #f0d9df; background: #fff7f8; }
+.role-phone-section { margin-top: 12px; }
+.role-phone-section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 4px; margin-bottom: 8px; }
+.role-phone-section-title { font-size: calc(10px * var(--fs, 1)); font-weight: 800; color: #8b8b95; letter-spacing: 1.1px; text-transform: uppercase; }
+.role-phone-section-note { font-size: calc(10px * var(--fs, 1)); color: #ababb5; }
+.role-phone-card-list { display: flex; flex-direction: column; gap: 8px; }
+.role-phone-card { background: rgba(255,255,255,0.92); border: 1px solid #e3e3e8; border-radius: 18px; padding: 12px; box-shadow: 0 6px 18px rgba(28,28,35,0.04); }
+.role-phone-thread { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.role-phone-thread-meta { flex: 1; min-width: 0; }
+.role-phone-thread-name { font-size: calc(13px * var(--fs, 1)); font-weight: 700; color: #18181d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.role-phone-thread-sub { font-size: calc(10px * var(--fs, 1)); color: #93939d; margin-top: 3px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.role-phone-thread-preview { font-size: calc(11px * var(--fs, 1)); color: #5d5d67; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.role-phone-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; background: #f2f2f5; color: #7c7c88; font-size: calc(9px * var(--fs, 1)); font-weight: 700; }
+.role-phone-chip.npc { background: #efeff3; color: #5c5c67; }
+.role-phone-chip.dare { background: #f6f1f2; color: #9b6470; }
+.role-phone-line-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.role-phone-mini-btn { border: 1px solid #dfdfe4; background: #fff; color: #5a5a66; border-radius: 999px; padding: 6px 11px; font-size: calc(10px * var(--fs, 1)); font-weight: 700; cursor: pointer; }
+.role-phone-empty { background: rgba(255,255,255,0.88); border: 1px dashed #d9d9df; border-radius: 18px; padding: 18px 16px; text-align: center; color: #9a9aa3; font-size: calc(11px * var(--fs, 1)); line-height: 1.7; }
+.role-phone-rel-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.role-phone-rel-pill { padding: 9px 11px; border-radius: 14px; background: rgba(255,255,255,0.92); border: 1px solid #e3e3e8; min-width: 0; }
+.role-phone-rel-pill strong { display: block; font-size: calc(11px * var(--fs, 1)); color: #202027; margin-bottom: 3px; }
+.role-phone-rel-pill span { font-size: calc(10px * var(--fs, 1)); color: #8c8c96; line-height: 1.5; }
+.npc-editor-overlay { position: fixed; inset: 0; z-index: 9550; background: rgba(18,18,24,0.42); display: none; align-items: flex-end; justify-content: center; }
+.npc-editor-overlay.open { display: flex; }
+.npc-editor-sheet { width: 100%; max-width: 520px; max-height: 88vh; background: linear-gradient(180deg, #fbfbfc 0%, #f1f1f4 100%); border-radius: 26px 26px 0 0; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 -16px 50px rgba(14,14,18,0.18); }
+.npc-editor-head { display: flex; align-items: center; gap: 10px; padding: 16px 16px 12px; border-bottom: 1px solid #e6e6eb; flex-shrink: 0; }
+.npc-editor-title { font-size: calc(14px * var(--fs, 1)); font-weight: 800; color: #18181d; flex: 1; }
+.npc-editor-close { border: none; background: none; color: #9a9aa4; font-size: 19px; cursor: pointer; }
+.npc-editor-body { flex: 1; overflow-y: auto; padding: 14px 16px 20px; }
+.npc-editor-body::-webkit-scrollbar { display: none; }
+.npc-editor-grid { display: flex; flex-direction: column; gap: 12px; }
+.npc-editor-label { font-size: calc(10px * var(--fs, 1)); font-weight: 800; color: #8a8a95; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 5px; display: block; }
+.npc-editor-input, .npc-editor-textarea, .npc-editor-select { width: 100%; box-sizing: border-box; border: 1px solid #dcdce3; border-radius: 14px; background: rgba(255,255,255,0.96); color: #22222a; padding: 11px 12px; font-size: calc(12px * var(--fs, 1)); font-family: inherit; }
+.npc-editor-textarea { min-height: 86px; resize: vertical; line-height: 1.65; }
+.npc-editor-link-card { background: rgba(255,255,255,0.95); border: 1px solid #e2e2e8; border-radius: 16px; padding: 12px; margin-top: 8px; }
+.npc-editor-link-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.npc-editor-link-name { font-size: calc(12px * var(--fs, 1)); font-weight: 700; color: #202027; }
+.npc-editor-link-type { font-size: calc(9px * var(--fs, 1)); color: #9a9aa4; text-transform: uppercase; letter-spacing: 1px; }
+.npc-editor-link-remove { border: none; background: none; color: #b37885; cursor: pointer; font-size: 13px; }
+.npc-editor-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px 16px 16px; border-top: 1px solid #e6e6eb; background: rgba(251,251,252,0.96); flex-shrink: 0; }
+.npc-editor-save, .npc-editor-delete { border: none; border-radius: 14px; padding: 12px 14px; font-size: calc(12px * var(--fs, 1)); font-weight: 800; cursor: pointer; font-family: inherit; }
+.npc-editor-save { background: #42424f; color: #fff; }
+.npc-editor-delete { background: #fff3f5; color: #a34759; border: 1px solid #f1d6dd; }
 .memo-item { background: #fff; border-bottom: 0.5px solid #e0e0e0; padding: 14px 12px; }
 .memo-title { font-size: calc(13px * var(--fs, 1)); font-weight: 700; color: #000; margin-bottom: 4px; }
 .memo-preview { font-size: calc(11px * var(--fs, 1)); color: #888; line-height: 1.5; margin-bottom: 4px; }
@@ -18985,8 +19047,7 @@ body.editor-modal-open #chatPage .app-back-bar {
     <div class="flex-1 overflow-y-auto no-scrollbar" id="drawerScrollArea" style="display:flex;flex-direction:column;">
       <div id="contactList" style="flex-shrink:0;"></div>
       <div id="groupList" style="border-top:1px solid #222;flex-shrink:0;"></div>
-      <!-- 角色间聊天室区块（仅在多世界角色聊天室启用时显示） -->
-      <div id="ccRoomDrawerSection" style="display:none;border-top:1px solid #222;flex-shrink:0;"></div>
+      <div id="rolePhoneDrawerSection" style="display:none;border-top:1px solid #222;flex-shrink:0;"></div>
     </div>
     <!-- 多选批量删除栏（默认隐藏）-->
     <div id="bulkDeleteBar" style="display:none;flex-direction:column;gap:6px;padding:10px 14px;border-top:2px solid #e74c3c;background:#fff8f8;flex-shrink:0;">
@@ -26149,7 +26210,16 @@ function _purgePersonaById(id) {
       saveFwSettings(_fwSettings);
     }
   } catch(e) {}
-  // 24. 角色间聊天室
+  // 24. 角色专属 NPC 与关系图
+  try {
+    monoDeleteAllRoleNpcsForPersona(_delId);
+    var _relNext = mwGetRelEntries().filter(function(entry) {
+      return String(entry.aId || '') !== String(_delId) && String(entry.bId || '') !== String(_delId)
+        && String(entry.a || '') !== String(_delName || '') && String(entry.b || '') !== String(_delName || '');
+    });
+    mwSaveRelEntries(_relNext);
+  } catch(e) {}
+  // 25. 角色间聊天室
   try {
     var _ccRooms = ccGetRooms();
     _ccRooms.filter(function(room) {
@@ -26168,6 +26238,7 @@ function renderContactList() {
   const list = document.getElementById('contactList');
   if (personas.length === 0) {
     list.innerHTML = `<div class="p-6 text-center text-gray-400 text-xs uppercase tracking-widest"><i class="fas fa-user-plus text-2xl mb-3 block"></i>点击下方新增角色</div>`;
+    try { renderRolePhoneDrawer(); } catch(e) {}
     return;
   }
   list.innerHTML = personas.map(p => {
@@ -26200,6 +26271,7 @@ function renderContactList() {
       <button onclick="openDirectChatRoom(${p.id})" title="直接进入聊天室" style="flex-shrink:0;background:none;border:1px solid #333;border-radius:12px;color:#aaa;font-size:9px;font-weight:700;letter-spacing:0.5px;padding:3px 8px;cursor:pointer;font-family:inherit;transition:all 0.15s;white-space:nowrap;" onmouseover="this.style.background='#1a1a1a';this.style.color='#fff'" onmouseout="this.style.background='none';this.style.color='#aaa'">进入</button>
     </div>`;
   }).join('');
+  try { renderRolePhoneDrawer(); } catch(e) {}
 }
 function _safeMsgText(value) {
   if (typeof value === 'string') return value;
@@ -28541,6 +28613,7 @@ function mwRefreshUI() {
   }
   if (enabled) mwRenderWorldsList();
   try { if (typeof renderCcRoomDrawer === "function") renderCcRoomDrawer(); } catch(e) {}
+  try { if (typeof renderRolePhoneDrawer === "function") renderRolePhoneDrawer(); } catch(e) {}
 }
 // ── 渲染世界列表 ──
 function mwRenderWorldsList() {
@@ -29464,11 +29537,18 @@ function createNewCcRoom() {
   openCcChatRoom(room.id);
 }
 // ── 打开聊天室 ──
-function openCcChatRoom(roomId) {
+function openCcChatRoom(roomId, preferredSenderId) {
   const rooms = ccGetRooms();
   const room = rooms.find(r => r.id === roomId);
   if (!room) return;
   _ccCurrentRoomId = roomId;
+  try {
+    if (preferredSenderId && Array.isArray(room.members) && room.members.map(String).indexOf(String(preferredSenderId)) >= 0) {
+      window._monoCcRightPersonaName = String(preferredSenderId);
+    } else if (!preferredSenderId) {
+      window._monoCcRightPersonaName = '';
+    }
+  } catch(e) {}
   const modal = document.getElementById('ccChatRoomModal');
   modal.style.display = 'flex';
   modal.style.flexDirection = 'column';
@@ -29478,7 +29558,7 @@ function openCcChatRoom(roomId) {
     ? `群聊 · ${room.members.length} 位成员`
     : ((room.members.length === 1) ? `你与 ${room.members[0]} 的聊天` : `私聊 · ${room.members.join(' 与 ')}`);
   ccRenderChatMessages(roomId);
-  _ccSetComposerParticipants(roomId, CC_USER_SENDER);
+  _ccSetComposerParticipants(roomId, preferredSenderId || CC_USER_SENDER);
   const composer = document.getElementById('ccComposerInput');
   if (composer) {
     composer.value = '';
@@ -29517,6 +29597,625 @@ function closeCcChatRoom() {
   }
   _ccCurrentRoomId = null;
 }
+let _rolePhoneState = { ownerPersonaId: '', generating: false };
+let _roleNpcEditorContext = { ownerPersonaId: '', npcId: '' };
+function monoRolePhoneEsc(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+function monoRolePhoneAvatarHtml(name, avatar, className) {
+  if (avatar) return '<img src="' + monoRolePhoneEsc(avatar) + '" class="' + className + '" alt="' + monoRolePhoneEsc(name || '') + '">';
+  return '<div class="' + className + '-fallback">' + monoRolePhoneEsc((String(name || '?').trim().charAt(0) || '?')) + '</div>';
+}
+function monoRolePhoneEnsureUi() {
+  if (!document.getElementById('rolePhonePage')) {
+    const page = document.createElement('div');
+    page.id = 'rolePhonePage';
+    page.className = 'role-phone-page';
+    document.body.appendChild(page);
+  }
+  if (!document.getElementById('npcEditorOverlay')) {
+    const overlay = document.createElement('div');
+    overlay.id = 'npcEditorOverlay';
+    overlay.className = 'npc-editor-overlay';
+    overlay.addEventListener('click', function(evt) {
+      if (evt.target === overlay) closeNpcEditorOverlay();
+    });
+    document.body.appendChild(overlay);
+  }
+}
+function monoGetRolePhoneThreads(ownerPersona) {
+  if (!ownerPersona) return [];
+  return ccGetRooms().filter(function(room) {
+    const members = Array.isArray(room && room.members) ? room.members : [];
+    return members.indexOf(ownerPersona.name) >= 0 || String(room && room._tdOwnerPersonaId || '') === String(ownerPersona.id);
+  });
+}
+function monoGetRolePhoneThreadPreview(room) {
+  const hist = ccGetHistory(room.id);
+  const lastMsg = hist.length ? hist[hist.length - 1] : null;
+  if (!lastMsg) return '暂无对话';
+  const text = _ccMessagePreviewText(lastMsg) || '';
+  const preview = text.slice(0, 28) + (text.length > 28 ? '…' : '');
+  return (lastMsg.sender ? lastMsg.sender + '：' : '') + preview;
+}
+function monoGetRolePhoneRelationRefs(ownerPersona) {
+  if (!ownerPersona) return [];
+  return mwGetRelEntries().filter(function(entry) {
+    return String(entry.aId || '') === String(ownerPersona.id) || String(entry.bId || '') === String(ownerPersona.id);
+  }).map(function(entry) {
+    const isA = String(entry.aId || '') === String(ownerPersona.id);
+    const nodeId = isA ? String(entry.bId || '') : String(entry.aId || '');
+    const name = isA ? _mwGetEntryNodeName(entry, 'b') : _mwGetEntryNodeName(entry, 'a');
+    return {
+      nodeId: nodeId,
+      name: name,
+      label: String(entry.label || '').trim(),
+      detail: String(entry.detail || '').trim(),
+      isNpc: monoIsRoleNpcNodeId(nodeId),
+      isUser: _mwIsUserNodeId(nodeId),
+      isPersona: !_mwIsUserNodeId(nodeId) && !monoIsRoleNpcNodeId(nodeId)
+    };
+  });
+}
+function monoOpenRolePhonePage(ownerPersonaId) {
+  const ownerPersona = monoGetPersonaById(ownerPersonaId);
+  if (!ownerPersona) return;
+  monoRolePhoneEnsureUi();
+  _rolePhoneState.ownerPersonaId = String(ownerPersona.id);
+  monoRenderRolePhonePage();
+  const page = document.getElementById('rolePhonePage');
+  if (page) page.classList.add('open');
+}
+function closeRolePhonePage() {
+  const page = document.getElementById('rolePhonePage');
+  if (page) page.classList.remove('open');
+}
+function monoRenderRolePhonePage() {
+  monoRolePhoneEnsureUi();
+  const page = document.getElementById('rolePhonePage');
+  const ownerPersona = monoGetPersonaById(_rolePhoneState.ownerPersonaId);
+  if (!page || !ownerPersona) return;
+  const threads = monoGetRolePhoneThreads(ownerPersona);
+  const npcs = monoGetRoleNpcs(ownerPersona.id);
+  const relRefs = monoGetRolePhoneRelationRefs(ownerPersona);
+  page.innerHTML = ''
+    + '<div class="role-phone-header">'
+    + '  <button class="role-phone-back" onclick="closeRolePhonePage()"><i class="fas fa-chevron-left"></i></button>'
+    + '  <div class="role-phone-title-wrap">'
+    + '    <div class="role-phone-title">' + monoRolePhoneEsc(ownerPersona.name) + ' 的微信</div>'
+    + '    <div class="role-phone-subtitle">角色联络人 · 角色聊天室 · 生成 NPC</div>'
+    + '  </div>'
+    + '</div>'
+    + '<div class="role-phone-body">'
+    + '  <div class="role-phone-hero">'
+    + '    <div class="role-phone-hero-top">'
+    +       monoRolePhoneAvatarHtml(ownerPersona.name, ownerPersona.avatar, 'role-phone-avatar')
+    + '      <div class="role-phone-hero-meta">'
+    + '        <div class="role-phone-hero-name">' + monoRolePhoneEsc(ownerPersona.name) + '</div>'
+    + '        <div class="role-phone-hero-desc">' + monoRolePhoneEsc((ownerPersona.persona || '暂无角色设定').slice(0, 120)) + '</div>'
+    + '      </div>'
+    + '    </div>'
+    + '    <div class="role-phone-actions">'
+    + '      <button class="role-phone-btn primary" onclick="monoGenerateRoleNpcs(\'' + monoRolePhoneEsc(String(ownerPersona.id)) + '\')" ' + (_rolePhoneState.generating ? 'disabled' : '') + '><i class="fas fa-user-plus"></i>' + (_rolePhoneState.generating ? '生成中…' : '生成 3 个 NPC') + '</button>'
+    + '      <button class="role-phone-btn" onclick="monoOpenCustomNpcEditor(\'' + monoRolePhoneEsc(String(ownerPersona.id)) + '\')"><i class="fas fa-pen-nib"></i>自定义 NPC</button>'
+    + '      <button class="role-phone-btn" onclick="monoOpenCcRoomDialogFromRolePhone(\'' + monoRolePhoneEsc(String(ownerPersona.id)) + '\')"><i class="fas fa-comments"></i>新建角色聊天室</button>'
+    + '      <button class="role-phone-btn" onclick="monoOpenWorldRelMapFromRolePhone(\'' + monoRolePhoneEsc(String(ownerPersona.id)) + '\');"><i class="fas fa-project-diagram"></i>关系图</button>'
+    + '    </div>'
+    + '  </div>'
+    + '  <div class="role-phone-section">'
+    + '    <div class="role-phone-section-head"><div class="role-phone-section-title">角色聊天室</div><div class="role-phone-section-note">' + threads.length + ' 个线程</div></div>'
+    + '    <div class="role-phone-card-list">'
+    +        (threads.length ? threads.map(function(room) {
+            const isGroup = Array.isArray(room.members) && room.members.length > 2;
+            const isNpc = room._roleNpcRoom === true || !!room._roleNpcId;
+            const isDare = room._tdRoom === true || room._tdUserRoom === true;
+            const label = isGroup ? '群聊' : (isNpc ? 'NPC' : '私聊');
+            const contactName = room.name || (room.members || []).filter(function(name) { return name !== ownerPersona.name; }).join('、') || ownerPersona.name;
+            return ''
+              + '<div class="role-phone-card">'
+              + '  <div class="role-phone-thread" onclick="monoOpenRolePhoneRoom(\'' + monoRolePhoneEsc(room.id) + '\', \'' + monoRolePhoneEsc(String(ownerPersona.id)) + '\')">'
+              +      monoRolePhoneAvatarHtml(contactName, '', 'role-phone-avatar')
+              + '    <div class="role-phone-thread-meta">'
+              + '      <div class="role-phone-thread-name">' + monoRolePhoneEsc(contactName) + '</div>'
+              + '      <div class="role-phone-thread-sub">'
+              + '        <span class="role-phone-chip' + (isNpc ? ' npc' : '') + '">' + monoRolePhoneEsc(label) + '</span>'
+              +          (isDare ? '<span class="role-phone-chip dare">大冒险</span>' : '')
+              + '      </div>'
+              + '      <div class="role-phone-thread-preview">' + monoRolePhoneEsc(monoGetRolePhoneThreadPreview(room)) + '</div>'
+              + '    </div>'
+              + '  </div>'
+              + '</div>';
+          }).join('') : '<div class="role-phone-empty">这个角色目前还没有可打开的聊天室。<br>你可以先在关系图里建立关系，或直接生成 NPC。</div>')
+    + '    </div>'
+    + '  </div>'
+    + '  <div class="role-phone-section">'
+    + '    <div class="role-phone-section-head"><div class="role-phone-section-title">NPC 联络人</div><div class="role-phone-section-note">' + npcs.length + ' 位</div></div>'
+    + '    <div class="role-phone-card-list">'
+    +       (npcs.length ? npcs.map(function(npc) {
+            return ''
+              + '<div class="role-phone-card">'
+              + '  <div class="role-phone-thread" onclick="monoOpenRoleNpcChat(\'' + monoRolePhoneEsc(String(ownerPersona.id)) + '\', \'' + monoRolePhoneEsc(String(npc.id)) + '\')">'
+              +      monoRolePhoneAvatarHtml(npc.name, npc.avatar, 'role-phone-avatar')
+              + '    <div class="role-phone-thread-meta">'
+              + '      <div class="role-phone-thread-name">' + monoRolePhoneEsc(npc.name) + '</div>'
+              + '      <div class="role-phone-thread-sub"><span class="role-phone-chip npc">' + monoRolePhoneEsc(npc.identity || 'NPC') + '</span></div>'
+              + '      <div class="role-phone-thread-preview">' + monoRolePhoneEsc(npc.relationSummary || npc.relationDetail || npc.persona || '点击打开该 NPC 聊天室') + '</div>'
+              + '    </div>'
+              + '  </div>'
+              + '  <div class="role-phone-line-actions">'
+              + '    <button class="role-phone-mini-btn" onclick="event.stopPropagation(); monoOpenRoleNpcChat(\'' + monoRolePhoneEsc(String(ownerPersona.id)) + '\', \'' + monoRolePhoneEsc(String(npc.id)) + '\')">聊天</button>'
+              + '    <button class="role-phone-mini-btn" onclick="event.stopPropagation(); monoOpenNpcEditor(\'' + monoRolePhoneEsc(String(ownerPersona.id)) + '\', \'' + monoRolePhoneEsc(String(npc.id)) + '\')">设定</button>'
+              +        monoRoleNpcUserContactButtonHtml(ownerPersona, npc)
+              + '    <button class="role-phone-mini-btn" onclick="event.stopPropagation(); monoDeleteRoleNpcWithConfirm(\'' + monoRolePhoneEsc(String(ownerPersona.id)) + '\', \'' + monoRolePhoneEsc(String(npc.id)) + '\')">删除</button>'
+              + '  </div>'
+              + '</div>';
+          }).join('') : '<div class="role-phone-empty">还没有生成 NPC。<br>每次会根据角色人设、用户面具与关系图一次生成 3 位不重复的 NPC。</div>')
+    + '    </div>'
+    + '  </div>'
+    + '  <div class="role-phone-section">'
+    + '    <div class="role-phone-section-head"><div class="role-phone-section-title">关系参考</div><div class="role-phone-section-note">生成 NPC 时会参考这里</div></div>'
+    + '    <div class="role-phone-rel-list">'
+    +       (relRefs.length ? relRefs.map(function(ref) {
+            const action = ref.isPersona || ref.isNpc
+              ? ' onclick="monoOpenRoleRelationContact(\'' + monoRolePhoneEsc(String(ownerPersona.id)) + '\', \'' + monoRolePhoneEsc(String(ref.nodeId)) + '\')" style="cursor:pointer;"'
+              : '';
+            const note = ref.detail || ref.label || (ref.isUser ? '用户 / 用户面具参考' : '关系参考');
+            return '<div class="role-phone-rel-pill"' + action + '><strong>' + monoRolePhoneEsc(ref.name || '关联对象') + '</strong><span>' + monoRolePhoneEsc(note) + '</span></div>';
+          }).join('') : '<div class="role-phone-empty" style="width:100%;">这个角色暂时还没有写进关系图的关联对象。</div>')
+    + '    </div>'
+    + '  </div>'
+    + '</div>';
+}
+function monoOpenRolePhoneRoom(roomId, ownerPersonaId) {
+  const ownerPersona = monoGetPersonaById(ownerPersonaId);
+  closeRolePhonePage();
+  if (!ownerPersona) return;
+  try { window._monoCcRightPersonaName = String(ownerPersona.name || ''); } catch(e) {}
+  setTimeout(function() {
+    try { window._monoCcRightPersonaName = String(ownerPersona.name || ''); } catch(e) {}
+    openCcChatRoom(roomId, ownerPersona.name);
+  }, 30);
+}
+function monoOpenRoleNpcChat(ownerPersonaId, npcId) {
+  const ownerPersona = monoGetPersonaById(ownerPersonaId);
+  const npc = monoFindRoleNpcById(npcId);
+  if (!ownerPersona || !npc) return;
+  const roomId = monoEnsureRoleNpcRoom(ownerPersona, npc);
+  const npcs = monoGetRoleNpcs(ownerPersona.id).map(function(item) {
+    if (String(item.id) === String(npc.id)) item.roomId = roomId;
+    return item;
+  });
+  monoSetRoleNpcs(ownerPersona.id, npcs);
+  monoOpenRolePhoneRoom(roomId, ownerPersona.id);
+}
+function monoOpenRoleRelationContact(ownerPersonaId, nodeId) {
+  const ownerPersona = monoGetPersonaById(ownerPersonaId);
+  if (!ownerPersona) return;
+  if (monoIsRoleNpcNodeId(nodeId)) {
+    monoOpenRoleNpcChat(ownerPersonaId, monoGetRoleNpcIdFromNodeId(nodeId));
+    return;
+  }
+  if (_mwIsUserNodeId(nodeId)) {
+    alert('用户 / 用户面具节点会作为这个角色的关系参考参与 NPC 生成，目前不会单独创建角色聊天室。');
+    return;
+  }
+  const targetPersona = monoGetPersonaById(nodeId);
+  if (!targetPersona) return;
+  let room = ccGetRooms().find(function(item) {
+    const members = Array.isArray(item && item.members) ? item.members.slice().sort() : [];
+    return members.length === 2 && members[0] === [ownerPersona.name, targetPersona.name].sort()[0] && members[1] === [ownerPersona.name, targetPersona.name].sort()[1];
+  });
+  if (!room) {
+    room = {
+      id: 'ccroom_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+      name: targetPersona.name,
+      members: [ownerPersona.name, targetPersona.name],
+      createdAt: Date.now(),
+      dailyTurns: ccGetWorldDailyTurns(),
+      lastAutoDate: null
+    };
+    const rooms = ccGetRooms();
+    rooms.push(room);
+    ccSaveRooms(rooms);
+  }
+  monoOpenRolePhoneRoom(room.id, ownerPersona.id);
+}
+function monoRoleNpcPromptContext(ownerPersona) {
+  const worlds = typeof mwGetWorlds === 'function' ? mwGetWorlds() : [];
+  const active = worlds.find(function(item) { return item.id === mwGetActiveId(); }) || null;
+  const userProfileSafe = (function() {
+    try { return JSON.parse(localStorage.getItem('mono_user_profile') || '{}'); } catch(e) { return {}; }
+  })();
+  const mask = ownerPersona && ownerPersona.userMaskId && typeof monoGetUserMask === 'function'
+    ? monoGetUserMask(ownerPersona.userMaskId)
+    : null;
+  const rels = mwGetRelEntries().filter(function(entry) {
+    return String(entry.aId || '') === String(ownerPersona.id) || String(entry.bId || '') === String(ownerPersona.id);
+  }).map(function(entry) {
+    const isA = String(entry.aId || '') === String(ownerPersona.id);
+    const name = isA ? _mwGetEntryNodeName(entry, 'b') : _mwGetEntryNodeName(entry, 'a');
+    return '· ' + name + '：' + (entry.label || '有关联') + (entry.detail ? ' — ' + entry.detail : '');
+  }).join('\n') || '（暂无关系图资料）';
+  const existingNpcs = monoGetRoleNpcs(ownerPersona.id).map(function(npc) {
+    return '· ' + npc.name + '｜' + (npc.identity || '未知身份') + '｜' + (npc.relationSummary || npc.relationDetail || '已存在 NPC');
+  }).join('\n') || '（暂无已生成 NPC）';
+  const forbiddenNames = [].concat(
+    (function() {
+      try { return JSON.parse(localStorage.getItem('mono_personas') || '[]').map(function(item) { return item.name; }); } catch(e) { return []; }
+    })(),
+    [userProfileSafe.name || '用户'],
+    (function() {
+      try {
+        const masks = (typeof userMasks !== 'undefined' && Array.isArray(userMasks)) ? userMasks : monoLoadUserMasks();
+        return (masks || []).map(function(item) { return item.name; });
+      } catch(e) { return []; }
+    })()
+  ).filter(Boolean);
+  return {
+    worldName: active ? active.name : '默认世界',
+    worldDesc: active ? (active.desc || '') : '',
+    worldUserPersona: active ? (active.userPersona || '') : '',
+    userName: userProfileSafe.name || '用户',
+    ownerMask: mask,
+    relationsText: rels,
+    existingNpcsText: existingNpcs,
+    forbiddenNames: forbiddenNames.join('、')
+  };
+}
+function monoRoleNpcResponseToArray(rawText) {
+  let raw = String(rawText || '').trim();
+  raw = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+  if (!raw) return [];
+  const parsed = JSON.parse(raw);
+  if (Array.isArray(parsed)) return parsed;
+  if (parsed && Array.isArray(parsed.npcs)) return parsed.npcs;
+  return [];
+}
+function monoResolveNpcLinkNotes(ownerPersona, rawLinks) {
+  const options = mwGetCharOptions().filter(function(opt) {
+    return opt && String(opt.id) !== String(ownerPersona.id) && !opt.isNpc;
+  });
+  const linkList = Array.isArray(rawLinks) ? rawLinks : [];
+  const resolved = [];
+  const seen = {};
+  linkList.forEach(function(item) {
+    const targetName = String(item && (item.targetName || item.name || item.target) || '').trim();
+    if (!targetName) return;
+    const opt = options.find(function(candidate) { return String(candidate.name || '').trim() === targetName; });
+    if (!opt || seen[String(opt.id)]) return;
+    seen[String(opt.id)] = true;
+    resolved.push({
+      nodeId: String(opt.id),
+      name: String(opt.name || targetName),
+      nodeType: opt.isMask ? 'mask' : (opt.isUser ? 'user' : 'persona'),
+      label: String(item.label || item.relationship || '有关联').trim(),
+      detail: String(item.detail || item.description || '').trim()
+    });
+  });
+  return resolved;
+}
+function monoGeneratedNpcLooksValid(ownerPersona, existingNpcs, items) {
+  if (!Array.isArray(items) || items.length !== 3) return false;
+  const forbidden = {};
+  [].concat(
+    existingNpcs.map(function(item) { return item.name; }),
+    existingNpcs.map(function(item) { return item.identity; }),
+    (function() {
+      try { return JSON.parse(localStorage.getItem('mono_personas') || '[]').map(function(item) { return item.name; }); } catch(e) { return []; }
+    })(),
+    [((function() { try { return JSON.parse(localStorage.getItem('mono_user_profile') || '{}').name; } catch(e) { return ''; } })() || '')]
+  ).forEach(function(item) {
+    const key = monoRoleNpcIdentityKey(item);
+    if (key) forbidden[key] = true;
+  });
+  const seenNames = {};
+  const seenIds = {};
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i] || {};
+    const nameKey = monoRoleNpcIdentityKey(item.name || '');
+    const identityKey = monoRoleNpcIdentityKey(item.identity || '');
+    if (!nameKey || !identityKey) return false;
+    if (seenNames[nameKey] || forbidden[nameKey]) return false;
+    if (seenIds[identityKey] || forbidden[identityKey]) return false;
+    seenNames[nameKey] = true;
+    seenIds[identityKey] = true;
+    if (!String(item.persona || '').trim()) return false;
+    if (!String(item.relationSummary || item.relationship || '').trim()) return false;
+  }
+  return true;
+}
+async function monoGenerateRoleNpcs(ownerPersonaId) {
+  const ownerPersona = monoGetPersonaById(ownerPersonaId);
+  if (!ownerPersona || _rolePhoneState.generating) return;
+  const api = _getApiConfig();
+  if (!api || !api.url || !api.key || !api.model) {
+    alert('请先配置 API，才能生成符合角色设定的 NPC。');
+    return;
+  }
+  _rolePhoneState.generating = true;
+  monoRenderRolePhonePage();
+  const ctx = monoRoleNpcPromptContext(ownerPersona);
+  const existingNpcs = monoGetRoleNpcs(ownerPersona.id);
+  const promptBase = [
+    LANG_SYSTEM_PREFIX,
+    '你是一个严谨的世界内 NPC 生成器，只能为指定角色补充不会与现有角色重复、并且符合逻辑的人际圈 NPC。',
+    '【世界】' + ctx.worldName,
+    ctx.worldDesc ? ('【世界描述】' + ctx.worldDesc) : '',
+    ctx.worldUserPersona ? ('【该世界里的用户设定】' + ctx.worldUserPersona) : '',
+    '【当前角色】' + ownerPersona.name,
+    '【当前角色人设】' + (ownerPersona.persona || '（无）'),
+    ctx.ownerMask ? ('【该角色绑定的用户面具】' + ctx.ownerMask.name + '：' + ((ctx.ownerMask.bio || '') + ' ' + (ctx.ownerMask.personaSpec || '')).trim()) : '',
+    '【关系图里与该角色有关的人】\n' + ctx.relationsText,
+    '【已经生成过的 NPC，绝对不可重复】\n' + ctx.existingNpcsText,
+    '【绝对不能直接拿来当 NPC 的名字】\n' + ctx.forbiddenNames,
+    '任务：现在为「' + ownerPersona.name + '」一次生成 3 个全新的 NPC。',
+    '要求：',
+    '1. 每个 NPC 都必须是这个角色生活圈或故事圈中合理存在的人，不能与现有角色、用户、用户面具重名。',
+    '2. 不能生成和之前 NPC 相同或高度相似的身份；名字、身份、关系都要明显区分。',
+    '3. 必须参考该角色的人设、绑定用户面具设定、关系图里的关系描述，确保逻辑自洽。',
+    '4. relatedLinks 只能填写“关系图里已经存在的角色 / 用户 / 用户面具”，不要把这些对象重新生成成 NPC。',
+    '5. 每个 NPC 都要给出：name、identity、persona、relationSummary、relationDetail、relatedLinks。',
+    '6. relatedLinks 最多 3 条，每条格式：{"targetName":"名字","label":"关系短称","detail":"详细说明"}。',
+    '7. 只返回 JSON 数组，不要额外解释。',
+    '返回格式示例：',
+    '[{"name":"韩知允","identity":"出版社摄影助理","persona":"...","relationSummary":"旧同事 / 半个损友","relationDetail":"...","relatedLinks":[{"targetName":"某角色","label":"认识","detail":"..."}]}]'
+  ].filter(Boolean).join('\n');
+  let items = [];
+  let lastError = '';
+  try {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const prompt = promptBase + (lastError ? ('\n【上一次结果无效，原因】' + lastError + '\n请严格修正后重新输出完整 3 个 NPC。') : '');
+      const response = await fetch(api.url.replace(/\/$/, '') + '/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + api.key, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: api.model,
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 1.05,
+          max_tokens: 1800
+        })
+      });
+      if (!response.ok) throw new Error('API 错误：' + response.status);
+      const data = await response.json();
+      items = monoRoleNpcResponseToArray(data && data.choices && data.choices[0] && data.choices[0].message ? data.choices[0].message.content : '');
+      if (monoGeneratedNpcLooksValid(ownerPersona, existingNpcs, items)) break;
+      lastError = '出现了空字段、重复名字、重复身份，或返回数量不是 3 个。';
+      items = [];
+    }
+    if (!monoGeneratedNpcLooksValid(ownerPersona, existingNpcs, items)) {
+      throw new Error('连续三次生成结果都不符合去重与逻辑要求');
+    }
+    const nextList = monoGetRoleNpcs(ownerPersona.id).slice();
+    items.forEach(function(item) {
+      const npc = monoNormalizeRoleNpc({
+        ownerPersonaId: ownerPersona.id,
+        ownerPersonaName: ownerPersona.name,
+        name: String(item.name || '').trim(),
+        identity: String(item.identity || '').trim(),
+        persona: String(item.persona || '').trim(),
+        relationSummary: String(item.relationSummary || item.relationship || '').trim(),
+        relationDetail: String(item.relationDetail || '').trim(),
+        linkNotes: monoResolveNpcLinkNotes(ownerPersona, item.relatedLinks || item.links || [])
+      }, ownerPersona.id);
+      const roomId = monoEnsureRoleNpcRoom(ownerPersona, npc);
+      npc.roomId = roomId;
+      nextList.push(npc);
+      monoSyncRoleNpcRelations(ownerPersona, npc);
+      // NPC 只加入角色微信；用户联络人改为手动添加。
+    });
+    monoSetRoleNpcs(ownerPersona.id, nextList);
+    try { renderRolePhoneDrawer(); } catch(e) {}
+    try { renderCcRoomDrawer(); } catch(e) {}
+    try { renderContactList(); } catch(e) {}
+    monoRenderRolePhonePage();
+    try {
+      if (typeof showMonoNotifToast === 'function') showMonoNotifToast('NPC 已生成', ownerPersona.name + ' 的新 NPC 已加入角色微信', '');
+    } catch(e) {}
+  } catch(err) {
+    alert('生成 NPC 失败：' + err.message);
+  } finally {
+    _rolePhoneState.generating = false;
+    monoRenderRolePhonePage();
+  }
+}
+function monoNpcEditorLinkCardHtml(link) {
+  return ''
+    + '<div class="npc-editor-link-card" data-node-id="' + monoRolePhoneEsc(String(link.nodeId || '')) + '" data-node-type="' + monoRolePhoneEsc(String(link.nodeType || '')) + '">'
+    + '  <div class="npc-editor-link-head">'
+    + '    <div><div class="npc-editor-link-name">' + monoRolePhoneEsc(link.name || _mwResolveNodeName(link.nodeId, '关联对象')) + '</div><div class="npc-editor-link-type">' + monoRolePhoneEsc(link.nodeType || 'relation') + '</div></div>'
+    + '    <button type="button" class="npc-editor-link-remove" onclick="this.closest(\'.npc-editor-link-card\').remove()">移除</button>'
+    + '  </div>'
+    + '  <label class="npc-editor-label">关系短称</label>'
+    + '  <input class="npc-editor-input npc-editor-link-label" type="text" value="' + monoRolePhoneEsc(link.label || '') + '" placeholder="例：旧同学 / 邻居 / 熟客">'
+    + '  <label class="npc-editor-label" style="margin-top:8px;">关系描述</label>'
+    + '  <textarea class="npc-editor-textarea npc-editor-link-detail" placeholder="写这个 NPC 与该对象的关系细节…">' + monoRolePhoneEsc(link.detail || '') + '</textarea>'
+    + '</div>';
+}
+function monoOpenNpcEditor(ownerPersonaId, npcId) {
+  monoRolePhoneEnsureUi();
+  const ownerPersona = monoGetPersonaById(ownerPersonaId);
+  const npc = monoFindRoleNpcById(npcId);
+  if (!ownerPersona || !npc) return;
+  _roleNpcEditorContext = { ownerPersonaId: String(ownerPersona.id), npcId: String(npc.id) };
+  const options = mwGetCharOptions().filter(function(opt) {
+    return opt && String(opt.id) !== String(ownerPersona.id) && !opt.isNpc;
+  });
+  const overlay = document.getElementById('npcEditorOverlay');
+  overlay.innerHTML = ''
+    + '<div class="npc-editor-sheet">'
+    + '  <div class="npc-editor-head"><div class="npc-editor-title">编辑 NPC 设定</div><button class="npc-editor-close" onclick="closeNpcEditorOverlay()">✕</button></div>'
+    + '  <div class="npc-editor-body">'
+    + '    <div class="npc-editor-grid">'
+    + '      <div><label class="npc-editor-label">名字</label><input id="npcEditorName" class="npc-editor-input" type="text" value="' + monoRolePhoneEsc(npc.name) + '"></div>'
+    + '      <div><label class="npc-editor-label">身份</label><input id="npcEditorIdentity" class="npc-editor-input" type="text" value="' + monoRolePhoneEsc(npc.identity || '') + '" placeholder="例：出版社摄影助理 / 便利店夜班店员"></div>'
+    + '      <div><label class="npc-editor-label">与 ' + monoRolePhoneEsc(ownerPersona.name) + ' 的关系</label><input id="npcEditorRelationSummary" class="npc-editor-input" type="text" value="' + monoRolePhoneEsc(npc.relationSummary || '') + '" placeholder="例：旧同事 / 邻居 / 半个损友"></div>'
+    + '      <div><label class="npc-editor-label">关系细节</label><textarea id="npcEditorRelationDetail" class="npc-editor-textarea" placeholder="详细描述这个 NPC 和角色的关系…">' + monoRolePhoneEsc(npc.relationDetail || '') + '</textarea></div>'
+    + '      <div><label class="npc-editor-label">详细人设</label><textarea id="npcEditorPersona" class="npc-editor-textarea" placeholder="完整写这个 NPC 的背景、个性、说话方式等…">' + monoRolePhoneEsc(npc.persona || '') + '</textarea></div>'
+    + '      <div>'
+    + '        <label class="npc-editor-label">与其他角色 / 用户面具的关联</label>'
+    + '        <div style="display:flex;gap:8px;align-items:center;">'
+    + '          <select id="npcEditorLinkTarget" class="npc-editor-select" style="flex:1;">'
+    +              options.map(function(opt) {
+                    return '<option value="' + monoRolePhoneEsc(String(opt.id)) + '" data-name="' + monoRolePhoneEsc(opt.name) + '" data-type="' + monoRolePhoneEsc(opt.isMask ? 'mask' : (opt.isUser ? 'user' : 'persona')) + '">' + monoRolePhoneEsc(opt.name) + '</option>';
+                  }).join('')
+    + '          </select>'
+    + '          <button type="button" class="role-phone-btn" style="padding:10px 12px;" onclick="monoAddNpcEditorLinkRow()">添加</button>'
+    + '        </div>'
+    + '        <div id="npcEditorLinksWrap">' + (npc.linkNotes || []).map(monoNpcEditorLinkCardHtml).join('') + '</div>'
+    + '      </div>'
+    + '    </div>'
+    + '  </div>'
+    + '  <div class="npc-editor-actions">'
+    + '    <button class="npc-editor-delete" onclick="monoDeleteRoleNpcWithConfirm(\'' + monoRolePhoneEsc(String(ownerPersona.id)) + '\', \'' + monoRolePhoneEsc(String(npc.id)) + '\')">永久删除</button>'
+    + '    <button class="npc-editor-save" onclick="monoSaveNpcEditor()">保存设定</button>'
+    + '  </div>'
+    + '</div>';
+  overlay.classList.add('open');
+}
+function closeNpcEditorOverlay() {
+  const overlay = document.getElementById('npcEditorOverlay');
+  if (overlay) overlay.classList.remove('open');
+}
+function monoAddNpcEditorLinkRow() {
+  const select = document.getElementById('npcEditorLinkTarget');
+  const wrap = document.getElementById('npcEditorLinksWrap');
+  if (!select || !wrap) return;
+  const nodeId = String(select.value || '').trim();
+  const opt = select.options[select.selectedIndex];
+  if (!nodeId || !opt) return;
+  if (wrap.querySelector('.npc-editor-link-card[data-node-id="' + nodeId.replace(/"/g, '&quot;') + '"]')) return;
+  const name = opt.getAttribute('data-name') || opt.textContent || _mwResolveNodeName(nodeId, '关联对象');
+  const nodeType = opt.getAttribute('data-type') || 'relation';
+  wrap.insertAdjacentHTML('beforeend', monoNpcEditorLinkCardHtml({ nodeId: nodeId, name: name, nodeType: nodeType, label: '', detail: '' }));
+}
+function monoSaveNpcEditor() {
+  const ownerPersona = monoGetPersonaById(_roleNpcEditorContext.ownerPersonaId);
+  if (!ownerPersona) return;
+  const store = monoLoadRoleNpcStore();
+  const list = Array.isArray(store[String(ownerPersona.id)]) ? store[String(ownerPersona.id)] : [];
+  const idx = list.findIndex(function(item) { return String(item.id) === String(_roleNpcEditorContext.npcId); });
+  const isNewNpc = String(_roleNpcEditorContext.npcId || '') === '__new__';
+  if (idx < 0 && !isNewNpc) return;
+  const nextName = String((document.getElementById('npcEditorName') || {}).value || '').trim();
+  if (!nextName) {
+    alert('NPC 名字不能为空。');
+    return;
+  }
+  const duplicatePersona = (function() {
+    try {
+      return JSON.parse(localStorage.getItem('mono_personas') || '[]').some(function(item) {
+        return String(item.name || '').trim() === nextName
+          && String(item.id) !== String(ownerPersona.id)
+          && String(item._roleNpcId || '') !== String(_roleNpcEditorContext.npcId || '');
+      });
+    } catch(e) { return false; }
+  })();
+  const duplicateNpc = list.some(function(item, itemIdx) {
+    return (!isNewNpc && itemIdx === idx) ? false : String(item.name || '').trim() === nextName;
+  });
+  if (duplicatePersona || duplicateNpc) {
+    alert('这个名字已经被现有角色或 NPC 使用了，请换一个不重复的名字。');
+    return;
+  }
+  const baseNpc = isNewNpc ? { ownerPersonaId: ownerPersona.id, ownerPersonaName: ownerPersona.name, id: 'npc_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7), createdAt: Date.now() } : list[idx];
+  const npc = monoNormalizeRoleNpc(Object.assign({}, baseNpc, {
+    name: nextName,
+    identity: String((document.getElementById('npcEditorIdentity') || {}).value || '').trim(),
+    relationSummary: String((document.getElementById('npcEditorRelationSummary') || {}).value || '').trim(),
+    relationDetail: String((document.getElementById('npcEditorRelationDetail') || {}).value || '').trim(),
+    persona: String((document.getElementById('npcEditorPersona') || {}).value || '').trim(),
+    updatedAt: Date.now(),
+    linkNotes: Array.from(document.querySelectorAll('#npcEditorLinksWrap .npc-editor-link-card')).map(function(card) {
+      return monoNormalizeRoleNpcLink({
+        nodeId: card.getAttribute('data-node-id') || '',
+        name: card.querySelector('.npc-editor-link-name') ? card.querySelector('.npc-editor-link-name').textContent : '',
+        nodeType: card.getAttribute('data-node-type') || '',
+        label: card.querySelector('.npc-editor-link-label') ? card.querySelector('.npc-editor-link-label').value : '',
+        detail: card.querySelector('.npc-editor-link-detail') ? card.querySelector('.npc-editor-link-detail').value : ''
+      });
+    }).filter(Boolean)
+  }), ownerPersona.id);
+  if (isNewNpc) list.push(npc); else list[idx] = npc;
+  const roomId = monoEnsureRoleNpcRoom(ownerPersona, npc);
+  const saveIdx = isNewNpc ? (list.length - 1) : idx;
+  list[saveIdx].roomId = roomId;
+  store[String(ownerPersona.id)] = list;
+  monoSaveRoleNpcStore(store);
+  monoSyncRoleNpcRelations(ownerPersona, list[saveIdx]);
+  // NPC 只加入角色微信；用户联络人改为手动添加。
+  closeNpcEditorOverlay();
+  try { renderRolePhoneDrawer(); } catch(e) {}
+  try { renderCcRoomDrawer(); } catch(e) {}
+  monoRenderRolePhonePage();
+}
+async function monoDeleteRoleNpcWithConfirm(ownerPersonaId, npcId) {
+  const npc = monoFindRoleNpcById(npcId);
+  if (!npc) return;
+  let ok = false;
+  if (typeof window.monoInAppConfirm === 'function') {
+    ok = await window.monoInAppConfirm({
+      title: '删除 NPC',
+      note: '确定永久删除「' + npc.name + '」吗？\n\n这会同时删除 NPC 资料、关系图关联和所有 NPC 聊天室记录。',
+      confirmText: '删除',
+      cancelText: '取消',
+      danger: true
+    });
+  } else {
+    ok = confirm('确定永久删除「' + npc.name + '」吗？这会同时删除 NPC 资料、关系图关联和所有 NPC 聊天室记录。');
+  }
+  if (!ok) return;
+  monoDeleteRoleNpc(ownerPersonaId, npcId);
+  closeNpcEditorOverlay();
+  try { renderRolePhoneDrawer(); } catch(e) {}
+  try { renderCcRoomDrawer(); } catch(e) {}
+  try { renderContactList(); } catch(e) {}
+  monoRenderRolePhonePage();
+}
+function renderRolePhoneDrawer() {
+  const section = document.getElementById('rolePhoneDrawerSection');
+  if (!section) return;
+  const list = (typeof personas !== 'undefined' && Array.isArray(personas)) ? personas : [];
+  if (!list.length) {
+    section.style.display = 'none';
+    section.innerHTML = '';
+    return;
+  }
+  let html = '<div style="padding:8px 16px 4px;display:flex;align-items:center;justify-content:space-between;"><span style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:2px;font-weight:700;">特定角色</span><span style="font-size:9px;color:#bbb;">角色微信</span></div>';
+  html += list.map(function(p) {
+    const npcCount = monoGetRoleNpcs(p.id).length;
+    const threadCount = monoGetRolePhoneThreads(p).length;
+    const avatarHtml = p.avatar
+      ? '<img src="' + monoRolePhoneEsc(p.avatar) + '" class="contact-avatar">'
+      : '<div class="contact-avatar" style="display:flex;align-items:center;justify-content:center;background:#5f5f6b;color:#fff;font-weight:700;">' + monoRolePhoneEsc((String(p.name || '?').trim().charAt(0) || '?')) + '</div>';
+    return '<div class="contact-item" onclick="monoOpenRolePhonePage(\'' + monoRolePhoneEsc(String(p.id)) + '\')" style="padding:10px 14px;">'
+      + avatarHtml
+      + '<div style="flex:1;min-width:0;">'
+      + '  <div class="contact-name">' + monoRolePhoneEsc(p.name) + '</div>'
+      + '  <div class="contact-sub" style="font-size:11px;">聊天室 ' + threadCount + ' · NPC ' + npcCount + '</div>'
+      + '</div>'
+      + '<i class="fas fa-chevron-right" style="font-size:10px;color:#bbb;"></i>'
+      + '</div>';
+  }).join('');
+  section.innerHTML = html;
+  section.style.display = 'block';
+}
+window.openRolePhonePage = monoOpenRolePhonePage;
+window.closeRolePhonePage = closeRolePhonePage;
+window.monoGenerateRoleNpcs = monoGenerateRoleNpcs;
+window.monoOpenRoleNpcChat = monoOpenRoleNpcChat;
+window.monoOpenNpcEditor = monoOpenNpcEditor;
+window.closeNpcEditorOverlay = closeNpcEditorOverlay;
+window.monoAddNpcEditorLinkRow = monoAddNpcEditorLinkRow;
+window.monoSaveNpcEditor = monoSaveNpcEditor;
+window.monoDeleteRoleNpcWithConfirm = monoDeleteRoleNpcWithConfirm;
+window.monoOpenRolePhoneRoom = monoOpenRolePhoneRoom;
+window.monoOpenRoleRelationContact = monoOpenRoleRelationContact;
+window.renderRolePhoneDrawer = renderRolePhoneDrawer;
 function _ccRenderMessageBubble(msg, isRight) {
   if (msg.msgType === 'image') {
     const imgSrc = _escapeAttrText(msg.imageSrc || '');
@@ -29565,6 +30264,27 @@ function _ccRenderMessageBubble(msg, isRight) {
   return '<div class="' + (isRight ? 'cc-bubble cc-bubble-right' : 'cc-bubble cc-bubble-left') + '">' + _esc(msg.content || '').replace(/\n/g, '<br>') + '</div>';
 }
 // ── 渲染聊天室消息（微信风格）──
+
+// v8: 角色微信上下文右侧显示规则
+// 当同一个角色聊天室从某个角色自己的微信里打开时，当前微信所属角色的消息必须显示在右边；
+// 同一个聊天室从另一个角色的微信里打开时，则切换为另一个角色在右边。
+window._monoCcRightPersonaName = window._monoCcRightPersonaName || '';
+function _monoCcGetRightSideSenderName(room) {
+  try {
+    const wanted = String(window._monoCcRightPersonaName || '').trim();
+    if (wanted && room && Array.isArray(room.members) && room.members.map(String).indexOf(wanted) >= 0) {
+      return wanted;
+    }
+  } catch(e) {}
+  try {
+    if (room && room._roleNpcRoom === true) return String(room._roleNpcOwnerName || (room.members && room.members[0]) || '');
+  } catch(e) {}
+  try {
+    if (room && Array.isArray(room.members) && room.members.length === 2) return String(room.members[1] || '');
+  } catch(e) {}
+  return '';
+}
+
 function ccRenderChatMessages(roomId) {
   const rooms = ccGetRooms();
   const room = rooms.find(r => r.id === roomId);
@@ -29596,7 +30316,8 @@ function ccRenderChatMessages(roomId) {
     const isUserMsg = msg.senderType === 'user' || msg.sender === userName;
     const p = isUserMsg ? null : personas.find(x => x.name === msg.sender);
     const avatarSrc = isUserMsg ? userAvatar : (p ? p.avatar : '');
-    const isRight = isUserMsg || (!hasUserParticipation && room.members.length === 2 && msg.sender === room.members[1]);
+    const rightSideSenderName = _monoCcGetRightSideSenderName(room);
+    const isRight = isUserMsg || (!!rightSideSenderName && String(msg.sender) === String(rightSideSenderName));
     const rowClass = 'cc-msg-row' + (isRight ? ' cc-right' : '');
     // Time divider
     let timeDivider = '';
@@ -29669,7 +30390,8 @@ async function ccGenerateConversation() {
         if (msgList) {
           const p = personas.find(x => x.name === m.sender);
           const avatarSrc = p ? p.avatar : '';
-          const isRight = room.members.length === 2 && m.sender === room.members[1];
+          const rightSideSenderName = _monoCcGetRightSideSenderName(room);
+          const isRight = !!rightSideSenderName && String(m.sender) === String(rightSideSenderName);
           const rowClass = 'cc-msg-row' + (isRight ? ' cc-right' : '');
           const avatarHtml = avatarSrc
             ? `<img src="${avatarSrc}" class="cc-avatar" alt="${m.sender}">`
@@ -29787,11 +30509,21 @@ function _ccBuildCharacterContext(name, personas, relEntries, roomMembers, room)
   if (!p) {
     const npcMeta = room && room.npcMeta && room.npcMeta[name] ? room.npcMeta[name] : null;
     if (!npcMeta) return `【${name}】：（无人设信息）\n`;
+    const relationBlock = npcMeta.relationSummary || npcMeta.relationDetail
+      ? ('与当前核心角色的关系：' + (npcMeta.relationSummary || '有关联') + (npcMeta.relationDetail ? ' — ' + npcMeta.relationDetail : '') + '\n')
+      : '';
+    const linkBlock = Array.isArray(npcMeta.linkNotes) && npcMeta.linkNotes.length
+      ? ('已知关联：\n' + npcMeta.linkNotes.map(function(link) {
+          return '  · ' + (link.name || _mwResolveNodeName(link.nodeId, '关联对象')) + '：'
+            + (link.label || '有关联')
+            + (link.detail ? ' — ' + link.detail : '');
+        }).join('\n') + '\n')
+      : '';
     return `═══ ${name} 的完整人设 ═══
 姓名：${npcMeta.name || name}
 身份：${npcMeta.identity || '当前世界中的 NPC'}
-人设设定：
-${npcMeta.persona || (name + '是当前世界中一个自然存在的 NPC，请按其身份作出真实回应。')}
+${relationBlock}${linkBlock}人设设定：
+${npcMeta.persona || (name + '是当前世界中一个自然存在的 NPC，请按其身份、关系与世界背景作出真实回应。')}
 ═══ END ${name} ═══
 `;
   }
@@ -30061,7 +30793,39 @@ async function deleteCcRoom() {
 }
 function _mwRelKey() { return 'mono_rel_map_' + mwGetActiveId(); }
 function mwGetRelEntries() {
-  try { return JSON.parse(localStorage.getItem(_mwRelKey()) || '[]'); } catch(e) { return []; }
+  try {
+    const raw = JSON.parse(localStorage.getItem(_mwRelKey()) || '[]');
+    const entries = Array.isArray(raw) ? raw : [];
+    let changed = false;
+    const options = mwGetCharOptions();
+    const byName = new Map();
+    options.forEach(function(opt) {
+      if (!opt || !opt.name || byName.has(opt.name)) return;
+      byName.set(opt.name, String(opt.id || ''));
+    });
+    const normalized = entries.map(function(entry) {
+      const next = entry && typeof entry === 'object' ? Object.assign({}, entry) : { a: '', b: '', label: '', detail: '' };
+      ['a', 'b'].forEach(function(slot) {
+        const idKey = slot + 'Id';
+        const name = String(next[slot] || '').trim();
+        const nodeId = String(next[idKey] || '').trim();
+        if (!nodeId && name) {
+          if (name === '用户（我）') {
+            next[idKey] = '__user__';
+            changed = true;
+          } else if (byName.has(name)) {
+            next[idKey] = byName.get(name);
+            changed = true;
+          }
+        }
+      });
+      return next;
+    });
+    if (changed) localStorage.setItem(_mwRelKey(), JSON.stringify(normalized));
+    return normalized;
+  } catch(e) {
+    return [];
+  }
 }
 function mwSaveRelEntries(entries) {
   localStorage.setItem(_mwRelKey(), JSON.stringify(entries));
@@ -30087,27 +30851,483 @@ function saveRelationshipMap() {
   alert('✅ 关系图已保存！\n\n角色的关系记忆已更新，AI 将根据关系图生成符合逻辑的内容。');
   closeRelationshipMap();
 }
+function _mwRoleNpcKey() {
+  return 'mono_role_npcs_' + mwGetActiveId();
+}
+function monoRoleNpcNodeId(npcId) {
+  return '__npc__:' + String(npcId || '');
+}
+function monoIsRoleNpcNodeId(nodeId) {
+  return String(nodeId || '').indexOf('__npc__:') === 0;
+}
+function monoGetRoleNpcIdFromNodeId(nodeId) {
+  const raw = String(nodeId || '');
+  return monoIsRoleNpcNodeId(raw) ? raw.slice('__npc__:'.length) : '';
+}
+function monoRoleNpcIdentityKey(text) {
+  return String(text || '')
+    .toLowerCase()
+    .replace(/[\s\u3000\-_,.!?;:'"“”‘’`~@#$%^&*+=<>\/\\|()\[\]{}，。！？；：、】【《》、…]+/g, '')
+    .trim();
+}
+function monoNormalizeRoleNpcLink(link) {
+  if (!link || typeof link !== 'object') return null;
+  const nodeId = String(link.nodeId || '').trim();
+  const name = String(link.name || '').trim();
+  if (!nodeId && !name) return null;
+  return {
+    nodeId: nodeId,
+    name: name,
+    label: String(link.label || '').trim(),
+    detail: String(link.detail || '').trim(),
+    nodeType: String(link.nodeType || '').trim()
+  };
+}
+function monoMakeRoleNpcAvatar(name) {
+  const first = String(name || '?').trim().charAt(0) || '?';
+  try {
+    if (typeof makeAvatar === 'function') return makeAvatar(first, '#efeff3', '#4a4a56');
+  } catch(e) {}
+  return '';
+}
+function monoNormalizeRoleNpc(raw, ownerPersonaId) {
+  const npc = raw && typeof raw === 'object' ? Object.assign({}, raw) : {};
+  npc.id = String(npc.id || ('npc_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)));
+  npc.ownerPersonaId = String(npc.ownerPersonaId || ownerPersonaId || '');
+  npc.ownerPersonaName = String(npc.ownerPersonaName || '').trim();
+  npc.name = String(npc.name || '未命名NPC').trim() || '未命名NPC';
+  npc.identity = String(npc.identity || '').trim();
+  npc.persona = String(npc.persona || '').trim();
+  npc.relationSummary = String(npc.relationSummary || npc.relationship || '').trim();
+  npc.relationDetail = String(npc.relationDetail || '').trim();
+  npc.avatar = String(npc.avatar || '').trim() || monoMakeRoleNpcAvatar(npc.name);
+  npc.roomId = String(npc.roomId || '').trim();
+  npc.createdAt = parseInt(npc.createdAt, 10) || Date.now();
+  npc.updatedAt = parseInt(npc.updatedAt, 10) || Date.now();
+  npc.linkNotes = Array.isArray(npc.linkNotes)
+    ? npc.linkNotes.map(monoNormalizeRoleNpcLink).filter(Boolean)
+    : [];
+  return npc;
+}
+function monoLoadRoleNpcStore() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(_mwRoleNpcKey()) || localStorage.getItem('mono_role_npcs') || '{}');
+    const store = raw && typeof raw === 'object' ? raw : {};
+    const next = {};
+    Object.keys(store).forEach(function(ownerId) {
+      next[String(ownerId)] = Array.isArray(store[ownerId])
+        ? store[ownerId].map(function(item) { return monoNormalizeRoleNpc(item, ownerId); })
+        : [];
+    });
+    return next;
+  } catch(e) {
+    return {};
+  }
+}
+function monoSaveRoleNpcStore(store) {
+  localStorage.setItem(_mwRoleNpcKey(), JSON.stringify(store || {}));
+}
+function monoGetRoleNpcs(ownerPersonaId) {
+  const store = monoLoadRoleNpcStore();
+  return Array.isArray(store[String(ownerPersonaId)]) ? store[String(ownerPersonaId)] : [];
+}
+function monoSetRoleNpcs(ownerPersonaId, list) {
+  const store = monoLoadRoleNpcStore();
+  store[String(ownerPersonaId)] = Array.isArray(list)
+    ? list.map(function(item) { return monoNormalizeRoleNpc(item, ownerPersonaId); })
+    : [];
+  monoSaveRoleNpcStore(store);
+}
+function monoGetAllRoleNpcs() {
+  const store = monoLoadRoleNpcStore();
+  const all = [];
+  Object.keys(store).forEach(function(ownerId) {
+    (store[ownerId] || []).forEach(function(item) { all.push(monoNormalizeRoleNpc(item, ownerId)); });
+  });
+  return all;
+}
+function monoFindRoleNpcById(npcId) {
+  const targetId = String(npcId || '');
+  let found = null;
+  monoGetAllRoleNpcs().some(function(item) {
+    if (String(item.id) === targetId) { found = item; return true; }
+    return false;
+  });
+  return found;
+}
+function monoFindRoleNpcByName(ownerPersonaId, name) {
+  const target = String(name || '').trim();
+  return monoGetRoleNpcs(ownerPersonaId).find(function(item) {
+    return String(item.name || '').trim() === target;
+  }) || null;
+}
+function monoGetPersonaById(personaId) {
+  try {
+    if (typeof personas !== 'undefined' && Array.isArray(personas)) {
+      const found = personas.find(function(item) { return String(item.id) === String(personaId); });
+      if (found) return found;
+    }
+  } catch(e) {}
+  try {
+    return JSON.parse(localStorage.getItem('mono_personas') || '[]').find(function(item) {
+      return String(item.id) === String(personaId);
+    }) || null;
+  } catch(e) {
+    return null;
+  }
+}
+function monoGetPersonaByName(personaName) {
+  const target = String(personaName || '').trim();
+  try {
+    if (typeof personas !== 'undefined' && Array.isArray(personas)) {
+      const found = personas.find(function(item) { return String(item.name || '').trim() === target; });
+      if (found) return found;
+    }
+  } catch(e) {}
+  try {
+    return JSON.parse(localStorage.getItem('mono_personas') || '[]').find(function(item) {
+      return String(item.name || '').trim() === target;
+    }) || null;
+  } catch(e) {
+    return null;
+  }
+}
+function monoGetRoleNpcOptions() {
+  return monoGetAllRoleNpcs().map(function(npc) {
+    return {
+      id: monoRoleNpcNodeId(npc.id),
+      name: npc.name,
+      avatar: npc.avatar || '',
+      isUser: false,
+      isNpc: true,
+      npcId: npc.id,
+      ownerPersonaId: npc.ownerPersonaId,
+      userKind: 'npc'
+    };
+  });
+}
+function monoFindRelEntryIndexByNodeIds(entries, nodeA, nodeB) {
+  return (entries || []).findIndex(function(entry) {
+    const aId = String(entry && entry.aId || '').trim();
+    const bId = String(entry && entry.bId || '').trim();
+    return (aId === String(nodeA) && bId === String(nodeB)) || (aId === String(nodeB) && bId === String(nodeA));
+  });
+}
+function monoResolveRoleNpcRoomMeta(npc) {
+  return {
+    name: npc.name,
+    identity: npc.identity || '当前世界里的 NPC',
+    relationSummary: npc.relationSummary || '',
+    relationDetail: npc.relationDetail || '',
+    linkNotes: Array.isArray(npc.linkNotes) ? npc.linkNotes.map(function(link) { return Object.assign({}, link); }) : [],
+    persona: npc.persona
+      || (npc.name + ' 是当前世界中的 NPC，身份是：' + (npc.identity || '当前世界里的 NPC') + '。请让 TA 的发言真实、自然，并始终记得与相关角色的关系。')
+  };
+}
+function monoEnsureRoleNpcRoom(ownerPersona, npc) {
+  if (!ownerPersona || !npc) return '';
+  const rooms = ccGetRooms();
+  const targetId = String(npc.id);
+  let room = rooms.find(function(item) {
+    return item && item._roleNpcRoom === true
+      && String(item._roleNpcOwnerId || '') === String(ownerPersona.id)
+      && String(item._roleNpcId || '') === targetId;
+  });
+  if (!room) {
+    room = {
+      id: 'role_npc_room_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+      name: npc.name,
+      members: [ownerPersona.name, npc.name],
+      createdAt: Date.now(),
+      dailyTurns: 0,
+      _roleNpcRoom: true,
+      _roleNpcOwnerId: String(ownerPersona.id),
+      _roleNpcOwnerName: ownerPersona.name,
+      _roleNpcId: targetId,
+      npcMeta: {}
+    };
+    room.npcMeta[npc.name] = monoResolveRoleNpcRoomMeta(npc);
+    rooms.push(room);
+  } else {
+    const oldNpcName = Array.isArray(room.members) && room.members.length > 1 ? room.members[1] : npc.name;
+    room.name = npc.name;
+    room.members = [ownerPersona.name, npc.name];
+    room._roleNpcOwnerId = String(ownerPersona.id);
+    room._roleNpcOwnerName = ownerPersona.name;
+    room._roleNpcId = targetId;
+    room._roleNpcRoom = true;
+    room.npcMeta = room.npcMeta || {};
+    if (oldNpcName && oldNpcName !== npc.name && room.npcMeta[oldNpcName] && !room.npcMeta[npc.name]) {
+      room.npcMeta[npc.name] = room.npcMeta[oldNpcName];
+      delete room.npcMeta[oldNpcName];
+    }
+    room.npcMeta[npc.name] = Object.assign({}, room.npcMeta[npc.name] || {}, monoResolveRoleNpcRoomMeta(npc));
+  }
+  ccSaveRooms(rooms.map(function(item) {
+    return item.id === room.id ? room : item;
+  }));
+  return room.id;
+}
+function monoRemoveRoleNpcRoom(npc) {
+  if (!npc) return;
+  const rooms = ccGetRooms();
+  const nextRooms = [];
+  rooms.forEach(function(room) {
+    const isNpcRoom = room && (
+      (room._roleNpcRoom === true && String(room._roleNpcId || '') === String(npc.id))
+      || (room._tdRoom === true && room.npcMeta && room.npcMeta[npc.name] && (room.members || []).indexOf(npc.name) >= 0)
+      || (room._tdUserRoom === true && room.npcMeta && room.npcMeta[npc.name] && (room.members || []).indexOf(npc.name) >= 0)
+    );
+    if (isNpcRoom) {
+      try { monoPurgeKeys([_ccHistKey(room.id)]); } catch(e) {}
+      return;
+    }
+    nextRooms.push(room);
+  });
+  ccSaveRooms(nextRooms);
+}
+function monoRemoveRoleNpcRelations(npcId) {
+  const nodeId = monoRoleNpcNodeId(npcId);
+  const next = mwGetRelEntries().filter(function(entry) {
+    return String(entry.aId || '') !== nodeId && String(entry.bId || '') !== nodeId;
+  });
+  mwSaveRelEntries(next);
+}
+function monoGetRelEntryAutoKey(entry) {
+  return String(entry && (entry._monoAutoKey || entry._roleNpcAutoKey || '') || '').trim();
+}
+function monoRelEntryHasSamePair(entry, nodeA, nodeB) {
+  const aId = String(entry && entry.aId || '').trim();
+  const bId = String(entry && entry.bId || '').trim();
+  return (aId === String(nodeA) && bId === String(nodeB)) || (aId === String(nodeB) && bId === String(nodeA));
+}
+function monoUpsertRoleNpcAutoRel(entries, rel, autoKey) {
+  const list = Array.isArray(entries) ? entries : [];
+  const key = String(autoKey || '').trim();
+  const managedIdx = list.findIndex(function(entry) {
+    return monoGetRelEntryAutoKey(entry) === key;
+  });
+  const nextRel = Object.assign({}, rel, {
+    _monoManagedRoleNpcRel: true,
+    _monoAutoKey: key
+  });
+  if (managedIdx >= 0) {
+    // Only update relations that were created by the NPC system itself.
+    // User-created relationship entries are never overwritten here.
+    list[managedIdx] = Object.assign({}, list[managedIdx], nextRel);
+    return list;
+  }
+  const manualOrLegacyIdx = list.findIndex(function(entry) {
+    return monoRelEntryHasSamePair(entry, rel.aId, rel.bId);
+  });
+  if (manualOrLegacyIdx >= 0) {
+    // A relationship already exists for this pair. Treat it as user/legacy data and preserve it exactly.
+    return list;
+  }
+  list.push(nextRel);
+  return list;
+}
+function monoSyncRoleNpcRelations(ownerPersona, npc) {
+  if (!ownerPersona || !npc) return;
+  const nodeId = monoRoleNpcNodeId(npc.id);
+  const ownerId = String(ownerPersona.id);
+  const entries = mwGetRelEntries().slice();
+
+  // Important: generating or editing NPCs must only ADD/UPDATE system-managed NPC links.
+  // It must not clear the original relationship map, because users may have manually written
+  // relationships between the user, masks, roles, and NPCs.
+  monoUpsertRoleNpcAutoRel(entries, {
+    aId: ownerId,
+    a: ownerPersona.name,
+    bId: nodeId,
+    b: npc.name,
+    label: npc.relationSummary || '有关联',
+    detail: npc.relationDetail || ''
+  }, 'roleNpcOwner:' + ownerId + ':' + String(npc.id));
+
+  (npc.linkNotes || []).forEach(function(link, idx) {
+    if (!link || !link.nodeId || String(link.nodeId) === ownerId) return;
+    monoUpsertRoleNpcAutoRel(entries, {
+      aId: nodeId,
+      a: npc.name,
+      bId: String(link.nodeId),
+      b: String(link.name || _mwResolveNodeName(link.nodeId, '关联对象')),
+      label: String(link.label || '有关联').trim() || '有关联',
+      detail: String(link.detail || '').trim()
+    }, 'roleNpcLink:' + String(npc.id) + ':' + String(link.nodeId));
+  });
+
+  mwSaveRelEntries(entries);
+  try { mwInjectRelationshipsIntoChars(); } catch(e) {}
+  try { mwRenderRelEntries(); } catch(e) {}
+  try { mwRenderRelMapSvg(); } catch(e) {}
+}
+function monoDeleteRoleNpc(ownerPersonaId, npcId) {
+  const ownerId = String(ownerPersonaId || '');
+  const targetId = String(npcId || '');
+  const store = monoLoadRoleNpcStore();
+  const list = Array.isArray(store[ownerId]) ? store[ownerId] : [];
+  const npc = list.find(function(item) { return String(item.id) === targetId; }) || null;
+  if (!npc) return;
+  store[ownerId] = list.filter(function(item) { return String(item.id) !== targetId; });
+  monoSaveRoleNpcStore(store);
+  monoRemoveRoleNpcRoom(npc);
+  monoRemoveRoleNpcRelations(targetId);
+  try { monoRemoveRoleNpcUserContact(npc); } catch(e) {}
+  try { mwInjectRelationshipsIntoChars(); } catch(e) {}
+}
+function monoDeleteAllRoleNpcsForPersona(ownerPersonaId) {
+  const store = monoLoadRoleNpcStore();
+  const ownerId = String(ownerPersonaId || '');
+  (store[ownerId] || []).forEach(function(npc) {
+    monoRemoveRoleNpcRoom(npc);
+    monoRemoveRoleNpcRelations(npc.id);
+    try { monoRemoveRoleNpcUserContact(npc); } catch(e) {}
+  });
+  delete store[ownerId];
+  monoSaveRoleNpcStore(store);
+  try { mwInjectRelationshipsIntoChars(); } catch(e) {}
+}
+function _mwRelUserMaskNodeId(maskId) {
+  return '__user_mask__:' + String(maskId || '');
+}
+function _mwIsUserNodeId(nodeId) {
+  const raw = String(nodeId || '');
+  return raw === '__user__' || raw.indexOf('__user_mask__:') === 0;
+}
+function _mwGetMaskIdFromNodeId(nodeId) {
+  const raw = String(nodeId || '');
+  return raw.indexOf('__user_mask__:') === 0 ? raw.slice('__user_mask__:'.length) : '';
+}
+function _mwResolveNodeName(nodeId, fallbackName) {
+  const raw = String(nodeId || '');
+  if (!raw) return fallbackName || '';
+  if (raw === '__user__') {
+    try {
+      const up = JSON.parse(localStorage.getItem('mono_user_profile') || '{}');
+      return up.name || fallbackName || '用户（我）';
+    } catch(e) {
+      return fallbackName || '用户（我）';
+    }
+  }
+  if (raw.indexOf('__user_mask__:') === 0) {
+    const maskId = _mwGetMaskIdFromNodeId(raw);
+    try {
+      const masks = (typeof userMasks !== 'undefined' && Array.isArray(userMasks)) ? userMasks : monoLoadUserMasks();
+      const mask = (masks || []).find(function(item) { return String(item.id) === String(maskId); });
+      if (mask && mask.name) return mask.name;
+    } catch(e) {}
+    return fallbackName || '用户面具';
+  }
+  if (monoIsRoleNpcNodeId(raw)) {
+    const npc = monoFindRoleNpcById(monoGetRoleNpcIdFromNodeId(raw));
+    if (npc && npc.name) return npc.name;
+    return fallbackName || 'NPC';
+  }
+  try {
+    const ps = JSON.parse(localStorage.getItem('mono_personas') || '[]');
+    const p = (ps || []).find(function(item) { return String(item.id || item.name) === raw; });
+    if (p && p.name) return p.name;
+  } catch(e) {}
+  return fallbackName || raw;
+}
+function _mwResolveUserIdentityForNode(nodeId) {
+  const raw = String(nodeId || '');
+  if (!_mwIsUserNodeId(raw)) return null;
+  const defaultProfile = (typeof monoNormalizeUserProfile === 'function')
+    ? monoNormalizeUserProfile(typeof userProfile !== 'undefined' ? userProfile : {})
+    : { name: '用户', bio: '', gender: '', avatar: '', momentsNickname: '', momentsSignature: '', momentsBanner: '' };
+  const worldPersona = (typeof mwGetCurrentUserPersona === 'function')
+    ? String(mwGetCurrentUserPersona() || '').trim()
+    : '';
+  if (raw === '__user__') {
+    return {
+      nodeId: raw,
+      isMask: false,
+      name: defaultProfile.name || '用户（我）',
+      displayName: defaultProfile.name || '用户（我）',
+      bio: worldPersona || defaultProfile.bio || '',
+      personaSpec: worldPersona || defaultProfile.bio || '',
+      avatar: defaultProfile.avatar || '',
+      authorType: 'user'
+    };
+  }
+  const maskId = _mwGetMaskIdFromNodeId(raw);
+  const mask = (typeof monoGetUserMask === 'function') ? monoGetUserMask(maskId) : null;
+  if (!mask) {
+    return {
+      nodeId: raw,
+      isMask: true,
+      name: _mwResolveNodeName(raw, '用户面具'),
+      displayName: _mwResolveNodeName(raw, '用户面具'),
+      bio: '',
+      personaSpec: '',
+      avatar: '',
+      authorType: 'mask'
+    };
+  }
+  return {
+    nodeId: raw,
+    isMask: true,
+    name: mask.name || '用户面具',
+    displayName: mask.name || '用户面具',
+    bio: mask.bio || '',
+    personaSpec: mask.personaSpec || '',
+    avatar: mask.avatar || '',
+    authorType: 'mask'
+  };
+}
+function _mwGetEntryNodeId(entry, slot) {
+  if (!entry) return '';
+  return String(entry[slot + 'Id'] || '').trim();
+}
+function _mwGetEntryNodeName(entry, slot) {
+  if (!entry) return '';
+  const fallback = String(entry[slot] || '').trim();
+  const nodeId = _mwGetEntryNodeId(entry, slot);
+  return _mwResolveNodeName(nodeId, fallback);
+}
 // ── 获取所有可选角色列表（含用户） ──
 function mwGetCharOptions() {
   const chars = [];
   // 用户选项
   try {
     const up = JSON.parse(localStorage.getItem('mono_user_profile') || '{}');
-    chars.push({ id: '__user__', name: up.name || '用户（我）', avatar: up.avatar || '', isUser: true });
+    chars.push({ id: '__user__', name: up.name || '用户（我）', avatar: up.avatar || '', isUser: true, userKind: 'default' });
   } catch(e) {
-    chars.push({ id: '__user__', name: '用户（我）', avatar: '', isUser: true });
+    chars.push({ id: '__user__', name: '用户（我）', avatar: '', isUser: true, userKind: 'default' });
   }
+  // 用户面具选项
+  try {
+    const masks = (typeof userMasks !== 'undefined' && Array.isArray(userMasks)) ? userMasks : monoLoadUserMasks();
+    (masks || []).forEach(function(mask) {
+      if (!mask || !mask.id) return;
+      chars.push({
+        id: _mwRelUserMaskNodeId(mask.id),
+        name: mask.name || '未命名面具',
+        avatar: mask.avatar || '',
+        isUser: true,
+        isMask: true,
+        userKind: 'mask',
+        maskId: mask.id
+      });
+    });
+  } catch(e) {}
   // 所有角色
   try {
     const ps = JSON.parse(localStorage.getItem('mono_personas') || '[]');
-    ps.forEach(p => { if (p.name) chars.push({ id: p.id || p.name, name: p.name, avatar: p.avatar || '', isUser: false }); });
+    ps.forEach(p => { if (p.name) chars.push({ id: p.id || p.name, name: p.name, avatar: p.avatar || '', isUser: false, userKind: 'persona' }); });
   } catch(e) {}
+  monoGetRoleNpcOptions().forEach(function(npcOpt) {
+    if (!npcOpt || !npcOpt.name) return;
+    chars.push(npcOpt);
+  });
   return chars;
 }
 // ── 渲染角色选择器按钮 ──
-function _mwCharPickerBtn(entryIdx, slot, selectedName) {
+function _mwCharPickerBtn(entryIdx, slot, selectedId, selectedName) {
   const chars = mwGetCharOptions();
-  const chosen = chars.find(c => c.name === selectedName);
+  const chosen = chars.find(c => String(c.id) === String(selectedId)) || chars.find(c => c.name === selectedName);
   const avatarHtml = chosen && chosen.avatar
     ? `<img src="${chosen.avatar}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;flex-shrink:0;">`
     : `<div style="width:24px;height:24px;border-radius:50%;background:${chosen && chosen.isUser ? '#1a1a1a' : '#e0e0e0'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:${chosen && chosen.isUser ? '#fff' : '#666'};flex-shrink:0;">${chosen ? chosen.name.charAt(0) : '?'}</div>`;
@@ -30129,11 +31349,11 @@ function mwRenderRelEntries() {
       <div style="display:flex;gap:8px;margin-bottom:8px;">
         <div style="flex:1;">
           <label style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#888;display:block;margin-bottom:4px;">角色 A</label>
-          ${_mwCharPickerBtn(i, 'a', e.a || '')}
+          ${_mwCharPickerBtn(i, 'a', _mwGetEntryNodeId(e, 'a'), _mwGetEntryNodeName(e, 'a'))}
         </div>
         <div style="flex:1;">
           <label style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#888;display:block;margin-bottom:4px;">角色 B</label>
-          ${_mwCharPickerBtn(i, 'b', e.b || '')}
+          ${_mwCharPickerBtn(i, 'b', _mwGetEntryNodeId(e, 'b'), _mwGetEntryNodeName(e, 'b'))}
         </div>
       </div>
       <div style="margin-bottom:8px;">
@@ -30154,7 +31374,7 @@ function mwOpenCharPicker(entryIdx, slot) {
   const chars = mwGetCharOptions();
   const entries = mwGetRelEntries();
   const currentEntry = entries[entryIdx] || {};
-  const currentVal = currentEntry[slot] || '';
+  const currentVal = _mwGetEntryNodeId(currentEntry, slot) || currentEntry[slot] || '';
   // 创建或复用弹窗
   let modal = document.getElementById('mwCharPickerModal');
   if (!modal) {
@@ -30175,25 +31395,27 @@ function mwOpenCharPicker(entryIdx, slot) {
   // 渲染角色列表（用 data-name 属性避免 onclick 内引号冲突）
   const listEl = modal.querySelector('#mwCharPickerList');
   listEl.innerHTML = chars.map(c => {
-    const isSelected = c.name === currentVal;
+    const isSelected = String(c.id) === String(currentVal);
     const safeName = c.name.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const safeId = String(c.id).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     const avatarHtml = c.avatar
       ? `<img src="${c.avatar}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0;">`
       : `<div style="width:38px;height:38px;border-radius:50%;background:${c.isUser ? '#1a1a1a' : '#e8e8e8'};display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:${c.isUser ? '#fff' : '#555'};flex-shrink:0;">${c.name.charAt(0)}</div>`;
-    return `<button type="button" data-pick-name="${safeName}" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:${isSelected ? '2px solid #1a1a1a' : '1.5px solid #f0f0f0'};background:${isSelected ? '#f5f5f5' : '#fff'};cursor:pointer;font-family:inherit;text-align:left;width:100%;">
+    const subLabel = c.isMask ? '用户面具' : (c.isUser ? '默认用户' : '角色');
+    return `<button type="button" data-pick-id="${safeId}" data-pick-name="${safeName}" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:${isSelected ? '2px solid #1a1a1a' : '1.5px solid #f0f0f0'};background:${isSelected ? '#f5f5f5' : '#fff'};cursor:pointer;font-family:inherit;text-align:left;width:100%;">
       ${avatarHtml}
       <div style="flex:1;min-width:0;">
         <div style="font-size:13px;font-weight:700;color:#1a1a1a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.name}</div>
-        ${c.isUser ? '<div style="font-size:10px;color:#888;margin-top:1px;">用户</div>' : '<div style="font-size:10px;color:#aaa;margin-top:1px;">角色</div>'}
+        <div style="font-size:10px;color:${c.isUser ? '#888' : '#aaa'};margin-top:1px;">${subLabel}</div>
       </div>
       ${isSelected ? '<i class="fas fa-check" style="color:#1a1a1a;font-size:13px;flex-shrink:0;"></i>' : ''}
     </button>`;
   }).join('');
   // 用事件委托处理点击，避免 onclick 内引号冲突
   listEl.onclick = function(ev) {
-    const btn = ev.target.closest('button[data-pick-name]');
+    const btn = ev.target.closest('button[data-pick-id]');
     if (!btn) return;
-    mwPickChar(btn.getAttribute('data-pick-name'));
+    mwPickChar(btn.getAttribute('data-pick-id'), btn.getAttribute('data-pick-name'));
   };
   modal.style.display = 'flex';
 }
@@ -30202,16 +31424,16 @@ function mwCloseCharPicker() {
   if (modal) modal.style.display = 'none';
   _mwPickerTarget = null;
 }
-function mwPickChar(name) {
+function mwPickChar(id, name) {
   if (!_mwPickerTarget) return;
   const { entryIdx, slot } = _mwPickerTarget;
-  mwUpdateRelEntry(entryIdx, slot, name);
+  mwSetRelEntryChar(entryIdx, slot, id, name);
   mwCloseCharPicker();
   mwRenderRelEntries();
 }
 function mwAddRelEntry() {
   const entries = mwGetRelEntries();
-  entries.push({ a: '', b: '', label: '', detail: '' });
+  entries.push({ aId: '', a: '', bId: '', b: '', label: '', detail: '' });
   mwSaveRelEntries(entries);
   mwRenderRelEntries();
 }
@@ -30220,6 +31442,15 @@ function mwRemoveRelEntry(i) {
   entries.splice(i, 1);
   mwSaveRelEntries(entries);
   mwRenderRelEntries();
+  mwRenderRelMapSvg();
+}
+function mwSetRelEntryChar(i, slot, nodeId, nodeName) {
+  const entries = mwGetRelEntries();
+  if (entries[i]) {
+    entries[i][slot + 'Id'] = nodeId;
+    entries[i][slot] = nodeName;
+    mwSaveRelEntries(entries);
+  }
   mwRenderRelMapSvg();
 }
 function mwUpdateRelEntry(i, field, value) {
@@ -30238,7 +31469,11 @@ function mwInjectRelationshipsIntoChars() {
       const relevant = entries.filter(e => e.a === p.name || e.b === p.name);
       if (relevant.length === 0) return;
       p._worldRelMap = relText;
-      p._worldRelRelevant = relevant.map(e => `${e.a} ↔ ${e.b}（${e.label}）：${e.detail}`).join('\n');
+      p._worldRelRelevant = relevant.map(function(e) {
+        const nameA = _mwGetEntryNodeName(e, 'a');
+        const nameB = _mwGetEntryNodeName(e, 'b');
+        return `${nameA} ↔ ${nameB}（${e.label}）：${e.detail}`;
+      }).join('\n');
     });
     localStorage.setItem('mono_personas', JSON.stringify(ps));
     if (typeof personas !== 'undefined') {
@@ -30254,7 +31489,9 @@ function mwBuildRelText() {
   if (entries.length === 0) return '';
   let t = '【世界关系图】\n';
   entries.forEach(e => {
-    t += `· ${e.a} 与 ${e.b}：${e.label}`;
+    const nameA = _mwGetEntryNodeName(e, 'a');
+    const nameB = _mwGetEntryNodeName(e, 'b');
+    t += `· ${nameA} 与 ${nameB}：${e.label}`;
     if (e.detail) t += `\n  详细：${e.detail}`;
     t += '\n';
   });
@@ -30268,17 +31505,35 @@ function _mwBuildRelInjectForChar(charName, contextNames, isGroupChat) {
   if (typeof mwIsEnabled !== 'function' || !mwIsEnabled()) return '';
   const entries = mwGetRelEntries().filter(function(e) { return e.a && e.b; });
   if (entries.length === 0) return '';
+  let personaMaskNodeId = '';
+  try {
+    const ps = JSON.parse(localStorage.getItem('mono_personas') || '[]');
+    const selfPersona = (ps || []).find(function(p) { return p && p.name === charName; });
+    if (selfPersona && selfPersona.userMaskId) personaMaskNodeId = _mwRelUserMaskNodeId(selfPersona.userMaskId);
+  } catch(e) {}
   // 获取用户真实名称，用于展示
   var userName = '用户（我）';
   try {
     var _up = JSON.parse(localStorage.getItem('mono_user_profile') || '{}');
     if (_up.name) userName = _up.name;
   } catch(e) {}
-  function resolveUserName(name) {
-    return (name === '用户（我）') ? userName : name;
+  function resolveUserName(name, nodeId) {
+    if (nodeId === '__user__') return userName;
+    if (_mwIsUserNodeId(nodeId)) return _mwResolveNodeName(nodeId, name || userName);
+    return name;
+  }
+  function isMatchingUserSide(entry, slot) {
+    const nodeId = _mwGetEntryNodeId(entry, slot);
+    if (!_mwIsUserNodeId(nodeId)) return true;
+    if (!personaMaskNodeId) return nodeId === '__user__';
+    return nodeId === personaMaskNodeId;
   }
   // 与本角色直接相关的条目
-  var myEntries = entries.filter(function(e) { return e.a === charName || e.b === charName; });
+  var myEntries = entries.filter(function(e) {
+    if (e.a === charName) return isMatchingUserSide(e, 'b');
+    if (e.b === charName) return isMatchingUserSide(e, 'a');
+    return false;
+  });
   // 场景内其他角色之间的关系（群聊等）
   var contextEntries = (contextNames && contextNames.length > 0)
     ? entries.filter(function(e) {
@@ -30291,12 +31546,36 @@ function _mwBuildRelInjectForChar(charName, contextNames, isGroupChat) {
     return myEntries.indexOf(e) < 0 && contextEntries.indexOf(e) < 0;
   });
   if (myEntries.length === 0 && contextEntries.length === 0 && otherEntries.length === 0) return '';
+  var visibleUserNodeIds = [];
+  var visibleUserNodeSeen = {};
+  entries.forEach(function(e) {
+    ['a', 'b'].forEach(function(slot) {
+      var nodeId = _mwGetEntryNodeId(e, slot);
+      if (!_mwIsUserNodeId(nodeId) || visibleUserNodeSeen[nodeId]) return;
+      visibleUserNodeSeen[nodeId] = true;
+      visibleUserNodeIds.push(nodeId);
+    });
+  });
   var inject = '\n\n# 世界关系图记忆 (World Relationship Memory)\n---\n';
-  inject += '⚠️ 你「' + charName + '」深刻记得以下世界中的人物关系，必须在所有内容（私聊、群聊、朋友圈评论、日记等）中严格遵守并自然体现，确保逻辑完全一致。\n\n';
+  inject += '⚠️ 你「' + charName + '」深刻记得以下世界中的人物关系，必须在所有内容（私聊、群聊、朋友圈评论、日记等）中严格遵守并自然体现，确保逻辑完全一致。\n';
+  inject += '⚠️ 若世界关系图里出现多个不同的用户节点或用户面具节点，它们就是不同的独立人物，不是同一个人；这条规则优先级高于一般的 userMaskId 解释。\n\n';
+  if (visibleUserNodeIds.length > 0) {
+    inject += '## 关系图中的用户身份档案（关键）\n';
+    visibleUserNodeIds.forEach(function(nodeId) {
+      var profile = _mwResolveUserIdentityForNode(nodeId);
+      if (!profile) return;
+      inject += '· ' + (profile.displayName || profile.name || '用户') + '（' + (profile.isMask ? '用户面具 / 独立人物' : '默认用户资料 / 独立人物') + '）\n';
+      inject += '  规则：必须把这个身份当作单独的人物来理解，不能与其他用户面具或默认用户混同、共享记忆、共享关系、共享称呼。\n';
+      if (profile.bio) inject += '  简介：' + profile.bio + '\n';
+      if (profile.personaSpec) inject += '  详细设定：' + profile.personaSpec + '\n';
+    });
+    inject += '\n';
+  }
   if (myEntries.length > 0) {
     inject += '## 你与其他人的关系（核心记忆）\n';
     myEntries.forEach(function(e) {
-      var other = resolveUserName(e.a === charName ? e.b : e.a);
+      var isA = e.a === charName;
+      var other = resolveUserName(isA ? e.b : e.a, isA ? _mwGetEntryNodeId(e, 'b') : _mwGetEntryNodeId(e, 'a'));
       inject += '· 你 与 ' + other + '：【' + (e.label || '有关联') + '】\n';
       if (e.detail) inject += '  关系详情：' + e.detail + '\n';
     });
@@ -30304,8 +31583,8 @@ function _mwBuildRelInjectForChar(charName, contextNames, isGroupChat) {
   if (isGroupChat && contextEntries.length > 0) {
     inject += '\n## 群内其他成员之间的关系（你也了解）\n';
     contextEntries.forEach(function(e) {
-      var nameA = resolveUserName(e.a);
-      var nameB = resolveUserName(e.b);
+      var nameA = resolveUserName(e.a, _mwGetEntryNodeId(e, 'a'));
+      var nameB = resolveUserName(e.b, _mwGetEntryNodeId(e, 'b'));
       inject += '· ' + nameA + ' 与 ' + nameB + '：【' + (e.label || '有关联') + '】\n';
       if (e.detail) inject += '  关系详情：' + e.detail + '\n';
     });
@@ -30313,8 +31592,8 @@ function _mwBuildRelInjectForChar(charName, contextNames, isGroupChat) {
   if (otherEntries.length > 0) {
     inject += '\n## 你所在世界的其他已知关系（背景了解）\n';
     otherEntries.forEach(function(e) {
-      var nameA = resolveUserName(e.a);
-      var nameB = resolveUserName(e.b);
+      var nameA = resolveUserName(e.a, _mwGetEntryNodeId(e, 'a'));
+      var nameB = resolveUserName(e.b, _mwGetEntryNodeId(e, 'b'));
       inject += '· ' + nameA + ' 与 ' + nameB + '：' + (e.label || '有关联');
       if (e.detail) inject += '（' + e.detail + '）';
       inject += '\n';
@@ -30324,7 +31603,9 @@ function _mwBuildRelInjectForChar(charName, contextNames, isGroupChat) {
   inject += '1. 任何涉及上述角色的发言、情绪、态度必须与关系设定严格一致。\n';
   inject += '2. 群聊中与其他成员互动时，要自然体现你们之间的真实关系（亲密、对立、疏远等）。\n';
   inject += '3. 朋友圈评论、日记提到相关角色时，措辞和情感必须符合关系描述。\n';
-  inject += '4. 不要说出"关系图""设定"等元词汇，一切自然流露。\n';
+  inject += '4. 若关系图里出现多个用户面具节点，你必须把他们当作不同人物，绝对不能把他们说成同一个人，也不能混用他们的记忆、关系、昵称、经历或设定。\n';
+  inject += '5. 涉及某个用户面具节点时，必须完整按照该面具的简介与详细设定来理解和称呼对方，不能回退成默认用户资料。\n';
+  inject += '6. 不要说出"关系图""设定"等元词汇，一切自然流露。\n';
   inject += '---';
   return inject;
 }
@@ -30336,18 +31617,32 @@ function mwRenderRelMapSvg() {
   if (entries.length === 0) { wrap.style.display = 'none'; return; }
   wrap.style.display = 'block';
   // Collect all nodes
-  const nodeSet = new Set();
-  entries.forEach(e => { nodeSet.add(e.a); nodeSet.add(e.b); });
-  const nodes = Array.from(nodeSet);
+  const nodeMap = new Map();
+  entries.forEach(function(e) {
+    const aKey = _mwGetEntryNodeId(e, 'a') || e.a;
+    const bKey = _mwGetEntryNodeId(e, 'b') || e.b;
+    if (aKey) nodeMap.set(aKey, _mwGetEntryNodeName(e, 'a'));
+    if (bKey) nodeMap.set(bKey, _mwGetEntryNodeName(e, 'b'));
+  });
+  const nodes = Array.from(nodeMap.entries()).map(function(item) {
+    return { key: item[0], name: item[1] };
+  });
   const n = nodes.length;
   // Get avatars for known chars
   const avatarMap = {};
   try {
     const ps = JSON.parse(localStorage.getItem('mono_personas') || '[]');
-    ps.forEach(p => { if (p.name && p.avatar) avatarMap[p.name] = p.avatar; });
+    ps.forEach(function(p) { if (p.name && p.avatar) avatarMap[String(p.id || p.name)] = p.avatar; });
     // User
     const up = JSON.parse(localStorage.getItem('mono_user_profile') || '{}');
-    if (up.avatar) avatarMap['用户（我）'] = up.avatar;
+    if (up.avatar) avatarMap['__user__'] = up.avatar;
+    const masks = (typeof userMasks !== 'undefined' && Array.isArray(userMasks)) ? userMasks : monoLoadUserMasks();
+    (masks || []).forEach(function(mask) {
+      if (mask && mask.id && mask.avatar) avatarMap[_mwRelUserMaskNodeId(mask.id)] = mask.avatar;
+    });
+    monoGetAllRoleNpcs().forEach(function(npc) {
+      if (npc && npc.id && npc.avatar) avatarMap[monoRoleNpcNodeId(npc.id)] = npc.avatar;
+    });
   } catch(e) {}
   // Layout: circle arrangement
   const W = 360, H = Math.max(320, n * 60 + 60);
@@ -30355,11 +31650,11 @@ function mwRenderRelMapSvg() {
   const radius = Math.min(cx - 55, cy - 55, 130);
   const positions = {};
   if (n === 1) {
-    positions[nodes[0]] = { x: cx, y: cy };
+    positions[nodes[0].key] = { x: cx, y: cy };
   } else {
-    nodes.forEach((name, i) => {
+    nodes.forEach((node, i) => {
       const angle = (2 * Math.PI * i / n) - Math.PI / 2;
-      positions[name] = { x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle) };
+      positions[node.key] = { x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle) };
     });
   }
   // Build SVG
@@ -30368,12 +31663,14 @@ function mwRenderRelMapSvg() {
     <filter id="mwShadow" x="-20%" y="-20%" width="140%" height="140%">
       <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="#00000018"/>
     </filter>
-    ${nodes.map((name,i) => avatarMap[name] ? `<clipPath id="mwClip${i}"><circle cx="0" cy="0" r="20"/></clipPath>` : '').join('')}
+    ${nodes.map(function(node, i) { return avatarMap[node.key] ? `<clipPath id="mwClip${i}"><circle cx="0" cy="0" r="20"/></clipPath>` : ''; }).join('')}
   </defs>
   <rect width="${W}" height="${H}" fill="#f9f9f9"/>`;
   // Draw edges
   entries.forEach(e => {
-    const pa = positions[e.a], pb = positions[e.b];
+    const keyA = _mwGetEntryNodeId(e, 'a') || e.a;
+    const keyB = _mwGetEntryNodeId(e, 'b') || e.b;
+    const pa = positions[keyA], pb = positions[keyB];
     if (!pa || !pb) return;
     const mx = (pa.x + pb.x) / 2, my = (pa.y + pb.y) / 2;
     svg += `<line x1="${pa.x}" y1="${pa.y}" x2="${pb.x}" y2="${pb.y}" stroke="#d0d0d0" stroke-width="1.5" stroke-dasharray="4 3"/>`;
@@ -30384,13 +31681,14 @@ function mwRenderRelMapSvg() {
     }
   });
   // Draw nodes
-  nodes.forEach((name, i) => {
-    const p = positions[name];
-    const isUser = name.includes('用户') || name.includes('我');
+  nodes.forEach((node, i) => {
+    const p = positions[node.key];
+    const name = node.name || '';
+    const isUser = _mwIsUserNodeId(node.key);
     const nodeColor = isUser ? '#1a1a1a' : '#fff';
     const borderColor = isUser ? '#1a1a1a' : '#333';
     const textColor = isUser ? '#fff' : '#1a1a1a';
-    const img = avatarMap[name];
+    const img = avatarMap[node.key];
     if (img) {
       svg += `<circle cx="${p.x}" cy="${p.y}" r="22" fill="#fff" stroke="${borderColor}" stroke-width="1.5" filter="url(#mwShadow)"/>
       <image href="${img}" x="${p.x-20}" y="${p.y-20}" width="40" height="40" clip-path="url(#mwClip${i})" transform="translate(${p.x},${p.y}) scale(1) translate(-${p.x},-${p.y})"/>
@@ -40439,11 +41737,21 @@ ${followUps ? `\n${userProfile.name} 转发后还补充说了：${followUps}` : 
   }
   // ── 构建对话者设定（用户人设）注入 ──
   let userPersonaInject = '';
-  // Multi-world: check for world-specific user persona first
-  const _mwWorldPersona = (typeof mwGetCurrentUserPersona === 'function') ? mwGetCurrentUserPersona() : null;
-  const _effectiveUserBio = _mwWorldPersona || (userProfile.bio && userProfile.bio.trim() ? userProfile.bio.trim() : '');
-  if (_effectiveUserBio) {
-    userPersonaInject = `\n\n# 对话者信息 (Your Counterpart)\n---\n与你对话的用户是 "${userProfile.name}"。Ta的自我介绍/人设：${_effectiveUserBio}\n请将TA视为真实存在的人，并据此调整你与TA互动的方式。\n---`;
+  const _resolvedUserIdentity = (typeof monoResolveUserIdentityProfile === 'function')
+    ? monoResolveUserIdentityProfile(p)
+    : (typeof userProfile !== 'undefined' ? userProfile : { name: '用户', bio: '' });
+  const _mwWorldPersona = (typeof mwGetCurrentUserPersona === 'function') ? String(mwGetCurrentUserPersona() || '').trim() : '';
+  const _effectiveUserBio = (_resolvedUserIdentity && _resolvedUserIdentity.isMask)
+    ? String(_resolvedUserIdentity.bio || '').trim()
+    : (_mwWorldPersona || String((_resolvedUserIdentity && _resolvedUserIdentity.bio) || '').trim());
+  const _effectiveUserSpec = (_resolvedUserIdentity && _resolvedUserIdentity.isMask)
+    ? String(_resolvedUserIdentity.personaSpec || '').trim()
+    : '';
+  const _effectiveUserName = (_resolvedUserIdentity && (_resolvedUserIdentity.displayName || _resolvedUserIdentity.name))
+    ? (_resolvedUserIdentity.displayName || _resolvedUserIdentity.name)
+    : ((typeof userProfile !== 'undefined' && userProfile && userProfile.name) ? userProfile.name : '用户');
+  if (_effectiveUserBio || _effectiveUserSpec) {
+    userPersonaInject = `\n\n# 对话者信息 (Your Counterpart)\n---\n与你对话的用户是 "${_effectiveUserName}"。\nTa的自我介绍/人设：${_effectiveUserBio || '（未填写）'}\n${_effectiveUserSpec ? ('Ta的详细设定：' + _effectiveUserSpec + '\n') : ''}请将TA视为真实存在的人，并严格按这份身份资料理解TA，不能擅自回退成别的用户面具或默认用户资料。\n---`;
   }
   // ── 多世界：实时注入关系图记忆（私聊场景） ──
   const _mwRelInject = (typeof _mwBuildRelInjectForChar === 'function')
@@ -41085,6 +42393,18 @@ async function _doExportAllData(statusEl) {
         if (!Array.isArray(group.messages)) group.messages = [];
         return group;
       }),
+      relationshipMap: mwGetRelEntries(),
+      charChat: {
+        rooms: ccGetRooms(),
+        histories: (function() {
+          const out = {};
+          ccGetRooms().forEach(function(room) {
+            out[room.id] = ccGetHistory(room.id);
+          });
+          return out;
+        })()
+      },
+      roleNpcs: monoLoadRoleNpcStore(),
       apiConfig: _getPresetApiConfig(),
       ttsConfig: JSON.parse(localStorage.getItem('mono_tts_config') || '{}'),
       notifications: {
@@ -41538,6 +42858,12 @@ function normalizeImportData(raw) {
     }) : [];
     return normalized;
   }) : [];
+  data.relationshipMap = Array.isArray(raw.relationshipMap) ? raw.relationshipMap : [];
+  data.charChat = (raw.charChat && typeof raw.charChat === 'object') ? {
+    rooms: Array.isArray(raw.charChat.rooms) ? raw.charChat.rooms : [],
+    histories: (raw.charChat.histories && typeof raw.charChat.histories === 'object') ? raw.charChat.histories : {}
+  } : { rooms: [], histories: {} };
+  data.roleNpcs = (raw.roleNpcs && typeof raw.roleNpcs === 'object') ? raw.roleNpcs : {};
   // --- worldBooks ---
   data.worldBooks = Array.isArray(raw.worldBooks) ? raw.worldBooks : [];
   // --- location (情侶定位) ---
@@ -42260,6 +43586,21 @@ async function confirmImport() {
         const cg = groups.find(x => x.id === currentGroupId);
         if (cg) { applyGcBubbleStyles(cg); applyGcBackground(cg); }
       }
+    }
+  });
+  await safe('关系图与角色聊天室', () => {
+    if (Array.isArray(data.relationshipMap)) {
+      localStorage.setItem(_mwRelKey(), JSON.stringify(data.relationshipMap));
+    }
+    if (data.charChat && Array.isArray(data.charChat.rooms)) {
+      ccSaveRooms(data.charChat.rooms);
+      const histMap = data.charChat.histories && typeof data.charChat.histories === 'object' ? data.charChat.histories : {};
+      data.charChat.rooms.forEach(function(room) {
+        ccSaveHistory(room.id, Array.isArray(histMap[room.id]) ? histMap[room.id] : []);
+      });
+    }
+    if (data.roleNpcs && typeof data.roleNpcs === 'object') {
+      monoSaveRoleNpcStore(data.roleNpcs);
     }
   });
   // 15. 通知设置和历史
@@ -48660,7 +50001,7 @@ async function gcFetchAiReplies(g, responder, count) {
   const responderUserIdentity = monoResolveUserIdentityProfile(responder);
   const roomMode = monoResolveGroupUserIdentityMode(g);
   const roomModeInstruction = roomMode === 'same_person'
-    ? '【群聊里的用户身份规则】不同 userMaskId 代表同一个真实用户，但每个角色仍只按照自己连接到的用户面具设定、称呼、昵称与记忆来理解和称呼用户。你可以对同一用户使用自己习惯的称呼或@对应面具名，但绝对不能把别的面具细节并入你当前连接面具的记忆。'
+    ? '【群聊里的用户身份规则】不同 userMaskId 代表同一个真实用户，但每个角色仍只按照自己连接到的用户面具设定、称呼、昵称与记忆来理解和称呼用户。你可以对同一用户使用自己习惯的称呼或@对应面具名，但绝对不能把别的面具细节并入你当前连接面具的记忆。若世界关系图已经把不同用户面具作为不同节点建立关系，则以世界关系图为最高优先级，必须把那些节点视为不同人物。'
     : '【群聊里的用户身份规则】不同 userMaskId 代表不同的人。不同面具的称呼、头像、记忆、理解必须彼此隔离，不能混淆。';
   // Private chat memory
   let memoryContext = '';
@@ -95556,3 +96897,791 @@ if (document.readyState === 'loading') {
   console.log('[增强 i 按钮 v2] 全分析模块已加载 ✓');
 })();
 </script>
+
+<script>
+// ===== MONO PATCH: Role NPC contacts / relation map / memory sync =====
+(function(){
+  function _patchEsc(v){
+    try { return (typeof monoRolePhoneEsc === 'function') ? monoRolePhoneEsc(v) : String(v == null ? '' : v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+    catch(e){ return String(v == null ? '' : v); }
+  }
+  function _roleNpcPersonaId(ownerId, npcId){ return 'roleNpcPersona_' + String(ownerId || '0').replace(/\D/g,'') + '_' + String(npcId || '').replace(/\D/g,'').slice(-10); }
+  function _nextNumericPersonaId(list){
+    var max = 0;
+    (list || []).forEach(function(p){ var n = parseInt(p && p.id, 10); if (!isNaN(n) && n > max) max = n; });
+    return max + 1 + Math.floor(Math.random() * 999);
+  }
+  function _loadPersonasSafe(){
+    try { return JSON.parse(localStorage.getItem('mono_personas') || '[]') || []; } catch(e) { return []; }
+  }
+  function _savePersonasSafe(list){
+    try { localStorage.setItem('mono_personas', JSON.stringify(list || [])); } catch(e) {}
+    try {
+      if (typeof personas !== 'undefined' && Array.isArray(personas)) {
+        personas.length = 0;
+        (list || []).forEach(function(item){ personas.push(item); });
+      }
+    } catch(e) {}
+  }
+  window.monoOpenWorldRelMapFromRolePhone = function(){
+    try { if (typeof closeRolePhonePage === 'function') closeRolePhonePage(); } catch(e) {}
+    setTimeout(function(){
+      try {
+        if (typeof openRelationshipMap === 'function') openRelationshipMap();
+        var modal = document.getElementById('mwRelMapModal');
+        if (modal) {
+          modal.style.display = 'flex';
+          modal.style.flexDirection = 'column';
+          modal.classList.add('open');
+          modal.style.zIndex = '10050';
+        }
+        try { if (typeof mwRenderRelEntries === 'function') mwRenderRelEntries(); } catch(e) {}
+        try { if (typeof mwRenderRelMapSvg === 'function') mwRenderRelMapSvg(); } catch(e) {}
+      } catch(err) { console.warn('[关系图打开修复]', err); }
+    }, 60);
+  };
+  window.monoSyncRoleNpcToUserContact = function(ownerPersona, npc){
+    if (!ownerPersona || !npc || !npc.id || !npc.name) return null;
+    var list = _loadPersonasSafe();
+    var idx = list.findIndex(function(p){ return p && String(p._roleNpcId || '') === String(npc.id); });
+    var old = idx >= 0 ? list[idx] : null;
+    var id = old && old.id ? old.id : _nextNumericPersonaId(list);
+    var histKey = 'mono_hist_' + id;
+    var directHist = [];
+    try { directHist = JSON.parse(localStorage.getItem(histKey) || '[]') || []; } catch(e) { directHist = []; }
+    var personaText = String(npc.persona || '').trim() || (String(npc.name || 'NPC') + '是' + String(ownerPersona.name || '该角色') + '世界关系图中的NPC。身份：' + String(npc.identity || '未填写') + '。关系：' + String(npc.relationSummary || npc.relationDetail || '有关联') + '。');
+    var next = Object.assign({}, old || {}, {
+      id: id,
+      name: String(npc.name || '').trim(),
+      avatar: npc.avatar || (old && old.avatar) || '',
+      persona: personaText,
+      memoryCore: (old && old.memoryCore) || '',
+      gender: (old && old.gender) || '',
+      userMaskId: ownerPersona.userMaskId || (old && old.userMaskId) || '',
+      _roleNpcPersona: true,
+      _roleNpcId: String(npc.id),
+      _roleNpcOwnerId: String(ownerPersona.id || npc.ownerPersonaId || ''),
+      _roleNpcOwnerName: String(ownerPersona.name || npc.ownerPersonaName || ''),
+      _roleNpcIdentity: String(npc.identity || ''),
+      _roleNpcRelationSummary: String(npc.relationSummary || ''),
+      _roleNpcRelationDetail: String(npc.relationDetail || ''),
+      _roleNpcLinkNotes: Array.isArray(npc.linkNotes) ? npc.linkNotes : [],
+      updatedAt: Date.now(),
+      history: '__hist_ref__'
+    });
+    if (idx >= 0) list[idx] = next; else list.push(next);
+    _savePersonasSafe(list);
+    if (!Array.isArray(directHist)) directHist = [];
+    var roomId = npc.roomId || '';
+    if (!roomId && typeof monoEnsureRoleNpcRoom === 'function') {
+      try { roomId = monoEnsureRoleNpcRoom(ownerPersona, npc); } catch(e) {}
+    }
+    if (roomId && typeof ccGetHistory === 'function') {
+      try {
+        var ccHist = ccGetHistory(roomId) || [];
+        if (ccHist.length && !directHist.some(function(m){ return m && m._roleNpcRoomMirrorId === roomId; })) {
+          directHist.push({
+            role: 'user',
+            content: '【NPC记忆同步｜来自角色自己的联络人聊天室】\n你曾经在「' + (ownerPersona.name || '某角色') + '」的角色联络人聊天室里发生过以下对话。你在和用户聊天时也必须记得这些经历、关系和说过的话。\n' + ccHist.map(function(m){ return (m.sender || '未知') + '：' + ((m.content || m.transcript || '').toString()); }).join('\n'),
+            _hiddenContext: true,
+            _roleNpcRoomMemory: true,
+            _roleNpcRoomMirrorId: roomId,
+            timestamp: Date.now()
+          });
+        }
+      } catch(e) {}
+    }
+    try { localStorage.setItem(histKey, JSON.stringify(directHist)); } catch(e) {}
+    return next;
+  };
+  window.monoRemoveRoleNpcUserContact = function(npc){
+    if (!npc || !npc.id) return;
+    var list = _loadPersonasSafe();
+    var removed = [];
+    var next = list.filter(function(p){
+      var hit = p && String(p._roleNpcId || '') === String(npc.id);
+      if (hit) removed.push(p);
+      return !hit;
+    });
+    removed.forEach(function(p){ try { localStorage.removeItem('mono_hist_' + p.id); } catch(e) {} });
+    _savePersonasSafe(next);
+    try { if (typeof renderContactList === 'function') renderContactList(); } catch(e) {}
+  };
+  window.monoOpenCustomNpcEditor = function(ownerPersonaId){
+    try { if (typeof monoRolePhoneEnsureUi === 'function') monoRolePhoneEnsureUi(); } catch(e) {}
+    var ownerPersona = (typeof monoGetPersonaById === 'function') ? monoGetPersonaById(ownerPersonaId) : null;
+    if (!ownerPersona) return;
+    window._roleNpcEditorContext = { ownerPersonaId: String(ownerPersona.id), npcId: '__new__' };
+    try { _roleNpcEditorContext = window._roleNpcEditorContext; } catch(e) {}
+    var options = (typeof mwGetCharOptions === 'function' ? mwGetCharOptions() : []).filter(function(opt){ return opt && String(opt.id) !== String(ownerPersona.id) && !opt.isNpc; });
+    var overlay = document.getElementById('npcEditorOverlay');
+    if (!overlay) return;
+    overlay.innerHTML = ''
+      + '<div class="npc-editor-sheet">'
+      + '  <div class="npc-editor-head"><div class="npc-editor-title">自定义 NPC 设定</div><button class="npc-editor-close" onclick="closeNpcEditorOverlay()">✕</button></div>'
+      + '  <div class="npc-editor-body">'
+      + '    <div class="npc-editor-grid">'
+      + '      <div><label class="npc-editor-label">名字</label><input id="npcEditorName" class="npc-editor-input" type="text" placeholder="NPC 的名字"></div>'
+      + '      <div><label class="npc-editor-label">身份</label><input id="npcEditorIdentity" class="npc-editor-input" type="text" placeholder="例：邻居 / 同学 / 常去咖啡店店员"></div>'
+      + '      <div><label class="npc-editor-label">与 ' + _patchEsc(ownerPersona.name) + ' 的关系</label><input id="npcEditorRelationSummary" class="npc-editor-input" type="text" placeholder="例：旧同事 / 朋友 / 竞争对手"></div>'
+      + '      <div><label class="npc-editor-label">关系图描述</label><textarea id="npcEditorRelationDetail" class="npc-editor-textarea" placeholder="写这个 NPC 在关系图里和该角色的关系细节，会自动同步到关系图。"></textarea></div>'
+      + '      <div><label class="npc-editor-label">详细人设</label><textarea id="npcEditorPersona" class="npc-editor-textarea" placeholder="完整写这个 NPC 的背景、个性、说话方式、和角色之间的故事。"></textarea></div>'
+      + '      <div>'
+      + '        <label class="npc-editor-label">与其他角色 / 用户面具的关联</label>'
+      + '        <div style="display:flex;gap:8px;align-items:center;">'
+      + '          <select id="npcEditorLinkTarget" class="npc-editor-select" style="flex:1;">'
+      +              options.map(function(opt){ return '<option value="' + _patchEsc(String(opt.id)) + '" data-name="' + _patchEsc(opt.name) + '" data-type="' + _patchEsc(opt.isMask ? 'mask' : (opt.isUser ? 'user' : 'persona')) + '">' + _patchEsc(opt.name) + '</option>'; }).join('')
+      + '          </select>'
+      + '          <button type="button" class="role-phone-btn" style="padding:10px 12px;" onclick="monoAddNpcEditorLinkRow()">添加</button>'
+      + '        </div>'
+      + '        <div id="npcEditorLinksWrap"></div>'
+      + '      </div>'
+      + '    </div>'
+      + '  </div>'
+      + '  <div class="npc-editor-actions">'
+      + '    <button class="npc-editor-delete" onclick="closeNpcEditorOverlay()">取消</button>'
+      + '    <button class="npc-editor-save" onclick="monoSaveNpcEditor()">保存并添加</button>'
+      + '  </div>'
+      + '</div>';
+    overlay.classList.add('open');
+  };
+  // 不再自动把角色微信里的 NPC 同步到用户联络人；改为用户手动添加 / 移除。
+})();
+</script>
+
+
+<script>
+// ===== MONO PATCH v3: NPC user-contact relationship awareness =====
+(function(){
+  function esc(v){
+    try { return (typeof monoRolePhoneEsc === 'function') ? monoRolePhoneEsc(v) : String(v == null ? '' : v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+    catch(e){ return String(v == null ? '' : v); }
+  }
+  function loadPersonas(){ try { return JSON.parse(localStorage.getItem('mono_personas') || '[]') || []; } catch(e){ return []; } }
+  function savePersonas(list){
+    try { localStorage.setItem('mono_personas', JSON.stringify(list || [])); } catch(e) {}
+    try { if (typeof personas !== 'undefined' && Array.isArray(personas)) { personas.length = 0; (list || []).forEach(function(p){ personas.push(p); }); } } catch(e) {}
+  }
+  function nextPersonaId(list){
+    var max=0; (list||[]).forEach(function(p){ var n=parseInt(p&&p.id,10); if(!isNaN(n)&&n>max) max=n; });
+    return max + 1 + Math.floor(Math.random()*999);
+  }
+  function userMaskNodeId(maskId){ return '__user_mask__:' + String(maskId || ''); }
+  function roleNpcNodeId(npcId){
+    try { if (typeof monoRoleNpcNodeId === 'function') return monoRoleNpcNodeId(npcId); } catch(e) {}
+    return '__npc__:' + String(npcId || '');
+  }
+  function getMask(maskId){
+    if (!maskId) return null;
+    try { if (typeof monoGetUserMask === 'function') return monoGetUserMask(maskId); } catch(e) {}
+    try { var masks = JSON.parse(localStorage.getItem('mono_user_masks') || '[]') || []; return masks.find(function(m){ return String(m.id) === String(maskId); }) || null; } catch(e) { return null; }
+  }
+  function resolveNodeName(nodeId, fallback){
+    try { if (typeof _mwResolveNodeName === 'function') return _mwResolveNodeName(nodeId, fallback || '关联对象'); } catch(e) {}
+    return fallback || String(nodeId || '关联对象');
+  }
+  function compactLines(lines){
+    var seen = {};
+    return (lines || []).map(function(x){ return String(x || '').trim(); }).filter(function(x){ if(!x || seen[x]) return false; seen[x]=true; return true; });
+  }
+  function relationLine(e){
+    if (!e) return '';
+    var a = e.a || resolveNodeName(e.aId, '对象A');
+    var b = e.b || resolveNodeName(e.bId, '对象B');
+    var label = e.label || '有关联';
+    var detail = e.detail ? ('：' + e.detail) : '';
+    return a + ' ↔ ' + b + '｜' + label + detail;
+  }
+  function getRelationshipEntries(ownerPersona, npc){
+    var rels=[];
+    try { if (typeof mwGetRelEntries === 'function') rels = mwGetRelEntries() || []; } catch(e) { rels=[]; }
+    var ownerId = String(ownerPersona && ownerPersona.id || '');
+    var npcNode = roleNpcNodeId(npc && npc.id);
+    var userNodes = ['__user__'];
+    if (ownerPersona && ownerPersona.userMaskId) userNodes.push(userMaskNodeId(ownerPersona.userMaskId));
+    if (Array.isArray(npc && npc.linkNotes)) {
+      npc.linkNotes.forEach(function(link){
+        if (link && link.nodeId && (String(link.nodeType || '').indexOf('mask') >= 0 || String(link.nodeId).indexOf('__user_mask__:') === 0 || String(link.nodeId) === '__user__')) userNodes.push(String(link.nodeId));
+      });
+    }
+    var ownerNpc=[], npcUser=[], ownerUser=[], indirect=[];
+    rels.forEach(function(e){
+      var a=String(e.aId||''), b=String(e.bId||'');
+      if (!a && e.a && String(e.a) === String(ownerPersona && ownerPersona.name)) a=ownerId;
+      if (!b && e.b && String(e.b) === String(ownerPersona && ownerPersona.name)) b=ownerId;
+      var hasOwner = a===ownerId || b===ownerId;
+      var hasNpc = a===npcNode || b===npcNode;
+      var hasUser = userNodes.indexOf(a)>=0 || userNodes.indexOf(b)>=0;
+      if (hasOwner && hasNpc) ownerNpc.push(relationLine(e));
+      else if (hasNpc && hasUser) npcUser.push(relationLine(e));
+      else if (hasOwner && hasUser) ownerUser.push(relationLine(e));
+      else if (hasNpc || hasOwner || hasUser) indirect.push(relationLine(e));
+    });
+    return { ownerNpc: compactLines(ownerNpc), npcUser: compactLines(npcUser), ownerUser: compactLines(ownerUser), indirect: compactLines(indirect).slice(0,8) };
+  }
+  function buildNpcUserRelationContext(ownerPersona, npc){
+    ownerPersona = ownerPersona || {};
+    npc = npc || {};
+    var mask = getMask(ownerPersona.userMaskId || '');
+    var userLabel = mask ? ('用户面具「' + (mask.name || '未命名面具') + '」') : '默认用户';
+    var lines = [];
+    lines.push('【用户联络人关系认知】');
+    lines.push('这个 NPC 是从角色「' + (ownerPersona.name || npc.ownerPersonaName || '某角色') + '」的角色微信 / 关系图中添加到用户联络人列表的。');
+    lines.push('当前用户身份：' + userLabel + '。NPC 在用户聊天室里必须按这个用户身份理解用户，不要把不同用户面具混成同一个人。');
+    if (mask) {
+      var maskText = ((mask.bio || '') + ' ' + (mask.personaSpec || '')).trim();
+      if (maskText) lines.push('该用户面具设定：' + maskText);
+    }
+    lines.push('NPC 与来源角色「' + (ownerPersona.name || npc.ownerPersonaName || '某角色') + '」的关系：' + (npc.relationSummary || '有关联') + (npc.relationDetail ? ' — ' + npc.relationDetail : ''));
+    if (Array.isArray(npc.linkNotes) && npc.linkNotes.length) {
+      lines.push('NPC 已知直接关联：');
+      npc.linkNotes.forEach(function(link){
+        if (!link) return;
+        lines.push('· ' + (link.name || resolveNodeName(link.nodeId, '关联对象')) + '｜' + (link.label || '有关联') + (link.detail ? '：' + link.detail : ''));
+      });
+    }
+    var rel = getRelationshipEntries(ownerPersona, npc);
+    if (rel.ownerUser.length) { lines.push('用户 ↔ 来源角色关系：'); rel.ownerUser.forEach(function(x){ lines.push('· ' + x); }); }
+    if (rel.npcUser.length) { lines.push('NPC ↔ 用户直接关系：'); rel.npcUser.forEach(function(x){ lines.push('· ' + x); }); }
+    if (rel.ownerNpc.length) { lines.push('NPC ↔ 来源角色关系图记录：'); rel.ownerNpc.forEach(function(x){ lines.push('· ' + x); }); }
+    if (!rel.npcUser.length) lines.push('如果关系图没有写明 NPC 与用户的直接关系，NPC 也必须通过「用户 ↔ 来源角色 ↔ NPC」这条间接关系理解用户和自己的联系。');
+    if (rel.indirect.length) { lines.push('其他可能影响称呼和态度的间接关系：'); rel.indirect.forEach(function(x){ lines.push('· ' + x); }); }
+    lines.push('对话规则：NPC 和用户聊天时，要记得用户与来源角色的关系、NPC 与来源角色的关系，以及 NPC 与用户可能是直接或间接关系；称呼、态度、边界感和记忆都要跟这些关系一致。');
+    return compactLines(lines).join('\n');
+  }
+  function personaTextWithContext(ownerPersona, npc, context){
+    var base = String(npc && npc.persona || '').trim() || (String(npc && npc.name || 'NPC') + '是' + String(ownerPersona && ownerPersona.name || '该角色') + '世界关系图中的NPC。身份：' + String(npc && npc.identity || '未填写') + '。关系：' + String(npc && (npc.relationSummary || npc.relationDetail) || '有关联') + '。');
+    base = base.replace(/\n*【用户联络人关系认知】[\s\S]*$/,'').trim();
+    return base + '\n\n' + context;
+  }
+  function isNpcInUserContacts(npc){
+    if (!npc || !npc.id) return false;
+    return loadPersonas().some(function(p){ return p && String(p._roleNpcId || '') === String(npc.id); });
+  }
+  window.monoRoleNpcUserContactButtonHtml = function(ownerPersona, npc){
+    var added = isNpcInUserContacts(npc);
+    var ownerId = ownerPersona && ownerPersona.id ? String(ownerPersona.id) : '';
+    var npcId = npc && npc.id ? String(npc.id) : '';
+    return '<button class="role-phone-mini-btn" onclick="event.stopPropagation(); monoToggleRoleNpcUserContact(\'' + esc(ownerId) + '\', \'' + esc(npcId) + '\')">' + (added ? '移出用户联络人' : '加到用户联络人') + '</button>';
+  };
+  window.monoToggleRoleNpcUserContact = function(ownerPersonaId, npcId){
+    var ownerPersona = null, npc = null;
+    try { ownerPersona = (typeof monoGetPersonaById === 'function') ? monoGetPersonaById(ownerPersonaId) : null; } catch(e) {}
+    try { npc = (typeof monoFindRoleNpcById === 'function') ? monoFindRoleNpcById(npcId) : null; } catch(e) {}
+    if (!ownerPersona || !npc) return;
+    if (isNpcInUserContacts(npc)) {
+      try { window.monoRemoveRoleNpcUserContact(npc); } catch(e) {}
+    } else {
+      try { window.monoSyncRoleNpcToUserContact(ownerPersona, npc); } catch(e) { console.warn('[NPC加入用户联络人失败]', e); }
+    }
+    try { if (typeof monoOpenRolePhone === 'function') monoOpenRolePhone(ownerPersona.id); } catch(e) { try { if (typeof monoRenderRolePhonePage === 'function') monoRenderRolePhonePage(ownerPersona); } catch(_) {} }
+    try { if (typeof renderContactList === 'function') renderContactList(); } catch(e) {}
+  };
+  window.monoSyncRoleNpcToUserContact = function(ownerPersona, npc){
+    if (!ownerPersona || !npc || !npc.id || !npc.name) return null;
+    var list = loadPersonas();
+    var idx = list.findIndex(function(p){ return p && String(p._roleNpcId || '') === String(npc.id); });
+    var old = idx >= 0 ? list[idx] : null;
+    var id = old && old.id ? old.id : nextPersonaId(list);
+    var histKey = 'mono_hist_' + id;
+    var directHist = [];
+    try { directHist = JSON.parse(localStorage.getItem(histKey) || '[]') || []; } catch(e) { directHist = []; }
+    if (!Array.isArray(directHist)) directHist = [];
+    var relationContext = buildNpcUserRelationContext(ownerPersona, npc);
+    var next = Object.assign({}, old || {}, {
+      id: id,
+      name: String(npc.name || '').trim(),
+      avatar: npc.avatar || (old && old.avatar) || '',
+      persona: personaTextWithContext(ownerPersona, npc, relationContext),
+      memoryCore: (old && old.memoryCore) || '',
+      gender: (old && old.gender) || '',
+      userMaskId: ownerPersona.userMaskId || (old && old.userMaskId) || '',
+      _roleNpcPersona: true,
+      _roleNpcId: String(npc.id),
+      _roleNpcOwnerId: String(ownerPersona.id || npc.ownerPersonaId || ''),
+      _roleNpcOwnerName: String(ownerPersona.name || npc.ownerPersonaName || ''),
+      _roleNpcIdentity: String(npc.identity || ''),
+      _roleNpcRelationSummary: String(npc.relationSummary || ''),
+      _roleNpcRelationDetail: String(npc.relationDetail || ''),
+      _roleNpcLinkNotes: Array.isArray(npc.linkNotes) ? npc.linkNotes : [],
+      _roleNpcUserRelationContext: relationContext,
+      updatedAt: Date.now(),
+      history: '__hist_ref__'
+    });
+    if (idx >= 0) list[idx] = next; else list.push(next);
+    savePersonas(list);
+    // Replace the old relationship-awareness context instead of stacking duplicates.
+    directHist = directHist.filter(function(m){ return !(m && m._roleNpcUserRelationContext === true); });
+    directHist.unshift({
+      role: 'system',
+      content: relationContext,
+      _hiddenContext: true,
+      _roleNpcUserRelationContext: true,
+      timestamp: Date.now()
+    });
+    var roomId = npc.roomId || '';
+    if (!roomId && typeof monoEnsureRoleNpcRoom === 'function') {
+      try { roomId = monoEnsureRoleNpcRoom(ownerPersona, npc); } catch(e) {}
+    }
+    if (roomId && typeof ccGetHistory === 'function') {
+      try {
+        var ccHist = ccGetHistory(roomId) || [];
+        directHist = directHist.filter(function(m){ return !(m && m._roleNpcRoomMirrorId === roomId); });
+        if (ccHist.length) {
+          directHist.push({
+            role: 'user',
+            content: '【NPC记忆同步｜来自角色自己的联络人聊天室】\n你曾经在「' + (ownerPersona.name || '某角色') + '」的角色微信 NPC 聊天室里发生过以下对话。你在和用户聊天时也必须记得这些经历、关系和说过的话，并结合上面的用户/角色/NPC关系理解用户。\n' + ccHist.map(function(m){ return (m.sender || '未知') + '：' + ((m.content || m.transcript || '').toString()); }).join('\n'),
+            _hiddenContext: true,
+            _roleNpcRoomMemory: true,
+            _roleNpcRoomMirrorId: roomId,
+            timestamp: Date.now()
+          });
+        }
+      } catch(e) {}
+    }
+    try { localStorage.setItem(histKey, JSON.stringify(directHist)); } catch(e) {}
+    return next;
+  };
+})();
+</script>
+
+
+<script id="mono-role-wechat-v4-hotfix">
+(function(){
+  'use strict';
+  function esc(value){
+    return String(value == null ? '' : value)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+  function getPersonasSafe(){
+    try { if (typeof loadPersonas === 'function') return loadPersonas() || []; } catch(e) {}
+    try { if (Array.isArray(window.personas)) return window.personas; } catch(e) {}
+    try { if (typeof personas !== 'undefined' && Array.isArray(personas)) return personas; } catch(e) {}
+    return [];
+  }
+  function getPersonaByIdSafe(id){
+    var sid = String(id == null ? '' : id);
+    try { if (typeof monoGetPersonaById === 'function') { var p0 = monoGetPersonaById(sid); if (p0) return p0; } } catch(e) {}
+    return getPersonasSafe().find(function(p){ return p && String(p.id) === sid; }) || null;
+  }
+  function cleanupOldRoleChatDrawer(){
+    var sec = document.getElementById('ccRoomDrawerSection');
+    if (sec && sec.parentNode) sec.parentNode.removeChild(sec);
+    // Extra safety: if an older script recreated or rendered a section, hide anything headed as 角色聊天室 inside the main contacts drawer.
+    var drawer = document.getElementById('contactsDrawer');
+    if (!drawer) return;
+    Array.prototype.slice.call(drawer.querySelectorAll('#ccRoomDrawerSection')).forEach(function(x){ if (x && x.parentNode) x.parentNode.removeChild(x); });
+  }
+  window.renderCcRoomDrawer = function(){ cleanupOldRoleChatDrawer(); };
+
+  var originalOpenRolePhonePage = window.monoOpenRolePhonePage;
+  function forceOpenRolePhonePage(ownerPersonaId){
+    cleanupOldRoleChatDrawer();
+    var drawer = document.getElementById('contactsDrawer');
+    if (drawer) drawer.classList.remove('open');
+    var owner = getPersonaByIdSafe(ownerPersonaId);
+    if (!owner) {
+      try { alert('没有找到这个角色，无法打开角色微信。'); } catch(e) {}
+      return;
+    }
+    try {
+      if (typeof originalOpenRolePhonePage === 'function') {
+        originalOpenRolePhonePage.call(window, owner.id);
+      } else {
+        if (typeof monoRolePhoneEnsureUi === 'function') monoRolePhoneEnsureUi();
+        if (window._rolePhoneState) window._rolePhoneState.ownerPersonaId = String(owner.id);
+        if (typeof monoRenderRolePhonePage === 'function') monoRenderRolePhonePage();
+      }
+    } catch(err) {
+      console.warn('[角色微信打开失败，使用备用打开方式]', err);
+      try {
+        if (typeof monoRolePhoneEnsureUi === 'function') monoRolePhoneEnsureUi();
+        if (window._rolePhoneState) window._rolePhoneState.ownerPersonaId = String(owner.id);
+        if (typeof monoRenderRolePhonePage === 'function') monoRenderRolePhonePage();
+      } catch(e2) { console.warn('[角色微信备用打开失败]', e2); }
+    }
+    setTimeout(function(){
+      var page = document.getElementById('rolePhonePage');
+      if (page) {
+        page.classList.add('open');
+        page.style.display = 'flex';
+        page.style.zIndex = '99999';
+        page.style.pointerEvents = 'auto';
+      }
+    }, 0);
+  }
+  window.monoOpenRolePhonePage = forceOpenRolePhonePage;
+  window.openRolePhonePage = forceOpenRolePhonePage;
+
+  window.closeRolePhonePage = function(){
+    var page = document.getElementById('rolePhonePage');
+    if (page) { page.classList.remove('open'); page.style.display = 'none'; }
+  };
+
+  window.renderRolePhoneDrawer = function(){
+    cleanupOldRoleChatDrawer();
+    var section = document.getElementById('rolePhoneDrawerSection');
+    if (!section) return;
+    var list = getPersonasSafe().filter(function(p){ return p && !p._roleNpcPersona; });
+    if (!list.length) { section.style.display = 'none'; section.innerHTML = ''; return; }
+    var html = '<div style="padding:8px 16px 4px;display:flex;align-items:center;justify-content:space-between;">'
+      + '<span style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:2px;font-weight:700;">特定角色</span>'
+      + '<span style="font-size:9px;color:#bbb;">角色微信</span></div>';
+    html += list.map(function(p){
+      var npcCount = 0, threadCount = 0;
+      try { if (typeof monoGetRoleNpcs === 'function') npcCount = (monoGetRoleNpcs(p.id) || []).length; } catch(e) {}
+      try { if (typeof monoGetRolePhoneThreads === 'function') threadCount = (monoGetRolePhoneThreads(p) || []).length; } catch(e) {}
+      var avatarHtml = p.avatar
+        ? '<img src="' + esc(p.avatar) + '" class="contact-avatar">'
+        : '<div class="contact-avatar" style="display:flex;align-items:center;justify-content:center;background:#5f5f6b;color:#fff;font-weight:700;">' + esc((String(p.name || '?').trim().charAt(0) || '?')) + '</div>';
+      return '<div class="contact-item mono-role-phone-entry" data-role-phone-persona-id="' + esc(p.id) + '" style="padding:10px 14px;">'
+        + avatarHtml
+        + '<div style="flex:1;min-width:0;">'
+        + '<div class="contact-name">' + esc(p.name || '未命名角色') + '</div>'
+        + '<div class="contact-sub" style="font-size:11px;">聊天室 ' + threadCount + ' · NPC ' + npcCount + '</div>'
+        + '</div>'
+        + '<i class="fas fa-chevron-right" style="font-size:10px;color:#bbb;"></i>'
+        + '</div>';
+    }).join('');
+    section.innerHTML = html;
+    section.style.display = 'block';
+  };
+
+  document.addEventListener('click', function(evt){
+    var item = evt.target && evt.target.closest ? evt.target.closest('[data-role-phone-persona-id]') : null;
+    if (!item) return;
+    evt.preventDefault();
+    evt.stopPropagation();
+    forceOpenRolePhonePage(item.getAttribute('data-role-phone-persona-id'));
+  }, true);
+
+  function boot(){
+    cleanupOldRoleChatDrawer();
+    try { window.renderRolePhoneDrawer(); } catch(e) {}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+  setTimeout(boot, 200);
+  setTimeout(boot, 1000);
+})();
+</script>
+
+
+<script>
+/* MONO PATCH v5: 修复角色微信里的“新建角色聊天室”按钮没反应。
+   原因：v4 为了强制打开角色微信，把 rolePhonePage 的 z-index 提到 99999；
+   原本的新建聊天室弹窗 z-index 只有 9600，会被角色微信页面盖住。
+   同时补上角色微信专用入口函数 monoOpenCcRoomDialogFromRolePhone。 */
+(function(){
+  'use strict';
+  var rolePhoneRoomOwnerId = '';
+
+  function getPersonasSafe(){
+    try { if (typeof loadPersonas === 'function') return loadPersonas() || []; } catch(e) {}
+    try { if (Array.isArray(window.personas)) return window.personas; } catch(e) {}
+    try { if (typeof personas !== 'undefined' && Array.isArray(personas)) return personas; } catch(e) {}
+    return [];
+  }
+  function getPersonaByIdSafe(id){
+    var sid = String(id == null ? '' : id);
+    try { if (typeof monoGetPersonaById === 'function') { var p0 = monoGetPersonaById(sid); if (p0) return p0; } } catch(e) {}
+    return getPersonasSafe().find(function(p){ return p && String(p.id) === sid; }) || null;
+  }
+  function makeCcModalTopMost(){
+    var modal = document.getElementById('ccNewRoomModal');
+    if (modal) {
+      modal.style.zIndex = '100020';
+      modal.style.pointerEvents = 'auto';
+    }
+  }
+  function preselectOwnerInRoomDialog(ownerPersona){
+    if (!ownerPersona) return;
+    var modal = document.getElementById('ccNewRoomModal');
+    var list = document.getElementById('ccNewRoomMemberList');
+    if (!modal || !list || modal.style.display === 'none') return;
+    var inputs = Array.prototype.slice.call(list.querySelectorAll('input[type=checkbox]'));
+    var ownerInput = inputs.find(function(chk){ return String(chk.value || '') === String(ownerPersona.name || ''); });
+    if (!ownerInput) {
+      // 如果原函数没有把该角色列出来，给用户一个明确提示，而不是看起来没反应。
+      try { alert('这个角色暂时不能创建角色聊天室。请先在关系图里给该角色和另一位角色建立关系。'); } catch(e) {}
+      return;
+    }
+    ownerInput.checked = true;
+    ownerInput.disabled = true;
+    ownerInput.setAttribute('data-role-phone-owner', '1');
+    var label = ownerInput.closest('label');
+    if (label) {
+      label.style.borderColor = '#1a1a1a';
+      label.style.background = '#f4f4f4';
+      if (!label.querySelector('.mono-role-phone-owner-badge')) {
+        var badge = document.createElement('div');
+        badge.className = 'mono-role-phone-owner-badge';
+        badge.textContent = '当前角色，已自动选择';
+        badge.style.cssText = 'font-size:10px;color:#555;margin-top:3px;font-weight:700;';
+        var meta = label.querySelector('div[style*="flex:1"]') || label;
+        meta.appendChild(badge);
+      }
+    }
+    var nameInput = document.getElementById('ccNewRoomName');
+    if (nameInput && !nameInput.value.trim()) {
+      nameInput.placeholder = ownerPersona.name + ' 和另一位角色的聊天室';
+    }
+    try {
+      if (typeof _ccValidateRoomMemberSelection === 'function') _ccValidateRoomMemberSelection(list, mwGetRelEntries());
+    } catch(e) {}
+  }
+
+  window.monoOpenCcRoomDialogFromRolePhone = function(ownerPersonaId){
+    rolePhoneRoomOwnerId = String(ownerPersonaId == null ? '' : ownerPersonaId);
+    var owner = getPersonaByIdSafe(rolePhoneRoomOwnerId);
+    if (!owner) {
+      try { alert('没有找到当前角色，无法新建角色聊天室。'); } catch(e) {}
+      return;
+    }
+    try {
+      if (typeof openNewCcRoomDialog === 'function') {
+        openNewCcRoomDialog();
+      } else {
+        throw new Error('openNewCcRoomDialog is not defined');
+      }
+    } catch(err) {
+      console.warn('[角色微信新建聊天室入口失败]', err);
+      try { alert('新建角色聊天室窗口打开失败，请刷新页面后再试。'); } catch(e) {}
+      return;
+    }
+    // 等原函数完成 DOM 渲染后，把弹窗盖到角色微信上层，并自动选择当前角色。
+    setTimeout(function(){
+      makeCcModalTopMost();
+      preselectOwnerInRoomDialog(owner);
+      var modal = document.getElementById('ccNewRoomModal');
+      if (modal && modal.style.display !== 'none') modal.style.display = 'flex';
+    }, 0);
+    setTimeout(function(){
+      makeCcModalTopMost();
+      preselectOwnerInRoomDialog(owner);
+    }, 80);
+  };
+
+  // 加固：即使别的地方打开同一个弹窗，也让它不会被 rolePhonePage 盖住。
+  var oldOpenNewCcRoomDialog = window.openNewCcRoomDialog;
+  if (typeof oldOpenNewCcRoomDialog === 'function') {
+    window.openNewCcRoomDialog = function(){
+      var result = oldOpenNewCcRoomDialog.apply(this, arguments);
+      setTimeout(makeCcModalTopMost, 0);
+      return result;
+    };
+  }
+
+  // 加固创建：如果从某个角色微信里创建，确保聊天室成员一定包含该角色，创建后刷新角色微信列表。
+  var oldCreateNewCcRoom = window.createNewCcRoom;
+  if (typeof oldCreateNewCcRoom === 'function') {
+    window.createNewCcRoom = function(){
+      var owner = getPersonaByIdSafe(rolePhoneRoomOwnerId);
+      var list = document.getElementById('ccNewRoomMemberList');
+      if (owner && list) {
+        var ownerInput = Array.prototype.slice.call(list.querySelectorAll('input[type=checkbox]')).find(function(chk){
+          return String(chk.value || '') === String(owner.name || '');
+        });
+        if (ownerInput) ownerInput.checked = true;
+      }
+      var beforeRooms = [];
+      try { beforeRooms = (typeof ccGetRooms === 'function' ? ccGetRooms() : []).map(function(r){ return r && r.id; }); } catch(e) {}
+      var result = oldCreateNewCcRoom.apply(this, arguments);
+      setTimeout(function(){
+        try {
+          if (owner && typeof ccGetRooms === 'function' && typeof ccSaveRooms === 'function') {
+            var rooms = ccGetRooms();
+            var beforeSet = {};
+            beforeRooms.forEach(function(id){ beforeSet[String(id)] = true; });
+            var changed = false;
+            rooms.forEach(function(room){
+              if (room && !beforeSet[String(room.id)] && Array.isArray(room.members) && room.members.indexOf(owner.name) >= 0) {
+                room._rolePhoneCreated = true;
+                room._rolePhoneOwnerPersonaId = String(owner.id);
+                changed = true;
+              }
+            });
+            if (changed) ccSaveRooms(rooms);
+          }
+          if (typeof monoRenderRolePhonePage === 'function') monoRenderRolePhonePage();
+          var page = document.getElementById('rolePhonePage');
+          if (page) { page.classList.add('open'); page.style.display = 'flex'; page.style.zIndex = '99999'; }
+        } catch(e) { console.warn('[角色微信聊天室创建后刷新失败]', e); }
+      }, 120);
+      return result;
+    };
+  }
+})();
+</script>
+
+
+
+<script id="mono-role-wechat-v6-legacy-room-sync-hotfix">
+(function(){
+  'use strict';
+
+  function asStr(v){ return String(v == null ? '' : v); }
+  function norm(v){ return asStr(v).trim().toLowerCase(); }
+  function getPersonasSafe(){
+    try { if (typeof loadPersonas === 'function') return loadPersonas() || []; } catch(e) {}
+    try { if (Array.isArray(window.personas)) return window.personas; } catch(e) {}
+    try { if (typeof personas !== 'undefined' && Array.isArray(personas)) return personas; } catch(e) {}
+    return [];
+  }
+  function getPersonaByIdSafe(id){
+    var sid = asStr(id);
+    try { if (typeof monoGetPersonaById === 'function') { var p0 = monoGetPersonaById(sid); if (p0) return p0; } } catch(e) {}
+    return getPersonasSafe().find(function(p){ return p && asStr(p.id) === sid; }) || null;
+  }
+  function personaAliases(p){
+    if (!p) return [];
+    var arr = [p.id, p.name, p.nickname, p.displayName, p.realName].filter(Boolean).map(asStr);
+    var out = [];
+    arr.forEach(function(x){ if (out.indexOf(x) < 0) out.push(x); });
+    return out;
+  }
+  function roomMemberValues(room){
+    if (!room) return [];
+    var vals = [];
+    ['members','memberNames','participants','participantNames','names','characters'].forEach(function(k){
+      var v = room[k];
+      if (Array.isArray(v)) vals = vals.concat(v);
+    });
+    ['memberIds','personaIds','participantIds','characterIds','ids'].forEach(function(k){
+      var v = room[k];
+      if (Array.isArray(v)) vals = vals.concat(v);
+    });
+    if (room.ownerPersonaId) vals.push(room.ownerPersonaId);
+    if (room._tdOwnerPersonaId) vals.push(room._tdOwnerPersonaId);
+    if (room._rolePhoneOwnerPersonaId) vals.push(room._rolePhoneOwnerPersonaId);
+    return vals.map(function(v){
+      if (v && typeof v === 'object') return v.id || v.name || v.nickname || JSON.stringify(v);
+      return v;
+    }).filter(function(v){ return asStr(v).trim(); }).map(asStr);
+  }
+  function roomHasPersona(room, persona){
+    if (!room || !persona) return false;
+    if (asStr(room._tdOwnerPersonaId) === asStr(persona.id)) return true;
+    if (asStr(room._rolePhoneOwnerPersonaId) === asStr(persona.id)) return true;
+    var aliases = personaAliases(persona).map(norm).filter(Boolean);
+    var values = roomMemberValues(room).map(norm);
+    return aliases.some(function(a){ return values.indexOf(a) >= 0; });
+  }
+  function normalizeLegacyRoomMembers(room){
+    if (!room) return false;
+    var changed = false;
+    var ps = getPersonasSafe();
+    var values = roomMemberValues(room);
+    var ids = Array.isArray(room._rolePhoneMemberPersonaIds) ? room._rolePhoneMemberPersonaIds.slice() : [];
+    var names = Array.isArray(room.members) ? room.members.slice() : [];
+    ps.forEach(function(p){
+      var aliases = personaAliases(p).map(norm);
+      var matched = values.some(function(v){ return aliases.indexOf(norm(v)) >= 0; });
+      if (matched) {
+        if (ids.indexOf(asStr(p.id)) < 0) { ids.push(asStr(p.id)); changed = true; }
+        if (names.indexOf(asStr(p.name)) < 0) { names.push(asStr(p.name)); changed = true; }
+      }
+    });
+    if (ids.length) {
+      room._rolePhoneMemberPersonaIds = ids;
+      room._rolePhoneVisible = true;
+      if (!Array.isArray(room.members) || room.members.length < names.length) {
+        room.members = names;
+        changed = true;
+      }
+    }
+    return changed;
+  }
+  function syncLegacyCcRoomsToRolePhones(){
+    if (typeof ccGetRooms !== 'function' || typeof ccSaveRooms !== 'function') return [];
+    var rooms = [];
+    try { rooms = ccGetRooms() || []; } catch(e) { rooms = []; }
+    var changed = false;
+    rooms.forEach(function(room){ if (normalizeLegacyRoomMembers(room)) changed = true; });
+    if (changed) {
+      try { ccSaveRooms(rooms); } catch(e) {}
+    }
+    return rooms;
+  }
+  window.monoSyncLegacyCcRoomsToRolePhones = syncLegacyCcRoomsToRolePhones;
+
+  // 关键修复：角色微信不要只看新建标记；旧版已存在的角色聊天室只要成员里包含该角色，就显示在该角色微信。
+  window.monoGetRolePhoneThreads = function(ownerPersona){
+    if (!ownerPersona) return [];
+    var rooms = syncLegacyCcRoomsToRolePhones();
+    var seen = {};
+    return rooms.filter(function(room){
+      var hit = roomHasPersona(room, ownerPersona);
+      if (!hit && Array.isArray(room._rolePhoneMemberPersonaIds)) {
+        hit = room._rolePhoneMemberPersonaIds.map(asStr).indexOf(asStr(ownerPersona.id)) >= 0;
+      }
+      if (!hit) return false;
+      var id = asStr(room.id || room.name || JSON.stringify(room));
+      if (seen[id]) return false;
+      seen[id] = true;
+      return true;
+    }).sort(function(a,b){
+      return (Number(b.updatedAt || b.createdAt || 0) || 0) - (Number(a.updatedAt || a.createdAt || 0) || 0);
+    });
+  };
+
+  // 打开角色微信前先迁移旧数据，确保“之前建立”的聊天室马上出现。
+  var oldOpen = window.monoOpenRolePhonePage;
+  if (typeof oldOpen === 'function') {
+    window.monoOpenRolePhonePage = function(ownerPersonaId){
+      syncLegacyCcRoomsToRolePhones();
+      return oldOpen.apply(this, arguments);
+    };
+  }
+  var oldRender = window.monoRenderRolePhonePage;
+  if (typeof oldRender === 'function') {
+    window.monoRenderRolePhonePage = function(){
+      syncLegacyCcRoomsToRolePhones();
+      return oldRender.apply(this, arguments);
+    };
+  }
+
+  // 如果从旧入口/其他功能创建了角色聊天室，也立即补齐角色微信索引。
+  var oldCreate = window.createNewCcRoom;
+  if (typeof oldCreate === 'function') {
+    window.createNewCcRoom = function(){
+      var result = oldCreate.apply(this, arguments);
+      setTimeout(function(){
+        syncLegacyCcRoomsToRolePhones();
+        try { if (typeof monoRenderRolePhonePage === 'function') monoRenderRolePhonePage(); } catch(e) {}
+      }, 60);
+      return result;
+    };
+  }
+
+  // 首次加载就跑一次，避免需要先新建/刷新才出现。
+  setTimeout(syncLegacyCcRoomsToRolePhones, 0);
+})();
+</script>
+
+
+<script id="mono-role-wechat-v8-right-side-hotfix">
+(function(){
+  'use strict';
+  window._monoCcRightPersonaName = window._monoCcRightPersonaName || '';
+  function getOwner(ownerPersonaId){
+    try {
+      if (typeof monoGetPersonaById === 'function') return monoGetPersonaById(ownerPersonaId);
+      if (typeof personas !== 'undefined' && Array.isArray(personas)) return personas.find(function(p){ return String(p.id) === String(ownerPersonaId); });
+    } catch(e) {}
+    return null;
+  }
+  if (typeof window.monoOpenRolePhoneRoom === 'function' && !window.monoOpenRolePhoneRoom._v8RightSidePatched) {
+    var oldOpenRolePhoneRoom = window.monoOpenRolePhoneRoom;
+    window.monoOpenRolePhoneRoom = function(roomId, ownerPersonaId){
+      var owner = getOwner(ownerPersonaId);
+      if (owner && owner.name) window._monoCcRightPersonaName = String(owner.name);
+      return oldOpenRolePhoneRoom.apply(this, arguments);
+    };
+    window.monoOpenRolePhoneRoom._v8RightSidePatched = true;
+  }
+})();
+</script>
+
+</body>
+</html>

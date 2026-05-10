@@ -99152,7 +99152,7 @@ if (document.readyState === 'loading') {
     };
   } catch(e) {}
 
-  _v16Toast('情侣定位已改为：只在手动更新行踪时参考当天聊天内容。');
+  // v20: removed startup notice toast for location mode change.
 })();
 </script>
 
@@ -99372,7 +99372,2691 @@ if (document.readyState === 'loading') {
       return rawFetch(input, init);
     };
   } catch(e) {}
-  _v17Toast('已优化情侣定位：手动生成时轻参考当天聊天，聊天回复按半小时区间参考行踪。');
+  // v20: removed startup notice toast for location range optimization.
+})();
+</script>
+
+
+
+<script id="mono-role-wechat-v18-location-no-repeat-natural-reference-hotfix">
+// === v18: no duplicate location generation + softer chat/location referencing ===
+// 1) If current half-hour slot is already generated, do not force duplicate traces.
+// 2) Same-day chat is only a light reference; if it only gives place OR activity, infer the missing half logically.
+// 3) Chat replies can use couple-location as background facts, but should paraphrase naturally instead of copying trace text.
+(function(){
+  'use strict';
+  function toast(msg){
+    try { if (typeof showToast === 'function') return showToast(msg); } catch(e) {}
+    try { if (typeof _v16Toast === 'function') return _v16Toast(msg); } catch(e) {}
+    console.log('[v18]', msg);
+  }
+  function todayKey(d){
+    d = d || new Date();
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  function msgDate(m){
+    var raw = m && (m.timestamp || m.time || m.createdAt || m.date || m.sentAt);
+    if (!raw) return null;
+    var d = null;
+    if (raw instanceof Date) d = raw;
+    else if (typeof raw === 'number') d = new Date(raw);
+    else if (/^\d+$/.test(String(raw))) d = new Date(Number(raw));
+    else d = new Date(raw);
+    return (d && !isNaN(d.getTime())) ? d : null;
+  }
+  function clean(s){
+    return String(s || '')
+      .replace(/\[heart_voice\][\s\S]*?\[\/heart_voice\]/g, ' ')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 180);
+  }
+  function minOf(t){
+    var p = String(t || '00:00').match(/(\d{1,2})\D+(\d{1,2})/);
+    if (!p) return 0;
+    return (Number(p[1]) || 0) * 60 + (Number(p[2]) || 0);
+  }
+  function fmtMin(m){
+    m = Math.max(0, Math.min(1439, Math.floor(m || 0)));
+    return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0');
+  }
+  function currentSlotTime(){
+    var n = new Date();
+    return fmtMin(n.getHours()*60 + (n.getMinutes() >= 30 ? 30 : 0));
+  }
+  function nextSlotsAfter(lastTime){
+    var now = new Date();
+    var endMin = now.getHours()*60 + (now.getMinutes() >= 30 ? 30 : 0);
+    var startMin = lastTime ? (minOf(lastTime) + 30) : 0;
+    var slots = [];
+    for (var m=startMin; m<=endMin; m+=30) slots.push(fmtMin(m));
+    return slots;
+  }
+  function fullSlotsToNow(){ return nextSlotsAfter(null); }
+  function sameDayTraceSignal(text){
+    text = String(text || '');
+    var time = /(凌晨|早上|上午|中午|下午|傍晚|晚上|今晚|等下|待会|待會|一会|一會|之后|之後|稍后|稍後|现在|現在|刚刚|剛剛|已经|已經|今天|\d{1,2}\s*(点|點|時|时|:|：))/.test(text);
+    var place = /(在|到|去|回|离开|離開|出门|出門|路上|到达|到達|抵达|抵達|经过|經過|附近|楼下|樓下|门口|門口|学校|學校|公司|家|宿舍|咖啡|餐厅|餐廳|饭店|飯店|商场|商場|超市|医院|醫院|图书馆|圖書館|车站|車站|机场|機場|地铁|地鐵|公交|公园|公園|电影院|電影院|店|办公室|辦公室|教室|街|路|站|馆|館|中心)/.test(text);
+    var action = /(上课|上課|下课|下課|上班|下班|吃饭|吃飯|喝|买|買|看|写|寫|做|等|见|見|开会|開會|学习|學習|工作|休息|睡|回家|回去|出发|出發|坐车|坐車|开车|開車|走路|散步|逛|拿|送|接|准备|準備|拍照|运动|運動|复习|複習|聊天|约|約)/.test(text);
+    // Use relevant same-day trace-like content, but still ignore pure emotional/random chat.
+    return (time && (place || action)) || (place && action);
+  }
+  function collectTodayChatReference(persona){
+    if (!persona || !Array.isArray(persona.history)) return '';
+    var today = todayKey();
+    var lines = [];
+    persona.history.forEach(function(m){
+      if (!m || !m.content) return;
+      var d = msgDate(m);
+      if (!d || todayKey(d) !== today) return;
+      var content = clean(m.content);
+      if (!content || !sameDayTraceSignal(content)) return;
+      var role = (m.role === 'user') ? '用户' : (persona.name || '角色');
+      var timeLabel = d.toLocaleTimeString('zh-CN', { hour:'2-digit', minute:'2-digit', hour12:false });
+      lines.push(timeLabel + ' ' + role + '：' + content);
+    });
+    return lines.slice(-18).join('\n');
+  }
+  function buildReferenceInstruction(persona){
+    var ref = collectTodayChatReference(persona);
+    if (!ref) return '';
+    return '\n\n【当天同日期聊天轻参考】\n' + ref + '\n\n【参考规则】\n' +
+      '1. 上面的聊天只作为参考，不要复制粘贴原句，不要逐字写进行踪。\n' +
+      '2. 不是一定要参考；只有它和今天的时间、地点、正在做的事、之后安排有关，才放进最接近的半小时段。\n' +
+      '3. 如果聊天只提到地点，请根据人设、时间段和地点自然补一个合理活动；不要把活动也写成地点。\n' +
+      '4. 如果聊天只提到事件/活动，请根据人设、地区和时间段自然补一个合理地点；不要把地点也写成事件。\n' +
+      '5. 仍然从当天 00:00 开始、每隔半小时一条；只能填用户要求的时间点，不能新增非半小时时间。\n' +
+      '6. 行踪要连续，不要跳脱；远距离变化要用“路上/准备出发/刚到附近/在车上”等过渡。\n' +
+      '7. 如果聊天参考和正常日程冲突，选更模糊但合理、不冲突的表达，不要硬塞。';
+  }
+  function normalizeTraces(traces, slots){
+    traces = Array.isArray(traces) ? traces : [];
+    var allowed = {}; (slots || []).forEach(function(s){ allowed[s] = true; });
+    var seen = {}, out = [];
+    traces.forEach(function(t){
+      if (!t) return;
+      var time = String(t.time || '').trim();
+      if (!allowed[time] || seen[time]) return;
+      seen[time] = true;
+      var place = String(t.place || t.address || '').replace(/[\n\r|]/g,' ').trim().slice(0, 30);
+      var activity = String(t.activity || t.event || t.desc || '').replace(/[\n\r|]/g,' ').trim().slice(0, 42);
+      if (!place && activity) place = '附近地点';
+      if (!activity && place) activity = '进行日常安排';
+      if (!place) place = '未明确地点';
+      if (!activity) activity = '日常活动';
+      // Avoid the two fields becoming the same thing, which looked like duplicated place/event.
+      if (place === activity) activity = /咖啡|餐厅|学校|公司|家|店|站|馆|中心|公园|商场/.test(place) ? '按计划停留' : '处理相关事情';
+      out.push({ time:time, place:place, activity:activity, isoDate:new Date().toLocaleDateString('zh-TW'), _v18NaturalReference:true });
+    });
+    out.sort(function(a,b){ return minOf(a.time) - minOf(b.time); });
+    return out;
+  }
+  async function callLLM(prompt, maxTokens){
+    if (!apiConfig || !apiConfig.url || !apiConfig.key || !apiConfig.model) return '';
+    var fetchFn = window.__monoV15OriginalFetch || window.__monoV17RawFetch || window.fetch;
+    try {
+      var r = await fetchFn(apiConfig.url.replace(/\/+$/,'') + '/chat/completions', {
+        method:'POST',
+        headers:{ 'Authorization':'Bearer ' + apiConfig.key, 'Content-Type':'application/json' },
+        body:JSON.stringify({ model:apiConfig.model, messages:[{role:'user', content:prompt}], temperature:0.76, max_tokens:maxTokens || 800 })
+      });
+      if (!r.ok) return '';
+      var data = await r.json();
+      return (data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
+    } catch(e) { return ''; }
+  }
+  async function fullTrace(persona, regionText){
+    var now = new Date();
+    var slots = fullSlotsToNow();
+    if (!slots.length) return [];
+    var prompt = '你是' + (persona && persona.name || '角色') + '，人设：' + (persona && persona.persona || '普通人') + '，所在地区：' + (regionText || '未知地区') + '。今天是' + now.toLocaleDateString('zh-TW') + '。\n' +
+      buildReferenceInstruction(persona) + '\n\n' +
+      '【语言要求：无论角色人设如何，行踪记录必须全程使用简体中文】\n' +
+      '请生成以下时间点的当日行踪：' + slots.join('、') + '\n' +
+      '必须每个时间点一条，保持半小时节奏。\n' +
+      '格式（每行一条）：HH:MM | 地点名称 | 正在做的事（15字以内）\n' +
+      '注意：地点字段只能写地点，事件字段只能写正在做的事；不要两个字段都写地点或都写事件。\n' +
+      '只需给行踪列表，不要解释。';
+    var raw = await callLLM(prompt, 900);
+    var parsed = (typeof _parseTraceLines === 'function') ? _parseTraceLines(raw, now) : [];
+    return normalizeTraces(parsed, slots);
+  }
+  async function incTrace(persona, regionText, fromTimeStr){
+    var now = new Date();
+    var slots = nextSlotsAfter(fromTimeStr || '00:00');
+    if (!slots.length) return [];
+    var prompt = '你是' + (persona && persona.name || '角色') + '，人设：' + (persona && persona.persona || '普通人') + '，所在地区：' + (regionText || '未知地区') + '。今天是' + now.toLocaleDateString('zh-TW') + '。\n' +
+      buildReferenceInstruction(persona) + '\n\n' +
+      '【语言要求：无论角色人设如何，行踪记录必须全程使用简体中文】\n' +
+      '继续生成以下时间点的行踪：' + slots.join('、') + '\n' +
+      '只补充这些新的半小时时间点，不要重复旧时间点，不要新增其他时间。\n' +
+      '格式：HH:MM | 地点名称 | 正在做的事（15字以内）\n' +
+      '注意：地点字段只能写地点，事件字段只能写正在做的事；如果聊天只给了其中一个，请自然补全另一个。\n' +
+      '只需给行踪列表，不要解释。';
+    var raw = await callLLM(prompt, 720);
+    var parsed = (typeof _parseTraceLines === 'function') ? _parseTraceLines(raw, now) : [];
+    return normalizeTraces(parsed, slots);
+  }
+  function getPersona(pid){
+    try { return (typeof personas !== 'undefined' && Array.isArray(personas)) ? personas.find(function(p){ return String(p.id) === String(pid); }) : null; } catch(e) { return null; }
+  }
+  function todayTracesFor(persona){
+    try {
+      var today = new Date().toLocaleDateString('zh-TW');
+      return (locDailyTraces[persona.id] || []).filter(function(t){ return !t.isoDate || t.isoDate === today; }).slice().sort(function(a,b){ return minOf(a.time) - minOf(b.time); });
+    } catch(e) { return []; }
+  }
+  function buildChatContext(persona){
+    if (!persona || typeof locDailyTraces === 'undefined') return '';
+    var traces = todayTracesFor(persona);
+    if (!traces.length) return '';
+    var now = new Date();
+    var nowMin = now.getHours()*60 + now.getMinutes();
+    var current = null, next = null, rangeStart = null, rangeEnd = null;
+    for (var i=0;i<traces.length;i++){
+      var t = traces[i], start = minOf(t.time), end = (i+1<traces.length) ? minOf(traces[i+1].time) : start+30;
+      if (nowMin >= start && nowMin < end) { current=t; next=traces[i+1]||null; rangeStart=start; rangeEnd=end; break; }
+      if (start <= nowMin) current = t;
+      if (!next && start > nowMin) next = t;
+    }
+    var rangeText = (rangeStart != null) ? (fmtMin(rangeStart) + '-' + fmtMin(rangeEnd || rangeStart+30)) : '当前附近时间段';
+    var lines = traces.slice(-14).map(function(t){ return '- ' + (t.time || '') + '｜地点：' + (t.place || '') + '｜事情：' + (t.activity || ''); }).join('\n');
+    return '【今日情侣定位行踪背景，仅供角色回复参考】\n当前时间：' + now.toLocaleString() + '\n' +
+      (current ? '当前半小时区间：' + rangeText + '；大概地点=' + (current.place || '') + '；大概状态=' + (current.activity || '') + '。\n' : '') +
+      (next ? '较近之后安排：' + next.time + '左右；地点=' + (next.place || '') + '；事情=' + (next.activity || '') + '。\n' : '') +
+      lines + '\n回复规则：只有用户问“在哪/在干嘛/之后去哪/今天做什么”等行踪问题时才参考。回答要自然改写，可以用“大概、差不多、这会儿、等下、可能在附近”等表达；不要直接复制上面的地点和事情原文，不要机械报表，不要精确到分钟。不能说出和行踪冲突的时间、地点、事件。';
+  }
+  async function updateTraceSafe(){
+    if (!locRelations || !locRelations.length) { alert('请先绑定角色'); return; }
+    try { if (typeof _checkMidnightReset === 'function') _checkMidnightReset(); } catch(e) {}
+    var btn = document.getElementById('locTraceUpdateBtn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size:9px;"></i> 生成中'; }
+    var addedTotal = 0, skippedTotal = 0;
+    try {
+      for (var ri=0; ri<locRelations.length; ri++) {
+        var rel = locRelations[ri];
+        var p = (typeof personas !== 'undefined' && Array.isArray(personas)) ? personas.find(function(x){ return String(x.id) === String(rel.personaId); }) : null;
+        if (!p) continue;
+        var region = (locCharRegions && locCharRegions[p.id]) || locUserRegionName || '未知地区';
+        var existing = locDailyTraces[p.id] || [];
+        var sorted = existing.slice().sort(function(a,b){ return minOf(a.time) - minOf(b.time); });
+        var lastTime = sorted.length ? (sorted[sorted.length-1].time || '00:00') : null;
+        var slots = lastTime ? nextSlotsAfter(lastTime) : fullSlotsToNow();
+        if (!slots.length) { skippedTotal++; continue; }
+        var newTraces = lastTime ? await incTrace(p, region, lastTime) : await fullTrace(p, region);
+        if (newTraces && newTraces.length) {
+          var existsByTime = {};
+          existing.forEach(function(t){ if (t && t.time) existsByTime[String(t.time)] = true; });
+          newTraces = newTraces.filter(function(t){ return t && t.time && !existsByTime[String(t.time)]; });
+        }
+        if (newTraces && newTraces.length) {
+          locDailyTraces[p.id] = existing.concat(newTraces).sort(function(a,b){ return minOf(a.time) - minOf(b.time); });
+          addedTotal += newTraces.length;
+          var last = newTraces[newTraces.length-1];
+          if (!locCharLocations[p.id]) locCharLocations[p.id] = [];
+          locCharLocations[p.id].push({ address:last.place, time:new Date().toISOString(), source:'trace-v18' });
+          if (locCharLocations[p.id].length > 48) locCharLocations[p.id] = locCharLocations[p.id].slice(-48);
+        } else {
+          skippedTotal++;
+        }
+      }
+      if (typeof saveLocData === 'function') saveLocData();
+      if (typeof renderLocTrace === 'function') renderLocTrace();
+      try { if (locCurrentTab === 'map' && typeof _renderBotMap === 'function') _renderBotMap(); } catch(e) {}
+      if (addedTotal > 0) toast('已生成新的半小时行踪。');
+      else toast('当前时间段已经生成完，没有新的半小时行踪。');
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync-alt" style="margin-right:3px;font-size:9px;"></i>更新行踪'; }
+    }
+  }
+  // Override generation and update functions with v18 behavior.
+  try { window.generateFullDayTrace = fullTrace; eval('generateFullDayTrace = fullTrace'); } catch(e) {}
+  try { window.generateIncrementalTrace = incTrace; eval('generateIncrementalTrace = incTrace'); } catch(e) {}
+  try { window.updateLocTrace = updateTraceSafe; eval('updateLocTrace = updateTraceSafe'); } catch(e) {}
+  window.monoGetSmartLocationContextForChat = buildChatContext;
+
+  // Re-wrap fetch so chat replies use the natural paraphrase context. Avoid helper/location-generation calls.
+  try {
+    var rawFetch = window.__monoV18RawFetch || window.__monoV17RawFetch || window.__monoV15OriginalFetch || window.fetch;
+    window.__monoV18RawFetch = rawFetch;
+    window.fetch = function(input, init){
+      try {
+        var url = (typeof input === 'string') ? input : (input && input.url) || '';
+        if (/\/chat\/completions/.test(url) && init && init.body && typeof init.body === 'string') {
+          var body = JSON.parse(init.body);
+          if (body && Array.isArray(body.messages)) {
+            var allText = body.messages.map(function(m){ return String(m && m.content || ''); }).join('\n').slice(0, 6000);
+            var isHelper = /翻译|翻譯|只返回翻译|只返回翻譯|总结成|記憶整理助手|记忆整理助手|不要回复用户|当日行踪|生成以下时间点|继续生成以下时间点|地点名称 \| 正在做的事/.test(allText);
+            var p = getPersona((typeof currentId !== 'undefined') ? currentId : null);
+            var ctx = (!isHelper && p) ? buildChatContext(p) : '';
+            if (ctx) {
+              body.messages = body.messages.filter(function(m){ return !(m && m.role === 'system' && /今日情侣定位行踪/.test(String(m.content || ''))); });
+              body.messages.unshift({ role:'system', content:ctx });
+              init = Object.assign({}, init, { body:JSON.stringify(body) });
+            }
+          }
+        }
+      } catch(e) {}
+      return rawFetch(input, init);
+    };
+  } catch(e) {}
+  // v20: removed startup notice toast for no-repeat/natural-reference optimization.
+})();
+</script>
+
+
+<script>
+/* ===== v19 fix: 情侣定位按角色单独生成 / 标签切换显示 ===== */
+(function(){
+  function safeToast(msg){ try { if (typeof toast === 'function') toast(msg); else alert(msg); } catch(e){ alert(msg); } }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]); }); }
+  function pidOf(rel){ return rel && (rel.personaId != null ? rel.personaId : rel.id); }
+  function getPersona(pid){ try { return (typeof personas !== 'undefined' && Array.isArray(personas)) ? personas.find(function(p){ return String(p.id) === String(pid); }) : null; } catch(e){ return null; } }
+  function todayKey(){ try { return new Date().toLocaleDateString('zh-TW'); } catch(e){ return ''; } }
+  function minOf(t){ var m=String(t||'00:00').match(/(\d{1,2}):(\d{2})/); return m ? (parseInt(m[1],10)*60+parseInt(m[2],10)) : 0; }
+  function currentHalfHourMin(){ var n=new Date(); return n.getHours()*60 + (n.getMinutes()>=30?30:0); }
+  function fmtMin(m){ m=Math.max(0, Math.min(1439, Number(m)||0)); var h=Math.floor(m/60), mm=m%60; return String(h).padStart(2,'0')+':'+String(mm).padStart(2,'0'); }
+  function activeRelations(){ try { return (locRelations||[]).filter(function(rel){ return !!getPersona(pidOf(rel)); }); } catch(e){ return []; } }
+  function ensureTraceSelected(){
+    var rels=activeRelations();
+    if (!rels.length) { window.locSelectedTraceCharId = null; return null; }
+    if (!window.locSelectedTraceCharId || !rels.some(function(r){ return String(pidOf(r))===String(window.locSelectedTraceCharId); })) {
+      window.locSelectedTraceCharId = (typeof locSelectedCharId !== 'undefined' && rels.some(function(r){ return String(pidOf(r))===String(locSelectedCharId); })) ? locSelectedCharId : pidOf(rels[0]);
+    }
+    return window.locSelectedTraceCharId;
+  }
+  function selectTraceChar(pid){
+    window.locSelectedTraceCharId = pid;
+    try { locSelectedCharId = pid; if (typeof saveLocData === 'function') saveLocData(); if (typeof _renderCharBar === 'function') _renderCharBar(); if (typeof _renderBotMap === 'function') _renderBotMap(); } catch(e) {}
+    renderLocTrace();
+  }
+  window.selectLocTraceChar = selectTraceChar;
+
+  function ensureTraceRoleTabs(){
+    var view=document.getElementById('locTraceView');
+    var header=document.querySelector('#locTraceView .loc-trace-header');
+    if (!view || !header) return null;
+    var tabs=document.getElementById('locTraceRoleTabs');
+    if (!tabs) {
+      tabs=document.createElement('div');
+      tabs.id='locTraceRoleTabs';
+      tabs.className='loc-trace-role-tabs';
+      header.insertAdjacentElement('afterend', tabs);
+    }
+    return tabs;
+  }
+  function renderTraceRoleTabs(){
+    var tabs=ensureTraceRoleTabs(); if (!tabs) return;
+    var rels=activeRelations();
+    var selected=ensureTraceSelected();
+    if (!rels.length) { tabs.innerHTML=''; return; }
+    tabs.innerHTML = rels.map(function(rel){
+      var pid=pidOf(rel), p=getPersona(pid); if(!p) return '';
+      var active=String(pid)===String(selected);
+      var av=p.avatar ? '<img src="'+esc(p.avatar)+'" onerror="this.style.display=\'none\'">' : '<span class="loc-trace-tab-fallback">'+esc((p.name||'?')[0])+'</span>';
+      return '<button type="button" class="loc-trace-role-chip '+(active?'active':'')+'" data-pid="'+esc(pid)+'" onclick="selectLocTraceChar('+JSON.stringify(pid).replace(/</g,'\\u003c')+')">'+av+'<span>'+esc(p.name||'角色')+'</span></button>';
+    }).join('');
+  }
+
+  function dayTraces(pid){
+    try {
+      var today=todayKey();
+      return (locDailyTraces && locDailyTraces[pid] ? locDailyTraces[pid] : [])
+        .filter(function(t){ return !t.isoDate || t.isoDate===today; })
+        .slice().sort(function(a,b){ return minOf(a.time)-minOf(b.time); });
+    } catch(e){ return []; }
+  }
+  function traceSlotsNeeded(existing){
+    var last=-30;
+    if (existing && existing.length) {
+      existing.forEach(function(t){ if(t && t.time) last=Math.max(last, minOf(t.time)); });
+    }
+    var end=currentHalfHourMin();
+    var slots=[];
+    for (var m=last+30; m<=end; m+=30) slots.push(fmtMin(m));
+    return slots;
+  }
+
+  window.renderLocTrace = function(){
+    try { if (typeof _checkMidnightReset === 'function') _checkMidnightReset(); } catch(e) {}
+    var content=document.getElementById('locTraceContent');
+    var empty=document.getElementById('locTraceEmpty');
+    var title=document.querySelector('#locTraceView .loc-trace-header-title');
+    var btn=document.getElementById('locTraceUpdateBtn');
+    if (!content) return;
+    renderTraceRoleTabs();
+    var rels=activeRelations();
+    if (!rels.length) {
+      if (empty) { empty.style.display='block'; empty.innerHTML='<i class="fas fa-route" style="font-size:24px;margin-bottom:8px;display:block;color:#ddd;"></i>绑定角色后将显示当日行踪'; }
+      if (title) title.textContent='当日行踪';
+      if (btn) btn.innerHTML='<i class="fas fa-sync-alt" style="margin-right:3px;font-size:9px;"></i>更新行踪';
+      content.innerHTML='';
+      return;
+    }
+    if (empty) empty.style.display='none';
+    var pid=ensureTraceSelected();
+    var p=getPersona(pid);
+    if (!p) { content.innerHTML=''; return; }
+    if (title) title.textContent='当日行踪 · '+(p.name||'角色');
+    if (btn) btn.innerHTML='<i class="fas fa-sync-alt" style="margin-right:3px;font-size:9px;"></i>更新 '+esc(p.name||'角色');
+    var traces=dayTraces(pid);
+    var avatar=p.avatar ? '<img class="loc-trace-profile-avatar" src="'+esc(p.avatar)+'" onerror="this.style.display=\'none\'">' : '<div class="loc-trace-profile-avatar loc-trace-profile-fallback">'+esc((p.name||'?')[0])+'</div>';
+    var latest=traces.length ? traces[traces.length-1] : null;
+    var html='<div class="loc-trace-profile-card">'+avatar+'<div class="loc-trace-profile-info"><div class="loc-trace-profile-name">'+esc(p.name||'角色')+'</div><div class="loc-trace-profile-sub">'+(latest ? ('最新：'+esc(latest.time||'')+' · '+esc(latest.place||'')) : '暂无行踪，点击上方按钮生成该角色今日行踪')+'</div></div><div class="loc-trace-count">'+traces.length+' 条</div></div>';
+    if (!traces.length) {
+      html += '<div class="loc-trace-empty-card"><i class="fas fa-route"></i><div>这个角色今天还没有行踪</div><small>点击「更新 '+esc(p.name||'角色')+'」只生成这个角色的行踪。</small></div>';
+    } else {
+      html += '<div class="loc-trace-timeline">';
+      traces.slice().reverse().forEach(function(t,i){
+        html += '<div class="loc-trace-item v19-single"><div class="loc-trace-time">'+esc(t.time||'')+'</div><div class="loc-trace-dot'+(i===0?' current':'')+'"></div><div class="loc-trace-main"><div class="loc-trace-place">'+esc(t.place||'')+'</div>'+(t.activity ? '<div class="loc-trace-activity">'+esc(t.activity)+'</div>' : '')+'</div></div>';
+      });
+      html += '</div>';
+    }
+    content.innerHTML=html;
+  };
+
+  window.updateLocTrace = async function(){
+    var rels=activeRelations();
+    if (!rels.length) { alert('请先绑定角色'); return; }
+    var pid=ensureTraceSelected();
+    var p=getPersona(pid);
+    if (!p) { alert('请先选择要生成行踪的角色'); return; }
+    try { if (typeof _checkMidnightReset === 'function') _checkMidnightReset(); } catch(e) {}
+    var btn=document.getElementById('locTraceUpdateBtn');
+    var oldHtml=btn ? btn.innerHTML : '';
+    if (btn) { btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin" style="font-size:9px;"></i> 生成 '+esc(p.name||'角色')+' 中'; }
+    try {
+      var region=(locCharRegions && locCharRegions[pid]) || locUserRegionName || '未知地区';
+      var existing=locDailyTraces && locDailyTraces[pid] ? locDailyTraces[pid] : [];
+      var sorted=existing.slice().sort(function(a,b){ return minOf(a.time)-minOf(b.time); });
+      var slots=traceSlotsNeeded(sorted);
+      if (!slots.length) { safeToast('当前时间段已经生成完，没有新的半小时行踪。'); return; }
+      var lastTime=sorted.length ? (sorted[sorted.length-1].time || '00:00') : null;
+      var gen = lastTime ? window.generateIncrementalTrace : window.generateFullDayTrace;
+      if (typeof gen !== 'function') { alert('生成函数未就绪，请刷新后再试'); return; }
+      var newTraces = lastTime ? await gen(p, region, lastTime) : await gen(p, region);
+      var slotSet={}; slots.forEach(function(s){ slotSet[s]=true; });
+      var exists={}; existing.forEach(function(t){ if(t && t.time) exists[String(t.time)]=true; });
+      newTraces=(newTraces||[]).filter(function(t){ return t && t.time && slotSet[String(t.time)] && !exists[String(t.time)]; });
+      if (!newTraces.length) { safeToast('当前时间段已经生成完，没有新的半小时行踪。'); return; }
+      if (!locDailyTraces) locDailyTraces={};
+      locDailyTraces[pid]=existing.concat(newTraces).sort(function(a,b){ return minOf(a.time)-minOf(b.time); });
+      var last=newTraces[newTraces.length-1];
+      if (!locCharLocations) locCharLocations={};
+      if (!locCharLocations[pid]) locCharLocations[pid]=[];
+      locCharLocations[pid].push({ address:last.place, time:new Date().toISOString(), source:'trace-v19-single-role' });
+      if (locCharLocations[pid].length>48) locCharLocations[pid]=locCharLocations[pid].slice(-48);
+      try { locSelectedCharId=pid; } catch(e) {}
+      if (typeof saveLocData === 'function') saveLocData();
+      renderLocTrace();
+      try { if (typeof _renderCharBar === 'function') _renderCharBar(); if (typeof _renderBotMap === 'function') _renderBotMap(); } catch(e) {}
+      safeToast('已生成 '+(p.name||'该角色')+' 的新半小时行踪。');
+    } finally {
+      if (btn) { btn.disabled=false; btn.innerHTML=oldHtml || '<i class="fas fa-sync-alt" style="margin-right:3px;font-size:9px;"></i>更新行踪'; }
+      try { renderLocTrace(); } catch(e) {}
+    }
+  };
+
+  // Keep trace selected character in sync when user taps character on map chips.
+  try {
+    var oldSelect=window.selectLocChar || (typeof selectLocChar === 'function' ? selectLocChar : null);
+    if (oldSelect && !window.__monoV19SelectLocWrapped) {
+      window.__monoV19SelectLocWrapped=true;
+      window.selectLocChar=function(pid){
+        try { oldSelect(pid); } catch(e) {}
+        window.locSelectedTraceCharId=pid;
+        try { if (locCurrentTab === 'trace') renderLocTrace(); } catch(e) {}
+      };
+      try { eval('selectLocChar = window.selectLocChar'); } catch(e) {}
+    }
+  } catch(e) {}
+
+  // Strengthen tab click refresh.
+  try {
+    var oldSwitch=window.switchLocTab || (typeof switchLocTab === 'function' ? switchLocTab : null);
+    if (oldSwitch && !window.__monoV19SwitchLocWrapped) {
+      window.__monoV19SwitchLocWrapped=true;
+      window.switchLocTab=function(tab){
+        oldSwitch(tab);
+        if (tab === 'trace') setTimeout(function(){ try { renderLocTrace(); } catch(e){} }, 0);
+      };
+      try { eval('switchLocTab = window.switchLocTab'); } catch(e) {}
+    }
+  } catch(e) {}
+
+  function injectStyle(){
+    if (document.getElementById('monoV19LocationTraceStyle')) return;
+    var st=document.createElement('style'); st.id='monoV19LocationTraceStyle';
+    st.textContent='\
+#locTraceView{background:#fafafa;}\
+.loc-trace-role-tabs{display:flex;gap:8px;overflow-x:auto;padding:10px 14px 8px;background:#fff;border-bottom:1px solid #eee;scrollbar-width:none;}\
+.loc-trace-role-tabs::-webkit-scrollbar{display:none;}\
+.loc-trace-role-chip{border:1px solid #e8e8e8;background:#fff;border-radius:999px;padding:6px 10px 6px 6px;display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:#555;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.025);}\
+.loc-trace-role-chip.active{background:#1f1f1f;color:#fff;border-color:#1f1f1f;}\
+.loc-trace-role-chip img,.loc-trace-tab-fallback{width:24px;height:24px;border-radius:50%;object-fit:cover;background:#eee;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#555;flex-shrink:0;}\
+.loc-trace-role-chip.active .loc-trace-tab-fallback{background:#fff;color:#111;}\
+.loc-trace-profile-card{margin:12px 14px 10px;padding:12px;border:1px solid #eee;border-radius:16px;background:#fff;display:flex;align-items:center;gap:10px;box-shadow:0 4px 14px rgba(0,0,0,.025);}\
+.loc-trace-profile-avatar{width:38px;height:38px;border-radius:50%;object-fit:cover;border:1px solid #eee;flex-shrink:0;}\
+.loc-trace-profile-fallback{background:#ddd;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;}\
+.loc-trace-profile-info{min-width:0;flex:1;}\
+.loc-trace-profile-name{font-size:13px;font-weight:900;color:#1d1d1d;margin-bottom:3px;}\
+.loc-trace-profile-sub{font-size:10px;color:#999;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}\
+.loc-trace-count{font-size:10px;color:#aaa;background:#f6f6f6;border-radius:999px;padding:5px 8px;white-space:nowrap;}\
+.loc-trace-empty-card{margin:16px 14px;padding:28px 16px;background:#fff;border:1px dashed #e0e0e0;border-radius:18px;text-align:center;color:#aaa;font-size:12px;line-height:1.7;}\
+.loc-trace-empty-card i{display:block;font-size:22px;margin-bottom:8px;color:#d0d0d0;}\
+.loc-trace-empty-card small{display:block;font-size:10px;color:#bbb;margin-top:3px;}\
+.loc-trace-timeline{margin:0 0 20px;}\
+.loc-trace-item.v19-single{margin:0 14px;background:#fff;border-left:0;border-bottom:1px solid #f0f0f0;padding:11px 0;display:flex;align-items:flex-start;gap:10px;}\
+.loc-trace-item.v19-single:first-child{border-radius:14px 14px 0 0;}\
+.loc-trace-item.v19-single:last-child{border-radius:0 0 14px 14px;border-bottom:0;}\
+.loc-trace-item.v19-single .loc-trace-main{flex:1;min-width:0;padding-right:10px;}\
+.loc-trace-header{background:#fff;border-bottom:1px solid #f4f4f4;}';
+    document.head.appendChild(st);
+  }
+  injectStyle();
+  try { if (locCurrentTab === 'trace') renderLocTrace(); } catch(e) {}
+  // v20: removed startup notice toast for per-character location tabs.
+})();
+
+
+/* ===== v21 fix: 情侣定位角色标签栏被挡住 / 不可点 ===== */
+(function(){
+  function injectStyle(){
+    if (document.getElementById('monoV21LocationTabsUnblockedStyle')) return;
+    var st=document.createElement('style');
+    st.id='monoV21LocationTabsUnblockedStyle';
+    st.textContent = '\
+#locationPage{overflow:hidden !important;}\
+#locTraceView{position:relative !important;overflow-y:auto !important;overflow-x:hidden !important;min-height:0 !important;background:#fafafa !important;isolation:isolate;}\
+#locTraceView .loc-trace-header{position:sticky !important;top:0 !important;z-index:80 !important;background:#fff !important;box-shadow:0 1px 0 rgba(0,0,0,.04);}\
+#locTraceRoleTabs.loc-trace-role-tabs{position:sticky !important;top:var(--mono-trace-header-h,42px) !important;z-index:79 !important;background:#fff !important;box-shadow:0 2px 8px rgba(0,0,0,.035);pointer-events:auto !important;touch-action:pan-x !important;min-height:46px !important;flex-shrink:0 !important;}\
+#locTraceRoleTabs .loc-trace-role-chip{position:relative !important;z-index:81 !important;pointer-events:auto !important;touch-action:manipulation !important;}\
+#locTraceContent{position:relative !important;z-index:1 !important;background:#fafafa !important;padding-top:2px !important;}\
+#locTraceEmpty{position:relative !important;z-index:1 !important;}\
+.loc-trace-profile-card{position:relative !important;z-index:1 !important;}\
+';
+    document.head.appendChild(st);
+  }
+  function fitTraceTabs(){
+    injectStyle();
+    try {
+      var view=document.getElementById('locTraceView');
+      var header=document.querySelector('#locTraceView .loc-trace-header');
+      var tabs=document.getElementById('locTraceRoleTabs');
+      if (!view || !header || !tabs) return;
+      var h=Math.max(36, Math.ceil(header.getBoundingClientRect().height || header.offsetHeight || 42));
+      view.style.setProperty('--mono-trace-header-h', h + 'px');
+      tabs.style.display='flex';
+      tabs.style.visibility='visible';
+      tabs.style.opacity='1';
+      tabs.style.pointerEvents='auto';
+      tabs.style.zIndex='79';
+      header.style.zIndex='80';
+      var content=document.getElementById('locTraceContent');
+      if (content) content.style.zIndex='1';
+    } catch(e) {}
+  }
+  window.monoFixLocTraceTabsLayout = fitTraceTabs;
+
+  // 让原本 render 后自动重新计算 sticky top，避免被标题栏/更新按钮压住。
+  try {
+    var oldRender=window.renderLocTrace;
+    if (typeof oldRender === 'function' && !oldRender.__monoV21TabsWrapped) {
+      var wrapped=function(){
+        var r=oldRender.apply(this, arguments);
+        setTimeout(fitTraceTabs, 0);
+        setTimeout(fitTraceTabs, 80);
+        return r;
+      };
+      wrapped.__monoV21TabsWrapped=true;
+      window.renderLocTrace=wrapped;
+      try { eval('renderLocTrace = window.renderLocTrace'); } catch(e) {}
+    }
+  } catch(e) {}
+
+  // 备用点击：如果 chip 的 inline onclick 被上层挡住，捕获阶段也能切换角色。
+  document.addEventListener('click', function(ev){
+    var chip = ev.target && ev.target.closest ? ev.target.closest('#locTraceRoleTabs .loc-trace-role-chip') : null;
+    if (!chip) return;
+    var pid = chip.getAttribute('data-pid');
+    if (!pid) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    try { if (typeof window.selectLocTraceChar === 'function') window.selectLocTraceChar(pid); } catch(e) {}
+    setTimeout(fitTraceTabs, 0);
+  }, true);
+
+  window.addEventListener('resize', function(){ setTimeout(fitTraceTabs, 80); });
+  document.addEventListener('DOMContentLoaded', function(){ setTimeout(fitTraceTabs, 150); });
+  setTimeout(fitTraceTabs, 0);
+  setTimeout(fitTraceTabs, 250);
+})();
+
+</script>
+
+
+
+<script id="mono-role-wechat-v22-location-regenerate-current-role">
+/* ===== v22: 情侣定位当前角色全部重新生成 ===== */
+(function(){
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]); }); }
+  function safeToast(msg){ try { if (typeof toast === 'function') toast(msg); else console.log(msg); } catch(e){ try { console.log(msg); } catch(_){} } }
+  function pidOf(rel){ return rel && (rel.personaId != null ? rel.personaId : rel.id); }
+  function getPersona(pid){ try { return (typeof personas !== 'undefined' && Array.isArray(personas)) ? personas.find(function(p){ return String(p.id) === String(pid); }) : null; } catch(e){ return null; } }
+  function activeRelations(){ try { return (locRelations||[]).filter(function(rel){ return !!getPersona(pidOf(rel)); }); } catch(e){ return []; } }
+  function todayKey(){ try { return new Date().toLocaleDateString('zh-TW'); } catch(e){ return ''; } }
+  function minOf(t){ var m=String(t||'00:00').match(/(\d{1,2}):(\d{2})/); return m ? (parseInt(m[1],10)*60+parseInt(m[2],10)) : 0; }
+  function ensureSelectedPid(){
+    try {
+      var rels=activeRelations();
+      if (!rels.length) return null;
+      if (!window.locSelectedTraceCharId || !rels.some(function(r){ return String(pidOf(r))===String(window.locSelectedTraceCharId); })) {
+        window.locSelectedTraceCharId = (typeof locSelectedCharId !== 'undefined' && rels.some(function(r){ return String(pidOf(r))===String(locSelectedCharId); })) ? locSelectedCharId : pidOf(rels[0]);
+      }
+      return window.locSelectedTraceCharId;
+    } catch(e){ return null; }
+  }
+  function ensureRegenerateButton(){
+    var updateBtn=document.getElementById('locTraceUpdateBtn');
+    if (!updateBtn) return null;
+    var header=updateBtn.closest ? updateBtn.closest('.loc-trace-header') : document.querySelector('#locTraceView .loc-trace-header');
+    if (!header) return null;
+    var group=document.getElementById('locTraceActionGroup');
+    if (!group) {
+      group=document.createElement('div');
+      group.id='locTraceActionGroup';
+      group.className='loc-trace-action-group';
+      updateBtn.parentNode.insertBefore(group, updateBtn);
+      group.appendChild(updateBtn);
+    } else if (updateBtn.parentNode !== group) {
+      group.appendChild(updateBtn);
+    }
+    var regen=document.getElementById('locTraceRegenerateBtn');
+    if (!regen) {
+      regen=document.createElement('button');
+      regen.type='button';
+      regen.id='locTraceRegenerateBtn';
+      regen.className='loc-trace-update-btn loc-trace-regenerate-btn';
+      regen.innerHTML='<i class="fas fa-redo" style="margin-right:3px;font-size:9px;"></i>重新生成全部';
+      regen.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); window.regenerateSelectedLocTrace && window.regenerateSelectedLocTrace(); }, true);
+      group.appendChild(regen);
+    }
+    return regen;
+  }
+  function setButtonLabels(){
+    try {
+      ensureRegenerateButton();
+      var pid=ensureSelectedPid();
+      var p=pid ? getPersona(pid) : null;
+      var regen=document.getElementById('locTraceRegenerateBtn');
+      if (regen) regen.innerHTML='<i class="fas fa-redo" style="margin-right:3px;font-size:9px;"></i>重新生成全部';
+      var updateBtn=document.getElementById('locTraceUpdateBtn');
+      if (updateBtn && p) updateBtn.innerHTML='<i class="fas fa-sync-alt" style="margin-right:3px;font-size:9px;"></i>更新 '+esc(p.name||'角色');
+    } catch(e) {}
+  }
+
+  window.regenerateSelectedLocTrace = async function(){
+    var pid=ensureSelectedPid();
+    var p=pid ? getPersona(pid) : null;
+    if (!p) { safeToast('请先选择要重新生成行踪的角色。'); return; }
+    try { if (typeof _checkMidnightReset === 'function') _checkMidnightReset(); } catch(e) {}
+    var btn=document.getElementById('locTraceRegenerateBtn');
+    var updateBtn=document.getElementById('locTraceUpdateBtn');
+    var old=btn ? btn.innerHTML : '';
+    var oldUpdate=updateBtn ? updateBtn.innerHTML : '';
+    if (btn) { btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin" style="font-size:9px;"></i> 重生成中'; }
+    if (updateBtn) updateBtn.disabled=true;
+    try {
+      var region=(locCharRegions && locCharRegions[pid]) || locUserRegionName || '未知地区';
+      var gen=window.generateFullDayTrace || (typeof generateFullDayTrace === 'function' ? generateFullDayTrace : null);
+      if (typeof gen !== 'function') { safeToast('生成函数未就绪，请刷新后再试。'); return; }
+      var newTraces=await gen(p, region);
+      if (!Array.isArray(newTraces) || !newTraces.length) { safeToast('当前时间还没有可生成的半小时行踪。'); return; }
+      var today=todayKey();
+      if (!window.locDailyTraces && typeof locDailyTraces === 'undefined') window.locDailyTraces={};
+      if (typeof locDailyTraces === 'undefined' || !locDailyTraces) locDailyTraces={};
+      var oldList=locDailyTraces[pid] || [];
+      var keepOtherDays=oldList.filter(function(t){ return t && t.isoDate && t.isoDate !== today; });
+      newTraces=newTraces.map(function(t){
+        return Object.assign({}, t, { isoDate: t.isoDate || today, _v22Regenerated:true });
+      }).sort(function(a,b){ return minOf(a.time)-minOf(b.time); });
+      locDailyTraces[pid]=keepOtherDays.concat(newTraces).sort(function(a,b){
+        var ad=a.isoDate||today, bd=b.isoDate||today;
+        if (ad!==bd) return String(ad).localeCompare(String(bd));
+        return minOf(a.time)-minOf(b.time);
+      });
+      var last=newTraces[newTraces.length-1];
+      if (!locCharLocations) locCharLocations={};
+      if (!locCharLocations[pid]) locCharLocations[pid]=[];
+      locCharLocations[pid]=locCharLocations[pid].filter(function(x){ return !(x && x.source === 'trace-v22-regenerate' && String(x.day||'')===String(today)); });
+      locCharLocations[pid].push({ address:last.place, time:new Date().toISOString(), source:'trace-v22-regenerate', day:today });
+      if (locCharLocations[pid].length>48) locCharLocations[pid]=locCharLocations[pid].slice(-48);
+      try { locSelectedCharId=pid; window.locSelectedTraceCharId=pid; } catch(e) {}
+      if (typeof saveLocData === 'function') saveLocData();
+      if (typeof renderLocTrace === 'function') renderLocTrace();
+      try { if (typeof _renderCharBar === 'function') _renderCharBar(); if (typeof _renderBotMap === 'function') _renderBotMap(); } catch(e) {}
+      safeToast('已重新生成 '+(p.name||'该角色')+' 今天的全部行踪。');
+    } catch(err) {
+      console.error(err);
+      safeToast('重新生成失败，请稍后再试。');
+    } finally {
+      if (btn) { btn.disabled=false; btn.innerHTML=old || '<i class="fas fa-redo" style="margin-right:3px;font-size:9px;"></i>重新生成全部'; }
+      if (updateBtn) { updateBtn.disabled=false; updateBtn.innerHTML=oldUpdate || '<i class="fas fa-sync-alt" style="margin-right:3px;font-size:9px;"></i>更新行踪'; }
+      setTimeout(function(){ try { if (typeof renderLocTrace === 'function') renderLocTrace(); } catch(e){} }, 0);
+    }
+  };
+
+  function injectStyle(){
+    if (document.getElementById('monoV22LocRegenerateStyle')) return;
+    var st=document.createElement('style');
+    st.id='monoV22LocRegenerateStyle';
+    st.textContent='\
+#locTraceView .loc-trace-header{gap:8px !important;align-items:center !important;}\
+#locTraceActionGroup{display:flex !important;align-items:center !important;gap:6px !important;flex-shrink:0 !important;}\
+#locTraceActionGroup .loc-trace-update-btn{white-space:nowrap !important;}\
+#locTraceRegenerateBtn.loc-trace-regenerate-btn{background:#fff !important;color:#333 !important;border:1px solid #ddd !important;}\
+#locTraceRegenerateBtn.loc-trace-regenerate-btn:disabled,#locTraceUpdateBtn:disabled{opacity:.55 !important;}\
+@media(max-width:430px){#locTraceView .loc-trace-header{padding:9px 10px 6px !important;}#locTraceActionGroup{gap:4px !important;}#locTraceActionGroup .loc-trace-update-btn{font-size:9px !important;padding:6px 7px !important;}}\
+';
+    document.head.appendChild(st);
+  }
+
+  // wrap render so the new action button always exists after any re-render.
+  try {
+    var oldRender=window.renderLocTrace;
+    if (typeof oldRender === 'function' && !oldRender.__monoV22RegenWrapped) {
+      var wrapped=function(){
+        var r=oldRender.apply(this, arguments);
+        setTimeout(function(){ injectStyle(); setButtonLabels(); }, 0);
+        return r;
+      };
+      wrapped.__monoV22RegenWrapped=true;
+      window.renderLocTrace=wrapped;
+      try { eval('renderLocTrace = window.renderLocTrace'); } catch(e) {}
+    }
+  } catch(e) {}
+
+  document.addEventListener('click', function(ev){
+    var btn=ev.target && ev.target.closest ? ev.target.closest('#locTraceRegenerateBtn') : null;
+    if (!btn) return;
+    ev.preventDefault(); ev.stopPropagation();
+    window.regenerateSelectedLocTrace && window.regenerateSelectedLocTrace();
+  }, true);
+
+  injectStyle();
+  document.addEventListener('DOMContentLoaded', function(){ setTimeout(setButtonLabels, 80); });
+  setTimeout(setButtonLabels, 0);
+  setTimeout(setButtonLabels, 250);
+})();
+</script>
+
+
+
+<script id="mono-role-wechat-v23-location-regenerate-api-compat">
+/* ===== v23: 情侣定位「重新生成全部」使用聊天软件同款 API 兼容层 =====
+   修复点：
+   1. 不再依赖旧 generateFullDayTrace 包装链，避免包装顺序/返回空数组导致按钮看似失败。
+   2. 使用主聊天同款 API 兼容函数：getApiUrl / _applyApiModel / _extractAssistantMessageContent / _showApiErrorToast。
+   3. 兼容 OpenAI-compatible、Claude/Anthropic、Gemini、Azure、Groq、Together、Mistral、HuggingFace 等已在原软件兼容层支持的接口。
+   4. 只重新生成当前角色标签的今日行踪，不影响其他角色。
+*/
+(function(){
+  if (window.__monoV23LocationRegenApiCompat) return;
+  window.__monoV23LocationRegenApiCompat = true;
+
+  function toastSoft(msg){
+    try { if (typeof toast === 'function') toast(msg); else console.log(msg); }
+    catch(e){ try { console.log(msg); } catch(_){} }
+  }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]); }); }
+  function normPid(rel){ return rel && (rel.personaId != null ? rel.personaId : rel.id); }
+  function getPersonaById(pid){
+    try { return (typeof personas !== 'undefined' && Array.isArray(personas)) ? personas.find(function(p){ return String(p.id) === String(pid); }) : null; }
+    catch(e){ return null; }
+  }
+  function activeRelations(){
+    try { return (locRelations || []).filter(function(rel){ return !!getPersonaById(normPid(rel)); }); }
+    catch(e){ return []; }
+  }
+  function ensureSelectedPid(){
+    try {
+      var rels = activeRelations();
+      if (!rels.length) return null;
+      var current = window.locSelectedTraceCharId || (typeof locSelectedCharId !== 'undefined' ? locSelectedCharId : null);
+      if (!current || !rels.some(function(r){ return String(normPid(r)) === String(current); })) current = normPid(rels[0]);
+      window.locSelectedTraceCharId = current;
+      try { locSelectedCharId = current; } catch(e) {}
+      return current;
+    } catch(e){ return null; }
+  }
+  function todayKey(){ try { return new Date().toLocaleDateString('zh-TW'); } catch(e){ return ''; } }
+  function pad2(n){ return String(n).padStart(2,'0'); }
+  function minOf(t){ var m=String(t||'').match(/(\d{1,2})[:：](\d{1,2})/); return m ? Math.max(0, Math.min(1439, parseInt(m[1],10)*60 + parseInt(m[2],10))) : 0; }
+  function timeOf(min){ min=Math.max(0, Math.min(1439, Math.floor(min/30)*30)); return pad2(Math.floor(min/60))+':'+pad2(min%60); }
+  function buildSlots(){
+    var now = new Date();
+    var end = now.getHours()*60 + now.getMinutes();
+    end = Math.floor(end / 30) * 30;
+    var slots = [];
+    for (var m=0; m<=end; m+=30) slots.push(timeOf(m));
+    return slots;
+  }
+  function dayStartMs(){ var d=new Date(); d.setHours(0,0,0,0); return d.getTime(); }
+  function getSameDayChatReference(persona){
+    try {
+      if (!persona || !Array.isArray(persona.history)) return '';
+      var start = dayStartMs();
+      var end = Date.now() + 60000;
+      var rows = [];
+      persona.history.forEach(function(m){
+        if (!m || !m.content) return;
+        var ts = m.timestamp || m.time || m.createdAt || 0;
+        if (!ts || ts < start || ts > end) return;
+        var text = String(m.content || '').replace(/[\r\n]+/g,' ').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
+        if (!text) return;
+        // 只保留和行踪有关的内容，不把普通聊天强塞进去。
+        if (!/(现在|目前|今天|早上|上午|中午|下午|傍晚|晚上|今晚|等下|待会|待會|之后|之後|晚点|晚點|刚刚|剛剛|正在|到了|到达|到達|抵达|抵達|在|去|回|回去|路上|出门|出門|学校|學校|公司|家|宿舍|咖啡|餐厅|餐廳|店|商场|商場|图书馆|圖書館|医院|醫院|车站|車站|机场|機場|公园|公園)/.test(text)) return;
+        rows.push((m.role === 'user' ? '用户' : (persona.name || '角色')) + '：' + text.slice(0,120));
+      });
+      return rows.slice(-24).join('\n');
+    } catch(e){ return ''; }
+  }
+  function apiReady(){
+    try { if (typeof _hasUsableApiConfig === 'function') return _hasUsableApiConfig(apiConfig); } catch(e) {}
+    try { return !!(apiConfig && apiConfig.url && apiConfig.key); } catch(e) { return false; }
+  }
+  function chatApiUrl(){
+    try { if (typeof getApiUrl === 'function') return getApiUrl(); } catch(e) {}
+    try { if (typeof _buildApiChatCandidates === 'function') return _buildApiChatCandidates(apiConfig.url)[0]; } catch(e) {}
+    try { return String(apiConfig.url || '').replace(/\/+$/,'') + '/chat/completions'; } catch(e) { return ''; }
+  }
+  function apiPayload(messages, persona){
+    var body = {
+      messages: messages,
+      temperature: Math.min(1.05, Math.max(0.55, Number((persona && persona.temperature) || 0.82))),
+      max_tokens: 2200,
+      stream: false
+    };
+    try { if (typeof _applyApiModel === 'function') return _applyApiModel(body, apiConfig.model); } catch(e) {}
+    try { if (apiConfig && apiConfig.model && apiConfig.model !== '__auto__') body.model = apiConfig.model; } catch(e) {}
+    return body;
+  }
+  async function callTraceAI(persona, prompt){
+    if (!apiReady()) throw new Error('请先配置 API');
+    var url = chatApiUrl();
+    if (!url) throw new Error('API 地址未就绪');
+    var messages = [
+      { role:'system', content:'你是情侣定位行踪生成器。你必须输出可解析的简体中文行踪列表，不要输出解释、Markdown 或多余文字。' },
+      { role:'user', content: prompt }
+    ];
+    var headers = { 'Authorization':'Bearer ' + (apiConfig && apiConfig.key || ''), 'Content-Type':'application/json' };
+    var resp = await fetch(url, { method:'POST', headers:headers, body:JSON.stringify(apiPayload(messages, persona)) });
+    if (!resp.ok) {
+      var detail='';
+      try { detail = JSON.stringify(await resp.json()); } catch(e){ try { detail = await resp.text(); } catch(_){} }
+      throw new Error('API错误 ' + resp.status + ' ' + (resp.statusText || '') + (detail ? ('：' + detail.slice(0,500)) : ''));
+    }
+    var data = await resp.json();
+    var txt = '';
+    try { if (typeof _extractAssistantMessageContent === 'function') txt = _extractAssistantMessageContent(data); } catch(e) {}
+    if (!txt) txt = (((data||{}).choices||[])[0]||{}).message && (((data||{}).choices||[])[0]||{}).message.content || '';
+    txt = String(txt || '').trim();
+    if (!txt) throw new Error('AI 返回为空');
+    return txt;
+  }
+  function cleanRaw(raw){ return String(raw||'').replace(/^```(?:json|text|txt)?\s*/i,'').replace(/```$/,'').trim(); }
+  function parseJsonMaybe(raw){
+    raw = cleanRaw(raw);
+    try { var v=JSON.parse(raw); return Array.isArray(v)?v:null; } catch(e){}
+    var m = raw.match(/\[[\s\S]*\]/);
+    if (m) { try { var a=JSON.parse(m[0]); return Array.isArray(a)?a:null; } catch(e){} }
+    return null;
+  }
+  function normalizeTraceItem(item, fallbackTime){
+    var time = item && (item.time || item.时间 || item.t) || fallbackTime || '';
+    var place = item && (item.place || item.location || item.地点 || item.位置 || item.address) || '';
+    var activity = item && (item.activity || item.event || item.正在做的事 || item.事件 || item.活动 || item.desc) || '';
+    time = String(time||'').match(/(\d{1,2})[:：](\d{1,2})/) ? String(time).replace(/.*?(\d{1,2})[:：](\d{1,2}).*/, function(_,h,m){ return pad2(+h)+':'+pad2(+m); }) : fallbackTime;
+    place = String(place||'').replace(/[\r\n|]/g,' ').trim().slice(0,28);
+    activity = String(activity||'').replace(/[\r\n|]/g,' ').trim().slice(0,40);
+    if (!place && activity) place = inferPlaceFromActivity(activity);
+    if (!activity && place) activity = inferActivityFromPlace(place);
+    return { time:time, place:place || '附近街区', activity:activity || '安静处理自己的事', isoDate: todayKey(), _v23Regenerated:true };
+  }
+  function inferActivityFromPlace(place){
+    place = String(place||'');
+    if (/咖啡|茶|饮品|飲品/.test(place)) return '点饮料休息';
+    if (/学校|學校|图书馆|圖書館|教室/.test(place)) return '学习或整理资料';
+    if (/公司|办公室|辦公室/.test(place)) return '处理工作';
+    if (/餐厅|餐廳|饭|飯|食堂/.test(place)) return '吃饭休息';
+    if (/家|宿舍|公寓/.test(place)) return '在室内休息';
+    if (/车站|車站|地铁|地鐵|机场|機場/.test(place)) return '准备移动';
+    if (/商场|商場|店|市场|市場/.test(place)) return '逛店买东西';
+    if (/公园|公園|河边|海边/.test(place)) return '散步放松';
+    return '处理自己的安排';
+  }
+  function inferPlaceFromActivity(act){
+    act = String(act||'');
+    if (/学习|复习|讀書|读书|资料|作业/.test(act)) return '图书馆';
+    if (/工作|会议|開會|开会|处理/.test(act)) return '办公室';
+    if (/吃|午饭|晚饭|早餐|饭/.test(act)) return '附近餐厅';
+    if (/休息|睡|洗澡|收拾/.test(act)) return '家里';
+    if (/买|逛|购物/.test(act)) return '商场';
+    if (/散步|走走|透气/.test(act)) return '附近公园';
+    if (/路上|出发|出門|出门|回去|赶路/.test(act)) return '路上';
+    return '附近街区';
+  }
+  function parseTraceOutput(raw, slots){
+    var out = [];
+    var arr = parseJsonMaybe(raw);
+    if (arr && arr.length) {
+      arr.forEach(function(x,i){ out.push(normalizeTraceItem(x, slots[i])); });
+    } else {
+      raw = cleanRaw(raw);
+      raw.split(/\n+/).forEach(function(line){
+        line = String(line||'').replace(/^[-*\d.、\s]+/,'').trim();
+        if (!line) return;
+        var m = line.match(/(\d{1,2})[:：](\d{2})\s*(?:\||｜|-|—|，|,|\s)\s*([^|｜，,\-—]{1,35})\s*(?:\||｜|-|—|，|,)\s*(.{1,60})/);
+        if (m) out.push(normalizeTraceItem({ time:pad2(+m[1])+':'+pad2(+m[2]), place:m[3], activity:m[4] }, null));
+      });
+    }
+    // 用 slot 对齐，避免 API 漏时间/多时间。
+    var byTime = {};
+    out.forEach(function(t){ if(t && t.time) byTime[t.time] = t; });
+    var normalized = [];
+    slots.forEach(function(s){
+      var item = byTime[s];
+      if (!item) {
+        // 不直接凭空复制；只补一个过渡合理的空位，保证每半小时一条。
+        var prev = normalized[normalized.length-1];
+        item = normalizeTraceItem({ time:s, place: prev ? prev.place : '附近街区', activity: prev ? '延续上一段安排' : '开始一天的安排' }, s);
+      } else {
+        item = normalizeTraceItem(item, s);
+      }
+      normalized.push(item);
+    });
+    return normalized;
+  }
+  function buildPrompt(persona, region, slots){
+    var today = new Date().toLocaleDateString('zh-CN');
+    var chatRef = getSameDayChatReference(persona);
+    var previous = '';
+    try {
+      var old = (locDailyTraces && locDailyTraces[persona.id] || []).filter(function(t){ return !t.isoDate || t.isoDate === todayKey(); }).slice(0,60);
+      previous = old.map(function(t){ return (t.time||'')+' | '+(t.place||'')+' | '+(t.activity||''); }).join('\n');
+    } catch(e) {}
+    return [
+      '请为角色生成「今天」从 00:00 到当前半小时区间的情侣定位行踪。',
+      '角色名：' + (persona.name || '角色'),
+      '角色人设：' + (persona.persona || '普通人'),
+      '所在地区：' + (region || '未知地区'),
+      '今天日期：' + today,
+      '必须生成这些时间点，每半小时一条，不要增加/删除时间点：' + slots.join('、'),
+      '',
+      '逻辑要求：',
+      '1. 这是重新生成当前角色的全部今日行踪，可以覆盖该角色今天旧行踪，但不能影响其他角色。',
+      '2. 行踪要自然连续，不要突然瞬移；远距离变化要用“路上/准备出发/刚到附近”等过渡。',
+      '3. 如果参考聊天，只能参考今天同日期聊天里和时间/地点/事件有关的内容；不要复制原句，只做合理改写。',
+      '4. 如果聊天只提到地点，请补合理事件；如果只提到事件，请补合理地点；不要两个字段都写成地点或都写成事件。',
+      '5. 如果聊天没有相关行踪信息，就按角色人设、地区、时间段合理生成，不要硬塞聊天内容。',
+      '6. 全程简体中文。',
+      '',
+      chatRef ? ('今天聊天中可轻参考的行踪线索：\n' + chatRef) : '今天聊天中没有必须参考的行踪线索。',
+      previous ? ('\n当前旧行踪仅供避免风格突兀，可重新规划，不要照抄：\n' + previous) : '',
+      '',
+      '只输出 JSON 数组，禁止 markdown。格式：',
+      '[{"time":"00:00","place":"地点名称","activity":"正在做的事"}]'
+    ].join('\n');
+  }
+  async function generateTraceViaChatApi(persona, region){
+    var slots = buildSlots();
+    if (!slots.length) return [];
+    var prompt = buildPrompt(persona, region, slots);
+    var raw = await callTraceAI(persona, prompt);
+    var traces = parseTraceOutput(raw, slots);
+    if (!traces.length) throw new Error('AI 返回内容无法解析为行踪列表');
+    return traces;
+  }
+  function ensureActionButton(){
+    var updateBtn=document.getElementById('locTraceUpdateBtn');
+    if (!updateBtn) return null;
+    var group=document.getElementById('locTraceActionGroup');
+    if (!group) {
+      group=document.createElement('div');
+      group.id='locTraceActionGroup';
+      group.className='loc-trace-action-group';
+      if (updateBtn.parentNode) updateBtn.parentNode.insertBefore(group, updateBtn);
+      group.appendChild(updateBtn);
+    } else if (updateBtn.parentNode !== group) group.appendChild(updateBtn);
+    var btn=document.getElementById('locTraceRegenerateBtn');
+    if (!btn) {
+      btn=document.createElement('button');
+      btn.type='button'; btn.id='locTraceRegenerateBtn'; btn.className='loc-trace-update-btn loc-trace-regenerate-btn';
+      group.appendChild(btn);
+    }
+    btn.innerHTML='<i class="fas fa-redo" style="margin-right:3px;font-size:9px;"></i>重新生成全部';
+    btn.onclick=function(ev){ if(ev){ev.preventDefault(); ev.stopPropagation();} window.regenerateSelectedLocTrace && window.regenerateSelectedLocTrace(); return false; };
+    return btn;
+  }
+
+  window.regenerateSelectedLocTrace = async function(){
+    var pid = ensureSelectedPid();
+    var p = pid ? getPersonaById(pid) : null;
+    if (!p) { toastSoft('请先选择要重新生成行踪的角色。'); return; }
+    var btn = ensureActionButton();
+    var updateBtn = document.getElementById('locTraceUpdateBtn');
+    var old = btn ? btn.innerHTML : '';
+    var oldUpdate = updateBtn ? updateBtn.innerHTML : '';
+    try { if (typeof _checkMidnightReset === 'function') _checkMidnightReset(); } catch(e) {}
+    try {
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size:9px;"></i> 重新生成中'; }
+      if (updateBtn) updateBtn.disabled = true;
+      var region = '';
+      try { region = (locCharRegions && locCharRegions[pid]) || locUserRegionName || '未知地区'; } catch(e){ region = '未知地区'; }
+      var traces = await generateTraceViaChatApi(p, region);
+      var today = todayKey();
+      try { if (typeof locDailyTraces === 'undefined' || !locDailyTraces) locDailyTraces = {}; } catch(e){ window.locDailyTraces = {}; }
+      var oldList = (locDailyTraces && locDailyTraces[pid]) || [];
+      var keepOtherDays = oldList.filter(function(t){ return t && t.isoDate && t.isoDate !== today; });
+      locDailyTraces[pid] = keepOtherDays.concat(traces).sort(function(a,b){
+        var ad = a.isoDate || today, bd = b.isoDate || today;
+        if (ad !== bd) return String(ad).localeCompare(String(bd));
+        return minOf(a.time) - minOf(b.time);
+      });
+      try {
+        var last = traces[traces.length - 1];
+        if (typeof locCharLocations === 'undefined' || !locCharLocations) locCharLocations = {};
+        locCharLocations[pid] = Array.isArray(locCharLocations[pid]) ? locCharLocations[pid] : [];
+        locCharLocations[pid] = locCharLocations[pid].filter(function(x){ return !(x && x.source === 'trace-v23-regenerate' && String(x.day||'') === String(today)); });
+        locCharLocations[pid].push({ address:last.place, time:new Date().toISOString(), source:'trace-v23-regenerate', day:today });
+        if (locCharLocations[pid].length > 48) locCharLocations[pid] = locCharLocations[pid].slice(-48);
+      } catch(e) {}
+      try { locSelectedCharId = pid; window.locSelectedTraceCharId = pid; } catch(e) {}
+      try { if (typeof saveLocData === 'function') saveLocData(); else if (typeof saveData === 'function') saveData(); } catch(e) {}
+      try { if (typeof renderLocTrace === 'function') renderLocTrace(); } catch(e) {}
+      try { if (typeof _renderCharBar === 'function') _renderCharBar(); if (typeof _renderBotMap === 'function') _renderBotMap(); } catch(e) {}
+      toastSoft('已重新生成 ' + (p.name || '该角色') + ' 今天的全部行踪。');
+    } catch(err) {
+      console.error('[v23 location regenerate failed]', err);
+      try { if (typeof _showApiErrorToast === 'function') _showApiErrorToast('情侣定位重新生成失败', err); else toastSoft('重新生成失败：' + (err && err.message || '未知错误')); }
+      catch(e){ toastSoft('重新生成失败：' + (err && err.message || '未知错误')); }
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = old || '<i class="fas fa-redo" style="margin-right:3px;font-size:9px;"></i>重新生成全部'; }
+      if (updateBtn) { updateBtn.disabled = false; updateBtn.innerHTML = oldUpdate || '<i class="fas fa-sync-alt" style="margin-right:3px;font-size:9px;"></i>更新行踪'; }
+      setTimeout(function(){ try { ensureActionButton(); if (typeof renderLocTrace === 'function') renderLocTrace(); } catch(e){} }, 0);
+    }
+  };
+
+  // 覆盖旧 v22 的捕获点击，确保按钮始终调用 v23 版本。
+  document.addEventListener('click', function(ev){
+    var btn = ev.target && ev.target.closest ? ev.target.closest('#locTraceRegenerateBtn') : null;
+    if (!btn) return;
+    ev.preventDefault(); ev.stopPropagation();
+    window.regenerateSelectedLocTrace && window.regenerateSelectedLocTrace();
+  }, true);
+
+  function afterRender(){ ensureActionButton(); }
+  try {
+    var oldRender = window.renderLocTrace;
+    if (typeof oldRender === 'function' && !oldRender.__monoV23RegenApiWrapped) {
+      var wrapped = function(){ var r = oldRender.apply(this, arguments); setTimeout(afterRender, 0); return r; };
+      wrapped.__monoV23RegenApiWrapped = true;
+      window.renderLocTrace = wrapped;
+      try { eval('renderLocTrace = window.renderLocTrace'); } catch(e) {}
+    }
+  } catch(e) {}
+  document.addEventListener('DOMContentLoaded', function(){ setTimeout(afterRender, 80); });
+  setTimeout(afterRender, 0);
+  setTimeout(afterRender, 250);
+})();
+</script>
+
+
+<script id="mono-role-wechat-v24-location-chat-reference-cleanup">
+/* ===== v24: 情侣定位聊天参考清理 / 禁止复制与重复时间 =====
+   1. 只在用户点击更新/重新生成时，轻参考“当天、明确和行踪有关”的聊天。
+   2. 不把聊天消息时间当成行踪时间；模型返回错误时间时按请求的半小时时间槽重排。
+   3. 自动清理旧 bug 产生的 16:10 等非半小时/重复行踪，避免画面混乱。
+   4. 如果聊天只给地点或事件，补全另一项；聊天室引用情侣定位仍自然改写。
+*/
+(function(){
+  if (window.__monoV24LocationChatReferenceCleanup) return;
+  window.__monoV24LocationChatReferenceCleanup = true;
+
+  function toastSoft(msg){ try { if (typeof toast === 'function') toast(msg); else if (typeof showToast === 'function') showToast(msg); else console.log(msg); } catch(e){ try{ console.log(msg); }catch(_){} } }
+  function pad2(n){ return String(Math.max(0, Number(n)||0)).padStart(2,'0'); }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]); }); }
+  function todayKey(){ try { return new Date().toLocaleDateString('zh-TW'); } catch(e){ return ''; } }
+  function minOf(t){ var m=String(t||'').match(/(\d{1,2})[:：](\d{1,2})/); return m ? Math.max(0, Math.min(1439, parseInt(m[1],10)*60 + parseInt(m[2],10))) : 0; }
+  function fmtMin(m){ m=Math.max(0, Math.min(1439, Math.floor((Number(m)||0)/30)*30)); return pad2(Math.floor(m/60))+':'+pad2(m%60); }
+  function isHalfHour(t){ var m=String(t||'').match(/^(\d{1,2})[:：](\d{2})$/); if(!m) return false; var h=+m[1], mm=+m[2]; return h>=0 && h<24 && (mm===0 || mm===30); }
+  function currentHalfHourMin(){ var n=new Date(); return n.getHours()*60 + (n.getMinutes()>=30?30:0); }
+  function fullSlots(){ var end=currentHalfHourMin(), arr=[]; for(var m=0;m<=end;m+=30) arr.push(fmtMin(m)); return arr; }
+  function nextSlotsAfter(lastTime){ var end=currentHalfHourMin(), start=lastTime ? minOf(lastTime)+30 : 0, arr=[]; for(var m=start;m<=end;m+=30) arr.push(fmtMin(m)); return arr; }
+  function normPid(rel){ return rel && (rel.personaId != null ? rel.personaId : rel.id); }
+  function getPersona(pid){ try { return (typeof personas !== 'undefined' && Array.isArray(personas)) ? personas.find(function(p){ return String(p.id)===String(pid); }) : null; } catch(e){ return null; } }
+  function activeRelations(){ try { return (locRelations||[]).filter(function(r){ return !!getPersona(normPid(r)); }); } catch(e){ return []; } }
+  function ensureSelectedPid(){
+    var rels=activeRelations(); if(!rels.length) return null;
+    var cur=window.locSelectedTraceCharId || (typeof locSelectedCharId !== 'undefined' ? locSelectedCharId : null);
+    if(!cur || !rels.some(function(r){ return String(normPid(r))===String(cur); })) cur=normPid(rels[0]);
+    window.locSelectedTraceCharId=cur; try{ locSelectedCharId=cur; }catch(e){}
+    return cur;
+  }
+  function cleanText(s){ return String(s||'').replace(/\[heart_voice\][\s\S]*?\[\/heart_voice\]/g,' ').replace(/<[^>]+>/g,' ').replace(/[\r\n]+/g,' ').replace(/\s+/g,' ').trim(); }
+  function msgTs(m){ var ts=m && (m.timestamp || m.time || m.createdAt || m.date || m.sentAt); if(!ts) return 0; if(typeof ts==='number') return ts; if(/^\d+$/.test(String(ts))) return Number(ts); var d=new Date(ts); return isNaN(d.getTime()) ? 0 : d.getTime(); }
+  function dayStart(){ var d=new Date(); d.setHours(0,0,0,0); return d.getTime(); }
+  function dayEnd(){ var d=new Date(); d.setHours(23,59,59,999); return d.getTime(); }
+  function hasFutureOtherDay(text){ return /(明天|明晚|后天|後天|大后天|大後天|过两天|過兩天|过几天|過幾天|下周|下週|下星期|下个月|下個月|以后|以後|改天|周末|週末)/.test(text); }
+  function extractExplicitTime(text){
+    text=String(text||'');
+    if (/凌晨/.test(text)) return '凌晨';
+    if (/早上|上午/.test(text)) return '早上/上午';
+    if (/中午/.test(text)) return '中午';
+    if (/下午/.test(text)) return '下午';
+    if (/傍晚/.test(text)) return '傍晚';
+    if (/晚上|今晚/.test(text)) return '晚上';
+    if (/等下|待会|待會|一会|一會|马上|馬上|之后|之後|稍后|稍後|现在|現在|目前|这会|這會/.test(text)) return '当前附近/稍后';
+    var m=text.match(/(\d{1,2})\s*(点|點|时|時)(半)?/); if(m) return (m[1]+(m[3]?'点半':'点'));
+    var n=text.match(/(\d{1,2})[:：](\d{2})/); if(n) return pad2(n[1])+':'+pad2(n[2]);
+    return '';
+  }
+  function extractPlace(text){
+    text=String(text||'');
+    var patterns=[/在([^，。！？,.!?]{1,12})(?:里|裡|这边|這邊|附近|门口|門口)?/, /去([^，。！？,.!?]{1,12})/, /回([^，。！？,.!?]{1,12})/, /(学校|學校|公司|办公室|辦公室|家里|家裡|家|宿舍|咖啡厅|咖啡廳|餐厅|餐廳|饭店|飯店|商场|商場|超市|医院|醫院|图书馆|圖書館|车站|車站|机场|機場|地铁站|地鐵站|公交站|公园|公園|电影院|電影院|教室|街区|街區|路上)/];
+    for(var i=0;i<patterns.length;i++){ var m=text.match(patterns[i]); if(m && m[1]) return cleanText(m[1]).slice(0,16); }
+    return '';
+  }
+  function extractActivity(text){
+    text=String(text||'');
+    var m=text.match(/(上课|上課|下课|下課|上班|下班|开会|開會|学习|學習|复习|複習|工作|休息|吃饭|吃飯|喝咖啡|买东西|買東西|逛街|散步|约会|約會|换衣服|換衣服|穿衣服|收拾|回家|回去|出门|出門|出发|出發|坐车|坐車|赶路|趕路|等人|见面|見面|拍照|运动|運動|看电影|看電影)/);
+    if(m) return m[1];
+    if(/穿.*看|穿给你看|穿給你看/.test(text)) return '试穿衣服';
+    if(/心情|开心|開心|难过|難過|想你|老婆|老公/.test(text)) return '';
+    return '';
+  }
+  function inferPlaceFromActivity(act){
+    act=String(act||'');
+    if(/学习|復習|复习|上课|上課|资料|作业/.test(act)) return '图书馆';
+    if(/工作|会议|會議|开会|開會|处理/.test(act)) return '办公室';
+    if(/吃|饭|飯/.test(act)) return '附近餐厅';
+    if(/喝咖啡/.test(act)) return '咖啡厅';
+    if(/休息|睡|收拾|换衣|穿衣|试穿/.test(act)) return '家里';
+    if(/逛|买|買/.test(act)) return '商场';
+    if(/路上|出发|出發|回去|赶路|趕路|坐车/.test(act)) return '路上';
+    if(/约会|約會|见面|見面/.test(act)) return '约定地点附近';
+    return '';
+  }
+  function inferActivityFromPlace(place){
+    place=String(place||'');
+    if(/咖啡|茶/.test(place)) return '点饮料休息';
+    if(/学校|學校|图书馆|圖書館|教室/.test(place)) return '学习或整理资料';
+    if(/公司|办公室|辦公室/.test(place)) return '处理工作';
+    if(/餐厅|餐廳|饭|飯|食堂/.test(place)) return '吃饭休息';
+    if(/家|宿舍|公寓/.test(place)) return '在室内休息';
+    if(/车站|車站|地铁|地鐵|机场|機場|路上/.test(place)) return '准备移动';
+    if(/商场|商場|店|市场|市場/.test(place)) return '逛店买东西';
+    if(/公园|公園|河边|海边/.test(place)) return '散步放松';
+    return '处理自己的安排';
+  }
+  function collectCleanChatClues(persona){
+    try{
+      if(!persona || !Array.isArray(persona.history)) return [];
+      var start=dayStart(), end=dayEnd(), seen={}, clues=[];
+      persona.history.forEach(function(m){
+        if(!m || !m.content) return;
+        var ts=msgTs(m); if(!ts || ts<start || ts>end) return;
+        var text=cleanText(m.content); if(!text || hasFutureOtherDay(text)) return;
+        // 只保留今天/现在/等下/下午等明确当天或当前附近的行踪线索；普通聊天不使用。
+        var timeHint=extractExplicitTime(text);
+        var place=extractPlace(text);
+        var activity=extractActivity(text);
+        if(!timeHint && !/(今天|今晚|现在|現在|目前|等下|待会|待會|一会|一會|下午|上午|中午|晚上|刚刚|剛剛|已经|已經|正在)/.test(text)) return;
+        if(!place && !activity) return;
+        if(!place && activity) place=inferPlaceFromActivity(activity);
+        if(!activity && place) activity=inferActivityFromPlace(place);
+        var key=(timeHint||'')+'|'+(place||'')+'|'+(activity||'');
+        if(seen[key]) return; seen[key]=true;
+        clues.push({ timeHint:timeHint||'当前附近', place:place||'合理地点', activity:activity||'合理活动', role:m.role==='user'?'用户':(persona.name||'角色'), ts:ts });
+      });
+      return clues.slice(-6);
+    }catch(e){ return []; }
+  }
+  function buildChatRefText(persona){
+    var clues=collectCleanChatClues(persona);
+    if(!clues.length) return '';
+    return clues.map(function(c,i){ return (i+1)+'. 大概时间：'+c.timeHint+'；地点线索：'+c.place+'；事件线索：'+c.activity; }).join('\n');
+  }
+  function cleanField(s,max){ return cleanText(s).replace(/[|｜]/g,' ').slice(0,max||36); }
+  function normalizeItem(raw, slot, prev){
+    var place='', activity='';
+    if(raw && typeof raw==='object'){
+      place=raw.place || raw.location || raw['地点'] || raw['位置'] || raw.address || '';
+      activity=raw.activity || raw.event || raw['事件'] || raw['活动'] || raw['正在做的事'] || raw.desc || '';
+    } else if(typeof raw==='string') {
+      var line=raw.replace(/^[-*\d.、\s]+/,'').trim();
+      var parts=line.split(/\s*[|｜]\s*/);
+      if(parts.length>=3){ place=parts[1]; activity=parts.slice(2).join(' '); }
+      else {
+        var m=line.match(/(?:\d{1,2}[:：]\d{2})?\s*(?:[,，\-—]\s*)?([^,，\-—|｜]{1,24})\s*(?:[,，\-—|｜]\s*)(.{1,50})/);
+        if(m){ place=m[1]; activity=m[2]; }
+      }
+    }
+    place=cleanField(place,28); activity=cleanField(activity,42);
+    if(!place && activity) place=inferPlaceFromActivity(activity) || (prev && prev.place) || '附近街区';
+    if(!activity && place) activity=inferActivityFromPlace(place);
+    if(!place) place=(prev && prev.place) ? prev.place : '附近街区';
+    if(!activity) activity=prev ? '延续上一段安排' : '开始一天的安排';
+    if(place===activity) activity=inferActivityFromPlace(place) || '处理相关事情';
+    return { time:slot, place:place, activity:activity, isoDate:todayKey(), _v24Clean:true };
+  }
+  function cleanRaw(raw){ return String(raw||'').replace(/^```(?:json|text|txt)?\s*/i,'').replace(/```$/,'').trim(); }
+  function parseJsonArray(raw){ raw=cleanRaw(raw); try{ var a=JSON.parse(raw); return Array.isArray(a)?a:null; }catch(e){} var m=raw.match(/\[[\s\S]*\]/); if(m){ try{ var b=JSON.parse(m[0]); return Array.isArray(b)?b:null; }catch(e){} } return null; }
+  function parseOutputForSlots(raw, slots){
+    var inputs=[], arr=parseJsonArray(raw);
+    if(arr && arr.length) inputs=arr;
+    else {
+      inputs=cleanRaw(raw).split(/\n+/).map(function(l){return l.trim();}).filter(function(l){ return l && (/[|｜]/.test(l) || /\d{1,2}[:：]\d{2}/.test(l)); });
+    }
+    var out=[], prev=null;
+    slots.forEach(function(slot, idx){
+      var rawItem=inputs[idx] || null;
+      // 关键：无论 AI 返回 16:10/聊天时间/错误时间，都强制使用请求的半小时 slot。
+      var item=normalizeItem(rawItem, slot, prev);
+      // 防止连续太机械：如果连续同地点同事件，稍微改成延续语气。
+      if(prev && item.place===prev.place && item.activity===prev.activity) item.activity='继续'+item.activity.replace(/^继续/,'');
+      out.push(item); prev=item;
+    });
+    return out;
+  }
+  function sanitizeTraceList(list){
+    var today=todayKey(), seen={}, out=[];
+    (Array.isArray(list)?list:[]).forEach(function(t){
+      if(!t) return;
+      var day=t.isoDate || today;
+      if(day===today){
+        var time=String(t.time||'').replace('：',':').trim();
+        if(!isHalfHour(time)) return; // 清掉旧 bug 产生的 16:10 这类时间。
+        if(seen[time]) return;
+        seen[time]=true;
+        var item=normalizeItem({place:t.place||t.address, activity:t.activity||t.event||t.desc}, time, out[out.length-1]);
+        item.isoDate=today;
+        out.push(item);
+      } else out.push(t);
+    });
+    out.sort(function(a,b){ var ad=a.isoDate||today, bd=b.isoDate||today; if(ad!==bd) return String(ad).localeCompare(String(bd)); return minOf(a.time)-minOf(b.time); });
+    return out;
+  }
+  function sanitizeAllLocationTraces(){
+    try{
+      if(typeof locDailyTraces==='undefined' || !locDailyTraces) return;
+      Object.keys(locDailyTraces).forEach(function(pid){ locDailyTraces[pid]=sanitizeTraceList(locDailyTraces[pid]); });
+    }catch(e){}
+  }
+  async function callLocationAI(persona, prompt, maxTokens){
+    if(!apiConfig || !apiConfig.url) throw new Error('请先配置 API');
+    var url='';
+    try { if(typeof getApiUrl==='function') url=getApiUrl(); } catch(e){}
+    if(!url){ try { if(typeof _buildApiChatCandidates==='function') url=_buildApiChatCandidates(apiConfig.url)[0]; } catch(e){} }
+    if(!url) url=String(apiConfig.url||'').replace(/\/+$/,'') + '/chat/completions';
+    var body={ messages:[
+      {role:'system', content:'你是情侣定位行踪生成器。只输出 JSON 数组，不输出解释，不输出 Markdown。每条必须有 time/place/activity。'},
+      {role:'user', content:prompt}
+    ], temperature:0.72, max_tokens:maxTokens||1800, stream:false };
+    try { if(typeof _applyApiModel==='function') _applyApiModel(body, apiConfig, persona); else body.model=apiConfig.model; } catch(e){ body.model=apiConfig.model; }
+    var headers={'Content-Type':'application/json'};
+    if(apiConfig.key) headers.Authorization='Bearer '+apiConfig.key;
+    var fetchFn=window.__monoV15OriginalFetch || window.__monoV17RawFetch || window.__monoOriginalFetch || window.fetch;
+    var r=await fetchFn(url,{method:'POST',headers:headers,body:JSON.stringify(body)});
+    if(!r.ok) throw new Error('API 返回错误：'+r.status);
+    var data=await r.json();
+    var txt='';
+    try { if(typeof _extractAssistantMessageContent==='function') txt=_extractAssistantMessageContent(data); } catch(e){}
+    if(!txt) txt=((((data||{}).choices||[])[0]||{}).message||{}).content || '';
+    txt=String(txt||'').trim();
+    if(!txt) throw new Error('AI 返回为空');
+    return txt;
+  }
+  function buildPrompt(persona, region, slots, mode){
+    var ref=buildChatRefText(persona);
+    return [
+      '请生成角色今天的情侣定位行踪。',
+      '角色名：'+((persona&&persona.name)||'角色'),
+      '人设：'+((persona&&persona.persona)||'普通人'),
+      '地区：'+(region||'未知地区'),
+      '今天日期：'+new Date().toLocaleDateString('zh-CN'),
+      '必须只生成这些半小时时间点：'+slots.join('、'),
+      '',
+      '重要规则：',
+      '1. time 必须严格等于上面给出的时间点之一；不要使用聊天消息发送时间当作行踪时间。',
+      '2. 聊天内容只是轻参考，不是复制粘贴；没有明确今天/现在/等下/下午/晚上等当天行踪线索时，不要参考聊天。',
+      '3. 如果聊天提到“过两天/明天/后天/以后/改天”，不要放进今天行踪。',
+      '4. 如果聊天只给地点，补合理事件；只给事件，补合理地点；地点和事件不能写成同一个东西。',
+      '5. 行踪要连续，不要跳脱；地点变化大时要用路上/准备出发/刚到附近等过渡。',
+      '6. '+(mode==='incremental'?'这是补充新时间点，不要重复旧时间。':'这是重新规划/完整生成今天到当前时间的行踪。'),
+      '7. 全程简体中文。',
+      '',
+      ref ? ('当天聊天中可轻参考的结构化线索：\n'+ref) : '当天聊天中没有需要参考的行踪线索，请按人设和地区正常生成。',
+      '',
+      '只输出 JSON 数组，例如：',
+      '[{"time":"08:00","place":"家里","activity":"吃早餐整理东西"}]'
+    ].join('\n');
+  }
+  async function generateForSlots(persona, region, slots, mode){
+    if(!slots || !slots.length) return [];
+    var raw=await callLocationAI(persona, buildPrompt(persona, region, slots, mode), Math.max(1000, slots.length*55));
+    return parseOutputForSlots(raw, slots);
+  }
+  async function generateFullDayTraceV24(persona, region){ return generateForSlots(persona, region, fullSlots(), 'full'); }
+  async function generateIncrementalTraceV24(persona, region, fromTime){ return generateForSlots(persona, region, nextSlotsAfter(fromTime||'00:00'), 'incremental'); }
+
+  // Override global generation so both 更新 and 重新生成 use the cleaned logic.
+  try { window.generateFullDayTrace=generateFullDayTraceV24; eval('generateFullDayTrace = generateFullDayTraceV24'); } catch(e){}
+  try { window.generateIncrementalTrace=generateIncrementalTraceV24; eval('generateIncrementalTrace = generateIncrementalTraceV24'); } catch(e){}
+
+  var oldRender=window.renderLocTrace || (typeof renderLocTrace==='function' ? renderLocTrace : null);
+  if(oldRender && !window.__monoV24RenderWrapped){
+    window.__monoV24RenderWrapped=true;
+    window.renderLocTrace=function(){ sanitizeAllLocationTraces(); try{ if(typeof saveLocData==='function') saveLocData(); }catch(e){} return oldRender.apply(this, arguments); };
+    try { eval('renderLocTrace = window.renderLocTrace'); } catch(e){}
+  }
+
+  window.updateLocTrace = async function(){
+    var pid=ensureSelectedPid(); var p=pid ? getPersona(pid) : null;
+    if(!p){ alert('请先选择要生成行踪的角色'); return; }
+    try{ if(typeof _checkMidnightReset==='function') _checkMidnightReset(); }catch(e){}
+    sanitizeAllLocationTraces();
+    var btn=document.getElementById('locTraceUpdateBtn'); var old=btn?btn.innerHTML:'';
+    try{
+      if(btn){ btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin" style="font-size:9px;"></i> 生成 '+esc(p.name||'角色')+' 中'; }
+      var region=(locCharRegions&&locCharRegions[pid]) || locUserRegionName || '未知地区';
+      if(typeof locDailyTraces==='undefined' || !locDailyTraces) locDailyTraces={};
+      var existing=sanitizeTraceList(locDailyTraces[pid]||[]);
+      locDailyTraces[pid]=existing;
+      var today=todayKey();
+      var todayExisting=existing.filter(function(t){ return !t.isoDate || t.isoDate===today; }).sort(function(a,b){ return minOf(a.time)-minOf(b.time); });
+      var last=todayExisting.length ? todayExisting[todayExisting.length-1].time : null;
+      var slots=last ? nextSlotsAfter(last) : fullSlots();
+      if(!slots.length){ toastSoft('当前时间段已经生成完，没有新的半小时行踪。'); return; }
+      var newTraces=await generateForSlots(p, region, slots, last?'incremental':'full');
+      var exists={}; existing.forEach(function(t){ if(t&&t.time) exists[String(t.time)]=true; });
+      newTraces=newTraces.filter(function(t){ return t && isHalfHour(t.time) && !exists[String(t.time)]; });
+      if(!newTraces.length){ toastSoft('当前时间段已经生成完，没有新的半小时行踪。'); return; }
+      locDailyTraces[pid]=sanitizeTraceList(existing.concat(newTraces));
+      var newest=newTraces[newTraces.length-1];
+      try{
+        if(typeof locCharLocations==='undefined' || !locCharLocations) locCharLocations={};
+        locCharLocations[pid]=Array.isArray(locCharLocations[pid])?locCharLocations[pid]:[];
+        locCharLocations[pid].push({address:newest.place,time:new Date().toISOString(),source:'trace-v24-clean',day:today});
+        if(locCharLocations[pid].length>48) locCharLocations[pid]=locCharLocations[pid].slice(-48);
+      }catch(e){}
+      try{ if(typeof saveLocData==='function') saveLocData(); }catch(e){}
+      try{ if(typeof renderLocTrace==='function') renderLocTrace(); }catch(e){}
+      try{ if(typeof _renderCharBar==='function') _renderCharBar(); if(typeof _renderBotMap==='function') _renderBotMap(); }catch(e){}
+      toastSoft('已生成 '+(p.name||'该角色')+' 的新半小时行踪。');
+    }catch(err){ console.error('[v24 update location failed]', err); toastSoft('生成失败：'+((err&&err.message)||'未知错误')); }
+    finally{ if(btn){ btn.disabled=false; btn.innerHTML=old || '<i class="fas fa-sync-alt" style="margin-right:3px;font-size:9px;"></i>更新行踪'; } try{ if(typeof renderLocTrace==='function') renderLocTrace(); }catch(e){} }
+  };
+  try { eval('updateLocTrace = window.updateLocTrace'); } catch(e){}
+
+  window.regenerateSelectedLocTrace = async function(){
+    var pid=ensureSelectedPid(); var p=pid ? getPersona(pid) : null;
+    if(!p){ toastSoft('请先选择要重新生成行踪的角色。'); return; }
+    var btn=document.getElementById('locTraceRegenerateBtn'); var updateBtn=document.getElementById('locTraceUpdateBtn');
+    var old=btn?btn.innerHTML:'', oldU=updateBtn?updateBtn.innerHTML:'';
+    try{
+      if(btn){ btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin" style="font-size:9px;"></i> 重新生成中'; }
+      if(updateBtn) updateBtn.disabled=true;
+      try{ if(typeof _checkMidnightReset==='function') _checkMidnightReset(); }catch(e){}
+      sanitizeAllLocationTraces();
+      var region=(locCharRegions&&locCharRegions[pid]) || locUserRegionName || '未知地区';
+      var slots=fullSlots();
+      if(!slots.length){ toastSoft('当前时间还没有可生成的半小时行踪。'); return; }
+      var traces=await generateForSlots(p, region, slots, 'full');
+      if(typeof locDailyTraces==='undefined' || !locDailyTraces) locDailyTraces={};
+      var today=todayKey();
+      var oldList=sanitizeTraceList(locDailyTraces[pid]||[]);
+      var keepOtherDays=oldList.filter(function(t){ return t && t.isoDate && t.isoDate!==today; });
+      locDailyTraces[pid]=sanitizeTraceList(keepOtherDays.concat(traces));
+      var latest=traces[traces.length-1];
+      try{
+        if(typeof locCharLocations==='undefined' || !locCharLocations) locCharLocations={};
+        locCharLocations[pid]=Array.isArray(locCharLocations[pid])?locCharLocations[pid]:[];
+        locCharLocations[pid]=locCharLocations[pid].filter(function(x){ return !(x && (x.source==='trace-v23-regenerate'||x.source==='trace-v24-regenerate') && String(x.day||'')===String(today)); });
+        locCharLocations[pid].push({address:latest.place,time:new Date().toISOString(),source:'trace-v24-regenerate',day:today});
+        if(locCharLocations[pid].length>48) locCharLocations[pid]=locCharLocations[pid].slice(-48);
+      }catch(e){}
+      try{ if(typeof saveLocData==='function') saveLocData(); }catch(e){}
+      try{ if(typeof renderLocTrace==='function') renderLocTrace(); }catch(e){}
+      try{ if(typeof _renderCharBar==='function') _renderCharBar(); if(typeof _renderBotMap==='function') _renderBotMap(); }catch(e){}
+      toastSoft('已重新生成 '+(p.name||'该角色')+' 今天的全部行踪。');
+    }catch(err){ console.error('[v24 regenerate location failed]', err); try{ if(typeof _showApiErrorToast==='function') _showApiErrorToast('情侣定位重新生成失败', err); else toastSoft('重新生成失败：'+((err&&err.message)||'未知错误')); }catch(e){ toastSoft('重新生成失败：'+((err&&err.message)||'未知错误')); } }
+    finally{ if(btn){ btn.disabled=false; btn.innerHTML=old || '<i class="fas fa-redo" style="margin-right:3px;font-size:9px;"></i>重新生成全部'; } if(updateBtn){ updateBtn.disabled=false; updateBtn.innerHTML=oldU || '<i class="fas fa-sync-alt" style="margin-right:3px;font-size:9px;"></i>更新行踪'; } try{ if(typeof renderLocTrace==='function') renderLocTrace(); }catch(e){} }
+  };
+
+  // Initial cleanup on load, so old duplicated/non-half-hour traces disappear after refresh/opening the app.
+  setTimeout(function(){ try{ sanitizeAllLocationTraces(); if(typeof saveLocData==='function') saveLocData(); if(typeof renderLocTrace==='function') renderLocTrace(); }catch(e){} }, 300);
+})();
+</script>
+
+<script id="mono-role-wechat-v25-location-hard-clean-rebuild">
+/* ===== v25: 情侣定位硬清理 + 半小时槽重建 =====
+   修复 v24 后仍出现 16:40/16:10 这类聊天发送时间、重复内容的问题。
+   - 渲染层只显示严格 00/30 分钟槽；非半小时旧数据直接不显示并从存储删除。
+   - 重新生成/更新只按半小时槽生成，不再把聊天句子当作行踪本体。
+   - 聊天只作为最多 2 条“结构化轻参考”，且不把原句放进 prompt。
+*/
+(function(){
+  if (window.__monoV25LocationHardCleanRebuild) return;
+  window.__monoV25LocationHardCleanRebuild = true;
+
+  function toastSoft(msg){ try{ if(typeof toast==='function') toast(msg); else if(typeof showToast==='function') showToast(msg); else console.log(msg); }catch(e){ console.log(msg); } }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]); }); }
+  function pad2(n){ return String(Math.max(0, Number(n)||0)).padStart(2,'0'); }
+  function todayKey(){ try { return new Date().toLocaleDateString('zh-TW'); } catch(e){ return new Date().toISOString().slice(0,10); } }
+  function todayKeyAlt(){ try { return new Date().toLocaleDateString('zh-CN'); } catch(e){ return todayKey(); } }
+  function isTodayLike(d){ if(!d) return true; d=String(d); return d===todayKey() || d===todayKeyAlt() || d===new Date().toISOString().slice(0,10); }
+  function minOf(t){ var m=String(t||'').replace('：',':').match(/^\s*(\d{1,2}):(\d{2})\s*$/); return m ? (+m[1]*60 + +m[2]) : -1; }
+  function fmtMin(m){ m=Math.max(0, Math.min(1439, Math.floor((Number(m)||0)/30)*30)); return pad2(Math.floor(m/60))+':'+pad2(m%60); }
+  function isHalfHour(t){ var m=minOf(t); return m>=0 && (m%30===0); }
+  function currentHalfHourMin(){ var n=new Date(); return n.getHours()*60 + (n.getMinutes()>=30?30:0); }
+  function fullSlots(){ var arr=[], end=currentHalfHourMin(); for(var m=0;m<=end;m+=30) arr.push(fmtMin(m)); return arr; }
+  function cleanText(s){ return String(s||'').replace(/\[heart_voice\][\s\S]*?\[\/heart_voice\]/g,' ').replace(/<[^>]+>/g,' ').replace(/[\r\n]+/g,' ').replace(/\s+/g,' ').trim(); }
+  function cleanField(s,max){ return cleanText(s).replace(/[|｜]/g,' ').slice(0,max||36); }
+  function pidOf(rel){ return rel && (rel.personaId != null ? rel.personaId : rel.id); }
+  function getPersona(pid){ try { return (typeof personas !== 'undefined' && Array.isArray(personas)) ? personas.find(function(p){ return String(p.id)===String(pid); }) : null; } catch(e){ return null; } }
+  function activeRelations(){ try { return (locRelations||[]).filter(function(r){ return !!getPersona(pidOf(r)); }); } catch(e){ return []; } }
+  function ensureSelectedPid(){
+    var rels=activeRelations(); if(!rels.length) return null;
+    var cur=window.locSelectedTraceCharId || (typeof locSelectedCharId !== 'undefined' ? locSelectedCharId : null);
+    if(!cur || !rels.some(function(r){ return String(pidOf(r))===String(cur); })) cur=pidOf(rels[0]);
+    window.locSelectedTraceCharId=cur; try{ locSelectedCharId=cur; }catch(e){}
+    return cur;
+  }
+  window.selectLocTraceChar=function(pid){ window.locSelectedTraceCharId=pid; try{ locSelectedCharId=pid; if(typeof saveLocData==='function') saveLocData(); }catch(e){} try{ renderLocTrace(); }catch(e){} };
+
+  function inferPlaceFromActivity(act){
+    act=String(act||'');
+    if(/学习|學習|复习|複習|上课|上課|作业|资料/.test(act)) return '图书馆';
+    if(/工作|开会|開會|会议|會議/.test(act)) return '办公室';
+    if(/吃|饭|飯/.test(act)) return '附近餐厅';
+    if(/喝咖啡|咖啡/.test(act)) return '咖啡厅';
+    if(/换衣|換衣|穿衣|试穿|試穿|休息|收拾/.test(act)) return '家里';
+    if(/约会|約會|见面|見面/.test(act)) return '约定地点附近';
+    if(/出发|出發|回去|回家|坐车|坐車|赶路|趕路/.test(act)) return '路上';
+    return '附近街区';
+  }
+  function inferActivityFromPlace(place){
+    place=String(place||'');
+    if(/咖啡|茶/.test(place)) return '点饮料休息';
+    if(/学校|學校|图书馆|圖書館|教室/.test(place)) return '学习或整理资料';
+    if(/公司|办公室|辦公室/.test(place)) return '处理工作';
+    if(/餐厅|餐廳|饭|飯|食堂/.test(place)) return '吃饭休息';
+    if(/家|宿舍|公寓/.test(place)) return '在室内休息';
+    if(/车站|車站|地铁|地鐵|机场|機場|路上/.test(place)) return '准备移动';
+    if(/商场|商場|店|市场|市場/.test(place)) return '逛店买东西';
+    return '处理自己的安排';
+  }
+  function normalizeItem(raw, slot, prev){
+    var place='', activity='';
+    if(raw && typeof raw==='object'){
+      place=raw.place || raw.location || raw['地点'] || raw.address || raw.where || '';
+      activity=raw.activity || raw.event || raw['事件'] || raw['活动'] || raw.doing || raw.desc || '';
+    } else if(typeof raw==='string'){
+      var s=raw.replace(/^[-*\d.、\s]+/,'').trim();
+      var parts=s.split(/\s*[|｜]\s*/);
+      if(parts.length>=3){ place=parts[1]; activity=parts.slice(2).join(' '); }
+      else { var m=s.match(/(?:\d{1,2}[:：]\d{2})?\s*[,，\-—]?\s*([^,，\-—|｜]{1,20})\s*[,，\-—|｜]\s*(.{1,40})/); if(m){place=m[1]; activity=m[2];} }
+    }
+    place=cleanField(place,24); activity=cleanField(activity,38);
+    // 防止把聊天原句塞进来：太像长句/问句时，降级为概括。
+    if(/[？?。！!]/.test(place) || place.length>18) place='附近街区';
+    if(/[？?]/.test(activity) || activity.length>34) activity=place ? inferActivityFromPlace(place) : '处理自己的安排';
+    if(!place && activity) place=inferPlaceFromActivity(activity);
+    if(!activity && place) activity=inferActivityFromPlace(place);
+    if(!place) place=prev && prev.place ? prev.place : '附近街区';
+    if(!activity) activity=prev && prev.activity ? '延续上一段安排' : '开始一天的安排';
+    if(place===activity) activity=inferActivityFromPlace(place) || '处理相关事情';
+    return { time:slot, place:place, activity:activity, isoDate:todayKey(), _v25Clean:true };
+  }
+  function sanitizeList(list){
+    var seen={}, today=todayKey(), out=[];
+    (Array.isArray(list)?list:[]).forEach(function(t){
+      if(!t) return;
+      var day=t.isoDate || t.day || '';
+      // 今天或无日期的数据才参与今天显示；非今天保留在存储但不显示。
+      if(day && !isTodayLike(day)){ out.push(t); return; }
+      var time=String(t.time||'').replace('：',':').trim();
+      if(!isHalfHour(time)) return; // 彻底删除 16:40 / 16:10 这类旧错数据。
+      time=fmtMin(minOf(time));
+      if(seen[time]) return;
+      seen[time]=true;
+      out.push(normalizeItem({place:t.place||t.address||t.location, activity:t.activity||t.event||t.desc}, time, out[out.length-1]));
+    });
+    out.sort(function(a,b){
+      var ad=a.isoDate||'', bd=b.isoDate||'';
+      if(ad!==bd) return String(ad).localeCompare(String(bd));
+      return minOf(a.time)-minOf(b.time);
+    });
+    return out;
+  }
+  function hardCleanAll(){
+    try{
+      if(typeof locDailyTraces==='undefined' || !locDailyTraces) locDailyTraces={};
+      Object.keys(locDailyTraces).forEach(function(pid){ locDailyTraces[pid]=sanitizeList(locDailyTraces[pid]); });
+      try{ localStorage.setItem('mono_loc_traces', JSON.stringify(locDailyTraces)); }catch(e){}
+      try{ if(typeof saveLocData==='function') saveLocData(); }catch(e){}
+    }catch(e){ console.warn('[v25 clean failed]', e); }
+  }
+  window.monoHardCleanLocTracesV25=hardCleanAll;
+
+  function msgTs(m){ var ts=m && (m.timestamp||m.time||m.createdAt||m.date||m.sentAt); if(!ts) return 0; if(typeof ts==='number') return ts; if(/^\d+$/.test(String(ts))) return Number(ts); var d=new Date(ts); return isNaN(d.getTime()) ? 0 : d.getTime(); }
+  function dayStart(){ var d=new Date(); d.setHours(0,0,0,0); return d.getTime(); }
+  function dayEnd(){ var d=new Date(); d.setHours(23,59,59,999); return d.getTime(); }
+  function extractSafeClues(persona){
+    try{
+      if(!persona || !Array.isArray(persona.history)) return [];
+      var st=dayStart(), en=dayEnd(), clues=[], seen={};
+      persona.history.forEach(function(m){
+        var ts=msgTs(m); if(!ts || ts<st || ts>en) return;
+        var text=cleanText(m.content||''); if(!text) return;
+        if(/明天|后天|後天|过两天|過兩天|以后|以後|改天|下周|下週/.test(text)) return;
+        if(!/(今天|今晚|现在|現在|目前|等下|待会|待會|一会|一會|上午|中午|下午|晚上|正在|回去|出门|出門|去|在)/.test(text)) return;
+        var period='当前附近';
+        if(/上午|早上/.test(text)) period='上午'; else if(/中午/.test(text)) period='中午'; else if(/下午/.test(text)) period='下午'; else if(/晚上|今晚/.test(text)) period='晚上';
+        var place='';
+        var pm=text.match(/(?:在|去|回)([^，。！？,.!?]{1,10})/); if(pm) place=cleanField(pm[1],12);
+        if(!place){ var p2=text.match(/(学校|學校|公司|办公室|辦公室|家里|家裡|家|宿舍|咖啡厅|咖啡廳|餐厅|餐廳|商场|商場|图书馆|圖書館|电影院|電影院|路上)/); if(p2) place=p2[1]; }
+        var am=text.match(/(学习|學習|复习|複習|工作|开会|開會|休息|吃饭|吃飯|喝咖啡|买东西|買東西|逛街|散步|约会|約會|换衣服|換衣服|穿衣服|收拾|回家|回去|出门|出門|坐车|坐車|等人|见面|見面|看电影|看電影)/);
+        var activity=am?am[1]:'';
+        if(!place && !activity) return;
+        if(!place) place=inferPlaceFromActivity(activity);
+        if(!activity) activity=inferActivityFromPlace(place);
+        var k=period+'|'+place+'|'+activity; if(seen[k]) return; seen[k]=true;
+        clues.push({period:period, place:place, activity:activity});
+      });
+      return clues.slice(-2);
+    }catch(e){ return []; }
+  }
+  function buildSafePrompt(persona, region, slots, mode){
+    var clues=extractSafeClues(persona);
+    var clueText=clues.length ? clues.map(function(c,i){return (i+1)+'. '+c.period+'：地点倾向='+c.place+'，事件倾向='+c.activity;}).join('\n') : '无明确当天行踪线索。';
+    return [
+      '你是情侣定位行踪生成器。请为角色生成今天的行踪。',
+      '角色：'+((persona&&persona.name)||'角色'),
+      '角色设定摘要：'+cleanField((persona&&(persona.persona||persona.description||''))||'',160),
+      '地区：'+(region||'未知地区'),
+      '必须严格生成这些半小时时间点：'+slots.join('、'),
+      '',
+      '硬性要求：',
+      '1. 只输出 JSON 数组，不要解释，不要 Markdown。',
+      '2. 数组长度必须等于时间点数量，且每条 time 必须严格等于给出的时间点。',
+      '3. 每条格式：{"time":"08:00","place":"地点","activity":"事件"}。',
+      '4. 不要复制聊天原句，不要出现问句；聊天只作为轻参考。',
+      '5. 不要把聊天发送时间当作行踪时间。',
+      '6. 地点和事件必须分开，不能两个都写地点或两个都写事件。',
+      '7. 行踪要连续自然，地点变化大时用“路上/准备出发/刚到附近”等过渡。',
+      '8. 如果聊天线索不适合今天，就忽略，按角色日常逻辑生成。',
+      '',
+      '当天聊天可轻参考的结构化线索：',
+      clueText
+    ].join('\n');
+  }
+  function cleanRaw(raw){ return String(raw||'').replace(/^```(?:json)?\s*/i,'').replace(/```$/,'').trim(); }
+  function parseArray(raw){ raw=cleanRaw(raw); try{ var a=JSON.parse(raw); if(Array.isArray(a)) return a; }catch(e){} var m=raw.match(/\[[\s\S]*\]/); if(m){ try{ var b=JSON.parse(m[0]); if(Array.isArray(b)) return b; }catch(e){} } return cleanRaw(raw).split(/\n+/).filter(Boolean); }
+  function parseForSlots(raw, slots){ var arr=parseArray(raw), prev=null; return slots.map(function(slot,i){ var item=normalizeItem(arr[i], slot, prev); prev=item; return item; }); }
+  async function callAI(persona, prompt, maxTokens){
+    if(!apiConfig || !apiConfig.url) throw new Error('请先配置 API');
+    var url='';
+    try{ if(typeof getApiUrl==='function') url=getApiUrl(); }catch(e){}
+    if(!url){ try{ if(typeof _buildApiChatCandidates==='function') url=_buildApiChatCandidates(apiConfig.url)[0]; }catch(e){} }
+    if(!url) url=String(apiConfig.url||'').replace(/\/+$/,'') + '/chat/completions';
+    var body={messages:[{role:'system',content:'只输出 JSON 数组。'}, {role:'user',content:prompt}], temperature:0.65, max_tokens:maxTokens||2200, stream:false};
+    try{ if(typeof _applyApiModel==='function') body=_applyApiModel(body, apiConfig.model || apiConfig); else body.model=apiConfig.model; }catch(e){ body.model=apiConfig.model; }
+    var headers={'Content-Type':'application/json'}; if(apiConfig.key) headers.Authorization='Bearer '+apiConfig.key;
+    var fetchFn=window.__monoV15OriginalFetch || window.__monoV17RawFetch || window.__monoOriginalFetch || window.fetch;
+    var r=await fetchFn(url,{method:'POST',headers:headers,body:JSON.stringify(body)});
+    if(!r.ok) throw new Error('API 返回错误：'+r.status);
+    var data=await r.json(), txt='';
+    try{ if(typeof _extractAssistantMessageContent==='function') txt=_extractAssistantMessageContent(data); }catch(e){}
+    if(!txt) txt=((((data||{}).choices||[])[0]||{}).message||{}).content || (((data||{}).candidates||[])[0]||{}).content || '';
+    txt=String(txt||'').trim(); if(!txt) throw new Error('AI 返回为空'); return txt;
+  }
+  async function generateSlots(persona, region, slots, mode){
+    var raw=await callAI(persona, buildSafePrompt(persona, region, slots, mode), Math.max(1200, slots.length*70));
+    return parseForSlots(raw, slots);
+  }
+  window.generateFullDayTrace=function(persona, region){ return generateSlots(persona, region, fullSlots(), 'full'); };
+  window.generateIncrementalTrace=function(persona, region, fromTime){
+    var start=fromTime && isHalfHour(fromTime) ? minOf(fromTime)+30 : 0;
+    var end=currentHalfHourMin(), slots=[]; for(var m=start;m<=end;m+=30) slots.push(fmtMin(m));
+    return generateSlots(persona, region, slots, 'incremental');
+  };
+  try{ eval('generateFullDayTrace = window.generateFullDayTrace; generateIncrementalTrace = window.generateIncrementalTrace;'); }catch(e){}
+
+  function ensureTabs(){
+    var header=document.querySelector('#locTraceView .loc-trace-header'); if(!header) return null;
+    var tabs=document.getElementById('locTraceRoleTabs'); if(!tabs){ tabs=document.createElement('div'); tabs.id='locTraceRoleTabs'; tabs.className='loc-trace-role-tabs'; header.insertAdjacentElement('afterend', tabs); }
+    var rels=activeRelations(), selected=ensureSelectedPid();
+    tabs.innerHTML=rels.map(function(r){ var pid=pidOf(r), p=getPersona(pid); if(!p) return ''; var active=String(pid)===String(selected); var av=p.avatar?'<img src="'+esc(p.avatar)+'" onerror="this.style.display=\'none\'">':'<span class="loc-trace-tab-fallback">'+esc((p.name||'?')[0])+'</span>'; return '<button type="button" class="loc-trace-role-chip '+(active?'active':'')+'" data-pid="'+esc(pid)+'">'+av+'<span>'+esc(p.name||'角色')+'</span></button>'; }).join('');
+    return tabs;
+  }
+  function visibleTraces(pid){ hardCleanAll(); var today=todayKey(); return ((locDailyTraces&&locDailyTraces[pid])?locDailyTraces[pid]:[]).filter(function(t){ return t && isTodayLike(t.isoDate||t.day||today) && isHalfHour(t.time); }).slice().sort(function(a,b){ return minOf(a.time)-minOf(b.time); }); }
+  window.renderLocTrace=function(){
+    try{ if(typeof _checkMidnightReset==='function') _checkMidnightReset(); }catch(e){}
+    var content=document.getElementById('locTraceContent'), empty=document.getElementById('locTraceEmpty'), title=document.querySelector('#locTraceView .loc-trace-header-title'), btn=document.getElementById('locTraceUpdateBtn');
+    if(!content) return;
+    ensureTabs(); var rels=activeRelations();
+    if(!rels.length){ if(empty){ empty.style.display='block'; empty.innerHTML='<i class="fas fa-route" style="font-size:24px;margin-bottom:8px;display:block;color:#ddd;"></i>绑定角色后将显示当日行踪'; } if(title) title.textContent='当日行踪'; content.innerHTML=''; return; }
+    if(empty) empty.style.display='none';
+    var pid=ensureSelectedPid(), p=getPersona(pid); if(!p){ content.innerHTML=''; return; }
+    if(title) title.textContent='当日行踪 · '+(p.name||'角色');
+    if(btn) btn.innerHTML='<i class="fas fa-sync-alt" style="margin-right:3px;font-size:9px;"></i>更新 '+esc(p.name||'角色');
+    var regen=document.getElementById('locTraceRegenerateBtn'); if(regen) regen.innerHTML='<i class="fas fa-redo" style="margin-right:3px;font-size:9px;"></i>重新生成全部';
+    var traces=visibleTraces(pid);
+    var latest=traces.length?traces[traces.length-1]:null;
+    var avatar=p.avatar?'<img class="loc-trace-profile-avatar" src="'+esc(p.avatar)+'" onerror="this.style.display=\'none\'">':'<div class="loc-trace-profile-avatar loc-trace-profile-fallback">'+esc((p.name||'?')[0])+'</div>';
+    var html='<div class="loc-trace-profile-card">'+avatar+'<div class="loc-trace-profile-info"><div class="loc-trace-profile-name">'+esc(p.name||'角色')+'</div><div class="loc-trace-profile-sub">'+(latest?('最新：'+esc(latest.time)+' · '+esc(latest.place)):'暂无行踪，点击上方按钮生成该角色今日行踪')+'</div></div><div class="loc-trace-count">'+traces.length+' 条</div></div>';
+    if(!traces.length) html+='<div class="loc-trace-empty-card"><i class="fas fa-route"></i><div>这个角色今天还没有有效行踪</div><small>之前错误的非半小时行踪已清理，点击「重新生成全部」重建。</small></div>';
+    else { html+='<div class="loc-trace-timeline">'; traces.slice().reverse().forEach(function(t,i){ html+='<div class="loc-trace-item v19-single"><div class="loc-trace-time">'+esc(t.time)+'</div><div class="loc-trace-dot'+(i===0?' current':'')+'"></div><div class="loc-trace-main"><div class="loc-trace-place">'+esc(t.place)+'</div>'+(t.activity?'<div class="loc-trace-activity">'+esc(t.activity)+'</div>':'')+'</div></div>'; }); html+='</div>'; }
+    content.innerHTML=html;
+  };
+  try{ eval('renderLocTrace = window.renderLocTrace'); }catch(e){}
+
+  function bindButtons(){
+    var tabs=document.getElementById('locTraceRoleTabs'); if(tabs && !tabs.__v25Bound){ tabs.__v25Bound=true; tabs.addEventListener('click', function(ev){ var chip=ev.target.closest && ev.target.closest('.loc-trace-role-chip'); if(chip){ ev.preventDefault(); ev.stopPropagation(); window.selectLocTraceChar(chip.getAttribute('data-pid')); } }, true); }
+    var regen=document.getElementById('locTraceRegenerateBtn'); if(regen && !regen.__v25Bound){ regen.__v25Bound=true; regen.onclick=function(ev){ if(ev){ev.preventDefault();ev.stopPropagation();} window.regenerateSelectedLocTrace(); return false; }; }
+  }
+  var _oldEnsure=window.ensureLocTraceRegenerateButton;
+  window.ensureLocTraceRegenerateButton=function(){ try{ if(typeof _oldEnsure==='function') _oldEnsure(); }catch(e){} bindButtons(); };
+
+  window.updateLocTrace=async function(){
+    var pid=ensureSelectedPid(), p=pid&&getPersona(pid); if(!p){ alert('请先选择要生成行踪的角色'); return; }
+    var btn=document.getElementById('locTraceUpdateBtn'), old=btn&&btn.innerHTML;
+    try{
+      if(btn){ btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin" style="font-size:9px;"></i>生成中'; }
+      hardCleanAll(); var existing=visibleTraces(pid), last=existing.length?existing[existing.length-1].time:null;
+      var start=last?minOf(last)+30:0, end=currentHalfHourMin(), slots=[]; for(var m=start;m<=end;m+=30) slots.push(fmtMin(m));
+      if(!slots.length){ toastSoft('当前时间段已经生成完，没有新的半小时行踪。'); return; }
+      var region=(locCharRegions&&locCharRegions[pid]) || locUserRegionName || '未知地区';
+      var traces=await generateSlots(p, region, slots, 'incremental');
+      locDailyTraces[pid]=sanitizeList(existing.concat(traces));
+      var latest=traces[traces.length-1];
+      try{ if(typeof locCharLocations==='undefined'||!locCharLocations) locCharLocations={}; locCharLocations[pid]=Array.isArray(locCharLocations[pid])?locCharLocations[pid]:[]; locCharLocations[pid].push({address:latest.place,time:new Date().toISOString(),source:'trace-v25-update',day:todayKey()}); }catch(e){}
+      try{ if(typeof saveLocData==='function') saveLocData(); }catch(e){} renderLocTrace(); toastSoft('已生成新的半小时行踪。');
+    }catch(err){ console.error('[v25 update failed]',err); toastSoft('生成失败：'+((err&&err.message)||'未知错误')); }
+    finally{ if(btn){ btn.disabled=false; btn.innerHTML=old||btn.innerHTML; } bindButtons(); try{ renderLocTrace(); }catch(e){} }
+  };
+  try{ eval('updateLocTrace = window.updateLocTrace'); }catch(e){}
+
+  window.regenerateSelectedLocTrace=async function(){
+    var pid=ensureSelectedPid(), p=pid&&getPersona(pid); if(!p){ toastSoft('请先选择要重新生成行踪的角色。'); return; }
+    var btn=document.getElementById('locTraceRegenerateBtn'), up=document.getElementById('locTraceUpdateBtn'), old=btn&&btn.innerHTML, oldU=up&&up.innerHTML;
+    try{
+      if(btn){ btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin" style="font-size:9px;"></i>重新生成中'; } if(up) up.disabled=true;
+      var slots=fullSlots(); if(!slots.length){ toastSoft('当前时间还没有可生成的半小时行踪。'); return; }
+      var region=(locCharRegions&&locCharRegions[pid]) || locUserRegionName || '未知地区';
+      var traces=await generateSlots(p, region, slots, 'full');
+      if(typeof locDailyTraces==='undefined'||!locDailyTraces) locDailyTraces={};
+      var oldList=Array.isArray(locDailyTraces[pid])?locDailyTraces[pid]:[];
+      var keep=oldList.filter(function(t){ return t && (t.isoDate||t.day) && !isTodayLike(t.isoDate||t.day); });
+      locDailyTraces[pid]=sanitizeList(keep.concat(traces));
+      var latest=traces[traces.length-1];
+      try{ if(typeof locCharLocations==='undefined'||!locCharLocations) locCharLocations={}; locCharLocations[pid]=Array.isArray(locCharLocations[pid])?locCharLocations[pid]:[]; locCharLocations[pid]=locCharLocations[pid].filter(function(x){return !(x&&isTodayLike(x.day||''));}); locCharLocations[pid].push({address:latest.place,time:new Date().toISOString(),source:'trace-v25-regenerate',day:todayKey()}); }catch(e){}
+      try{ if(typeof saveLocData==='function') saveLocData(); }catch(e){} renderLocTrace(); toastSoft('已重新生成当前角色今天的全部有效行踪。');
+    }catch(err){ console.error('[v25 regenerate failed]',err); toastSoft('重新生成失败：'+((err&&err.message)||'未知错误')); }
+    finally{ if(btn){ btn.disabled=false; btn.innerHTML=old||'<i class="fas fa-redo" style="margin-right:3px;font-size:9px;"></i>重新生成全部'; } if(up){ up.disabled=false; up.innerHTML=oldU||up.innerHTML; } bindButtons(); try{ renderLocTrace(); }catch(e){} }
+  };
+
+  // 立即、打开页面、切换 Tab、保存前都硬清理，避免旧错误数据继续显示。
+  hardCleanAll();
+  setTimeout(function(){ try{ hardCleanAll(); renderLocTrace(); bindButtons(); }catch(e){} }, 300);
+  document.addEventListener('click', function(){ setTimeout(bindButtons, 0); }, true);
+  var oldOpen=window.openLocationApp;
+  if(typeof oldOpen==='function' && !oldOpen.__v25Wrapped){ window.openLocationApp=function(){ var r=oldOpen.apply(this, arguments); setTimeout(function(){ hardCleanAll(); try{ if(typeof renderLocTrace==='function') renderLocTrace(); }catch(e){} bindButtons(); }, 80); return r; }; window.openLocationApp.__v25Wrapped=true; try{ eval('openLocationApp = window.openLocationApp'); }catch(e){} }
+})();
+</script>
+
+
+<script id="mono-role-wechat-v26-location-chat-anchor-align">
+/* ===== v26: 聊天确认地点/事件作为“硬锚点”对齐情侣定位 =====
+   修复：角色在聊天室刚回答“我在酒吧/咖啡厅/学校”等，但情侣定位重新生成却显示宿舍等冲突地点。
+   原则：不复制聊天原句；只把当天、角色自己确认的地点/事件转成半小时槽锚点，生成后强制对齐对应时间段。
+*/
+(function(){
+  if (window.__monoV26LocationChatAnchorAlign) return;
+  window.__monoV26LocationChatAnchorAlign = true;
+
+  function toastSoft(msg){ try{ if(typeof toast==='function') toast(msg); else if(typeof showToast==='function') showToast(msg); else console.log(msg); }catch(e){ console.log(msg); } }
+  function pad2(n){ return String(Math.max(0, Number(n)||0)).padStart(2,'0'); }
+  function cleanText(s){ return String(s||'').replace(/\[heart_voice\][\s\S]*?\[\/heart_voice\]/g,' ').replace(/<[^>]+>/g,' ').replace(/[\r\n]+/g,' ').replace(/\s+/g,' ').trim(); }
+  function cleanField(s,max){ return cleanText(s).replace(/[|｜]/g,' ').replace(/[。！？!?]/g,'').slice(0,max||30); }
+  function todayKey(){ try { return new Date().toLocaleDateString('zh-TW'); } catch(e){ return new Date().toISOString().slice(0,10); } }
+  function todayKeyAlt(){ try { return new Date().toLocaleDateString('zh-CN'); } catch(e){ return todayKey(); } }
+  function isTodayLike(d){ if(!d) return true; d=String(d); return d===todayKey() || d===todayKeyAlt() || d===new Date().toISOString().slice(0,10); }
+  function msgTs(m){ var ts=m && (m.timestamp||m.time||m.createdAt||m.date||m.sentAt); if(!ts) return 0; if(typeof ts==='number') return ts; if(/^\d+$/.test(String(ts))) return Number(ts); var d=new Date(ts); return isNaN(d.getTime()) ? 0 : d.getTime(); }
+  function dayStart(){ var d=new Date(); d.setHours(0,0,0,0); return d.getTime(); }
+  function dayEnd(){ var d=new Date(); d.setHours(23,59,59,999); return d.getTime(); }
+  function minOf(t){ var m=String(t||'').replace('：',':').match(/^\s*(\d{1,2}):(\d{2})\s*$/); return m ? (+m[1]*60 + +m[2]) : -1; }
+  function fmtMin(m){ m=Math.max(0, Math.min(1439, Math.floor((Number(m)||0)/30)*30)); return pad2(Math.floor(m/60))+':'+pad2(m%60); }
+  function isHalfHour(t){ var m=minOf(t); return m>=0 && m%30===0; }
+  function snapDateToSlot(ts){ var d=ts?new Date(ts):new Date(); return fmtMin(d.getHours()*60 + (d.getMinutes()>=30?30:0)); }
+  function currentHalfHourMin(){ var n=new Date(); return n.getHours()*60 + (n.getMinutes()>=30?30:0); }
+  function fullSlots(){ var arr=[], end=currentHalfHourMin(); for(var m=0;m<=end;m+=30) arr.push(fmtMin(m)); return arr; }
+  function pidOf(rel){ return rel && (rel.personaId != null ? rel.personaId : rel.id); }
+  function getPersona(pid){ try { return (typeof personas !== 'undefined' && Array.isArray(personas)) ? personas.find(function(p){ return String(p.id)===String(pid); }) : null; } catch(e){ return null; } }
+  function activeRelations(){ try { return (locRelations||[]).filter(function(r){ return !!getPersona(pidOf(r)); }); } catch(e){ return []; } }
+  function ensureSelectedPid(){
+    var rels=activeRelations(); if(!rels.length) return null;
+    var cur=window.locSelectedTraceCharId || (typeof locSelectedCharId !== 'undefined' ? locSelectedCharId : null);
+    if(!cur || !rels.some(function(r){ return String(pidOf(r))===String(cur); })) cur=pidOf(rels[0]);
+    window.locSelectedTraceCharId=cur; try{ locSelectedCharId=cur; }catch(e){}
+    return cur;
+  }
+  function inferActivityFromPlace(place){
+    place=String(place||'');
+    if(/酒吧|清吧|bar|夜店/i.test(place)) return '在店里放松，听音乐或聊天';
+    if(/咖啡|茶/.test(place)) return '点饮料休息';
+    if(/学校|學校|图书馆|圖書館|教室/.test(place)) return '学习或整理资料';
+    if(/公司|办公室|辦公室/.test(place)) return '处理工作';
+    if(/餐厅|餐廳|饭|飯|食堂/.test(place)) return '吃饭休息';
+    if(/家|宿舍|公寓/.test(place)) return '在室内休息';
+    if(/车站|車站|地铁|地鐵|机场|機場|路上/.test(place)) return '准备移动';
+    if(/商场|商場|店|超市|市场|市場/.test(place)) return '逛店买东西';
+    if(/公园|公園|海边|海邊/.test(place)) return '散步透气';
+    if(/电影院|電影院/.test(place)) return '看电影或等开场';
+    if(/医院|醫院|诊所|診所/.test(place)) return '处理预约或等候';
+    if(/健身房/.test(place)) return '运动或整理装备';
+    return '处理自己的安排';
+  }
+  function inferPlaceFromActivity(act){
+    act=String(act||'');
+    if(/喝|听音乐|聽音樂|放松|聊天/.test(act)) return '附近店里';
+    if(/学习|學習|复习|複習|上课|上課|作业|资料/.test(act)) return '图书馆';
+    if(/工作|开会|開會|会议|會議/.test(act)) return '办公室';
+    if(/吃|饭|飯/.test(act)) return '附近餐厅';
+    if(/咖啡/.test(act)) return '咖啡厅';
+    if(/休息|收拾|换衣|換衣/.test(act)) return '家里';
+    if(/约会|約會|见面|見面/.test(act)) return '约定地点附近';
+    if(/出发|出發|回去|回家|坐车|坐車|赶路|趕路/.test(act)) return '路上';
+    return '附近街区';
+  }
+  function normalizeItem(raw, slot, prev){
+    var place='', activity='';
+    if(raw && typeof raw==='object'){
+      place=raw.place || raw.location || raw['地点'] || raw.address || raw.where || '';
+      activity=raw.activity || raw.event || raw['事件'] || raw['活动'] || raw.doing || raw.desc || '';
+    }
+    place=cleanField(place,24); activity=cleanField(activity,38);
+    if(/[？?。！!]/.test(place) || place.length>18) place='附近街区';
+    if(/[？?]/.test(activity) || activity.length>34) activity=place ? inferActivityFromPlace(place) : '处理自己的安排';
+    if(!place && activity) place=inferPlaceFromActivity(activity);
+    if(!activity && place) activity=inferActivityFromPlace(place);
+    if(!place) place=prev && prev.place ? prev.place : '附近街区';
+    if(!activity) activity=prev && prev.activity ? '延续上一段安排' : '开始一天的安排';
+    if(place===activity) activity=inferActivityFromPlace(place) || '处理相关事情';
+    return { time:slot, place:place, activity:activity, isoDate:todayKey(), _v26Clean:true };
+  }
+  function sanitizeList(list){
+    var seen={}, out=[];
+    (Array.isArray(list)?list:[]).forEach(function(t){
+      if(!t) return;
+      var day=t.isoDate || t.day || '';
+      if(day && !isTodayLike(day)){ out.push(t); return; }
+      var time=String(t.time||'').replace('：',':').trim();
+      if(!isHalfHour(time)) return;
+      time=fmtMin(minOf(time));
+      if(seen[time]) return;
+      seen[time]=true;
+      out.push(normalizeItem({place:t.place||t.address||t.location, activity:t.activity||t.event||t.desc}, time, out[out.length-1]));
+    });
+    out.sort(function(a,b){ var ad=a.isoDate||'', bd=b.isoDate||''; if(ad!==bd) return String(ad).localeCompare(String(bd)); return minOf(a.time)-minOf(b.time); });
+    return out;
+  }
+  function hardCleanAll(){
+    try{ if(typeof locDailyTraces==='undefined' || !locDailyTraces) locDailyTraces={}; Object.keys(locDailyTraces).forEach(function(pid){ locDailyTraces[pid]=sanitizeList(locDailyTraces[pid]); }); try{ localStorage.setItem('mono_loc_traces', JSON.stringify(locDailyTraces)); }catch(e){} try{ if(typeof saveLocData==='function') saveLocData(); }catch(e){} }catch(e){}
+  }
+  function likelyCharacterMessage(m, persona){
+    var r=String((m&&m.role)||'').toLowerCase();
+    if(r==='assistant' || r==='char' || r==='character' || r==='bot') return true;
+    var sid=String((m&&(m.senderId||m.personaId||m.charId||m.fromId||m.from))||'');
+    if(persona && sid && String(persona.id)===sid) return true;
+    // 兼容旧数据：没有角色标记时，只要不是明显用户发问，也可以作为角色确认线索。
+    var text=cleanText(m&&m.content||'');
+    if(/[？?]/.test(text) && !/(我在|我现在|我現在|正在|刚到|剛到|到了|在.+?(酒吧|咖啡|学校|學校|宿舍|家|公司|餐厅|餐廳|商场|商場|图书馆|圖書館))/.test(text)) return false;
+    return true;
+  }
+  function extractPlace(text){
+    text=cleanText(text);
+    var direct=text.match(/(?:我(?:现在|現在|这会儿|這會兒)?(?:就在|在)|现在(?:在)?|現在(?:在)?|刚到|剛到|到了|待在|正在|在)([^，。！？,.!?\s]{1,12})/);
+    var candidate=direct && cleanField(direct[1],12);
+    var known='酒吧|清吧|夜店|KTV|咖啡厅|咖啡廳|咖啡店|学校|學校|图书馆|圖書館|教室|公司|办公室|辦公室|家里|家裡|家|宿舍|公寓|餐厅|餐廳|食堂|商场|商場|超市|市场|市場|电影院|電影院|医院|醫院|诊所|診所|健身房|公园|公園|海边|海邊|车站|車站|地铁站|地鐵站|机场|機場|路上';
+    var re=new RegExp('('+known+')','i');
+    var k=text.match(re);
+    if(k){
+      // 如果直接提取到“酒吧里/咖啡厅那边”等，优先规范成已知地点。
+      return k[1];
+    }
+    if(candidate && !/(什么|什麼|哪|哪里|哪裡|干嘛|幹嘛|这边|這邊|那里|那裡|这里|這裡|你|我)/.test(candidate)) return candidate;
+    return '';
+  }
+  function extractActivity(text, place){
+    text=cleanText(text);
+    var am=text.match(/(学习|學習|复习|複習|工作|开会|開會|休息|吃饭|吃飯|喝咖啡|买东西|買東西|逛街|散步|约会|約會|换衣服|換衣服|穿衣服|收拾|回家|回去|出门|出門|坐车|坐車|等人|见面|見面|看电影|看電影|听音乐|聽音樂|聊天|放松|等位|排队|排隊)/);
+    if(am) return am[1];
+    return place ? inferActivityFromPlace(place) : '';
+  }
+  function slotFromTextOrMsg(text, ts){
+    text=cleanText(text);
+    var m=text.match(/(\d{1,2})\s*(?:[:：点點])\s*(\d{0,2})/);
+    if(m){ return fmtMin((+m[1])*60 + (m[2]?+m[2]:0)); }
+    if(/现在|現在|目前|这会|這會|刚刚|剛剛|刚到|剛到|正在|我在/.test(text)) return snapDateToSlot(ts||Date.now());
+    if(/上午|早上/.test(text)) return '09:00';
+    if(/中午/.test(text)) return '12:00';
+    if(/下午/.test(text)) return '15:00';
+    if(/晚上|今晚/.test(text)) return '20:00';
+    // 如果是今天刚刚发送的“我在酒吧/在咖啡厅”但没写现在，也按消息所在半小时。
+    return snapDateToSlot(ts||Date.now());
+  }
+  function extractChatAnchors(persona){
+    try{
+      if(!persona || !Array.isArray(persona.history)) return [];
+      var st=dayStart(), en=dayEnd(), now=Date.now(), anchors=[], seen={};
+      persona.history.forEach(function(m){
+        var ts=msgTs(m); if(!ts || ts<st || ts>en) return;
+        var text=cleanText(m.content||''); if(!text) return;
+        if(/明天|后天|後天|过两天|過兩天|以后|以後|改天|下周|下週|下个月|下個月/.test(text)) return;
+        if(!likelyCharacterMessage(m, persona)) return;
+        var place=extractPlace(text);
+        var activity=extractActivity(text, place);
+        if(!place && !activity) return;
+        if(!place) place=inferPlaceFromActivity(activity);
+        if(!activity) activity=inferActivityFromPlace(place);
+        var slot=slotFromTextOrMsg(text, ts);
+        if(!isHalfHour(slot)) slot=fmtMin(minOf(slot));
+        // 只把“今天、角色确认过”的地点事件作为锚点；当前/近期回答优先级最高。
+        var recency = Math.max(0, 1 - Math.min(Math.abs(now-ts), 6*60*60*1000)/(6*60*60*1000));
+        var k=slot+'|'+place;
+        if(!seen[k] || recency>seen[k].recency){ seen[k]={slot:slot, place:place, activity:activity, recency:recency, ts:ts}; }
+      });
+      Object.keys(seen).forEach(function(k){ anchors.push(seen[k]); });
+      anchors.sort(function(a,b){ return a.ts-b.ts; });
+      return anchors.slice(-4);
+    }catch(e){ return []; }
+  }
+  function applyAnchors(persona, traces){
+    var arr=sanitizeList(traces||[]);
+    var anchors=extractChatAnchors(persona);
+    if(!anchors.length) return arr;
+    var byTime={}; arr.forEach(function(t){ byTime[t.time]=t; });
+    anchors.forEach(function(a){
+      var slot=a.slot;
+      if(!byTime[slot]){
+        // 找最近的半小时槽，不新增乱时间。
+        var sm=minOf(slot), best=null, diff=9999;
+        arr.forEach(function(t){ var d=Math.abs(minOf(t.time)-sm); if(d<diff){ diff=d; best=t; } });
+        if(best && diff<=30) slot=best.time;
+      }
+      if(byTime[slot]){
+        byTime[slot].place=cleanField(a.place,24) || byTime[slot].place;
+        byTime[slot].activity=cleanField(a.activity,38) || inferActivityFromPlace(byTime[slot].place);
+        byTime[slot]._chatAnchor='v26';
+      }
+    });
+    return sanitizeList(arr);
+  }
+  // 包装底层生成器：即使其他入口调用，也会把“我在酒吧”等当天确认地点对齐到半小时槽。
+  if(typeof window.generateFullDayTrace==='function' && !window.generateFullDayTrace.__v26Wrapped){
+    var _oldFull=window.generateFullDayTrace;
+    window.generateFullDayTrace=async function(persona, region){ var res=await _oldFull.apply(this, arguments); return applyAnchors(persona, res); };
+    window.generateFullDayTrace.__v26Wrapped=true; try{ eval('generateFullDayTrace = window.generateFullDayTrace'); }catch(e){}
+  }
+  if(typeof window.generateIncrementalTrace==='function' && !window.generateIncrementalTrace.__v26Wrapped){
+    var _oldInc=window.generateIncrementalTrace;
+    window.generateIncrementalTrace=async function(persona, region, fromTime){ var res=await _oldInc.apply(this, arguments); return applyAnchors(persona, res); };
+    window.generateIncrementalTrace.__v26Wrapped=true; try{ eval('generateIncrementalTrace = window.generateIncrementalTrace'); }catch(e){}
+  }
+
+  window.updateLocTrace=async function(){
+    var pid=ensureSelectedPid(), p=pid&&getPersona(pid); if(!p){ alert('请先选择要生成行踪的角色'); return; }
+    var btn=document.getElementById('locTraceUpdateBtn'), old=btn&&btn.innerHTML;
+    try{
+      if(btn){ btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin" style="font-size:9px;"></i>生成中'; }
+      hardCleanAll(); var existing=sanitizeList((locDailyTraces&&locDailyTraces[pid])||[]).filter(function(t){return isTodayLike(t.isoDate||t.day||'')});
+      var last=existing.length?existing[existing.length-1].time:null;
+      var start=last?minOf(last)+30:0, end=currentHalfHourMin(), slots=[]; for(var m=start;m<=end;m+=30) slots.push(fmtMin(m));
+      if(!slots.length){ toastSoft('当前时间段已经生成完，没有新的半小时行踪。'); return; }
+      var region=(locCharRegions&&locCharRegions[pid]) || locUserRegionName || '未知地区';
+      var traces=typeof window.generateIncrementalTrace==='function' ? await window.generateIncrementalTrace(p, region, last) : [];
+      traces=applyAnchors(p, traces);
+      if(typeof locDailyTraces==='undefined'||!locDailyTraces) locDailyTraces={};
+      locDailyTraces[pid]=sanitizeList(existing.concat(traces));
+      try{ if(typeof saveLocData==='function') saveLocData(); }catch(e){}
+      try{ if(typeof renderLocTrace==='function') renderLocTrace(); }catch(e){}
+      toastSoft('已生成新的半小时行踪。');
+    }catch(err){ console.error('[v26 update failed]',err); toastSoft('生成失败：'+((err&&err.message)||'未知错误')); }
+    finally{ if(btn){ btn.disabled=false; btn.innerHTML=old||btn.innerHTML; } }
+  };
+  try{ eval('updateLocTrace = window.updateLocTrace'); }catch(e){}
+
+  window.regenerateSelectedLocTrace=async function(){
+    var pid=ensureSelectedPid(), p=pid&&getPersona(pid); if(!p){ toastSoft('请先选择要重新生成行踪的角色。'); return; }
+    var btn=document.getElementById('locTraceRegenerateBtn'), up=document.getElementById('locTraceUpdateBtn'), old=btn&&btn.innerHTML, oldU=up&&up.innerHTML;
+    try{
+      if(btn){ btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin" style="font-size:9px;"></i>重新生成中'; } if(up) up.disabled=true;
+      var slots=fullSlots(); if(!slots.length){ toastSoft('当前时间还没有可生成的半小时行踪。'); return; }
+      var region=(locCharRegions&&locCharRegions[pid]) || locUserRegionName || '未知地区';
+      var traces=typeof window.generateFullDayTrace==='function' ? await window.generateFullDayTrace(p, region) : [];
+      traces=applyAnchors(p, traces);
+      if(typeof locDailyTraces==='undefined'||!locDailyTraces) locDailyTraces={};
+      var oldList=Array.isArray(locDailyTraces[pid])?locDailyTraces[pid]:[];
+      var keep=oldList.filter(function(t){ return t && (t.isoDate||t.day) && !isTodayLike(t.isoDate||t.day); });
+      locDailyTraces[pid]=sanitizeList(keep.concat(traces));
+      try{ if(typeof saveLocData==='function') saveLocData(); }catch(e){}
+      try{ if(typeof renderLocTrace==='function') renderLocTrace(); }catch(e){}
+      toastSoft('已重新生成当前角色今天的全部有效行踪。');
+    }catch(err){ console.error('[v26 regenerate failed]',err); toastSoft('重新生成失败：'+((err&&err.message)||'未知错误')); }
+    finally{ if(btn){ btn.disabled=false; btn.innerHTML=old||'<i class="fas fa-redo" style="margin-right:3px;font-size:9px;"></i>重新生成全部'; } if(up){ up.disabled=false; up.innerHTML=oldU||up.innerHTML; } }
+  };
+  try{ eval('regenerateSelectedLocTrace = window.regenerateSelectedLocTrace'); }catch(e){}
+
+  function rebind(){
+    var regen=document.getElementById('locTraceRegenerateBtn'); if(regen){ regen.onclick=function(ev){ if(ev){ev.preventDefault();ev.stopPropagation();} window.regenerateSelectedLocTrace(); return false; }; }
+    var btn=document.getElementById('locTraceUpdateBtn'); if(btn){ btn.onclick=function(ev){ if(ev){ev.preventDefault();ev.stopPropagation();} window.updateLocTrace(); return false; }; }
+  }
+  setTimeout(function(){ hardCleanAll(); rebind(); try{ if(typeof renderLocTrace==='function') renderLocTrace(); }catch(e){} }, 350);
+  document.addEventListener('click', function(){ setTimeout(rebind,0); }, true);
+})();
+</script>
+
+
+
+<script id="mono-role-wechat-v27-location-event-place-logic-align">
+/* ===== v27: 聊天锚点的“时间 + 地点 + 事件 + 状态”整体对齐 =====
+   目标：如果聊天室里角色已经确认“我在酒吧 / 在酒吧喝酒 / 等朋友 / 晚点回宿舍”，
+   情侣定位不能只改地点，也不能事件乱写成宿舍、学习等冲突内容。
+   原则：只参考当天同日期、角色自己确认/计划的内容；不复制原句；生成每半小时行踪时按逻辑融合。
+*/
+(function(){
+  if (window.__monoV27LocationEventPlaceLogicAlign) return;
+  window.__monoV27LocationEventPlaceLogicAlign = true;
+
+  function toastSoft(msg){ try{ if(typeof toast==='function') toast(msg); else if(typeof showToast==='function') showToast(msg); else console.log(msg); }catch(e){ console.log(msg); } }
+  function pad2(n){ return String(Math.max(0, Number(n)||0)).padStart(2,'0'); }
+  function cleanText(s){ return String(s||'').replace(/\[heart_voice\][\s\S]*?\[\/heart_voice\]/g,' ').replace(/<[^>]+>/g,' ').replace(/[\r\n]+/g,' ').replace(/\s+/g,' ').trim(); }
+  function cleanField(s,max){ return cleanText(s).replace(/[|｜]/g,' ').replace(/[。！？!?]/g,'').slice(0,max||40); }
+  function todayKey(){ try { return new Date().toLocaleDateString('zh-TW'); } catch(e){ return new Date().toISOString().slice(0,10); } }
+  function todayAlt(){ try { return new Date().toLocaleDateString('zh-CN'); } catch(e){ return todayKey(); } }
+  function isTodayLike(d){ if(!d) return true; d=String(d); return d===todayKey() || d===todayAlt() || d===new Date().toISOString().slice(0,10); }
+  function msgTs(m){ var ts=m && (m.timestamp||m.time||m.createdAt||m.date||m.sentAt); if(!ts) return 0; if(typeof ts==='number') return ts; if(/^\d+$/.test(String(ts))) return Number(ts); var d=new Date(ts); return isNaN(d.getTime())?0:d.getTime(); }
+  function dayStart(){ var d=new Date(); d.setHours(0,0,0,0); return d.getTime(); }
+  function dayEnd(){ var d=new Date(); d.setHours(23,59,59,999); return d.getTime(); }
+  function minOf(t){ var m=String(t||'').replace('：',':').match(/^\s*(\d{1,2}):(\d{2})\s*$/); return m ? (+m[1]*60 + +m[2]) : -1; }
+  function fmtMin(m){ m=Math.max(0, Math.min(1439, Math.floor((Number(m)||0)/30)*30)); return pad2(Math.floor(m/60))+':'+pad2(m%60); }
+  function isHalfHour(t){ var m=minOf(t); return m>=0 && m%30===0; }
+  function snap(ts){ var d=ts?new Date(ts):new Date(); return fmtMin(d.getHours()*60 + (d.getMinutes()>=30?30:0)); }
+  function currentHalfHourMin(){ var n=new Date(); return n.getHours()*60 + (n.getMinutes()>=30?30:0); }
+  function fullSlots(){ var arr=[], end=currentHalfHourMin(); for(var m=0;m<=end;m+=30) arr.push(fmtMin(m)); return arr; }
+  function pidOf(rel){ return rel && (rel.personaId != null ? rel.personaId : rel.id); }
+  function getPersona(pid){ try { return (typeof personas!=='undefined' && Array.isArray(personas)) ? personas.find(function(p){return String(p.id)===String(pid);}) : null; } catch(e){ return null; } }
+  function activeRelations(){ try { return (locRelations||[]).filter(function(r){ return !!getPersona(pidOf(r)); }); } catch(e){ return []; } }
+  function ensureSelectedPid(){ var rels=activeRelations(); if(!rels.length) return null; var cur=window.locSelectedTraceCharId || (typeof locSelectedCharId!=='undefined'?locSelectedCharId:null); if(!cur || !rels.some(function(r){return String(pidOf(r))===String(cur);})){ cur=pidOf(rels[0]); } window.locSelectedTraceCharId=cur; try{ locSelectedCharId=cur; }catch(e){} return cur; }
+
+  var placeKnown = ['酒吧','清吧','夜店','KTV','咖啡厅','咖啡廳','咖啡店','学校','學校','图书馆','圖書館','教室','公司','办公室','辦公室','家里','家裡','家','宿舍','公寓','餐厅','餐廳','食堂','商场','商場','超市','市场','市場','电影院','電影院','医院','醫院','诊所','診所','健身房','公园','公園','海边','海邊','车站','車站','地铁站','地鐵站','机场','機場','路上','街上','附近'];
+  function canonicalPlace(p){
+    p=cleanField(p,18);
+    var map=[[/清吧|夜店|KTV|bar/i,'酒吧'],[/咖啡廳|咖啡店/,'咖啡厅'],[/學校/,'学校'],[/圖書館/,'图书馆'],[/辦公室/,'办公室'],[/家裡|家里|公寓/,'家里'],[/餐廳|食堂/,'餐厅'],[/商場|市場|市场|超市/,'商场'],[/電影院/,'电影院'],[/醫院|診所|诊所/,'医院'],[/公園|海邊|海边/,'公园'],[/車站|地鐵站|机场|機場/,'路上']];
+    for(var i=0;i<map.length;i++){ if(map[i][0].test(p)) return map[i][1]; }
+    return p;
+  }
+  function placeType(place){
+    place=canonicalPlace(place);
+    if(/酒吧/.test(place)) return 'bar';
+    if(/咖啡/.test(place)) return 'cafe';
+    if(/学校|图书馆|教室/.test(place)) return 'study';
+    if(/公司|办公室/.test(place)) return 'work';
+    if(/餐厅/.test(place)) return 'food';
+    if(/家|宿舍/.test(place)) return 'home';
+    if(/路上|车站|地铁|机场/.test(place)) return 'transit';
+    if(/商场|超市|市场/.test(place)) return 'shopping';
+    if(/公园|海边/.test(place)) return 'walk';
+    if(/电影院/.test(place)) return 'movie';
+    if(/医院/.test(place)) return 'medical';
+    if(/健身房/.test(place)) return 'gym';
+    return 'other';
+  }
+  function inferActivityFromPlace(place, raw){
+    raw=cleanText(raw||'');
+    var t=placeType(place);
+    if(t==='bar'){
+      if(/等|朋友|見|见|約|约/.test(raw)) return '在酒吧等人或和朋友见面';
+      if(/喝|酒|饮|飲/.test(raw)) return '在酒吧喝点东西放松';
+      if(/音乐|音樂|聊天|放松|玩/.test(raw)) return '在酒吧听音乐聊天';
+      return '在酒吧放松，和人聊天';
+    }
+    if(t==='cafe') return /学习|學習|工作|复习|複習/.test(raw) ? '在咖啡厅边喝东西边处理事情' : '在咖啡厅休息，点饮料';
+    if(t==='study') return /上课|上課/.test(raw) ? '上课或准备课程内容' : '学习或整理资料';
+    if(t==='work') return /会|會/.test(raw) ? '开会或处理工作事项' : '处理工作';
+    if(t==='food') return '吃饭或等餐';
+    if(t==='home') return /换衣|換衣|穿|收拾/.test(raw) ? '在室内收拾或换衣服' : '在室内休息';
+    if(t==='transit') return '在路上移动';
+    if(t==='shopping') return '逛店或买东西';
+    if(t==='walk') return '散步透气';
+    if(t==='movie') return '看电影或等开场';
+    if(t==='medical') return '处理预约或等候';
+    if(t==='gym') return '运动或整理装备';
+    return '处理自己的安排';
+  }
+  function inferPlaceFromActivity(act){
+    act=cleanText(act||'');
+    if(/酒|听音乐|聽音樂|夜店|清吧/.test(act)) return '酒吧';
+    if(/咖啡|饮料|飲料/.test(act)) return '咖啡厅';
+    if(/学习|學習|复习|複習|上课|上課|作业|資料|资料/.test(act)) return '图书馆';
+    if(/工作|开会|開會|会议|會議/.test(act)) return '办公室';
+    if(/吃|饭|飯|等餐/.test(act)) return '餐厅';
+    if(/休息|收拾|换衣|換衣|穿衣|睡/.test(act)) return '家里';
+    if(/买|買|逛/.test(act)) return '商场';
+    if(/散步|透气|透氣/.test(act)) return '公园';
+    if(/电影|電影/.test(act)) return '电影院';
+    if(/运动|運動|健身/.test(act)) return '健身房';
+    if(/出发|出發|回去|回家|坐车|坐車|赶路|趕路|路上/.test(act)) return '路上';
+    if(/约会|約會|见面|見面|等人|朋友/.test(act)) return '约定地点附近';
+    return '附近街区';
+  }
+  function activityType(act){
+    act=cleanText(act||'');
+    if(/酒|夜店|音乐|音樂/.test(act)) return 'bar';
+    if(/咖啡|饮料|飲料/.test(act)) return 'cafe';
+    if(/学习|學習|复习|複習|上课|上課|作业|资料|資料/.test(act)) return 'study';
+    if(/工作|开会|開會|会议|會議/.test(act)) return 'work';
+    if(/吃|饭|飯|等餐/.test(act)) return 'food';
+    if(/休息|收拾|换衣|換衣|穿衣|睡/.test(act)) return 'home';
+    if(/出发|出發|回去|回家|坐车|坐車|赶路|趕路|路上/.test(act)) return 'transit';
+    if(/买|買|逛/.test(act)) return 'shopping';
+    if(/散步|透气|透氣/.test(act)) return 'walk';
+    if(/电影|電影/.test(act)) return 'movie';
+    if(/医院|醫院|预约|預約/.test(act)) return 'medical';
+    if(/运动|運動|健身/.test(act)) return 'gym';
+    return 'other';
+  }
+  function makeCompatible(place, activity, raw){
+    place=canonicalPlace(place||''); activity=cleanField(activity||'',36); raw=cleanText(raw||'');
+    if(!place && activity) place=inferPlaceFromActivity(activity);
+    if(!activity && place) activity=inferActivityFromPlace(place, raw);
+    if(!place) place='附近街区';
+    if(!activity) activity=inferActivityFromPlace(place, raw);
+    var pt=placeType(place), at=activityType(activity);
+    // 如果地点和事件明显冲突，以聊天确认的地点为主，把事件改成合理事件。
+    var conflict = (pt==='bar' && ['study','work','home','medical'].indexOf(at)>=0) ||
+                   (pt==='home' && ['bar','shopping','movie','gym'].indexOf(at)>=0) ||
+                   (pt==='study' && ['bar','food','movie','shopping'].indexOf(at)>=0) ||
+                   (pt==='work' && ['bar','movie','shopping','gym'].indexOf(at)>=0) ||
+                   (pt==='food' && ['study','work','gym'].indexOf(at)>=0);
+    if(conflict) activity=inferActivityFromPlace(place, raw);
+    if(place===activity || activity.indexOf(place)>=0 && activity.length<place.length+4) activity=inferActivityFromPlace(place, raw);
+    return {place:cleanField(place,24), activity:cleanField(activity,38)};
+  }
+  function extractPlace(text){
+    text=cleanText(text);
+    var knownRe=new RegExp('('+placeKnown.join('|')+')','i');
+    var k=text.match(knownRe); if(k) return canonicalPlace(k[1]);
+    var direct=text.match(/(?:我(?:现在|現在|这会儿|這會兒)?(?:就在|在)|现在(?:在)?|現在(?:在)?|刚到|剛到|到了|待在|正在|去|回|到)([^，。！？,.!?\s]{1,12})/);
+    var c=direct && cleanField(direct[1],12);
+    if(c && !/(什么|什麼|哪里|哪裡|哪|干嘛|幹嘛|你|我|这边|這邊|那里|那裡|这里|這裡)/.test(c)) return canonicalPlace(c);
+    return '';
+  }
+  function extractActivity(text, place){
+    text=cleanText(text);
+    var patterns=[
+      ['喝酒','在酒吧喝点东西放松'],['喝点酒','在酒吧喝点东西放松'],['听音乐','在酒吧听音乐聊天'],['聽音樂','在酒吧听音乐聊天'],['蹦迪','在酒吧或夜店放松'],
+      ['等朋友','等朋友或和朋友见面'],['等人','等人或和人见面'],['约会','准备约会或见面'],['約會','准备约会或见面'],['见面','和人见面'],['見面','和人见面'],
+      ['学习','学习或整理资料'],['學習','学习或整理资料'],['复习','复习资料'],['複習','复习资料'],['上课','上课或准备课程'],['上課','上课或准备课程'],
+      ['工作','处理工作'],['开会','开会或处理工作事项'],['開會','开会或处理工作事项'],['吃饭','吃饭或等餐'],['吃飯','吃饭或等餐'],['喝咖啡','点饮料休息'],
+      ['买东西','逛店买东西'],['買東西','逛店买东西'],['逛街','逛店买东西'],['散步','散步透气'],['看电影','看电影或等开场'],['看電影','看电影或等开场'],
+      ['换衣服','在室内收拾或换衣服'],['換衣服','在室内收拾或换衣服'],['穿衣服','在室内收拾或换衣服'],['收拾','在室内收拾东西'],['休息','休息'],
+      ['回家','在路上回家'],['回去','在路上移动'],['出门','准备出门或已经在路上'],['出門','准备出门或已经在路上'],['坐车','在路上移动'],['坐車','在路上移动']
+    ];
+    for(var i=0;i<patterns.length;i++){ if(text.indexOf(patterns[i][0])>=0) return patterns[i][1]; }
+    return place ? inferActivityFromPlace(place, text) : '';
+  }
+  function slotFromText(text, ts){
+    text=cleanText(text);
+    var m=text.match(/(\d{1,2})\s*(?:[:：点點])\s*(\d{0,2})/); if(m) return fmtMin((+m[1])*60 + (m[2]?+m[2]:0));
+    if(/凌晨/.test(text)) return '01:00';
+    if(/早上|上午/.test(text)) return '09:00';
+    if(/中午/.test(text)) return '12:00';
+    if(/下午/.test(text)) return '15:00';
+    if(/傍晚/.test(text)) return '18:00';
+    if(/晚上|今晚/.test(text)) return '20:00';
+    if(/现在|現在|目前|这会|這會|刚刚|剛剛|刚到|剛到|正在|我在|到了|待在/.test(text)) return snap(ts||Date.now());
+    return snap(ts||Date.now());
+  }
+  function likelyCharMsg(m, persona){
+    var r=String((m&&m.role)||'').toLowerCase();
+    if(r==='assistant'||r==='char'||r==='character'||r==='bot') return true;
+    var sid=String((m&&(m.senderId||m.personaId||m.charId||m.fromId||m.from))||'');
+    if(persona && sid && String(persona.id)===sid) return true;
+    var text=cleanText(m&&m.content||'');
+    if(/[？?]/.test(text) && !/(我在|我现在|我現在|正在|刚到|剛到|到了|等|去|回|喝|吃|学习|學習|工作|休息)/.test(text)) return false;
+    return true;
+  }
+  function collectAnchors(persona){
+    try{
+      if(!persona || !Array.isArray(persona.history)) return [];
+      var st=dayStart(), en=dayEnd(), now=Date.now(), tmp={};
+      persona.history.forEach(function(m,idx){
+        var ts=msgTs(m); if(!ts || ts<st || ts>en) return;
+        var text=cleanText(m.content||''); if(!text) return;
+        if(/明天|后天|後天|过两天|過兩天|以后|以後|改天|下周|下週|下个月|下個月/.test(text)) return;
+        if(!likelyCharMsg(m, persona)) return;
+        var place=extractPlace(text), activity=extractActivity(text, place);
+        if(!place && !activity) return;
+        var pair=makeCompatible(place, activity, text);
+        var slot=slotFromText(text, ts); if(!isHalfHour(slot)) slot=fmtMin(minOf(slot));
+        var key=slot;
+        var priority = (/(我在|我现在|我現在|现在|現在|刚到|剛到|到了|正在|待在)/.test(text)?5:0) + (place?3:0) + (activity?2:0) + Math.max(0, 3 - Math.abs(now-ts)/(2*60*60*1000));
+        if(!tmp[key] || priority>=tmp[key].priority){ tmp[key]={slot:slot, place:pair.place, activity:pair.activity, raw:text, ts:ts, priority:priority, idx:idx}; }
+      });
+      return Object.keys(tmp).map(function(k){ return tmp[k]; }).sort(function(a,b){ return a.ts-b.ts; }).slice(-8);
+    }catch(e){ return []; }
+  }
+  function normItem(raw, slot, prev){
+    var place='', activity='';
+    if(raw && typeof raw==='object'){
+      place=raw.place||raw.location||raw['地点']||raw.address||raw.where||'';
+      activity=raw.activity||raw.event||raw['事件']||raw['活动']||raw.doing||raw.desc||'';
+    }
+    var pair=makeCompatible(place, activity, '');
+    if((!raw || !raw.place) && prev && prev.place && pair.place==='附近街区') pair.place=prev.place;
+    return { time:slot, place:pair.place, activity:pair.activity, isoDate:todayKey(), _v27Clean:true };
+  }
+  function sanitize(list){
+    var by={}, other=[];
+    (Array.isArray(list)?list:[]).forEach(function(t){
+      if(!t) return;
+      var day=t.isoDate||t.day||'';
+      if(day && !isTodayLike(day)){ other.push(t); return; }
+      var time=String(t.time||'').replace('：',':').trim(); if(!isHalfHour(time)) return;
+      time=fmtMin(minOf(time));
+      by[time]=normItem(t,time,by[time]||null);
+    });
+    var today=Object.keys(by).sort(function(a,b){return minOf(a)-minOf(b);}).map(function(k){return by[k];});
+    return other.concat(today);
+  }
+  function addTransitions(arr, anchors){
+    var map={}; arr.forEach(function(t){ map[t.time]=t; });
+    anchors.forEach(function(a){
+      var am=minOf(a.slot); if(am<30) return;
+      var prev=fmtMin(am-30);
+      if(map[prev] && map[prev].place && map[prev].place!==a.place){
+        var oldType=placeType(map[prev].place), newType=placeType(a.place);
+        if(oldType!==newType && placeType(map[prev].place)!=='transit'){
+          map[prev].place='路上';
+          map[prev].activity='前往'+a.place+'，准备接上后面的安排';
+          map[prev]._v27Transition=true;
+        }
+      }
+    });
+    return Object.keys(map).sort(function(a,b){return minOf(a)-minOf(b);}).map(function(k){return map[k];});
+  }
+  function applyAnchors(persona, traces){
+    var arr=sanitize(traces||[]).filter(function(t){ return !t.isoDate || isTodayLike(t.isoDate||t.day||''); });
+    var anchors=collectAnchors(persona);
+    if(!anchors.length) return arr;
+    var map={}; arr.forEach(function(t){ map[t.time]=t; });
+    anchors.forEach(function(a){
+      var slot=a.slot;
+      if(!map[slot]){
+        var sm=minOf(slot), best=null, diff=9999;
+        Object.keys(map).forEach(function(k){ var d=Math.abs(minOf(k)-sm); if(d<diff){ diff=d; best=k; } });
+        if(best && diff<=30) slot=best;
+      }
+      if(map[slot]){
+        var pair=makeCompatible(a.place, a.activity, a.raw);
+        map[slot].place=pair.place;
+        map[slot].activity=pair.activity;
+        map[slot]._chatAnchor='v27-event-place';
+      }
+    });
+    arr=Object.keys(map).sort(function(a,b){return minOf(a)-minOf(b);}).map(function(k){return map[k];});
+    arr=addTransitions(arr, anchors);
+    return sanitize(arr);
+  }
+  function hardCleanAll(){
+    try{
+      if(typeof locDailyTraces==='undefined'||!locDailyTraces) locDailyTraces={};
+      Object.keys(locDailyTraces).forEach(function(pid){ var p=getPersona(pid); locDailyTraces[pid]=applyAnchors(p, locDailyTraces[pid]||[]); });
+      try{ localStorage.setItem('mono_loc_traces', JSON.stringify(locDailyTraces)); }catch(e){}
+      try{ if(typeof saveLocData==='function') saveLocData(); }catch(e){}
+    }catch(e){}
+  }
+
+  if(typeof window.generateFullDayTrace==='function' && !window.generateFullDayTrace.__v27Wrapped){
+    var oldFull=window.generateFullDayTrace;
+    window.generateFullDayTrace=async function(persona, region){ var res=await oldFull.apply(this, arguments); return applyAnchors(persona, res); };
+    window.generateFullDayTrace.__v27Wrapped=true; try{ eval('generateFullDayTrace = window.generateFullDayTrace'); }catch(e){}
+  }
+  if(typeof window.generateIncrementalTrace==='function' && !window.generateIncrementalTrace.__v27Wrapped){
+    var oldInc=window.generateIncrementalTrace;
+    window.generateIncrementalTrace=async function(persona, region, fromTime){ var res=await oldInc.apply(this, arguments); return applyAnchors(persona, res); };
+    window.generateIncrementalTrace.__v27Wrapped=true; try{ eval('generateIncrementalTrace = window.generateIncrementalTrace'); }catch(e){}
+  }
+
+  window.updateLocTrace=async function(){
+    var pid=ensureSelectedPid(), p=pid&&getPersona(pid); if(!p){ alert('请先选择要生成行踪的角色'); return; }
+    var btn=document.getElementById('locTraceUpdateBtn'), old=btn&&btn.innerHTML;
+    try{
+      if(btn){ btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin" style="font-size:9px;"></i>生成中'; }
+      hardCleanAll();
+      var existing=sanitize((locDailyTraces&&locDailyTraces[pid])||[]).filter(function(t){return isTodayLike(t.isoDate||t.day||'')});
+      var last=existing.length?existing[existing.length-1].time:null;
+      var start=last?minOf(last)+30:0, end=currentHalfHourMin(), slots=[]; for(var m=start;m<=end;m+=30) slots.push(fmtMin(m));
+      if(!slots.length){ toastSoft('当前时间段已经生成完，没有新的半小时行踪。'); return; }
+      var region=(locCharRegions&&locCharRegions[pid]) || locUserRegionName || '未知地区';
+      var traces=typeof window.generateIncrementalTrace==='function' ? await window.generateIncrementalTrace(p, region, last) : [];
+      traces=applyAnchors(p, traces);
+      if(typeof locDailyTraces==='undefined'||!locDailyTraces) locDailyTraces={};
+      locDailyTraces[pid]=applyAnchors(p, existing.concat(traces));
+      try{ if(typeof saveLocData==='function') saveLocData(); }catch(e){}
+      try{ if(typeof renderLocTrace==='function') renderLocTrace(); }catch(e){}
+    }catch(err){ console.error('[v27 update failed]',err); toastSoft('生成失败：'+((err&&err.message)||'未知错误')); }
+    finally{ if(btn){ btn.disabled=false; btn.innerHTML=old||btn.innerHTML; } }
+  };
+  try{ eval('updateLocTrace = window.updateLocTrace'); }catch(e){}
+
+  window.regenerateSelectedLocTrace=async function(){
+    var pid=ensureSelectedPid(), p=pid&&getPersona(pid); if(!p){ toastSoft('请先选择要重新生成行踪的角色。'); return; }
+    var btn=document.getElementById('locTraceRegenerateBtn'), up=document.getElementById('locTraceUpdateBtn'), old=btn&&btn.innerHTML, oldU=up&&up.innerHTML;
+    try{
+      if(btn){ btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin" style="font-size:9px;"></i>重新生成中'; } if(up) up.disabled=true;
+      var region=(locCharRegions&&locCharRegions[pid]) || locUserRegionName || '未知地区';
+      var traces=typeof window.generateFullDayTrace==='function' ? await window.generateFullDayTrace(p, region) : [];
+      traces=applyAnchors(p, traces);
+      if(typeof locDailyTraces==='undefined'||!locDailyTraces) locDailyTraces={};
+      var oldList=Array.isArray(locDailyTraces[pid])?locDailyTraces[pid]:[];
+      var keep=oldList.filter(function(t){ return t && (t.isoDate||t.day) && !isTodayLike(t.isoDate||t.day); });
+      locDailyTraces[pid]=keep.concat(traces);
+      try{ if(typeof saveLocData==='function') saveLocData(); }catch(e){}
+      try{ if(typeof renderLocTrace==='function') renderLocTrace(); }catch(e){}
+    }catch(err){ console.error('[v27 regenerate failed]',err); toastSoft('重新生成失败：'+((err&&err.message)||'未知错误')); }
+    finally{ if(btn){ btn.disabled=false; btn.innerHTML=old||'<i class="fas fa-redo" style="margin-right:3px;font-size:9px;"></i>重新生成全部'; } if(up){ up.disabled=false; up.innerHTML=oldU||up.innerHTML; } }
+  };
+  try{ eval('regenerateSelectedLocTrace = window.regenerateSelectedLocTrace'); }catch(e){}
+
+  function rebind(){
+    var regen=document.getElementById('locTraceRegenerateBtn'); if(regen){ regen.onclick=function(ev){ if(ev){ev.preventDefault();ev.stopPropagation();} window.regenerateSelectedLocTrace(); return false; }; }
+    var btn=document.getElementById('locTraceUpdateBtn'); if(btn){ btn.onclick=function(ev){ if(ev){ev.preventDefault();ev.stopPropagation();} window.updateLocTrace(); return false; }; }
+  }
+  setTimeout(function(){ hardCleanAll(); rebind(); try{ if(typeof renderLocTrace==='function') renderLocTrace(); }catch(e){} }, 400);
+  document.addEventListener('click', function(){ setTimeout(rebind,0); }, true);
+})();
+</script>
+
+
+
+<script id="mono-role-wechat-v28-location-time-logic-align">
+/* ===== v28: 时间也作为硬逻辑对齐 =====
+   - 聊天里明确“现在/刚刚/正在” => 对齐到消息发送所在半小时区间。
+   - “等下/一会儿/半小时后/一小时后/之后/晚点” => 对齐到未来合理半小时区间。
+   - “下午三点/晚上8点/15:30” => 对齐到指定半小时区间。
+   - “明天/后天/过两天/下周”不进入今天情侣定位。
+   - 时间、地点、事件是同一个锚点，不拆散，不复制聊天原句。
+*/
+(function(){
+  if(window.__monoV28LocationTimeLogicAlign) return;
+  window.__monoV28LocationTimeLogicAlign=true;
+  function toastSoft(msg){ try{ if(typeof toast==='function') toast(msg); else if(typeof showToast==='function') showToast(msg); else console.log(msg); }catch(e){ console.log(msg); } }
+  function pad2(n){ return String(Math.max(0, Number(n)||0)).padStart(2,'0'); }
+  function cleanText(s){ return String(s||'').replace(/\[heart_voice\][\s\S]*?\[\/heart_voice\]/g,' ').replace(/<[^>]+>/g,' ').replace(/[\r\n]+/g,' ').replace(/\s+/g,' ').trim(); }
+  function cleanField(s,max){ return cleanText(s).replace(/[|｜]/g,' ').replace(/[。！？!?]/g,'').slice(0,max||40); }
+  function todayKey(){ try{return new Date().toLocaleDateString('zh-TW');}catch(e){return new Date().toISOString().slice(0,10);} }
+  function todayAlt(){ try{return new Date().toLocaleDateString('zh-CN');}catch(e){return todayKey();} }
+  function isTodayLike(d){ if(!d) return true; d=String(d); return d===todayKey()||d===todayAlt()||d===new Date().toISOString().slice(0,10); }
+  function msgTs(m){ var ts=m&&(m.timestamp||m.time||m.createdAt||m.date||m.sentAt); if(!ts) return 0; if(typeof ts==='number') return ts; if(/^\d+$/.test(String(ts))) return Number(ts); var d=new Date(ts); return isNaN(d.getTime())?0:d.getTime(); }
+  function dayStart(){ var d=new Date(); d.setHours(0,0,0,0); return d.getTime(); }
+  function dayEnd(){ var d=new Date(); d.setHours(23,59,59,999); return d.getTime(); }
+  function minOf(t){ var m=String(t||'').replace('：',':').match(/^\s*(\d{1,2}):(\d{2})\s*$/); return m?(+m[1]*60+ +m[2]):-1; }
+  function fmtMin(m){ m=Math.max(0,Math.min(1439,Math.floor((Number(m)||0)/30)*30)); return pad2(Math.floor(m/60))+':'+pad2(m%60); }
+  function isHalfHour(t){ var m=minOf(t); return m>=0&&m%30===0; }
+  function snap(ts, offset){ var d=ts?new Date(ts):new Date(); var m=d.getHours()*60+d.getMinutes()+(offset||0); return fmtMin(m); }
+  function currentHalfHourMin(){ var n=new Date(); return n.getHours()*60+(n.getMinutes()>=30?30:0); }
+  function getPersona(pid){ try{return (typeof personas!=='undefined'&&Array.isArray(personas))?personas.find(function(p){return String(p.id)===String(pid);}):null;}catch(e){return null;} }
+  function pidOf(rel){ return rel&&(rel.personaId!=null?rel.personaId:rel.id); }
+  function activeRelations(){ try{return (locRelations||[]).filter(function(r){return !!getPersona(pidOf(r));});}catch(e){return [];} }
+  function ensureSelectedPid(){ var rels=activeRelations(); if(!rels.length) return null; var cur=window.locSelectedTraceCharId||(typeof locSelectedCharId!=='undefined'?locSelectedCharId:null); if(!cur||!rels.some(function(r){return String(pidOf(r))===String(cur);})){cur=pidOf(rels[0]);} window.locSelectedTraceCharId=cur; try{locSelectedCharId=cur;}catch(e){} return cur; }
+
+  var placeKnown=['酒吧','清吧','夜店','KTV','咖啡厅','咖啡廳','咖啡店','学校','學校','图书馆','圖書館','教室','公司','办公室','辦公室','家里','家裡','家','宿舍','公寓','餐厅','餐廳','食堂','商场','商場','超市','市场','市場','电影院','電影院','医院','醫院','诊所','診所','健身房','公园','公園','海边','海邊','车站','車站','地铁站','地鐵站','机场','機場','路上','街上','附近'];
+  function canonicalPlace(p){ p=cleanField(p,18); var map=[[/清吧|夜店|KTV|bar/i,'酒吧'],[/咖啡廳|咖啡店/,'咖啡厅'],[/學校/,'学校'],[/圖書館/,'图书馆'],[/辦公室/,'办公室'],[/家裡|家里|公寓/,'家里'],[/餐廳|食堂/,'餐厅'],[/商場|市場|市场|超市/,'商场'],[/電影院/,'电影院'],[/醫院|診所|诊所/,'医院'],[/公園|海邊|海边/,'公园'],[/車站|地鐵站|机场|機場/,'路上']]; for(var i=0;i<map.length;i++){ if(map[i][0].test(p)) return map[i][1]; } return p; }
+  function placeType(place){ place=canonicalPlace(place); if(/酒吧/.test(place))return'bar'; if(/咖啡/.test(place))return'cafe'; if(/学校|图书馆|教室/.test(place))return'study'; if(/公司|办公室/.test(place))return'work'; if(/餐厅/.test(place))return'food'; if(/家|宿舍/.test(place))return'home'; if(/路上|车站|地铁|机场/.test(place))return'transit'; if(/商场|超市|市场/.test(place))return'shopping'; if(/公园|海边/.test(place))return'walk'; if(/电影院/.test(place))return'movie'; if(/医院/.test(place))return'medical'; if(/健身房/.test(place))return'gym'; return'other'; }
+  function inferActivityFromPlace(place,raw){ raw=cleanText(raw||''); var t=placeType(place); if(t==='bar'){ if(/等|朋友|見|见|約|约/.test(raw))return'在酒吧等人或和朋友见面'; if(/喝|酒|饮|飲/.test(raw))return'在酒吧喝点东西放松'; if(/音乐|音樂|聊天|放松|玩/.test(raw))return'在酒吧听音乐聊天'; return'在酒吧放松，和人聊天'; } if(t==='cafe')return /学习|學習|工作|复习|複習/.test(raw)?'在咖啡厅边喝东西边处理事情':'在咖啡厅休息，点饮料'; if(t==='study')return /上课|上課/.test(raw)?'上课或准备课程内容':'学习或整理资料'; if(t==='work')return /会|會/.test(raw)?'开会或处理工作事项':'处理工作'; if(t==='food')return'吃饭或等餐'; if(t==='home')return /换衣|換衣|穿|收拾/.test(raw)?'在室内收拾或换衣服':'在室内休息'; if(t==='transit')return'在路上移动'; if(t==='shopping')return'逛店或买东西'; if(t==='walk')return'散步透气'; if(t==='movie')return'看电影或等开场'; if(t==='medical')return'处理预约或等候'; if(t==='gym')return'运动或整理装备'; return'处理自己的安排'; }
+  function inferPlaceFromActivity(act){ act=cleanText(act||''); if(/酒|听音乐|聽音樂|夜店|清吧/.test(act))return'酒吧'; if(/咖啡|饮料|飲料/.test(act))return'咖啡厅'; if(/学习|學習|复习|複習|上课|上課|作业|資料|资料/.test(act))return'图书馆'; if(/工作|开会|開會|会议|會議/.test(act))return'办公室'; if(/吃|饭|飯|等餐/.test(act))return'餐厅'; if(/休息|收拾|换衣|換衣|穿衣|睡/.test(act))return'家里'; if(/买|買|逛/.test(act))return'商场'; if(/散步|透气|透氣/.test(act))return'公园'; if(/电影|電影/.test(act))return'电影院'; if(/运动|運動|健身/.test(act))return'健身房'; if(/出发|出發|回去|回家|坐车|坐車|赶路|趕路|路上/.test(act))return'路上'; if(/约会|約會|见面|見面|等人|朋友/.test(act))return'约定地点附近'; return'附近街区'; }
+  function activityType(act){ act=cleanText(act||''); if(/酒|夜店|音乐|音樂/.test(act))return'bar'; if(/咖啡|饮料|飲料/.test(act))return'cafe'; if(/学习|學習|复习|複習|上课|上課|作业|资料|資料/.test(act))return'study'; if(/工作|开会|開會|会议|會議/.test(act))return'work'; if(/吃|饭|飯|等餐/.test(act))return'food'; if(/休息|收拾|换衣|換衣|穿衣|睡/.test(act))return'home'; if(/出发|出發|回去|回家|坐车|坐車|赶路|趕路|路上/.test(act))return'transit'; if(/买|買|逛/.test(act))return'shopping'; if(/散步|透气|透氣/.test(act))return'walk'; if(/电影|電影/.test(act))return'movie'; if(/医院|醫院|预约|預約/.test(act))return'medical'; if(/运动|運動|健身/.test(act))return'gym'; return'other'; }
+  function makeCompatible(place,activity,raw){ place=canonicalPlace(place||''); activity=cleanField(activity||'',36); raw=cleanText(raw||''); if(!place&&activity) place=inferPlaceFromActivity(activity); if(!activity&&place) activity=inferActivityFromPlace(place,raw); if(!place) place='附近街区'; if(!activity) activity=inferActivityFromPlace(place,raw); var pt=placeType(place), at=activityType(activity); var conflict=(pt==='bar'&&['study','work','home','medical'].indexOf(at)>=0)||(pt==='home'&&['bar','shopping','movie','gym'].indexOf(at)>=0)||(pt==='study'&&['bar','food','movie','shopping'].indexOf(at)>=0)||(pt==='work'&&['bar','movie','shopping','gym'].indexOf(at)>=0)||(pt==='food'&&['study','work','gym'].indexOf(at)>=0); if(conflict) activity=inferActivityFromPlace(place,raw); if(place===activity || (activity.indexOf(place)>=0&&activity.length<place.length+4)) activity=inferActivityFromPlace(place,raw); return{place:cleanField(place,24),activity:cleanField(activity,38)}; }
+  function extractPlace(text){ text=cleanText(text); var knownRe=new RegExp('('+placeKnown.join('|')+')','i'); var k=text.match(knownRe); if(k) return canonicalPlace(k[1]); var direct=text.match(/(?:我(?:现在|現在|这会儿|這會兒)?(?:就在|在)|现在(?:在)?|現在(?:在)?|刚到|剛到|到了|待在|正在|去|回|到)([^，。！？,.!?\s]{1,12})/); var c=direct&&cleanField(direct[1],12); if(c&&!/(什么|什麼|哪里|哪裡|哪|干嘛|幹嘛|你|我|这边|這邊|那里|那裡|这里|這裡)/.test(c)) return canonicalPlace(c); return''; }
+  function extractActivity(text,place){ text=cleanText(text); var patterns=[['喝酒','在酒吧喝点东西放松'],['喝点酒','在酒吧喝点东西放松'],['听音乐','在酒吧听音乐聊天'],['聽音樂','在酒吧听音乐聊天'],['蹦迪','在酒吧或夜店放松'],['等朋友','等朋友或和朋友见面'],['等人','等人或和人见面'],['约会','准备约会或见面'],['約會','准备约会或见面'],['见面','和人见面'],['見面','和人见面'],['学习','学习或整理资料'],['學習','学习或整理资料'],['复习','复习资料'],['複習','复习资料'],['上课','上课或准备课程'],['上課','上课或准备课程'],['工作','处理工作'],['开会','开会或处理工作事项'],['開會','开会或处理工作事项'],['吃饭','吃饭或等餐'],['吃飯','吃饭或等餐'],['喝咖啡','点饮料休息'],['买东西','逛店买东西'],['買東西','逛店买东西'],['逛街','逛店买东西'],['散步','散步透气'],['看电影','看电影或等开场'],['看電影','看电影或等开场'],['换衣服','在室内收拾或换衣服'],['換衣服','在室内收拾或换衣服'],['穿衣服','在室内收拾或换衣服'],['收拾','在室内收拾东西'],['休息','休息'],['回家','在路上回家'],['回去','在路上移动'],['出门','准备出门或已经在路上'],['出門','准备出门或已经在路上'],['坐车','在路上移动'],['坐車','在路上移动']]; for(var i=0;i<patterns.length;i++){ if(text.indexOf(patterns[i][0])>=0)return patterns[i][1]; } return place?inferActivityFromPlace(place,text):''; }
+
+  function hasFutureOtherDay(text){ return /明天|明日|后天|後天|过两天|過兩天|大后天|大後天|以后|以後|改天|下周|下週|下个月|下個月|下次/.test(cleanText(text)); }
+  function explicitClock(text, ts){
+    text=cleanText(text);
+    var m=text.match(/(?:今天|今晚|今早|今下午|今晚上)?\s*(凌晨|早上|上午|中午|下午|傍晚|晚上|今晚)?\s*(\d{1,2})\s*(?:[:：点點時时])\s*(\d{0,2})/);
+    if(!m) return null;
+    var period=m[1]||'', h=+m[2], mm=m[3]?+m[3]:0;
+    if((period==='下午'||period==='傍晚'||period==='晚上'||period==='今晚') && h<12) h+=12;
+    if((period==='中午') && h<11) h+=12;
+    if(period==='凌晨' && h===12) h=0;
+    return {slot:fmtMin(h*60+mm), kind:'exact'};
+  }
+  function chineseHour(text){
+    var map={一:1,二:2,两:2,兩:2,三:3,四:4,五:5,六:6,七:7,八:8,九:9,十:10,十一:11,十二:12};
+    var m=cleanText(text).match(/(凌晨|早上|上午|中午|下午|傍晚|晚上|今晚)\s*(十一|十二|十|一|二|两|兩|三|四|五|六|七|八|九)\s*(?:点|點|時|时)/);
+    if(!m) return null; var h=map[m[2]]; if(h==null) return null; var p=m[1]; if((p==='下午'||p==='傍晚'||p==='晚上'||p==='今晚')&&h<12)h+=12; if(p==='中午'&&h<11)h+=12; if(p==='凌晨'&&h===12)h=0; return {slot:fmtMin(h*60),kind:'exact'};
+  }
+  function relativeSlot(text, ts){
+    text=cleanText(text);
+    var base=ts||Date.now();
+    if(/半小时后|半小時後|半个小时后|半個小時後/.test(text)) return {slot:snap(base,30),kind:'relative'};
+    var n=text.match(/(\d+)\s*(?:个|個)?\s*小时(?:后|後)/); if(n) return {slot:snap(base,Math.min(360,+n[1]*60)),kind:'relative'};
+    var cn=text.match(/(一|二|两|兩|三|四|五|六)\s*(?:个|個)?\s*小时(?:后|後)/); if(cn){ var map={一:1,二:2,两:2,兩:2,三:3,四:4,五:5,六:6}; return {slot:snap(base,Math.min(360,map[cn[1]]*60)),kind:'relative'}; }
+    if(/马上|馬上|等下|等一下|一会儿|一會兒|待会|待會|等等|过一会|過一會/.test(text)) return {slot:snap(base,30),kind:'relative'};
+    if(/之后|之後|晚点|晚點|等会|等會|稍后|稍後/.test(text)) return {slot:snap(base,60),kind:'relative'};
+    if(/现在|現在|目前|这会|這會|刚刚|剛剛|刚到|剛到|正在|我在|到了|待在/.test(text)) return {slot:snap(base,0),kind:'now'};
+    return null;
+  }
+  function broadSlot(text, ts){
+    text=cleanText(text); var d=ts?new Date(ts):new Date(); var cur=d.getHours()*60+d.getMinutes();
+    var ranges=[[/凌晨/,[60,240]],[/早上|上午/,[540,660]],[/中午/,[720,780]],[/下午/,[900,1020]],[/傍晚/,[1080,1140]],[/晚上|今晚/,[1200,1320]]];
+    for(var i=0;i<ranges.length;i++){ if(ranges[i][0].test(text)){ var a=ranges[i][1][0], b=ranges[i][1][1]; var chosen=(cur>=a&&cur<=b)?cur:a; return {slot:fmtMin(chosen),kind:'broad'}; } }
+    return null;
+  }
+  function slotFromText(text, ts){
+    if(hasFutureOtherDay(text)) return null;
+    return explicitClock(text,ts) || chineseHour(text) || relativeSlot(text,ts) || broadSlot(text,ts) || {slot:snap(ts||Date.now(),0),kind:'message'};
+  }
+  function likelyCharMsg(m,persona){ var r=String((m&&m.role)||'').toLowerCase(); if(r==='assistant'||r==='char'||r==='character'||r==='bot') return true; var sid=String((m&&(m.senderId||m.personaId||m.charId||m.fromId||m.from))||''); if(persona&&sid&&String(persona.id)===sid) return true; var text=cleanText(m&&m.content||''); if(/[？?]/.test(text)&&!/(我在|我现在|我現在|正在|刚到|剛到|到了|等|去|回|喝|吃|学习|學習|工作|休息)/.test(text)) return false; return true; }
+  function collectAnchors(persona){
+    try{
+      if(!persona||!Array.isArray(persona.history)) return [];
+      var st=dayStart(), en=dayEnd(), now=Date.now(), tmp={};
+      persona.history.forEach(function(m,idx){
+        var ts=msgTs(m); if(!ts||ts<st||ts>en) return;
+        var text=cleanText(m.content||''); if(!text||hasFutureOtherDay(text)) return;
+        if(!likelyCharMsg(m,persona)) return;
+        var place=extractPlace(text), activity=extractActivity(text,place);
+        if(!place&&!activity) return;
+        var timeInfo=slotFromText(text,ts); if(!timeInfo||!timeInfo.slot) return;
+        var pair=makeCompatible(place,activity,text), slot=fmtMin(minOf(timeInfo.slot));
+        var timeWeight={exact:9,now:8,relative:7,broad:5,message:3}[timeInfo.kind]||3;
+        var priority=timeWeight+(place?3:0)+(activity?2:0)+Math.max(0,3-Math.abs(now-ts)/(2*60*60*1000));
+        if(!tmp[slot]||priority>=tmp[slot].priority){ tmp[slot]={slot:slot, place:pair.place, activity:pair.activity, raw:text, ts:ts, priority:priority, idx:idx, timeKind:timeInfo.kind}; }
+      });
+      return Object.keys(tmp).map(function(k){return tmp[k];}).sort(function(a,b){return minOf(a.slot)-minOf(b.slot)||a.ts-b.ts;}).slice(-12);
+    }catch(e){return []}
+  }
+  function normItem(raw,slot,prev){ var place='',activity=''; if(raw&&typeof raw==='object'){ place=raw.place||raw.location||raw['地点']||raw.address||raw.where||''; activity=raw.activity||raw.event||raw['事件']||raw['活动']||raw.doing||raw.desc||''; } var pair=makeCompatible(place,activity,''); if((!raw||!raw.place)&&prev&&prev.place&&pair.place==='附近街区') pair.place=prev.place; return {time:slot,place:pair.place,activity:pair.activity,isoDate:todayKey(),_v28Clean:true}; }
+  function sanitize(list){ var by={}, other=[]; (Array.isArray(list)?list:[]).forEach(function(t){ if(!t)return; var day=t.isoDate||t.day||''; if(day&&!isTodayLike(day)){other.push(t);return;} var time=String(t.time||'').replace('：',':').trim(); if(!isHalfHour(time)) return; time=fmtMin(minOf(time)); by[time]=normItem(t,time,by[time]||null); }); var today=Object.keys(by).sort(function(a,b){return minOf(a)-minOf(b);}).map(function(k){return by[k];}); return other.concat(today); }
+  function addTransitions(arr,anchors){ var map={}; arr.forEach(function(t){map[t.time]=t;}); anchors.forEach(function(a){ var am=minOf(a.slot); if(am<30) return; var prev=fmtMin(am-30); if(map[prev]&&map[prev].place&&map[prev].place!==a.place){ var oldType=placeType(map[prev].place), newType=placeType(a.place); if(oldType!==newType&&oldType!=='transit'){ map[prev].place='路上'; map[prev].activity='前往'+a.place+'，准备接上后面的安排'; map[prev]._v28Transition=true; } } }); return Object.keys(map).sort(function(a,b){return minOf(a)-minOf(b);}).map(function(k){return map[k];}); }
+  function applyAnchors(persona,traces){ var arr=sanitize(traces||[]).filter(function(t){return !t.isoDate||isTodayLike(t.isoDate||t.day||'');}); var anchors=collectAnchors(persona); if(!anchors.length) return arr; var map={}; arr.forEach(function(t){map[t.time]=t;}); anchors.forEach(function(a){ var slot=a.slot; if(map[slot]){ var pair=makeCompatible(a.place,a.activity,a.raw); map[slot].place=pair.place; map[slot].activity=pair.activity; map[slot]._chatAnchor='v28-time-place-event'; map[slot]._timeKind=a.timeKind; } }); arr=Object.keys(map).sort(function(a,b){return minOf(a)-minOf(b);}).map(function(k){return map[k];}); return sanitize(addTransitions(arr,anchors)); }
+  function hardCleanAll(){ try{ if(typeof locDailyTraces==='undefined'||!locDailyTraces) locDailyTraces={}; Object.keys(locDailyTraces).forEach(function(pid){ var p=getPersona(pid); locDailyTraces[pid]=applyAnchors(p,locDailyTraces[pid]||[]); }); try{localStorage.setItem('mono_loc_traces',JSON.stringify(locDailyTraces));}catch(e){} try{ if(typeof saveLocData==='function') saveLocData(); }catch(e){} }catch(e){} }
+
+  if(typeof window.generateFullDayTrace==='function'&&!window.generateFullDayTrace.__v28Wrapped){ var oldFull=window.generateFullDayTrace; window.generateFullDayTrace=async function(persona,region){ var res=await oldFull.apply(this,arguments); return applyAnchors(persona,res); }; window.generateFullDayTrace.__v28Wrapped=true; try{eval('generateFullDayTrace = window.generateFullDayTrace');}catch(e){} }
+  if(typeof window.generateIncrementalTrace==='function'&&!window.generateIncrementalTrace.__v28Wrapped){ var oldInc=window.generateIncrementalTrace; window.generateIncrementalTrace=async function(persona,region,fromTime){ var res=await oldInc.apply(this,arguments); return applyAnchors(persona,res); }; window.generateIncrementalTrace.__v28Wrapped=true; try{eval('generateIncrementalTrace = window.generateIncrementalTrace');}catch(e){} }
+
+  window.updateLocTrace=async function(){
+    var pid=ensureSelectedPid(), p=pid&&getPersona(pid); if(!p){alert('请先选择要生成行踪的角色');return;}
+    var btn=document.getElementById('locTraceUpdateBtn'), old=btn&&btn.innerHTML;
+    try{ if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin" style="font-size:9px;"></i>生成中';} hardCleanAll(); var existing=sanitize((locDailyTraces&&locDailyTraces[pid])||[]).filter(function(t){return isTodayLike(t.isoDate||t.day||'')}); var last=existing.length?existing[existing.length-1].time:null; var start=last?minOf(last)+30:0,end=currentHalfHourMin(),slots=[]; for(var m=start;m<=end;m+=30)slots.push(fmtMin(m)); if(!slots.length){toastSoft('当前时间段已经生成完，没有新的半小时行踪。');return;} var region=(locCharRegions&&locCharRegions[pid])||locUserRegionName||'未知地区'; var traces=typeof window.generateIncrementalTrace==='function'?await window.generateIncrementalTrace(p,region,last):[]; traces=applyAnchors(p,traces); if(typeof locDailyTraces==='undefined'||!locDailyTraces) locDailyTraces={}; locDailyTraces[pid]=applyAnchors(p,existing.concat(traces)); try{if(typeof saveLocData==='function')saveLocData();}catch(e){} try{if(typeof renderLocTrace==='function')renderLocTrace();}catch(e){} }catch(err){console.error('[v28 update failed]',err);toastSoft('生成失败：'+((err&&err.message)||'未知错误'));} finally{if(btn){btn.disabled=false;btn.innerHTML=old||btn.innerHTML;}}
+  };
+  try{eval('updateLocTrace = window.updateLocTrace');}catch(e){}
+  window.regenerateSelectedLocTrace=async function(){
+    var pid=ensureSelectedPid(), p=pid&&getPersona(pid); if(!p){toastSoft('请先选择要重新生成行踪的角色。');return;}
+    var btn=document.getElementById('locTraceRegenerateBtn'), up=document.getElementById('locTraceUpdateBtn'), old=btn&&btn.innerHTML, oldU=up&&up.innerHTML;
+    try{ if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin" style="font-size:9px;"></i>重新生成中';} if(up)up.disabled=true; var region=(locCharRegions&&locCharRegions[pid])||locUserRegionName||'未知地区'; var traces=typeof window.generateFullDayTrace==='function'?await window.generateFullDayTrace(p,region):[]; traces=applyAnchors(p,traces); if(typeof locDailyTraces==='undefined'||!locDailyTraces) locDailyTraces={}; var oldList=Array.isArray(locDailyTraces[pid])?locDailyTraces[pid]:[]; var keep=oldList.filter(function(t){return t&&(t.isoDate||t.day)&&!isTodayLike(t.isoDate||t.day);}); locDailyTraces[pid]=keep.concat(traces); try{if(typeof saveLocData==='function')saveLocData();}catch(e){} try{if(typeof renderLocTrace==='function')renderLocTrace();}catch(e){} }catch(err){console.error('[v28 regenerate failed]',err);toastSoft('重新生成失败：'+((err&&err.message)||'未知错误'));} finally{if(btn){btn.disabled=false;btn.innerHTML=old||'<i class="fas fa-redo" style="margin-right:3px;font-size:9px;"></i>重新生成全部';} if(up){up.disabled=false;up.innerHTML=oldU||up.innerHTML;}}
+  };
+  try{eval('regenerateSelectedLocTrace = window.regenerateSelectedLocTrace');}catch(e){}
+  function rebind(){ var regen=document.getElementById('locTraceRegenerateBtn'); if(regen){regen.onclick=function(ev){if(ev){ev.preventDefault();ev.stopPropagation();} window.regenerateSelectedLocTrace(); return false;};} var btn=document.getElementById('locTraceUpdateBtn'); if(btn){btn.onclick=function(ev){if(ev){ev.preventDefault();ev.stopPropagation();} window.updateLocTrace(); return false;};} }
+  setTimeout(function(){hardCleanAll(); rebind(); try{if(typeof renderLocTrace==='function')renderLocTrace();}catch(e){}},400);
+  document.addEventListener('click',function(){setTimeout(rebind,0);},true);
+})();
+</script>
+
+
+
+<script id="mono-role-wechat-v29-location-auto-update-roles">
+/* ===== v29: 情侣定位 · 允许多选绑定角色自动补全行踪 =====
+   - 用户可在情侣定位/当日行踪里多选允许自动更新的绑定角色。
+   - 自动更新只补全“缺失的半小时行踪”，逻辑等同点击该角色的「更新行踪」。
+   - 用户离线后重新进入网页、打开情侣定位、网络恢复、页面重新可见时，会自动补齐已允许角色。
+   - 不会重新生成全部，不会影响未勾选角色，不会改变每半小时一条的规则。
+*/
+(function(){
+  if (window.__monoV29LocationAutoUpdateRoles) return;
+  window.__monoV29LocationAutoUpdateRoles = true;
+
+  var STORE_KEY = 'mono_loc_auto_update_roles_v29';
+  var RUN_LOCK = false;
+  var LAST_RUN_KEY = 'mono_loc_auto_update_last_run_v29';
+
+  function toastSoft(msg){
+    try { if (typeof toast === 'function') toast(msg); else if (typeof showToast === 'function') showToast(msg); else console.log(msg); }
+    catch(e){ try{ console.log(msg); }catch(_){} }
+  }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]); }); }
+  function pad2(n){ return String(Math.max(0, Number(n)||0)).padStart(2,'0'); }
+  function todayKey(){ try { return new Date().toLocaleDateString('zh-TW'); } catch(e){ return ''; } }
+  function currentHalfHourMin(){ var d=new Date(); return d.getHours()*60 + (d.getMinutes()>=30?30:0); }
+  function fmtMin(m){ m=Math.max(0, Math.min(23*60+30, Number(m)||0)); return pad2(Math.floor(m/60))+':'+pad2(m%60); }
+  function minOf(t){ var m=String(t||'').match(/(\d{1,2})\D?(\d{2})/); return m ? Math.min(23*60+30, (Number(m[1])||0)*60+(Number(m[2])||0)) : 0; }
+  function isHalfTime(t){ var m=String(t||'').match(/^(\d{1,2}):(00|30)$/); return !!m && Number(m[1]) >= 0 && Number(m[1]) <= 23; }
+  function sameToday(v){ if(!v) return true; return String(v) === String(todayKey()); }
+  function getPersona(pid){
+    try { return (window.personas || personas || []).find(function(p){ return String(p.id) === String(pid); }); } catch(e){ return null; }
+  }
+  function getBoundIds(){
+    try { if (typeof loadLocData === 'function') loadLocData(); } catch(e) {}
+    var ids=[];
+    try { (locRelations||[]).forEach(function(r){ if(r && r.personaId != null && getPersona(r.personaId)) ids.push(String(r.personaId)); }); } catch(e) {}
+    return Array.from(new Set(ids));
+  }
+  function loadAutoIds(){
+    try { return JSON.parse(localStorage.getItem(STORE_KEY) || '[]').map(String); } catch(e){ return []; }
+  }
+  function saveAutoIds(ids){
+    ids = Array.from(new Set((ids||[]).map(String).filter(Boolean)));
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(ids)); } catch(e) {}
+    return ids;
+  }
+  function enabledBoundIds(){
+    var bound = new Set(getBoundIds());
+    return loadAutoIds().filter(function(id){ return bound.has(String(id)); });
+  }
+  function sanitizeTraceList(list){
+    var map={}, today=todayKey();
+    (Array.isArray(list)?list:[]).forEach(function(t){
+      if(!t) return;
+      var tm = String(t.time || '').trim();
+      if(!isHalfTime(tm)) return;
+      var day = t.isoDate || t.day || today;
+      if(!sameToday(day)) return;
+      var place = String(t.place || t.location || t.address || '附近街区').trim() || '附近街区';
+      var act = String(t.activity || t.event || t.desc || '日常活动').trim() || '日常活动';
+      map[tm] = { time:tm, place:place, activity:act, isoDate:today };
+    });
+    return Object.keys(map).sort(function(a,b){ return minOf(a)-minOf(b); }).map(function(k){ return map[k]; });
+  }
+  function mergeTraceLists(a,b){
+    var map={}, today=todayKey();
+    sanitizeTraceList(a).concat(sanitizeTraceList(b)).forEach(function(t){ map[t.time] = { time:t.time, place:t.place, activity:t.activity, isoDate:today }; });
+    return Object.keys(map).sort(function(x,y){ return minOf(x)-minOf(y); }).map(function(k){ return map[k]; });
+  }
+  function splitOtherDays(list){
+    var today=todayKey();
+    return (Array.isArray(list)?list:[]).filter(function(t){ return t && (t.isoDate || t.day) && String(t.isoDate || t.day) !== String(today); });
+  }
+  function hasNewSlotsFor(pid){
+    try { if (typeof loadLocData === 'function') loadLocData(); } catch(e) {}
+    var existing = sanitizeTraceList((locDailyTraces && locDailyTraces[pid]) || []);
+    var last = existing.length ? existing[existing.length-1].time : null;
+    var start = last ? minOf(last) + 30 : 0;
+    return start <= currentHalfHourMin();
+  }
+  async function autoUpdateOne(pid, silent){
+    var p = getPersona(pid);
+    if(!p) return { pid:pid, ok:false, skipped:true, reason:'not-found' };
+    try { if (typeof loadLocData === 'function') loadLocData(); } catch(e) {}
+    try { if (typeof _checkMidnightReset === 'function') _checkMidnightReset(); } catch(e) {}
+    try { if (typeof locDailyTraces === 'undefined' || !locDailyTraces) window.locDailyTraces = locDailyTraces = {}; } catch(e) { window.locDailyTraces = {}; }
+    var oldList = (locDailyTraces && locDailyTraces[pid]) || [];
+    var existing = sanitizeTraceList(oldList);
+    var last = existing.length ? existing[existing.length-1].time : null;
+    var start = last ? minOf(last) + 30 : 0;
+    var end = currentHalfHourMin();
+    if (start > end) return { pid:pid, ok:true, skipped:true, reason:'no-new-slot' };
+    var region = '未知地区';
+    try { region = (locCharRegions && locCharRegions[pid]) || locUserRegionName || '未知地区'; } catch(e) {}
+    var fresh = [];
+    if (!last) {
+      if (typeof window.generateFullDayTrace === 'function') fresh = await window.generateFullDayTrace(p, region);
+    } else {
+      if (typeof window.generateIncrementalTrace === 'function') fresh = await window.generateIncrementalTrace(p, region, last);
+    }
+    fresh = sanitizeTraceList(fresh);
+    if (!fresh.length) return { pid:pid, ok:false, skipped:true, reason:'empty' };
+    var today = todayKey();
+    var merged = mergeTraceLists(existing, fresh).filter(function(t){ return minOf(t.time) <= end; });
+    locDailyTraces[pid] = splitOtherDays(oldList).concat(merged);
+    try {
+      var latest = merged[merged.length-1];
+      if (latest) {
+        if (typeof locCharLocations === 'undefined' || !locCharLocations) window.locCharLocations = locCharLocations = {};
+        locCharLocations[pid] = Array.isArray(locCharLocations[pid]) ? locCharLocations[pid] : [];
+        locCharLocations[pid].push({ address:latest.place, time:new Date().toISOString(), source:'auto-update-v29', day:today });
+        if (locCharLocations[pid].length > 48) locCharLocations[pid] = locCharLocations[pid].slice(-48);
+      }
+    } catch(e) {}
+    try { if (typeof saveLocData === 'function') saveLocData(); } catch(e) {}
+    if (!silent) toastSoft('已自动补全 ' + (p.name||'该角色') + ' 的行踪。');
+    return { pid:pid, ok:true, skipped:false, count:fresh.length };
+  }
+
+  window.monoRunLocationAutoUpdate = async function(opts){
+    opts = opts || {};
+    if (RUN_LOCK) return;
+    var ids = enabledBoundIds();
+    if (!ids.length) return;
+    var runnable = ids.filter(hasNewSlotsFor);
+    if (!runnable.length) return;
+    RUN_LOCK = true;
+    var changed = 0, failed = 0;
+    try {
+      for (var i=0;i<runnable.length;i++) {
+        try {
+          var r = await autoUpdateOne(runnable[i], true);
+          if (r && !r.skipped && r.ok) changed++;
+          if (r && !r.ok && !r.skipped) failed++;
+        } catch(e) { failed++; console.warn('[v29 auto update role failed]', runnable[i], e); }
+      }
+      try { localStorage.setItem(LAST_RUN_KEY, JSON.stringify({ t:Date.now(), ids:runnable })); } catch(e) {}
+      try { if (typeof renderLocTrace === 'function') renderLocTrace(); } catch(e) {}
+      try { if (typeof _renderCharBar === 'function') _renderCharBar(); if (typeof _renderBotMap === 'function') _renderBotMap(); } catch(e) {}
+      if (!opts.silent && changed) toastSoft('已自动补全 ' + changed + ' 个角色的行踪。');
+    } finally { RUN_LOCK = false; }
+  };
+
+  function ensureStyles(){
+    if (document.getElementById('monoLocAutoV29Style')) return;
+    var st=document.createElement('style'); st.id='monoLocAutoV29Style';
+    st.textContent = `
+      .loc-auto-v29-row{display:flex;align-items:center;gap:6px;padding:0 14px 8px;margin-top:-2px;position:relative;z-index:40;}
+      .loc-auto-v29-btn{border:1px solid #e9e9e9;background:#fff;color:#333;border-radius:999px;padding:6px 10px;font-size:10px;font-weight:800;letter-spacing:.2px;font-family:inherit;box-shadow:0 4px 12px rgba(0,0,0,.035);}
+      .loc-auto-v29-btn.active{background:#111;color:#fff;border-color:#111;}
+      .loc-auto-v29-hint{font-size:9px;color:#aaa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+      #locAutoV29Modal{position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:999999;display:none;align-items:center;justify-content:center;padding:18px;}
+      #locAutoV29Modal.open{display:flex;}
+      .loc-auto-v29-box{width:min(340px,92vw);max-height:76vh;overflow:hidden;background:#fff;border-radius:24px;box-shadow:0 22px 60px rgba(0,0,0,.28);display:flex;flex-direction:column;}
+      .loc-auto-v29-head{display:flex;align-items:center;justify-content:space-between;padding:15px 16px;border-bottom:1px solid #f1f1f1;}
+      .loc-auto-v29-title{font-size:13px;font-weight:900;color:#111;}
+      .loc-auto-v29-close{border:0;background:#f5f5f5;width:28px;height:28px;border-radius:50%;font-size:13px;color:#555;}
+      .loc-auto-v29-body{padding:12px 16px;overflow:auto;}
+      .loc-auto-v29-desc{font-size:10px;color:#888;line-height:1.55;margin-bottom:10px;}
+      .loc-auto-v29-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f5f5f5;}
+      .loc-auto-v29-avatar{width:30px;height:30px;border-radius:50%;object-fit:cover;background:#eee;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#555;flex:0 0 auto;}
+      .loc-auto-v29-name{font-size:12px;font-weight:850;color:#222;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+      .loc-auto-v29-check{width:18px;height:18px;accent-color:#111;}
+      .loc-auto-v29-foot{display:flex;gap:8px;padding:12px 16px;border-top:1px solid #f1f1f1;}
+      .loc-auto-v29-save,.loc-auto-v29-cancel{flex:1;border-radius:15px;padding:10px;border:1px solid #eee;font-size:11px;font-weight:900;font-family:inherit;}
+      .loc-auto-v29-save{background:#111;color:#fff;border-color:#111;}
+      .loc-auto-v29-cancel{background:#fafafa;color:#333;}
+    `;
+    document.head.appendChild(st);
+  }
+  function ensureModal(){
+    ensureStyles();
+    var m=document.getElementById('locAutoV29Modal');
+    if (m) return m;
+    m=document.createElement('div'); m.id='locAutoV29Modal';
+    m.innerHTML='<div class="loc-auto-v29-box" role="dialog" aria-modal="true">'
+      +'<div class="loc-auto-v29-head"><div class="loc-auto-v29-title">自动更新行踪</div><button class="loc-auto-v29-close" id="locAutoV29Close">×</button></div>'
+      +'<div class="loc-auto-v29-body">'
+      +'<div class="loc-auto-v29-desc">勾选后，这些已绑定角色会在你重新进入网页、打开情侣定位、网络恢复或页面重新可见时，自动补全缺失的半小时行踪。逻辑和点击该角色「更新行踪」一样，只补新时间段，不重新生成全部。</div>'
+      +'<div id="locAutoV29List"></div></div>'
+      +'<div class="loc-auto-v29-foot"><button class="loc-auto-v29-cancel" id="locAutoV29Clear">全部关闭</button><button class="loc-auto-v29-save" id="locAutoV29Save">保存</button></div>'
+      +'</div>';
+    document.body.appendChild(m);
+    m.addEventListener('click', function(ev){ if(ev.target===m) closeAutoModal(); }, true);
+    m.querySelector('#locAutoV29Close').onclick=closeAutoModal;
+    m.querySelector('#locAutoV29Clear').onclick=function(){ m.querySelectorAll('.loc-auto-v29-check').forEach(function(c){ c.checked=false; }); };
+    m.querySelector('#locAutoV29Save').onclick=function(){
+      var ids=[]; m.querySelectorAll('.loc-auto-v29-check:checked').forEach(function(c){ ids.push(String(c.value)); });
+      saveAutoIds(ids); closeAutoModal(); refreshAutoRow(); toastSoft(ids.length ? ('已开启 '+ids.length+' 个角色自动补全行踪。') : '已关闭所有角色自动补全行踪。');
+    };
+    return m;
+  }
+  function openAutoModal(){
+    var m=ensureModal(), list=m.querySelector('#locAutoV29List');
+    var enabled = new Set(loadAutoIds());
+    var bound = getBoundIds();
+    if (!bound.length) {
+      list.innerHTML='<div style="font-size:11px;color:#aaa;padding:16px 4px;text-align:center;">还没有绑定角色，请先在情侣定位右上角「绑定」里添加角色。</div>';
+    } else {
+      list.innerHTML = bound.map(function(id){
+        var p=getPersona(id)||{};
+        var av=p.avatar ? '<img class="loc-auto-v29-avatar" src="'+esc(p.avatar)+'" onerror="this.outerHTML=\'<div class=&quot;loc-auto-v29-avatar&quot;>'+esc((p.name||'?')[0])+'</div>\'">' : '<div class="loc-auto-v29-avatar">'+esc((p.name||'?')[0])+'</div>';
+        return '<label class="loc-auto-v29-item">'+av+'<span class="loc-auto-v29-name">'+esc(p.name||('角色 '+id))+'</span><input class="loc-auto-v29-check" type="checkbox" value="'+esc(id)+'" '+(enabled.has(String(id))?'checked':'')+'></label>';
+      }).join('');
+    }
+    m.classList.add('open');
+  }
+  function closeAutoModal(){ var m=document.getElementById('locAutoV29Modal'); if(m) m.classList.remove('open'); }
+  window.openLocAutoUpdateModal = openAutoModal;
+  window.closeLocAutoUpdateModal = closeAutoModal;
+
+  function refreshAutoRow(){
+    ensureStyles();
+    var header=document.querySelector('#locTraceView .loc-trace-header');
+    if(!header) return;
+    var row=document.getElementById('locAutoV29Row');
+    if(!row){
+      row=document.createElement('div'); row.id='locAutoV29Row'; row.className='loc-auto-v29-row';
+      header.insertAdjacentElement('afterend', row);
+    }
+    var ids=enabledBoundIds();
+    row.innerHTML='<button type="button" class="loc-auto-v29-btn '+(ids.length?'active':'')+'" id="locAutoV29Btn"><i class="fas fa-clock" style="margin-right:4px;font-size:9px;"></i>自动更新</button><span class="loc-auto-v29-hint">'+(ids.length ? ('已开启 '+ids.length+' 个角色') : '可多选角色，上线后自动补全')+'</span>';
+    var b=row.querySelector('#locAutoV29Btn'); if(b) b.onclick=function(ev){ if(ev){ev.preventDefault();ev.stopPropagation();} openAutoModal(); return false; };
+  }
+
+  // 包装渲染/打开：每次进入情侣定位或刷新当日行踪时，补上 UI；打开时顺便尝试自动补全。
+  try {
+    var oldRender = window.renderLocTrace;
+    if (typeof oldRender === 'function' && !oldRender.__monoV29AutoUIWrapped) {
+      window.renderLocTrace = function(){ var r=oldRender.apply(this, arguments); setTimeout(refreshAutoRow, 0); return r; };
+      window.renderLocTrace.__monoV29AutoUIWrapped = true;
+      try { eval('renderLocTrace = window.renderLocTrace'); } catch(e) {}
+    }
+  } catch(e) {}
+  try {
+    var oldOpen = window.openLocationApp;
+    if (typeof oldOpen === 'function' && !oldOpen.__monoV29AutoOpenWrapped) {
+      window.openLocationApp = function(){ var r=oldOpen.apply(this, arguments); setTimeout(function(){ refreshAutoRow(); window.monoRunLocationAutoUpdate({silent:true}); }, 500); return r; };
+      window.openLocationApp.__monoV29AutoOpenWrapped = true;
+      try { eval('openLocationApp = window.openLocationApp'); } catch(e) {}
+    }
+  } catch(e) {}
+
+  // 页面恢复/联网恢复/重新进入网页时自动补全。
+  window.addEventListener('online', function(){ setTimeout(function(){ window.monoRunLocationAutoUpdate({silent:false}); }, 800); });
+  window.addEventListener('focus', function(){ setTimeout(function(){ window.monoRunLocationAutoUpdate({silent:true}); }, 900); });
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden) setTimeout(function(){ window.monoRunLocationAutoUpdate({silent:true}); }, 900); });
+  document.addEventListener('DOMContentLoaded', function(){ setTimeout(function(){ refreshAutoRow(); window.monoRunLocationAutoUpdate({silent:true}); }, 1400); });
+  setTimeout(function(){ refreshAutoRow(); window.monoRunLocationAutoUpdate({silent:true}); }, 1600);
+})();
+</script>
+
+
+
+<script id="mono-role-wechat-v30-location-online-halfhour-auto">
+/* ===== v30: 情侣定位 · 在线时自动补全到最近半小时 =====
+   - v29 只在进入网页/恢复可见/打开情侣定位时自动补全。
+   - v30 加入在线定时检查：用户停留在网页时，只要进入新的半小时区间，就自动按 v29 的同一逻辑补全已勾选角色。
+   - 不重新生成全部，不影响未勾选角色，不生成重复半小时，不弹出修改提示。
+*/
+(function(){
+  if (window.__monoV30LocationOnlineHalfhourAuto) return;
+  window.__monoV30LocationOnlineHalfhourAuto = true;
+
+  var CHECK_TIMER = null;
+  var LAST_SLOT_KEY = 'mono_loc_auto_update_last_halfhour_slot_v30';
+  var LAST_CHECK_TS_KEY = 'mono_loc_auto_update_last_check_ts_v30';
+
+  function pad2(n){ return String(Math.max(0, Number(n)||0)).padStart(2,'0'); }
+  function currentSlotKey(){
+    var d = new Date();
+    var hh = d.getHours();
+    var mm = d.getMinutes() >= 30 ? 30 : 0;
+    var day = '';
+    try { day = d.toLocaleDateString('zh-TW'); } catch(e) { day = d.toDateString(); }
+    return day + ' ' + pad2(hh) + ':' + pad2(mm);
+  }
+  function isPageUsable(){
+    try { if (document.hidden) return false; } catch(e) {}
+    try { if (navigator && navigator.onLine === false) return false; } catch(e) {}
+    return true;
+  }
+  function hasEnabledAutoRoles(){
+    try {
+      var raw = localStorage.getItem('mono_loc_auto_update_roles_v29') || '[]';
+      var ids = JSON.parse(raw);
+      return Array.isArray(ids) && ids.length > 0;
+    } catch(e) { return false; }
+  }
+  function markChecked(slot){
+    try { localStorage.setItem(LAST_SLOT_KEY, slot); } catch(e) {}
+    try { localStorage.setItem(LAST_CHECK_TS_KEY, String(Date.now())); } catch(e) {}
+  }
+  function shouldRunForSlot(slot, force){
+    if (force) return true;
+    try {
+      var old = localStorage.getItem(LAST_SLOT_KEY) || '';
+      return old !== slot;
+    } catch(e) { return true; }
+  }
+  async function runOnlineHalfhourAuto(force){
+    if (!isPageUsable()) return;
+    if (!hasEnabledAutoRoles()) return;
+    if (typeof window.monoRunLocationAutoUpdate !== 'function') return;
+    var slot = currentSlotKey();
+    if (!shouldRunForSlot(slot, force)) return;
+    markChecked(slot);
+    try {
+      await window.monoRunLocationAutoUpdate({ silent:true, reason:'online-halfhour-v30' });
+    } catch(e) {
+      console.warn('[v30 online halfhour auto update failed]', e);
+    }
+  }
+  function startTimer(){
+    if (CHECK_TIMER) return;
+    // 每 60 秒检查一次；只有进入新的半小时槽并且有缺失行踪时，v29 才会真正调用 API。
+    CHECK_TIMER = setInterval(function(){ runOnlineHalfhourAuto(false); }, 60000);
+  }
+
+  window.monoRunOnlineHalfhourLocationAutoUpdate = runOnlineHalfhourAuto;
+
+  // 打开网页后先检查一次，然后在线期间持续检查。
+  setTimeout(function(){ runOnlineHalfhourAuto(true); startTimer(); }, 2200);
+  document.addEventListener('DOMContentLoaded', function(){ setTimeout(function(){ runOnlineHalfhourAuto(true); startTimer(); }, 1800); });
+  window.addEventListener('focus', function(){ setTimeout(function(){ runOnlineHalfhourAuto(true); startTimer(); }, 700); });
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden) setTimeout(function(){ runOnlineHalfhourAuto(true); startTimer(); }, 700); });
+  window.addEventListener('online', function(){ setTimeout(function(){ runOnlineHalfhourAuto(true); startTimer(); }, 700); });
+
+  // 更新自动更新弹窗说明文字，但不弹任何提示框。
+  setTimeout(function(){
+    try {
+      var desc = document.querySelector('.loc-auto-v29-desc');
+      if (desc) desc.textContent = '勾选后，这些已绑定角色会在你重新进入网页、打开情侣定位、网络恢复、页面重新可见，以及你在线停留并进入新的半小时区间时，自动补全缺失的半小时行踪。逻辑和点击该角色「更新行踪」一样，只补新时间段，不重新生成全部。';
+      var hint = document.querySelector('#locAutoV29Row .loc-auto-v29-hint');
+      if (hint && /上线后自动补全/.test(hint.textContent||'')) hint.textContent = '可多选角色，在线/上线后自动补全';
+    } catch(e) {}
+  }, 2600);
 })();
 </script>
 

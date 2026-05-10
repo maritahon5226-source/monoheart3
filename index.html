@@ -97683,5 +97683,390 @@ if (document.readyState === 'loading') {
 })();
 </script>
 
+
+<script>
+// ===== MONO PATCH v9: fix custom NPC button + jump to My > World Relationship Map =====
+(function(){
+  function esc(v){
+    try { return (typeof monoRolePhoneEsc === 'function') ? monoRolePhoneEsc(v) : String(v == null ? '' : v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+    catch(e){ return String(v == null ? '' : v); }
+  }
+  function ensureNpcOverlay(){
+    var overlay = document.getElementById('npcEditorOverlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'npcEditorOverlay';
+      overlay.className = 'npc-editor-overlay';
+      document.body.appendChild(overlay);
+    }
+    overlay.style.zIndex = '100200';
+    overlay.style.position = 'fixed';
+    overlay.style.inset = '0';
+    return overlay;
+  }
+  function getOwner(ownerPersonaId){
+    try { if (typeof monoGetPersonaById === 'function') return monoGetPersonaById(ownerPersonaId); } catch(e) {}
+    try {
+      var list = JSON.parse(localStorage.getItem('mono_personas') || '[]') || [];
+      return list.find(function(p){ return String(p && p.id) === String(ownerPersonaId); }) || null;
+    } catch(e) { return null; }
+  }
+  function getOptions(ownerPersona){
+    var options = [];
+    try { if (typeof mwGetCharOptions === 'function') options = mwGetCharOptions() || []; } catch(e) {}
+    return (options || []).filter(function(opt){ return opt && String(opt.id) !== String(ownerPersona.id) && !opt.isNpc; });
+  }
+
+  // Robust direct opener. This replaces the older opener that could silently fail.
+  window.monoOpenCustomNpcEditor = function(ownerPersonaId, evt){
+    try { if (evt && evt.stopPropagation) evt.stopPropagation(); } catch(e) {}
+    try { if (typeof monoRolePhoneEnsureUi === 'function') monoRolePhoneEnsureUi(); } catch(e) {}
+    var ownerPersona = getOwner(ownerPersonaId || (window._rolePhoneState && window._rolePhoneState.ownerPersonaId));
+    if (!ownerPersona) {
+      alert('找不到当前角色，无法创建自定义 NPC。请重新打开该角色的微信后再试。');
+      return false;
+    }
+    // This global lexical variable is used by monoSaveNpcEditor(), so update it here.
+    try { _roleNpcEditorContext = { ownerPersonaId: String(ownerPersona.id), npcId: '__new__' }; } catch(e) { window._roleNpcEditorContext = { ownerPersonaId: String(ownerPersona.id), npcId: '__new__' }; }
+    var options = getOptions(ownerPersona);
+    var overlay = ensureNpcOverlay();
+    overlay.innerHTML = ''
+      + '<div class="npc-editor-sheet">'
+      + '  <div class="npc-editor-head"><div class="npc-editor-title">自定义 NPC 设定</div><button type="button" class="npc-editor-close" onclick="closeNpcEditorOverlay()">✕</button></div>'
+      + '  <div class="npc-editor-body">'
+      + '    <div class="npc-editor-grid">'
+      + '      <div><label class="npc-editor-label">名字</label><input id="npcEditorName" class="npc-editor-input" type="text" placeholder="NPC 的名字"></div>'
+      + '      <div><label class="npc-editor-label">身份</label><input id="npcEditorIdentity" class="npc-editor-input" type="text" placeholder="例：邻居 / 同学 / 常去咖啡店店员"></div>'
+      + '      <div><label class="npc-editor-label">与 ' + esc(ownerPersona.name || '该角色') + ' 的关系</label><input id="npcEditorRelationSummary" class="npc-editor-input" type="text" placeholder="例：旧同事 / 朋友 / 竞争对手"></div>'
+      + '      <div><label class="npc-editor-label">关系图描述</label><textarea id="npcEditorRelationDetail" class="npc-editor-textarea" placeholder="写这个 NPC 在关系图里和该角色的关系细节，会自动同步到关系图。"></textarea></div>'
+      + '      <div><label class="npc-editor-label">详细人设</label><textarea id="npcEditorPersona" class="npc-editor-textarea" placeholder="完整写这个 NPC 的背景、个性、说话方式、和角色之间的故事。"></textarea></div>'
+      + '      <div>'
+      + '        <label class="npc-editor-label">与其他角色 / 用户面具的关联</label>'
+      + '        <div style="display:flex;gap:8px;align-items:center;">'
+      + '          <select id="npcEditorLinkTarget" class="npc-editor-select" style="flex:1;">'
+      +              options.map(function(opt){ return '<option value="' + esc(String(opt.id)) + '" data-name="' + esc(opt.name || '') + '" data-type="' + esc(opt.isMask ? 'mask' : (opt.isUser ? 'user' : 'persona')) + '">' + esc(opt.name || '关联对象') + '</option>'; }).join('')
+      + '          </select>'
+      + '          <button type="button" class="role-phone-btn" style="padding:10px 12px;" onclick="monoAddNpcEditorLinkRow()">添加</button>'
+      + '        </div>'
+      + '        <div id="npcEditorLinksWrap"></div>'
+      + '      </div>'
+      + '    </div>'
+      + '  </div>'
+      + '  <div class="npc-editor-actions">'
+      + '    <button type="button" class="npc-editor-delete" onclick="closeNpcEditorOverlay()">取消</button>'
+      + '    <button type="button" class="npc-editor-save" onclick="monoSaveNpcEditor()">保存并添加</button>'
+      + '  </div>'
+      + '</div>';
+    overlay.classList.add('open');
+    overlay.style.display = 'flex';
+    var first = document.getElementById('npcEditorName');
+    if (first) setTimeout(function(){ try { first.focus(); } catch(e) {} }, 50);
+    return false;
+  };
+
+  // Capture-click fallback in case inline onclick is interrupted by a parent overlay/listener.
+  document.addEventListener('click', function(e){
+    var btn = e.target && e.target.closest ? e.target.closest('.role-phone-btn') : null;
+    if (!btn) return;
+    var txt = (btn.textContent || '').replace(/\s+/g,'');
+    var handler = btn.getAttribute('onclick') || '';
+    if (txt.indexOf('自定义NPC') >= 0 || handler.indexOf('monoOpenCustomNpcEditor') >= 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      var idMatch = handler.match(/monoOpenCustomNpcEditor\('([^']+)'/);
+      var ownerId = idMatch ? idMatch[1] : (window._rolePhoneState && window._rolePhoneState.ownerPersonaId);
+      window.monoOpenCustomNpcEditor(ownerId, e);
+    }
+  }, true);
+
+  window.monoOpenWorldRelMapFromRolePhone = function(ownerPersonaId, evt){
+    try { if (evt && evt.stopPropagation) evt.stopPropagation(); } catch(e) {}
+    try { if (typeof closeRolePhonePage === 'function') closeRolePhonePage(); } catch(e) {}
+    // Relationship map is inside the “我的” profile page, so show that page first.
+    try {
+      if (typeof openApp === 'function') openApp('profilePage');
+      else if (typeof _showAppPage === 'function') _showAppPage('profilePage');
+    } catch(e) {
+      try { if (typeof _showAppPage === 'function') _showAppPage('profilePage'); } catch(_) {}
+    }
+    setTimeout(function(){
+      try { if (typeof initMultiWorldUI === 'function') initMultiWorldUI(); } catch(e) {}
+      try { if (typeof mwRefreshUI === 'function') mwRefreshUI(); } catch(e) {}
+      try { if (typeof mwRenderWorldsList === 'function') mwRenderWorldsList(); } catch(e) {}
+      var profile = document.getElementById('profilePage');
+      var entry = document.getElementById('mwRelMapEntry');
+      try {
+        if (entry) {
+          entry.style.display = 'block';
+          entry.scrollIntoView({ behavior: 'auto', block: 'center' });
+        } else if (profile) {
+          profile.scrollTop = Math.max(0, profile.scrollHeight * 0.35);
+        }
+      } catch(e) {}
+      setTimeout(function(){
+        try { if (typeof openRelationshipMap === 'function') openRelationshipMap(); } catch(err) { console.warn('[v9关系图打开失败]', err); }
+        var modal = document.getElementById('mwRelMapModal');
+        if (modal) {
+          modal.style.display = 'flex';
+          modal.style.flexDirection = 'column';
+          modal.style.zIndex = '100300';
+          modal.classList.add('open');
+        }
+        try { if (typeof mwRenderRelEntries === 'function') mwRenderRelEntries(); } catch(e) {}
+        try { if (typeof mwRenderRelMapSvg === 'function') mwRenderRelMapSvg(); } catch(e) {}
+      }, 80);
+    }, 120);
+    return false;
+  };
+
+  // Capture-click fallback for the relation map button too.
+  document.addEventListener('click', function(e){
+    var btn = e.target && e.target.closest ? e.target.closest('.role-phone-btn') : null;
+    if (!btn) return;
+    var txt = (btn.textContent || '').replace(/\s+/g,'');
+    var handler = btn.getAttribute('onclick') || '';
+    if (txt === '关系图' || handler.indexOf('monoOpenWorldRelMapFromRolePhone') >= 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      var idMatch = handler.match(/monoOpenWorldRelMapFromRolePhone\('([^']+)'/);
+      var ownerId = idMatch ? idMatch[1] : (window._rolePhoneState && window._rolePhoneState.ownerPersonaId);
+      window.monoOpenWorldRelMapFromRolePhone(ownerId, e);
+    }
+  }, true);
+})();
+</script>
+
+
+
+<script>
+// ===== MONO PATCH v10: fix custom NPC editor close/cancel/save buttons =====
+(function(){
+  function getOverlay(){ return document.getElementById('npcEditorOverlay'); }
+  function forceHideNpcEditor(){
+    var overlay = getOverlay();
+    if (!overlay) return false;
+    try { overlay.classList.remove('open'); } catch(e) {}
+    overlay.style.display = 'none';
+    overlay.style.pointerEvents = 'none';
+    return false;
+  }
+  // Keep a reference to the current save function before wrapping it.
+  var previousSave = (typeof window.monoSaveNpcEditor === 'function') ? window.monoSaveNpcEditor : null;
+
+  window.closeNpcEditorOverlay = function(){
+    return forceHideNpcEditor();
+  };
+
+  window.monoSaveNpcEditor = function(){
+    var overlay = getOverlay();
+    try {
+      if (previousSave && previousSave !== window.monoSaveNpcEditor) {
+        previousSave.call(window);
+      }
+    } catch(err) {
+      console.error('[v10 NPC保存失败]', err);
+      alert('保存失败：' + (err && err.message ? err.message : '请检查 NPC 资料是否填写完整。'));
+      return false;
+    }
+    // The original save function usually closes the modal. Force-hide as a backup because v9 opened it with inline display:flex.
+    try {
+      if (overlay && overlay.classList.contains('open')) forceHideNpcEditor();
+    } catch(e) {}
+    return false;
+  };
+
+  // Every time the editor is opened, allow clicks again. Some old openers only add .open, some set display:flex.
+  var previousOpen = (typeof window.monoOpenCustomNpcEditor === 'function') ? window.monoOpenCustomNpcEditor : null;
+  if (previousOpen) {
+    window.monoOpenCustomNpcEditor = function(ownerPersonaId, evt){
+      var result = previousOpen.call(window, ownerPersonaId, evt);
+      var overlay = getOverlay();
+      if (overlay) {
+        overlay.style.display = 'flex';
+        overlay.style.pointerEvents = 'auto';
+        overlay.style.zIndex = '100500';
+      }
+      return result;
+    };
+  }
+
+  // Capture fallback: fixes inline onclick not firing when another overlay/listener intercepts the click.
+  document.addEventListener('click', function(e){
+    var overlay = getOverlay();
+    if (!overlay || !overlay.classList.contains('open')) return;
+    var target = e.target;
+    if (!target) return;
+
+    // Click on the dark backdrop closes the editor.
+    if (target === overlay) {
+      e.preventDefault();
+      e.stopPropagation();
+      forceHideNpcEditor();
+      return;
+    }
+
+    var closeBtn = target.closest ? target.closest('.npc-editor-close') : null;
+    if (closeBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      forceHideNpcEditor();
+      return;
+    }
+
+    var deleteOrCancel = target.closest ? target.closest('.npc-editor-delete') : null;
+    if (deleteOrCancel) {
+      var txt = (deleteOrCancel.textContent || '').replace(/\s+/g, '');
+      // In the custom-NPC popup this button is cancel. In the edit popup it may be permanent delete, so do not hijack delete.
+      if (txt.indexOf('取消') >= 0 || txt.toLowerCase().indexOf('cancel') >= 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        forceHideNpcEditor();
+        return;
+      }
+    }
+
+    var saveBtn = target.closest ? target.closest('.npc-editor-save') : null;
+    if (saveBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      window.monoSaveNpcEditor();
+      return;
+    }
+  }, true);
+
+  // Make sure existing opened editor buttons are clickable even if v9 left pointer styles inconsistent.
+  document.addEventListener('DOMContentLoaded', function(){
+    var overlay = getOverlay();
+    if (overlay) overlay.style.pointerEvents = 'auto';
+  });
+})();
+</script>
+
+
+<script>
+// ===== MONO PATCH v11: fix Relationship Map back/save buttons after opening from Role WeChat =====
+(function(){
+  'use strict';
+
+  function relModal(){ return document.getElementById('mwRelMapModal'); }
+
+  function isRelMapOpen(){
+    var m = relModal();
+    if (!m) return false;
+    return m.style.display !== 'none' && (m.classList.contains('open') || m.style.display === 'flex');
+  }
+
+  function hardenRelMapLayer(){
+    var m = relModal();
+    if (!m) return;
+    m.style.display = 'flex';
+    m.style.flexDirection = 'column';
+    // Must be higher than rolePhonePage (99999), NPC editor (100500), room dialogs, and app overlays.
+    m.style.zIndex = '100900';
+    m.style.pointerEvents = 'auto';
+    m.classList.add('open');
+
+    var head = m.firstElementChild;
+    if (head) {
+      head.style.position = 'relative';
+      head.style.zIndex = '100901';
+      head.style.pointerEvents = 'auto';
+      var buttons = head.querySelectorAll('button');
+      if (buttons[0]) {
+        buttons[0].classList.add('mw-relmap-back-btn');
+        buttons[0].setAttribute('type', 'button');
+        buttons[0].style.pointerEvents = 'auto';
+        buttons[0].style.position = 'relative';
+        buttons[0].style.zIndex = '100902';
+      }
+      if (buttons[1]) {
+        buttons[1].classList.add('mw-relmap-save-btn');
+        buttons[1].setAttribute('type', 'button');
+        buttons[1].style.pointerEvents = 'auto';
+        buttons[1].style.position = 'relative';
+        buttons[1].style.zIndex = '100902';
+      }
+    }
+  }
+
+  function forceCloseRelMap(){
+    var m = relModal();
+    if (!m) return false;
+    try { m.classList.remove('open'); } catch(e) {}
+    m.style.display = 'none';
+    // Returning to My/profile page should remain possible after closing from role wechat.
+    try {
+      var profile = document.getElementById('profilePage');
+      if (profile) {
+        profile.style.pointerEvents = 'auto';
+        profile.style.zIndex = profile.style.zIndex || '';
+      }
+    } catch(e) {}
+    return false;
+  }
+
+  function forceSaveRelMap(){
+    try { if (typeof mwRenderRelMapSvg === 'function') mwRenderRelMapSvg(); } catch(e) {}
+    try { if (typeof mwInjectRelationshipsIntoChars === 'function') mwInjectRelationshipsIntoChars(); } catch(e) {}
+    try { if (typeof syncLegacyCharRoomsToRolePhones === 'function') syncLegacyCharRoomsToRolePhones(); } catch(e) {}
+    try { alert('✅ 关系图已保存！\n\n角色的关系记忆已更新，AI 将根据关系图生成符合逻辑的内容。'); } catch(e) {}
+    forceCloseRelMap();
+    return false;
+  }
+
+  // Wrap original functions so every route into this modal uses the same fixed layer/buttons.
+  var oldOpen = (typeof window.openRelationshipMap === 'function') ? window.openRelationshipMap : null;
+  window.openRelationshipMap = function(){
+    var ret;
+    try { if (oldOpen) ret = oldOpen.apply(window, arguments); } catch(err) { console.warn('[v11 openRelationshipMap original failed]', err); }
+    hardenRelMapLayer();
+    try { if (typeof mwRenderRelEntries === 'function') mwRenderRelEntries(); } catch(e) {}
+    try { if (typeof mwRenderRelMapSvg === 'function') mwRenderRelMapSvg(); } catch(e) {}
+    return ret;
+  };
+
+  window.closeRelationshipMap = function(){ return forceCloseRelMap(); };
+  window.saveRelationshipMap = function(){ return forceSaveRelMap(); };
+
+  // Capture fallback: fixes cases where inline onclick does not fire or another listener blocks bubbling.
+  document.addEventListener('click', function(e){
+    if (!isRelMapOpen()) return;
+    var target = e.target;
+    if (!target || !target.closest) return;
+    var m = relModal();
+    if (!m || !m.contains(target)) return;
+
+    var back = target.closest('.mw-relmap-back-btn');
+    var save = target.closest('.mw-relmap-save-btn');
+
+    // Fallback identification for older DOM that has no classes yet.
+    if (!back && !save) {
+      var btn = target.closest('button');
+      if (btn && m.firstElementChild && m.firstElementChild.contains(btn)) {
+        var txt = (btn.textContent || '').replace(/\s+/g, '');
+        if (txt.indexOf('保存') >= 0) save = btn;
+        else back = btn;
+      }
+    }
+
+    if (back) {
+      e.preventDefault();
+      e.stopPropagation();
+      forceCloseRelMap();
+      return;
+    }
+    if (save) {
+      e.preventDefault();
+      e.stopPropagation();
+      forceSaveRelMap();
+      return;
+    }
+  }, true);
+
+  // If v9 opens the modal manually after calling openRelationshipMap, harden it shortly afterward too.
+  setTimeout(function(){ if (isRelMapOpen()) hardenRelMapLayer(); }, 0);
+})();
+</script>
+
 </body>
 </html>

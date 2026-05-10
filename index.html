@@ -98068,5 +98068,134 @@ if (document.readyState === 'loading') {
 })();
 </script>
 
+
+
+<script>
+// ===== MONO PATCH v12: fix Relationship Map A/B character picker after role-wechat jump =====
+(function(){
+  'use strict';
+
+  function pickerModal(){ return document.getElementById('mwCharPickerModal'); }
+
+  function hardenMwCharPicker(){
+    var modal = pickerModal();
+    if (!modal) return;
+    // v11 raised the Relationship Map layer to 100900. The A/B picker was 99999,
+    // so it opened behind the Relationship Map and looked like it did not appear.
+    modal.style.display = 'flex';
+    modal.style.position = 'fixed';
+    modal.style.top = '0';
+    modal.style.left = '0';
+    modal.style.right = '0';
+    modal.style.bottom = '0';
+    modal.style.zIndex = '101300';
+    modal.style.pointerEvents = 'auto';
+    modal.style.alignItems = 'flex-end';
+    modal.style.justifyContent = 'center';
+    modal.classList.add('mw-char-picker-open');
+    var panel = modal.firstElementChild;
+    if (panel) {
+      panel.style.position = 'relative';
+      panel.style.zIndex = '101301';
+      panel.style.pointerEvents = 'auto';
+    }
+    var list = modal.querySelector('#mwCharPickerList');
+    if (list) {
+      list.style.pointerEvents = 'auto';
+      list.style.position = 'relative';
+      list.style.zIndex = '101302';
+    }
+  }
+
+  function forceCloseMwCharPicker(){
+    var modal = pickerModal();
+    if (!modal) return false;
+    modal.classList.remove('mw-char-picker-open');
+    modal.style.display = 'none';
+    // Keep the target reset behavior from the original function when possible.
+    try { if (typeof window._mwPickerTarget !== 'undefined') window._mwPickerTarget = null; } catch(e) {}
+    return false;
+  }
+
+  // Wrap the original picker opener so normal inline onclick still works.
+  var oldOpenPicker = (typeof window.mwOpenCharPicker === 'function') ? window.mwOpenCharPicker : null;
+  if (oldOpenPicker) {
+    window.mwOpenCharPicker = function(entryIdx, slot){
+      var ret;
+      try { ret = oldOpenPicker.call(window, entryIdx, slot); } catch(err) {
+        console.error('[v12 角色选择器打开失败]', err);
+      }
+      hardenMwCharPicker();
+      setTimeout(hardenMwCharPicker, 0);
+      setTimeout(hardenMwCharPicker, 80);
+      return ret;
+    };
+  }
+
+  // Stable close function. This fixes the x button and outside-mask close too.
+  window.mwCloseCharPicker = function(){
+    return forceCloseMwCharPicker();
+  };
+
+  // Capture fallback: if the inline onclick is swallowed by the Relationship Map layer,
+  // directly read the original onclick value and open the picker ourselves.
+  document.addEventListener('click', function(e){
+    var relList = document.getElementById('mwRelEntriesList');
+    if (!relList || !relList.contains(e.target)) return;
+    var btn = e.target && e.target.closest ? e.target.closest('button') : null;
+    if (!btn) return;
+    var handler = btn.getAttribute('onclick') || '';
+    var m = handler.match(/mwOpenCharPicker\((\d+)\s*,\s*['\"]([ab])['\"]\)/);
+    if (!m) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (typeof window.mwOpenCharPicker === 'function') {
+      window.mwOpenCharPicker(parseInt(m[1], 10), m[2]);
+    }
+  }, true);
+
+  // Capture fallback for selecting a character in the picker.
+  document.addEventListener('click', function(e){
+    var modal = pickerModal();
+    if (!modal || modal.style.display === 'none') return;
+    var target = e.target;
+    if (!target) return;
+    if (target === modal) {
+      e.preventDefault();
+      e.stopPropagation();
+      forceCloseMwCharPicker();
+      return;
+    }
+    var closeBtn = target.closest ? target.closest('button') : null;
+    if (closeBtn && (closeBtn.textContent || '').trim() === '✕') {
+      e.preventDefault();
+      e.stopPropagation();
+      forceCloseMwCharPicker();
+      return;
+    }
+    var pickBtn = target.closest ? target.closest('button[data-pick-id]') : null;
+    if (pickBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      var id = pickBtn.getAttribute('data-pick-id') || '';
+      var name = pickBtn.getAttribute('data-pick-name') || '';
+      try {
+        if (typeof window.mwPickChar === 'function') window.mwPickChar(id, name);
+      } catch(err) {
+        console.error('[v12 角色选择失败]', err);
+      }
+      hardenMwCharPicker();
+      forceCloseMwCharPicker();
+    }
+  }, true);
+
+  // If the old opener has already created the picker but left it behind the modal, repair it.
+  setTimeout(function(){
+    var modal = pickerModal();
+    if (modal && modal.style.display !== 'none') hardenMwCharPicker();
+  }, 0);
+})();
+</script>
+
 </body>
 </html>

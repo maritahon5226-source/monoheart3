@@ -99226,7 +99226,7 @@ if (document.readyState === 'loading') {
       '2. 不是一定要参考：只有当聊天明确提到今天的地点、时间、正在做的事、之后计划，才可影响对应时间段。无关闲聊忽略。\n' +
       '3. 保持原本情侣定位生成逻辑：从当天 00:00 开始，每隔半小时一条，不新增非半小时点。\n' +
       '4. 如果聊天提到大概时间，比如“下午回学校”“等下去餐厅”“晚上回家”，请只把它自然 fit 到最接近的半小时区间附近。\n' +
-      '5. 行踪要按角色实际状态自然生成；不要为了衔接地点而强行插入路上/前往/刚到附近等过渡。\n' +
+      '5. 行踪不能跳脱：移动要有顺序，地点变化要自然。不要突然从很远地点瞬移；必要时用“路上/准备出发/刚到附近/在车上”等过渡。\n' +
       '6. 如果聊天内容和原本行踪逻辑冲突，优先选择更合理、较模糊但不冲突的安排，不要硬塞。';
   }
   function _v17SlotsFromStartToNow(startTimeStr){
@@ -99468,7 +99468,7 @@ if (document.readyState === 'loading') {
       '3. 如果聊天只提到地点，请根据人设、时间段和地点自然补一个合理活动；不要把活动也写成地点。\n' +
       '4. 如果聊天只提到事件/活动，请根据人设、地区和时间段自然补一个合理地点；不要把地点也写成事件。\n' +
       '5. 仍然从当天 00:00 开始、每隔半小时一条；只能填用户要求的时间点，不能新增非半小时时间。\n' +
-      '6. 行踪要自然，但不要为了地点变化强制生成路上/准备出发/刚到附近/在车上等过渡。\n' +
+      '6. 行踪要连续，不要跳脱；远距离变化要用“路上/准备出发/刚到附近/在车上”等过渡。\n' +
       '7. 如果聊天参考和正常日程冲突，选更模糊但合理、不冲突的表达，不要硬塞。';
   }
   function normalizeTraces(traces, slots){
@@ -100297,7 +100297,7 @@ if (document.readyState === 'loading') {
       '',
       '逻辑要求：',
       '1. 这是重新生成当前角色的全部今日行踪，可以覆盖该角色今天旧行踪，但不能影响其他角色。',
-      '2. 行踪要自然，但不要因为地点变化自动插入路上/准备出发/刚到附近等过渡。',
+      '2. 行踪要自然连续，不要突然瞬移；远距离变化要用“路上/准备出发/刚到附近”等过渡。',
       '3. 如果参考聊天，只能参考今天同日期聊天里和时间/地点/事件有关的内容；不要复制原句，只做合理改写。',
       '4. 如果聊天只提到地点，请补合理事件；如果只提到事件，请补合理地点；不要两个字段都写成地点或都写成事件。',
       '5. 如果聊天没有相关行踪信息，就按角色人设、地区、时间段合理生成，不要硬塞聊天内容。',
@@ -100634,7 +100634,7 @@ if (document.readyState === 'loading') {
       '2. 聊天内容只是轻参考，不是复制粘贴；没有明确今天/现在/等下/下午/晚上等当天行踪线索时，不要参考聊天。',
       '3. 如果聊天提到“过两天/明天/后天/以后/改天”，不要放进今天行踪。',
       '4. 如果聊天只给地点，补合理事件；只给事件，补合理地点；地点和事件不能写成同一个东西。',
-      '5. 行踪要自然；地点变化大时也不要强制生成路上/前往/刚到附近等过渡。',
+      '5. 行踪要连续，不要跳脱；地点变化大时要用路上/准备出发/刚到附近等过渡。',
       '6. '+(mode==='incremental'?'这是补充新时间点，不要重复旧时间。':'这是重新规划/完整生成今天到当前时间的行踪。'),
       '7. 全程简体中文。',
       '',
@@ -100897,7 +100897,7 @@ if (document.readyState === 'loading') {
       '4. 不要复制聊天原句，不要出现问句；聊天只作为轻参考。',
       '5. 不要把聊天发送时间当作行踪时间。',
       '6. 地点和事件必须分开，不能两个都写地点或两个都写事件。',
-      '7. 行踪要连续自然，但不要强制用“路上/准备出发/刚到附近”等过渡。',
+      '7. 行踪要连续自然，地点变化大时用“路上/准备出发/刚到附近”等过渡。',
       '8. 如果聊天线索不适合今天，就忽略，按角色日常逻辑生成。',
       '',
       '当天聊天可轻参考的结构化线索：',
@@ -101696,8 +101696,8 @@ if (document.readyState === 'loading') {
   }
   function normItem(raw,slot,prev){ var place='',activity=''; if(raw&&typeof raw==='object'){ place=raw.place||raw.location||raw['地点']||raw.address||raw.where||''; activity=raw.activity||raw.event||raw['事件']||raw['活动']||raw.doing||raw.desc||''; } var pair=makeCompatible(place,activity,''); if((!raw||!raw.place)&&prev&&prev.place&&pair.place==='附近街区') pair.place=prev.place; return {time:slot,place:pair.place,activity:pair.activity,isoDate:todayKey(),_v28Clean:true}; }
   function sanitize(list){ var by={}, other=[]; (Array.isArray(list)?list:[]).forEach(function(t){ if(!t)return; var day=t.isoDate||t.day||''; if(day&&!isTodayLike(day)){other.push(t);return;} var time=String(t.time||'').replace('：',':').trim(); if(!isHalfHour(time)) return; time=fmtMin(minOf(time)); by[time]=normItem(t,time,by[time]||null); }); var today=Object.keys(by).sort(function(a,b){return minOf(a)-minOf(b);}).map(function(k){return by[k];}); return other.concat(today); }
-  function addTransitions(arr,anchors){ return Array.isArray(arr)?arr:[]; } /* v37 removed forced transition insertion */
-  function applyAnchors(persona,traces){ var arr=sanitize(traces||[]).filter(function(t){return !t.isoDate||isTodayLike(t.isoDate||t.day||'');}); var anchors=collectAnchors(persona); if(!anchors.length) return arr; var map={}; arr.forEach(function(t){map[t.time]=t;}); anchors.forEach(function(a){ var slot=a.slot; if(map[slot]){ var pair=makeCompatible(a.place,a.activity,a.raw); map[slot].place=pair.place; map[slot].activity=pair.activity; map[slot]._chatAnchor='v28-time-place-event'; map[slot]._timeKind=a.timeKind; } }); arr=Object.keys(map).sort(function(a,b){return minOf(a)-minOf(b);}).map(function(k){return map[k];}); return sanitize(arr); /* v37 no forced transitions */ }
+  function addTransitions(arr,anchors){ var map={}; arr.forEach(function(t){map[t.time]=t;}); anchors.forEach(function(a){ var am=minOf(a.slot); if(am<30) return; var prev=fmtMin(am-30); if(map[prev]&&map[prev].place&&map[prev].place!==a.place){ var oldType=placeType(map[prev].place), newType=placeType(a.place); if(oldType!==newType&&oldType!=='transit'){ map[prev].place='路上'; map[prev].activity='前往'+a.place+'，准备接上后面的安排'; map[prev]._v28Transition=true; } } }); return Object.keys(map).sort(function(a,b){return minOf(a)-minOf(b);}).map(function(k){return map[k];}); }
+  function applyAnchors(persona,traces){ var arr=sanitize(traces||[]).filter(function(t){return !t.isoDate||isTodayLike(t.isoDate||t.day||'');}); var anchors=collectAnchors(persona); if(!anchors.length) return arr; var map={}; arr.forEach(function(t){map[t.time]=t;}); anchors.forEach(function(a){ var slot=a.slot; if(map[slot]){ var pair=makeCompatible(a.place,a.activity,a.raw); map[slot].place=pair.place; map[slot].activity=pair.activity; map[slot]._chatAnchor='v28-time-place-event'; map[slot]._timeKind=a.timeKind; } }); arr=Object.keys(map).sort(function(a,b){return minOf(a)-minOf(b);}).map(function(k){return map[k];}); return sanitize(addTransitions(arr,anchors)); }
   function hardCleanAll(){ try{ if(typeof locDailyTraces==='undefined'||!locDailyTraces) locDailyTraces={}; Object.keys(locDailyTraces).forEach(function(pid){ var p=getPersona(pid); locDailyTraces[pid]=applyAnchors(p,locDailyTraces[pid]||[]); }); try{localStorage.setItem('mono_loc_traces',JSON.stringify(locDailyTraces));}catch(e){} try{ if(typeof saveLocData==='function') saveLocData(); }catch(e){} }catch(e){} }
 
   if(typeof window.generateFullDayTrace==='function'&&!window.generateFullDayTrace.__v28Wrapped){ var oldFull=window.generateFullDayTrace; window.generateFullDayTrace=async function(persona,region){ var res=await oldFull.apply(this,arguments); return applyAnchors(persona,res); }; window.generateFullDayTrace.__v28Wrapped=true; try{eval('generateFullDayTrace = window.generateFullDayTrace');}catch(e){} }
@@ -104251,7 +104251,14 @@ console.log('[ChatScreenshot] 聊天截图功能已加载：多张截图/记忆/
     var keys=Object.keys(byTime).sort(function(a,b){return minOf(a)-minOf(b);});
     var normalized=[], prev=null;
     keys.forEach(function(k){ var n=normalizeItem(byTime[k], persona, prev, anchorMap); normalized.push(n); prev=n; });
-    // v37: 已移除自动插入“路上/前往”的过渡逻辑，保留 API 原始半小时行踪。
+    // 第二遍：遇到明确锚点地点变化，在前一格加“前往xxx”，避免瞬移；但不改更早的明确锚点。
+    for(var i=1;i<normalized.length;i++){
+      var cur=normalized[i], pre=normalized[i-1];
+      if(anchorMap[cur.time] && pre && pre.place && cur.place && pre.place!==cur.place && !anchorMap[pre.time]){
+        pre.place='路上';
+        pre.activity=travelActivity(cur.place);
+      }
+    }
     // 第三遍：如果没有锚点却来回跳地点，优先保持连续。
     for(var j=1;j<normalized.length-1;j++){
       var before=normalized[j-1], mid=normalized[j], after=normalized[j+1];
@@ -104384,7 +104391,7 @@ console.log('[ChatScreenshot] 聊天截图功能已加载：多张截图/记忆/
       '2. time 必须完全等于指定半小时点，只能是 00 或 30 分钟。',
       '3. 不要复制聊天原句，不要出现第一/第二人称聊天口吻。',
       '4. 地点和事件要互相匹配，例如地点是球场，事件不能写成宿舍休息。',
-      '5. 行踪要自然连贯，但禁止为了过渡强行生成“路上/前往/刚到附近”。',
+      '5. 行踪要自然连贯，地点变化大时用路上/前往/刚到附近等过渡。',
       '6. 禁止使用“处理自己的安排 / 下一个安排 / 接上后面的安排 / 个人安排”等占位句。',
       '',
       '输出格式示例：',
@@ -104424,7 +104431,7 @@ console.log('[ChatScreenshot] 聊天截图功能已加载：多张截图/记忆/
     arr.forEach(function(x){var tm=String((x&&(x.time||x.时间))||'').replace('：',':').trim();if(/^\d{1,2}:\d{2}$/.test(tm))byTime[fmtMin(minOf(tm))]=x;});
     var out=[];
     slots.forEach(function(slot,idx){var rawItem=byTime[slot]||arr[idx];if(!rawItem)throw new Error('API 返回数量不足，缺少 '+slot+' 的行踪');out.push(normalizeApiItem(rawItem,slot));});
-    try{if(typeof window.__monoV35SmoothList==='function')out=window.__monoV35SmoothList(out,persona);}catch(e){}
+    try{if(typeof window.__monoV40NoAutoTransitionClean==='function')out=window.__monoV40NoAutoTransitionClean(out,persona);}catch(e){}
     return out;
   }
 
@@ -104520,108 +104527,348 @@ console.log('[ChatScreenshot] 聊天截图功能已加载：多张截图/记忆/
 
 
 
-<script id="mono-role-wechat-v37-couple-location-no-auto-transition">
-/* ===== v37: 情侣定位 · 去除自动逻辑过渡 =====
-   - 不再因为前后地点变化大，就自动把上一格改成“路上/前往xxx”。
-   - 不再生成或保留“准备接上后面的安排 / 下一个安排”等过渡占位。
-   - 继续保留 API-only：API 失败仍显示生成失败，不做本地兜底。
+<script id="mono-role-wechat-v40-couple-location-no-auto-transition-api-only">
+/* ===== v40: 情侣定位去除自动过渡行踪 =====
+   用户要求：不要因为前后地点变化大，就自动生成“路上 / 前往xx / 准备接上后面的安排”。
+   保留原则：情侣定位只保留当前聊天软件 API 返回的真实半小时行踪；不再本地补过渡、不再把上一格强行改成路上。
 */
 (function(){
-  if(window.__monoV37NoAutoTransition) return;
-  window.__monoV37NoAutoTransition = true;
-  function todayKey(){try{return new Date().toISOString().slice(0,10);}catch(e){return '';}}
-  function isToday(x){x=String(x||'');return !x || x===todayKey();}
-  function minOf(t){var m=String(t||'').match(/^(\d{1,2}):(\d{2})$/);return m?parseInt(m[1],10)*60+parseInt(m[2],10):-1;}
-  function fmt(m){m=Math.max(0,Math.floor(m/30)*30);return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');}
-  var FORCED_TRANSITION_RE=/(准备接上后面的安排|接上后面的安排|接上後面的安排|下一个安排|下一個安排|前往[^，。]{1,18}，?准备|在路上，?准备前往|准备前往|刚到附近|剛到附近)/;
-  var BAD_PLACE_RE=/^(路上|途中|街道|街区|街區|附近街区|附近街區)$/;
-  function naturalActivity(place){
-    place=String(place||'').trim();
-    if(/球场|球場|体育馆|體育館|运动场|運動場|操场|操場/.test(place)) return '在这里运动或休息';
-    if(/酒吧|清吧|KTV|夜店/.test(place)) return '在店里放松，听音乐或聊天';
-    if(/咖啡/.test(place)) return '坐下来喝点东西，短暂休息';
-    if(/图书馆|圖書館|学校|學校|教室/.test(place)) return '学习或整理资料';
-    if(/公司|办公室|辦公室/.test(place)) return '处理工作或手头事情';
-    if(/家|宿舍|公寓|房间|房間/.test(place)) return '在室内休息或整理东西';
-    if(/餐厅|餐廳|饭店|飯店|食堂/.test(place)) return '吃饭或等餐';
-    if(/商场|商場|超市|市场|市場/.test(place)) return '逛店或买东西';
-    if(/公园|公園|海边|海邊/.test(place)) return '散步透气';
-    if(/电影院|電影院/.test(place)) return '看电影或等开场';
-    return '停留一会儿，处理当前事情';
+  if (window.__monoV40CoupleLocationNoAutoTransitionApiOnly) return;
+  window.__monoV40CoupleLocationNoAutoTransitionApiOnly = true;
+
+  function clean(s){ return String(s||'').replace(/<[^>]*>/g,' ').replace(/[\r\n]+/g,' ').replace(/\s+/g,' ').trim(); }
+  function minOf(t){ var m=String(t||'').match(/^(\d{1,2}):(\d{2})$/); if(!m)return 99999; return (+m[1])*60+(+m[2]); }
+  function todayKey(){ try{ if(typeof locDateKey==='function') return locDateKey(new Date()); }catch(e){} var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function isTodayTrace(t){ var d=String((t&&(t.isoDate||t.day||t.date))||''); return !d || d===todayKey() || d.indexOf(todayKey())===0; }
+  function isAutoTransition(t){
+    if(!t) return false;
+    var p=clean(t.place), a=clean(t.activity||t.event||t.desc);
+    if(t._transition || t._v28Transition || t._v35Transition || t._autoTransition) return true;
+    if(/^(路上|途中|附近街区|附近街區)$/.test(p) && /前往|准备前往|準備前往|接上后面|接上後面|下一个地点|下一個地點|刚到附近|剛到附近/.test(a)) return true;
+    if(/前往.{1,18}(，|,)?准备接上后面的安排|前往.{1,18}(，|,)?準備接上後面的安排/.test(a)) return true;
+    if(/在路上，?准备前往|在路上，?準備前往|在附近走动，?准备接上后面的行程/.test(a)) return true;
+    return false;
   }
-  function stripForcedTransitions(list){
+  function neutralizeTransitionText(t){
+    if(!t) return t;
+    var x=Object.assign({},t);
+    var a=clean(x.activity||x.event||x.desc);
+    if(/接上后面的安排|接上後面的安排|下一个安排|下一個安排/.test(a)){
+      x.activity = '继续当前时间段的日常活动';
+      delete x.event; delete x.desc;
+    }
+    delete x._transition; delete x._v28Transition; delete x._v35Transition; delete x._autoTransition;
+    return x;
+  }
+  function cleanList(list){
     if(!Array.isArray(list)) return [];
-    var arr=list.slice().sort(function(a,b){return minOf(a&&a.time)-minOf(b&&b.time);});
-    var prevReal=null;
-    return arr.map(function(t){
-      if(!t || (t.isoDate && !isToday(t.isoDate||t.day))) return t;
-      var n=Object.assign({},t);
-      var time=fmt(minOf(n.time)); if(minOf(time)<0) return null; n.time=time; n.isoDate=todayKey();
-      var place=String(n.place||n.location||'').trim();
-      var activity=String(n.activity||n.event||'').trim();
-      var forced = n._v28Transition || n._transition || n._autoTransition || FORCED_TRANSITION_RE.test(activity);
-      if(forced){
-        if(prevReal && prevReal.place && !BAD_PLACE_RE.test(prevReal.place)){
-          n.place=prevReal.place;
-          n.activity=naturalActivity(n.place);
-        }else{
-          n.place = BAD_PLACE_RE.test(place) ? '附近' : (place || '附近');
-          n.activity = naturalActivity(n.place);
-        }
-        delete n._v28Transition; delete n._transition; delete n._autoTransition;
-      }
-      if(!FORCED_TRANSITION_RE.test(String(n.activity||'')) && !BAD_PLACE_RE.test(String(n.place||''))){
-        prevReal={place:n.place, activity:n.activity};
-      }
-      return n;
-    }).filter(Boolean);
+    return list
+      .filter(function(t){ return t && !isAutoTransition(t); })
+      .map(neutralizeTransitionText)
+      .sort(function(a,b){ return minOf(a.time)-minOf(b.time); });
   }
-  function cleanAllLocationTransitions(){
+  window.__monoV40NoAutoTransitionClean = cleanList;
+
+  // 覆盖旧的 v35 平滑函数：只清理，不再插入“路上/前往”过渡。
+  window.__monoV35SmoothList = function(list){ return cleanList(list); };
+
+  function sanitizeAll(){
+    var changed=false;
     try{
       if(typeof locDailyTraces==='undefined' || !locDailyTraces) return false;
-      var changed=false;
       Object.keys(locDailyTraces).forEach(function(pid){
         var old=Array.isArray(locDailyTraces[pid])?locDailyTraces[pid]:[];
-        var neu=stripForcedTransitions(old);
-        if(JSON.stringify(old)!==JSON.stringify(neu)){locDailyTraces[pid]=neu; changed=true;}
+        var keepOldDays=old.filter(function(t){ return !isTodayTrace(t); });
+        var today=old.filter(function(t){ return isTodayTrace(t); });
+        var neu=keepOldDays.concat(cleanList(today));
+        if(JSON.stringify(old)!==JSON.stringify(neu)){ locDailyTraces[pid]=neu; changed=true; }
       });
-      if(changed){
-        try{if(typeof saveLocData==='function')saveLocData();}catch(e){}
-        try{localStorage.setItem('mono_loc_traces',JSON.stringify(locDailyTraces));}catch(e){}
-      }
-      return changed;
-    }catch(e){console.warn('[v37 no transition clean failed]',e);return false;}
+      if(changed){ try{ if(typeof saveLocData==='function') saveLocData(); }catch(e){} }
+    }catch(e){ console.warn('[v40 no auto transition sanitize failed]',e); }
+    return changed;
   }
-  var oldRender=window.renderLocTrace;
-  if(typeof oldRender==='function' && !oldRender.__v37NoTransition){
-    window.renderLocTrace=function(){cleanAllLocationTransitions(); return oldRender.apply(this,arguments);};
-    window.renderLocTrace.__v37NoTransition=true;
-    try{eval('renderLocTrace = window.renderLocTrace');}catch(e){}
-  }
-  function wrapGen(name){
+  window.monoRemoveCoupleLocationAutoTransitions = sanitizeAll;
+
+  function wrapAsync(name){
     var old=window[name];
-    if(typeof old==='function' && !old.__v37NoTransition){
+    if(typeof old==='function' && !old.__v40NoAutoTransitionWrapped){
       window[name]=async function(){
-        var res=await old.apply(this,arguments);
-        return stripForcedTransitions(res);
+        var r=await old.apply(this,arguments);
+        try{ sanitizeAll(); }catch(e){}
+        return r;
       };
-      window[name].__v37NoTransition=true;
-      try{eval(name+' = window[name]');}catch(e){}
+      window[name].__v40NoAutoTransitionWrapped=true;
+      try{ eval(name+' = window[name]'); }catch(e){}
     }
   }
-  wrapGen('generateFullDayTrace');
-  wrapGen('generateIncrementalTrace');
-  var oldUpdate=window.updateLocTrace;
-  if(typeof oldUpdate==='function' && !oldUpdate.__v37NoTransition){
-    window.updateLocTrace=async function(){var r=await oldUpdate.apply(this,arguments);cleanAllLocationTransitions();try{if(typeof renderLocTrace==='function')renderLocTrace();}catch(e){}return r;};
-    window.updateLocTrace.__v37NoTransition=true;try{eval('updateLocTrace = window.updateLocTrace');}catch(e){}
+  ['updateLocTrace','regenerateSelectedLocTrace','monoRunLocationAutoUpdate'].forEach(wrapAsync);
+
+  function wrapSync(name){
+    var old=window[name];
+    if(typeof old==='function' && !old.__v40NoAutoTransitionWrapped){
+      window[name]=function(){
+        try{ sanitizeAll(); }catch(e){}
+        return old.apply(this,arguments);
+      };
+      window[name].__v40NoAutoTransitionWrapped=true;
+      try{ eval(name+' = window[name]'); }catch(e){}
+    }
   }
-  var oldRegen=window.regenerateSelectedLocTrace;
-  if(typeof oldRegen==='function' && !oldRegen.__v37NoTransition){
-    window.regenerateSelectedLocTrace=async function(){var r=await oldRegen.apply(this,arguments);cleanAllLocationTransitions();try{if(typeof renderLocTrace==='function')renderLocTrace();}catch(e){}return r;};
-    window.regenerateSelectedLocTrace.__v37NoTransition=true;try{eval('regenerateSelectedLocTrace = window.regenerateSelectedLocTrace');}catch(e){}
+  ['renderLocTrace','saveLocData','openLocationApp'].forEach(wrapSync);
+
+  setTimeout(function(){ try{ sanitizeAll(); if(typeof renderLocTrace==='function') renderLocTrace(); }catch(e){} }, 300);
+})();
+</script>
+
+<script id="mono-role-wechat-v41-couple-location-current-api-all-json-adapter">
+/* ===== v41: 情侣定位强制使用聊天软件当前 API 设置 + 通用 JSON 解析 =====
+   1. 不再绕过聊天软件 API 兼容层；直接走 window.fetch，因此会复用现有所有 API 适配逻辑。
+   2. 优先读取当前正在使用的 API 配置：_getCurrentActiveApiConfig / apiConfig / mono_api。
+   3. 兼容 OpenAI / 反代 / Gemini / Claude 兼容接口 / Azure / Groq / Together / Mistral 等由原聊天软件兼容层支持的接口。
+   4. 兼容多种 JSON 返回：纯数组、对象包数组、choices.message.content、output_text、content array、代码块、带说明文字的 JSON。
+   5. API 失败或 JSON 无法解析时只显示失败，不写入行踪，不本地兜底。
+*/
+(function(){
+  if(window.__monoV41CoupleLocationCurrentApiAllJsonAdapter) return;
+  window.__monoV41CoupleLocationCurrentApiAllJsonAdapter = true;
+
+  function esc(s){return String(s==null?'':s).replace(/[&<>'"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c];});}
+  function toastSoft(msg){try{if(typeof toast==='function')toast(msg);else if(typeof showToast==='function')showToast(msg);else console.log(msg);}catch(e){try{console.log(msg);}catch(_){}}}
+  function pad2(n){n=parseInt(n,10)||0;return String(n).padStart(2,'0');}
+  function minOf(t){var m=String(t||'').match(/(\d{1,2})[:：](\d{2})/);return m?(+m[1])*60+(+m[2]):99999;}
+  function fmtMin(m){m=Math.max(0,Math.min(23*60+30,Math.floor(m/30)*30));return pad2(Math.floor(m/60))+':'+pad2(m%60);}
+  function currentHalfMin(){var d=new Date();return Math.floor((d.getHours()*60+d.getMinutes())/30)*30;}
+  function todayKey(){try{return new Date().toLocaleDateString('zh-TW');}catch(e){return new Date().toISOString().slice(0,10);}}
+  function fullSlots(){var end=currentHalfMin(),out=[];for(var m=0;m<=end;m+=30)out.push(fmtMin(m));return out;}
+  function slotsAfter(last){var end=currentHalfMin(),start=0;if(last&&/^\d{1,2}[:：]\d{2}$/.test(String(last)))start=minOf(last)+30;var out=[];for(var m=start;m<=end;m+=30)out.push(fmtMin(m));return out;}
+  function pidOf(rel){return String((rel&&(rel.personaId||rel.id||rel.pid||rel.charId))||'');}
+  function getPersona(pid){try{var arr=(typeof personas!=='undefined'?personas:window.personas)||[];return Array.isArray(arr)?arr.find(function(p){return String(p.id)===String(pid);}):null;}catch(e){return null;}}
+  function activeRelations(){try{return ((typeof locRelations!=='undefined'?locRelations:window.locRelations)||[]).filter(function(r){return !!getPersona(pidOf(r));});}catch(e){return [];}}
+  function ensureSelectedPid(){try{if(typeof ensureTraceSelected==='function'){var a=ensureTraceSelected();if(a)return String(a);}}catch(e){}try{if(window.locSelectedTraceCharId)return String(window.locSelectedTraceCharId);}catch(e){}try{if(typeof locSelectedCharId!=='undefined'&&locSelectedCharId)return String(locSelectedCharId);}catch(e){}var r=activeRelations()[0];return r?pidOf(r):'';}
+  function sameToday(t){var d=String((t&&(t.isoDate||t.day))||todayKey());return d===todayKey()||d===new Date().toLocaleDateString('zh-CN');}
+  function todayOnly(list){return (Array.isArray(list)?list:[]).filter(function(t){return t&&sameToday(t)&&/^\d{2}:\d{2}$/.test(String(t.time||'').replace('：',':'));}).sort(function(a,b){return minOf(a.time)-minOf(b.time);});}
+  function otherDays(list){return (Array.isArray(list)?list:[]).filter(function(t){return t&&!sameToday(t);});}
+  function cleanText(s){return String(s==null?'':s).replace(/^\s*["“”'‘’]+|["“”'‘’]+\s*$/g,'').replace(/\s+/g,' ').trim();}
+
+  function getCurrentApiCfg(){
+    var cfg=null;
+    try{if(typeof _getCurrentActiveApiConfig==='function')cfg=_getCurrentActiveApiConfig();}catch(e){}
+    if(!cfg){try{if(typeof apiConfig!=='undefined'&&apiConfig)cfg=apiConfig;}catch(e){}}
+    if(!cfg){try{cfg=JSON.parse(localStorage.getItem('mono_api')||'{}');}catch(e){cfg={};}}
+    try{if(typeof _normalizeApiConfigObject==='function')cfg=_normalizeApiConfigObject(cfg);}catch(e){
+      cfg={url:String((cfg&&cfg.url)||'').trim(),key:String((cfg&&cfg.key)||'').trim(),model:String((cfg&&cfg.model)||'').trim()};
+    }
+    try{apiConfig=cfg;window.apiConfig=cfg;if(typeof _persistEffectiveApiConfig==='function')_persistEffectiveApiConfig(cfg);}catch(e){}
+    return cfg||{};
   }
-  setTimeout(function(){cleanAllLocationTransitions();try{if(typeof renderLocTrace==='function')renderLocTrace();}catch(e){}},500);
+  function apiReady(cfg){
+    cfg=cfg||getCurrentApiCfg();
+    try{if(typeof _hasUsableApiConfig==='function')return _hasUsableApiConfig(cfg);}catch(e){}
+    return !!(cfg&&cfg.url&&cfg.key);
+  }
+  function firstChatEndpoint(cfg){
+    cfg=cfg||getCurrentApiCfg();
+    try{var arr=typeof _buildApiChatCandidates==='function'?_buildApiChatCandidates(cfg.url):[];if(arr&&arr[0])return arr[0];}catch(e){}
+    var raw=String((cfg&&cfg.url)||'').replace(/\/+$/,'');
+    if(/\/chat\/completions$/i.test(raw))return raw;
+    if(/\/v\d+$/i.test(raw))return raw+'/chat/completions';
+    return raw+'/v1/chat/completions';
+  }
+  function applyModel(body,cfg,persona){
+    cfg=cfg||getCurrentApiCfg();
+    try{if(typeof _applyApiModel==='function')return _applyApiModel(body,cfg.model);}catch(e){}
+    if(cfg.model&&cfg.model!=='__auto__')body.model=cfg.model;
+    else delete body.model;
+    return body;
+  }
+
+  function stripCodeFence(s){return String(s||'').trim().replace(/^```(?:json|JSON)?\s*/,'').replace(/```\s*$/,'').trim();}
+  function tryJson(s){try{return JSON.parse(s);}catch(e){return null;}}
+  function balancedBlock(text,startChar){
+    text=String(text||'');var endChar=startChar==='['?']':'}';var start=text.indexOf(startChar);
+    while(start>=0){var depth=0,inStr=false,escp=false;
+      for(var i=start;i<text.length;i++){var ch=text.charAt(i);
+        if(inStr){if(escp)escp=false;else if(ch==='\\')escp=true;else if(ch==='"')inStr=false;continue;}
+        if(ch==='"'){inStr=true;continue;}
+        if(ch===startChar)depth++;
+        if(ch===endChar){depth--;if(depth===0)return text.slice(start,i+1);}
+      }
+      start=text.indexOf(startChar,start+1);
+    }
+    return '';
+  }
+  function extractTextFromApiPayload(payload){
+    if(payload==null)return '';
+    if(typeof payload==='string')return payload;
+    if(Array.isArray(payload))return JSON.stringify(payload);
+    if(typeof payload!=='object')return String(payload||'');
+    try{if(typeof _extractAssistantMessageContent==='function'){var x=_extractAssistantMessageContent(payload);if(String(x||'').trim())return String(x).trim();}}catch(e){}
+    var out=[];
+    function push(v){if(typeof v==='string'&&v.trim())out.push(v.trim());}
+    push(payload.output_text);push(payload.text);push(payload.content);push(payload.response);push(payload.result);push(payload.answer);push(payload.message);
+    try{var c=payload.choices&&payload.choices[0];if(c){push(c.text);push(c.content);if(c.message){push(c.message.content);push(c.message.text);}if(c.delta){push(c.delta.content);}}}catch(e){}
+    try{if(Array.isArray(payload.output)){payload.output.forEach(function(item){if(item&&Array.isArray(item.content)){item.content.forEach(function(part){push(part&&part.text);push(part&&part.content);});}});}}catch(e){}
+    return out.join('\n').trim();
+  }
+  function findArrayInObject(obj){
+    if(Array.isArray(obj))return obj;
+    if(!obj||typeof obj!=='object')return null;
+    var keys=['traces','trace','items','data','result','results','locations','location','schedule','timeline','list','rows','行踪','行程'];
+    for(var i=0;i<keys.length;i++){var v=obj[keys[i]];if(Array.isArray(v))return v;if(v&&typeof v==='object'){var nested=findArrayInObject(v);if(nested)return nested;}}
+    // 有些 API 会返回 {time, place, activity} 单对象
+    if(obj.time||obj.时间||obj.place||obj.location||obj.地点)return [obj];
+    return null;
+  }
+  function parseApiArrayUniversal(raw){
+    if(Array.isArray(raw))return raw;
+    var payload=raw;
+    if(typeof raw==='object'&&raw){
+      var direct=findArrayInObject(raw);if(direct&&direct.length)return direct;
+      payload=extractTextFromApiPayload(raw)||JSON.stringify(raw);
+    }
+    var txt=stripCodeFence(String(payload||''));
+    if(!txt)throw new Error('API 返回为空');
+    var parsed=tryJson(txt);
+    if(parsed){var arr=findArrayInObject(parsed);if(arr&&arr.length)return arr;}
+    var block=balancedBlock(txt,'[') || balancedBlock(txt,'{');
+    if(block){parsed=tryJson(block);var arr2=findArrayInObject(parsed);if(arr2&&arr2.length)return arr2;}
+    throw new Error('API 返回无法解析为行踪 JSON');
+  }
+  function normalizeApiItem(raw,slot){
+    raw=raw||{};
+    if(typeof raw==='string'){raw={activity:raw};}
+    var time=String(raw.time||raw.时间||slot||'').replace('：',':').trim();
+    var place=cleanText(raw.place||raw.address||raw.location||raw.where||raw.地点||raw.位置||raw.地点名称||'');
+    var activity=cleanText(raw.activity||raw.event||raw.desc||raw.description||raw.status||raw.action||raw.事件||raw.行踪||raw.状态||raw.活动||'');
+    if(!place&&raw.title&&String(raw.title).length<20)place=cleanText(raw.title);
+    if(!activity&&raw.detail)activity=cleanText(raw.detail);
+    if(!place||!activity)throw new Error('API 返回格式不完整：缺少地点或事件');
+    if(/我在|你在|老婆|宝贝|想给你看|过两天|明天|后天|下次|改天|处理自己的安排|下一个安排|接上后面的安排/.test(place+' '+activity)){
+      throw new Error('API 返回内容不符合情侣定位规则，已拒绝写入');
+    }
+    return {time:slot||fmtMin(minOf(time)),place:place,activity:activity,isoDate:todayKey(),source:'current-api-v41'};
+  }
+  function buildPrompt(persona,region,slots,mode,lastTime){
+    var name=(persona&&persona.name)||'角色';
+    var personaText=(persona&&(persona.persona||persona.prompt||persona.description||persona.setting))||'';
+    return [
+      '你是情侣定位行踪生成器。必须使用简体中文，只输出 JSON，不输出解释、Markdown 或代码块。',
+      '角色名：'+name,
+      '角色人设：'+personaText,
+      '地区：'+(region||'未知地区'),
+      '今天日期：'+new Date().toLocaleDateString('zh-CN'),
+      '生成模式：'+(mode==='incremental'?'只补全上一条之后的新半小时行踪，上一条时间为 '+(lastTime||'无'):'重新生成今天从 00:00 到当前半小时的行踪'),
+      '必须且只能生成这些 time：'+slots.join('、'),
+      '',
+      '硬性规则：',
+      '1. 输出必须是 JSON 数组，数组每一项必须有 time、place、activity。',
+      '2. time 必须完全等于指定半小时点，只能是 00 或 30 分钟。',
+      '3. 不要复制聊天原句，不要出现第一/第二人称聊天口吻。',
+      '4. 只有聊天里明确提到今天/当前时间范围 + 地点/行动状态，或角色明确说“我在某地”，才可以作为参考。',
+      '5. 明天、后天、过两天、下次、改天、以后等未来内容不要写进今天。',
+      '6. 地点和事件必须匹配，例如地点是球场，事件不能写宿舍休息。',
+      '7. 不要自动插入“路上/前往/刚到附近/准备接上后面的安排”等过渡行踪。',
+      '8. 禁止使用“处理自己的安排 / 下一个安排 / 接上后面的安排 / 个人安排”等占位句。',
+      '',
+      '输出示例：[{"time":"08:00","place":"家里","activity":"吃早餐并整理出门需要的东西"}]'
+    ].join('\n');
+  }
+  async function callCurrentChatApi(messages,maxTokens,persona){
+    var cfg=getCurrentApiCfg();
+    if(!apiReady(cfg))throw new Error('请先配置聊天软件 API');
+    var endpoint=firstChatEndpoint(cfg);
+    var body=applyModel({messages:messages,temperature:0.72,max_tokens:maxTokens||1800,stream:false},cfg,persona);
+    var headers={'Content-Type':'application/json'};
+    if(cfg.key)headers.Authorization='Bearer '+cfg.key;
+    // 重点：必须使用 window.fetch，不使用 raw/original fetch，这样才能走聊天软件已有的全接口兼容层。
+    var resp=await window.fetch(endpoint,{method:'POST',headers:headers,body:JSON.stringify(body)});
+    var text='';try{text=await resp.text();}catch(e){}
+    if(!resp||!resp.ok)throw new Error('API 请求失败：'+(resp&&resp.status?resp.status:'无响应')+(text?' '+text.slice(0,160):''));
+    var data=tryJson(text);
+    if(data){
+      var content=extractTextFromApiPayload(data);
+      if(content)return content;
+      // 少数接口可能直接返回数组/对象行踪
+      var direct=findArrayInObject(data);if(direct)return JSON.stringify(direct);
+    }
+    if(text&&text.trim())return text.trim();
+    throw new Error('API 返回为空');
+  }
+  async function generateApiOnly(persona,region,slots,mode,lastTime){
+    if(!slots||!slots.length)return [];
+    var prompt=buildPrompt(persona,region,slots,mode,lastTime);
+    var raw=await callCurrentChatApi([{role:'system',content:'你是严格 JSON 行踪生成器，只输出 JSON 数组。'}, {role:'user',content:prompt}],Math.max(1200,slots.length*90),persona);
+    var arr=parseApiArrayUniversal(raw);
+    var byTime={};
+    arr.forEach(function(x){var tm=String((x&&(x.time||x.时间))||'').replace('：',':').trim();if(/^\d{1,2}:\d{2}$/.test(tm))byTime[fmtMin(minOf(tm))]=x;});
+    var out=[];
+    slots.forEach(function(slot,idx){var rawItem=byTime[slot]||arr[idx];if(!rawItem)throw new Error('API 返回数量不足，缺少 '+slot+' 的行踪');out.push(normalizeApiItem(rawItem,slot));});
+    try{if(typeof window.__monoV40NoAutoTransitionClean==='function')out=window.__monoV40NoAutoTransitionClean(out,persona);}catch(e){}
+    return out;
+  }
+
+  window.generateFullDayTrace=async function(persona,region){return generateApiOnly(persona,region,fullSlots(),'full',null);};
+  window.generateIncrementalTrace=async function(persona,region,fromTime){return generateApiOnly(persona,region,slotsAfter(fromTime||null),'incremental',fromTime||null);};
+  try{eval('generateFullDayTrace=window.generateFullDayTrace;generateIncrementalTrace=window.generateIncrementalTrace;');}catch(e){}
+
+  function showGenerationFailure(title,err){
+    var msg=(err&&err.message)||'未知错误';toastSoft((title||'生成失败')+'：'+msg);
+    try{var content=document.getElementById('locTraceContent');if(content){var box=document.createElement('div');box.className='loc-trace-empty-card loc-api-fail-card';box.style.cssText='margin:12px;padding:14px;border:1px solid #ffd6d6;background:#fff7f7;color:#cc2b2b;border-radius:16px;font-size:12px;line-height:1.6;';box.innerHTML='<i class="fas fa-triangle-exclamation" style="margin-right:6px;"></i><b>'+esc(title||'生成失败')+'</b><br><small>'+esc(msg)+'</small>';content.prepend(box);}}catch(e){}
+  }
+  async function updateOne(pid,silent){
+    var p=getPersona(pid);if(!p)return false;
+    try{if(typeof loadLocData==='function')loadLocData();}catch(e){}
+    try{if(typeof _checkMidnightReset==='function')_checkMidnightReset();}catch(e){}
+    if(typeof locDailyTraces==='undefined'||!locDailyTraces)locDailyTraces={};
+    var oldList=locDailyTraces[pid]||[];var existing=todayOnly(oldList);var last=existing.length?existing[existing.length-1].time:null;var slots=slotsAfter(last);
+    if(!slots.length){if(!silent)toastSoft('当前时间段已经生成完，没有新的半小时行踪。');return false;}
+    var region=(locCharRegions&&locCharRegions[pid])||locUserRegionName||'未知地区';
+    var fresh=await generateApiOnly(p,region,slots,last?'incremental':'full',last);
+    if(!fresh.length)throw new Error('API 没有生成新的行踪');
+    var exists={};existing.forEach(function(t){exists[String(t.time)]=true;});
+    fresh=fresh.filter(function(t){return t&&t.time&&!exists[String(t.time)];});
+    if(!fresh.length){if(!silent)toastSoft('当前时间段已经生成完，没有新的半小时行踪。');return false;}
+    locDailyTraces[pid]=otherDays(oldList).concat(existing).concat(fresh).sort(function(a,b){return minOf(a.time)-minOf(b.time);});
+    try{var latest=fresh[fresh.length-1];if(latest){if(typeof locCharLocations==='undefined'||!locCharLocations)locCharLocations={};locCharLocations[pid]=Array.isArray(locCharLocations[pid])?locCharLocations[pid]:[];locCharLocations[pid].push({address:latest.place,time:new Date().toISOString(),source:'current-api-v41',day:todayKey()});if(locCharLocations[pid].length>48)locCharLocations[pid]=locCharLocations[pid].slice(-48);}}catch(e){}
+    try{if(typeof saveLocData==='function')saveLocData();}catch(e){}
+    return true;
+  }
+  window.updateLocTrace=async function(){
+    var pid=ensureSelectedPid();if(!pid){alert('请先选择要生成行踪的角色');return;}
+    var p=getPersona(pid),btn=document.getElementById('locTraceUpdateBtn'),old=btn&&btn.innerHTML;
+    try{if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin" style="font-size:9px;"></i>生成中';}
+      var changed=await updateOne(pid,false);
+      try{if(typeof renderLocTrace==='function')renderLocTrace();if(typeof _renderCharBar==='function')_renderCharBar();if(typeof _renderBotMap==='function')_renderBotMap();}catch(e){}
+      if(changed)toastSoft('已通过聊天软件当前 API 补全 '+((p&&p.name)||'该角色')+' 的新半小时行踪。');
+    }catch(err){console.error('[v41 current api update failed]',err);showGenerationFailure('生成失败',err);}
+    finally{if(btn){btn.disabled=false;btn.innerHTML=old||'<i class="fas fa-sync-alt" style="margin-right:3px;font-size:9px;"></i>更新行踪';}}
+  };
+  try{eval('updateLocTrace=window.updateLocTrace');}catch(e){}
+  window.regenerateSelectedLocTrace=async function(){
+    var pid=ensureSelectedPid(),p=pid&&getPersona(pid);if(!p){toastSoft('请先选择要重新生成行踪的角色。');return;}
+    var btn=document.getElementById('locTraceRegenerateBtn'),up=document.getElementById('locTraceUpdateBtn'),old=btn&&btn.innerHTML,oldU=up&&up.innerHTML;
+    try{if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin" style="font-size:9px;"></i>重新生成中';}if(up)up.disabled=true;
+      var slots=fullSlots();if(!slots.length){toastSoft('当前时间还没有可生成的半小时行踪。');return;}
+      var region=(locCharRegions&&locCharRegions[pid])||locUserRegionName||'未知地区';
+      var traces=await generateApiOnly(p,region,slots,'full',null);
+      if(typeof locDailyTraces==='undefined'||!locDailyTraces)locDailyTraces={};
+      var oldList=locDailyTraces[pid]||[];locDailyTraces[pid]=otherDays(oldList).concat(traces);
+      try{var latest=traces[traces.length-1];if(latest){if(typeof locCharLocations==='undefined'||!locCharLocations)locCharLocations={};locCharLocations[pid]=Array.isArray(locCharLocations[pid])?locCharLocations[pid]:[];locCharLocations[pid]=locCharLocations[pid].filter(function(x){return !(x&&String(x.day||'')===String(todayKey()));});locCharLocations[pid].push({address:latest.place,time:new Date().toISOString(),source:'current-api-v41-regenerate',day:todayKey()});}}catch(e){}
+      try{if(typeof saveLocData==='function')saveLocData();}catch(e){}
+      try{if(typeof renderLocTrace==='function')renderLocTrace();if(typeof _renderCharBar==='function')_renderCharBar();if(typeof _renderBotMap==='function')_renderBotMap();}catch(e){}
+      toastSoft('已通过聊天软件当前 API 重新生成到当前半小时。');
+    }catch(err){console.error('[v41 current api regenerate failed]',err);showGenerationFailure('重新生成失败',err);}
+    finally{if(btn){btn.disabled=false;btn.innerHTML=old||'<i class="fas fa-redo" style="margin-right:3px;font-size:9px;"></i>重新生成全部';}if(up){up.disabled=false;up.innerHTML=oldU||up.innerHTML;}}
+  };
+  try{eval('regenerateSelectedLocTrace=window.regenerateSelectedLocTrace');}catch(e){}
+  window.monoRunLocationAutoUpdate=async function(opts){
+    opts=opts||{};var ids=[];try{ids=JSON.parse(localStorage.getItem('mono_loc_auto_update_roles_v31')||localStorage.getItem('mono_loc_auto_update_roles_v29')||'[]').map(String);}catch(e){ids=[];}
+    var bound={};activeRelations().forEach(function(r){bound[pidOf(r)]=true;});ids=ids.filter(function(id){return bound[id];});
+    var changed=0,failed=0;for(var i=0;i<ids.length;i++){try{if(await updateOne(ids[i],true))changed++;}catch(e){failed++;console.warn('[v41 auto update current api failed]',ids[i],e);}}
+    try{if(changed&&typeof renderLocTrace==='function')renderLocTrace();}catch(e){}
+    if(failed&&!opts.silent)toastSoft('自动更新失败：聊天软件当前 API 没有成功生成行踪。');
+    return changed;
+  };
 })();
 </script>
 

@@ -69758,7 +69758,7 @@ async function regenerateGrandchildProfile(pid, babyIdx, childIdx) {
           { role: 'system', content: '你是一个家庭人物设定生成器。你必须只输出纯 JSON，不要输出任何解释文字。' },
           { role: 'user', content: getGrandchildProfilePrompt(baby, partner, child, siblingChildren) }
         ],
-        max_tokens: 900,
+        max_tokens: 1400,
         temperature: 0.9
       })
     });
@@ -102430,99 +102430,349 @@ function _csExtractScreenshotTarget(text) {
 }
 
 // ── 构建"哪些聊天室"的上下文供AI参考 ────────────────────────────────────────
-function _csBuildAvailableChatsContext(p) {
+function _csFormatMsgLineForPrompt(m, fallbackRightName, userName) {
+  var sender = m && (m.sender || m.author || m.name || (m.role === 'user' ? userName : (m.role === 'assistant' ? fallbackRightName : m.role))) || '某人';
+  var content = String(m && (m.content || m.text || m.message || '') || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+  var time = m && m.timestamp ? new Date(m.timestamp).toTimeString().slice(0,5) : '';
+  return sender + (time ? '(' + time + ')' : '') + '：' + content;
+}
+
+function _csIsPersonaInRoom(p, room) {
+  if (!p || !room) return false;
+  var members = Array.isArray(room.members) ? room.members.map(String) : [];
+  return members.indexOf(String(p.name || '')) >= 0 || members.indexOf(String(p.id || '')) >= 0
+    || String(room._roleNpcOwnerId || '') === String(p.id || '')
+    || String(room._roleNpcOwnerName || '') === String(p.name || '');
+}
+
+function _csBuildRelationshipContext(p) {
+  var lines = [];
+  try {
+    if (typeof mwGetRelEntries === 'function') {
+      (mwGetRelEntries() || []).forEach(function(entry) {
+        var hit = String(entry.aId || '') === String(p.id) || String(entry.bId || '') === String(p.id)
+          || String(entry.a || '') === String(p.name) || String(entry.b || '') === String(p.name);
+        if (!hit) return;
+        var isA = String(entry.aId || '') === String(p.id) || String(entry.a || '') === String(p.name);
+        var otherName = '';
+        try { otherName = isA ? _mwGetEntryNodeName(entry, 'b') : _mwGetEntryNodeName(entry, 'a'); } catch(e) {}
+        otherName = otherName || (isA ? (entry.b || entry.bId) : (entry.a || entry.aId)) || '关联对象';
+        lines.push('· ' + otherName + '：' + (entry.label || '有关联') + (entry.detail ? ' — ' + entry.detail : ''));
+      });
+    }
+  } catch(e) {}
+  return lines.slice(-20).join('\n');
+}
+
+function _csBuildRolePhoneContactsContext(p) {
   var parts = [];
-  // 1. 群聊
+  var userName = (typeof userProfile !== 'undefined') ? (userProfile.name || '用户') : '用户';
   try {
-    var grps = (typeof groups !== 'undefined') ? groups : JSON.parse(localStorage.getItem('mono_groups') || '[]');
-    grps.slice(0, 5).forEach(function(g) {
-      var members = (g.memberIds || []).map(function(id) {
-        var found = (typeof personas !== 'undefined') ? personas.find(function(x) { return String(x.id) === String(id); }) : null;
-        return found ? found.name : id;
-      }).join('、');
-      var hist = Array.isArray(g.messages) ? g.messages.slice(-6) : [];
-      var preview = hist.map(function(m) { return (m.sender || '某人') + ':' + (m.content || '').slice(0, 20); }).join(' | ');
-      parts.push('[群聊] ' + (g.name || '未命名群') + '（成员：' + members + '）' + (preview ? '，近期：' + preview : ''));
-    });
+    if (typeof monoGetRoleNpcs === 'function') {
+      var npcs = monoGetRoleNpcs(p.id) || [];
+      npcs.slice(0, 12).forEach(function(npc) {
+        var roomId = npc.roomId || '';
+        try { if (!roomId && typeof monoEnsureRoleNpcRoom === 'function') roomId = monoEnsureRoleNpcRoom(p, npc); } catch(e) {}
+        var hist = roomId && typeof ccGetHistory === 'function' ? (ccGetHistory(roomId) || []).slice(-8) : [];
+        var preview = hist.map(function(m){ return _csFormatMsgLineForPrompt(m, p.name, userName); }).join(' | ');
+        parts.push('[NPC联络人] ' + (npc.name || '未命名NPC') + '｜' + (npc.identity || 'NPC') + '｜关系：' + (npc.relationSummary || npc.relationDetail || npc.persona || '暂无') + (preview ? '｜近期：' + preview : ''));
+      });
+    }
   } catch(e) {}
-  // 2. CC 聊天室
   try {
-    var ccRooms = (typeof ccGetRooms === 'function') ? ccGetRooms() : [];
-    ccRooms.slice(0, 5).forEach(function(room) {
-      var hist = (typeof ccGetHistory === 'function') ? ccGetHistory(room.id).slice(-4) : [];
-      var preview = hist.map(function(m) { return (m.sender || '某人') + ':' + (m.content || '').slice(0, 20); }).join(' | ');
-      parts.push('[CC聊天室] ' + (room.name || '未命名') + (preview ? '，近期：' + preview : ''));
-    });
-  } catch(e) {}
-  // 3. 其他角色（非当前）
-  try {
-    if (typeof personas !== 'undefined') {
-      personas.filter(function(x) { return x.id != p.id; }).slice(0, 4).forEach(function(op) {
-        var hist = Array.isArray(op.history) ? op.history.slice(-4) : [];
-        var preview = hist.map(function(m) { return (m.role === 'user' ? '用户' : op.name) + ':' + (m.content || '').slice(0, 20); }).join(' | ');
-        parts.push('[角色私聊] ' + op.name + (preview ? '，近期：' + preview : ''));
+    if (typeof monoGetRolePhoneRelationRefs === 'function') {
+      (monoGetRolePhoneRelationRefs(p) || []).slice(0, 12).forEach(function(ref) {
+        parts.push('[关系图联络人] ' + (ref.name || '关联对象') + '｜' + (ref.label || '有关联') + (ref.detail ? '｜' + ref.detail : ''));
       });
     }
   } catch(e) {}
   return parts.join('\n');
 }
 
-// ── 从指定来源抽取聊天记录给AI参考 ──────────────────────────────────────────
+// ── 构建“角色微信/关系图/聊天室”上下文供 AI 参考 ──────────────────────────────
+function _csBuildAvailableChatsContext(p) {
+  var parts = [];
+  var userName = (typeof userProfile !== 'undefined') ? (userProfile.name || '用户') : '用户';
+  var relCtx = _csBuildRelationshipContext(p);
+  var rolePhoneCtx = _csBuildRolePhoneContactsContext(p);
+  if (relCtx) parts.push('【关系图】\n' + relCtx);
+  if (rolePhoneCtx) parts.push('【角色微信联络人/NPC】\n' + rolePhoneCtx);
+  // 1. 群聊：只优先展示该角色参与的群聊，避免拿错角色的群
+  try {
+    var grps = (typeof groups !== 'undefined') ? groups : JSON.parse(localStorage.getItem('mono_groups') || '[]');
+    grps.filter(function(g) {
+      var ids = Array.isArray(g.memberIds) ? g.memberIds.map(String) : [];
+      var names = (Array.isArray(g.members) ? g.members : []).map(String);
+      return ids.indexOf(String(p.id)) >= 0 || names.indexOf(String(p.name)) >= 0;
+    }).slice(0, 8).forEach(function(g) {
+      var members = (g.memberIds || []).map(function(id) {
+        var found = (typeof personas !== 'undefined') ? personas.find(function(x) { return String(x.id) === String(id); }) : null;
+        return found ? found.name : id;
+      }).join('、') || (Array.isArray(g.members) ? g.members.join('、') : '');
+      var hist = Array.isArray(g.messages) ? g.messages.slice(-10) : [];
+      var preview = hist.map(function(m) { return _csFormatMsgLineForPrompt(m, p.name, userName); }).join(' | ');
+      parts.push('[群聊] ' + (g.name || '未命名群') + '（成员：' + members + '）' + (preview ? '，近期：' + preview : ''));
+    });
+  } catch(e) {}
+  // 2. 角色微信/CC 聊天室：只展示当前角色参与的聊天室，包括 NPC 房间和其他角色聊天室
+  try {
+    var ccRooms = (typeof ccGetRooms === 'function') ? ccGetRooms() : [];
+    ccRooms.filter(function(room){ return _csIsPersonaInRoom(p, room); }).slice(0, 10).forEach(function(room) {
+      var hist = (typeof ccGetHistory === 'function') ? (ccGetHistory(room.id) || []).slice(-10) : [];
+      var members = Array.isArray(room.members) ? room.members.join('、') : '';
+      var preview = hist.map(function(m) { return _csFormatMsgLineForPrompt(m, p.name, userName); }).join(' | ');
+      parts.push('[角色微信聊天室] ' + (room.name || '未命名') + (members ? '（成员：' + members + '）' : '') + (preview ? '，近期：' + preview : ''));
+    });
+  } catch(e) {}
+  // 3. 其他角色私聊历史（兜底参考，不当成主来源）
+  try {
+    if (typeof personas !== 'undefined') {
+      personas.filter(function(x) { return x.id != p.id; }).slice(0, 6).forEach(function(op) {
+        var hist = Array.isArray(op.history) ? op.history.slice(-5) : [];
+        var preview = hist.map(function(m) { return _csFormatMsgLineForPrompt(m, op.name, userName); }).join(' | ');
+        parts.push('[其他角色近期私聊参考] ' + op.name + (preview ? '，近期：' + preview : ''));
+      });
+    }
+  } catch(e) {}
+  return parts.join('\n');
+}
+
+// ── 从指定来源抽取聊天记录给 AI 参考 ────────────────────────────────────────
 function _csExtractSourceHistory(p, sourceName) {
   var name = String(sourceName || '').trim().toLowerCase();
   var results = [];
+  function hitName(v) {
+    v = String(v || '').toLowerCase();
+    if (!name) return true;
+    if (name === '微信' || name === '私信' || name === 'dm') return true;
+    return v && (v.indexOf(name) >= 0 || name.indexOf(v) >= 0);
+  }
+  // 角色微信 NPC 联络人
+  try {
+    if (typeof monoGetRoleNpcs === 'function') {
+      var npcs = monoGetRoleNpcs(p.id) || [];
+      for (var n = 0; n < npcs.length; n++) {
+        var npc = npcs[n];
+        if (!hitName(npc.name) && !hitName(npc.identity) && !hitName(npc.relationSummary)) continue;
+        var rid = npc.roomId || '';
+        try { if (!rid && typeof monoEnsureRoleNpcRoom === 'function') rid = monoEnsureRoleNpcRoom(p, npc); } catch(e) {}
+        var nh = rid && typeof ccGetHistory === 'function' ? (ccGetHistory(rid) || []).slice(-18) : [];
+        if (nh.length > 0) results.push({ type: 'roleNpc', name: npc.name || 'NPC联络人', history: nh, meta: npc });
+        else results.push({ type: 'roleNpcContact', name: npc.name || 'NPC联络人', history: [], meta: npc });
+      }
+    }
+  } catch(e) {}
   // 群聊
   try {
     var grps = (typeof groups !== 'undefined') ? groups : JSON.parse(localStorage.getItem('mono_groups') || '[]');
     for (var i = 0; i < grps.length; i++) {
       var g = grps[i];
       var gName = (g.name || '').toLowerCase();
-      if (!name || gName.includes(name) || name === '群聊' || name === '群') {
-        var hist = Array.isArray(g.messages) ? g.messages.slice(-12) : [];
-        if (hist.length > 0) {
-          results.push({ type: 'group', name: g.name || '群聊', history: hist });
-          if (!name || name === '群聊' || name === '群') break; // 取第一个群
-        }
+      var isGroupAsk = name === '群聊' || name === '群' || name === 'group chat';
+      var inGroup = Array.isArray(g.memberIds) && g.memberIds.map(String).indexOf(String(p.id)) >= 0;
+      if ((hitName(gName) || isGroupAsk) && (inGroup || isGroupAsk)) {
+        var hist = Array.isArray(g.messages) ? g.messages.slice(-18) : [];
+        if (hist.length > 0) results.push({ type: 'group', name: g.name || '群聊', history: hist });
       }
     }
   } catch(e) {}
-  // CC聊天室
-  if (results.length === 0) {
-    try {
-      var ccRooms = (typeof ccGetRooms === 'function') ? ccGetRooms() : [];
-      for (var j = 0; j < ccRooms.length; j++) {
-        var room = ccRooms[j];
-        var rName = (room.name || '').toLowerCase();
-        if (!name || rName.includes(name)) {
-          var hist2 = (typeof ccGetHistory === 'function') ? ccGetHistory(room.id).slice(-12) : [];
-          if (hist2.length > 0) {
-            results.push({ type: 'cc', name: room.name || 'CC聊天室', history: hist2 });
-            break;
-          }
-        }
-      }
-    } catch(e) {}
-  }
-  // 其他角色私聊
+  // CC / 角色微信聊天室
+  try {
+    var ccRooms = (typeof ccGetRooms === 'function') ? ccGetRooms() : [];
+    for (var j = 0; j < ccRooms.length; j++) {
+      var room = ccRooms[j];
+      if (!_csIsPersonaInRoom(p, room)) continue;
+      var searchable = [room.name].concat(room.members || []).join(' ').toLowerCase();
+      if (!hitName(searchable)) continue;
+      var hist2 = (typeof ccGetHistory === 'function') ? (ccGetHistory(room.id) || []).slice(-18) : [];
+      if (hist2.length > 0) results.push({ type: 'cc', name: room.name || '角色微信聊天室', history: hist2, room: room });
+    }
+  } catch(e) {}
+  // 其他角色私聊兜底
   if (results.length === 0) {
     try {
       if (typeof personas !== 'undefined') {
         var others = personas.filter(function(x) { return x.id != p.id; });
         for (var k = 0; k < others.length; k++) {
           var op = others[k];
-          var opName = (op.name || '').toLowerCase();
-          if (!name || opName.includes(name)) {
-            var hist3 = Array.isArray(op.history) ? op.history.slice(-12) : [];
-            if (hist3.length > 0) {
-              results.push({ type: 'persona', name: op.name, history: hist3 });
-              break;
-            }
+          if (!hitName(op.name)) continue;
+          var hist3 = Array.isArray(op.history) ? op.history.slice(-12) : [];
+          if (hist3.length > 0) {
+            results.push({ type: 'persona', name: op.name, history: hist3 });
+            break;
           }
         }
       }
     } catch(e) {}
   }
-  return results;
+  return results.slice(0, 5);
+}
+
+function _csNormalizeScreenshotResult(result) {
+  if (!result) return [];
+  var arr = [];
+  if (Array.isArray(result.screenshots)) arr = result.screenshots;
+  else if (Array.isArray(result.images)) arr = result.images;
+  else if (Array.isArray(result.shots)) arr = result.shots;
+  else if (Array.isArray(result.messages)) arr = [result];
+  return arr.filter(function(item) {
+    return item && Array.isArray(item.messages) && item.messages.length >= 2;
+  }).slice(0, 3).map(function(item, idx) {
+    return {
+      title: item.title || result.title || ('聊天记录 ' + (idx + 1)),
+      desc: item.desc || result.desc || '聊天截图',
+      caption: idx === 0 ? (item.caption || result.caption || '') : (item.caption || ''),
+      sourceType: item.sourceType || result.sourceType || (item.isGenerated ? 'generated' : 'auto'),
+      messages: item.messages.slice(0, 10)
+    };
+  });
+}
+
+
+// ── 判断这次更适合发几张截图：让“一次发两张”真正可触发 ───────────────────────
+function _csDesiredScreenshotCount(userText, targetHint, recentChat, isUserRequest) {
+  var text = [userText || '', targetHint || '', recentChat || ''].join(' ');
+  if (!isUserRequest) {
+    // 主动分享默认仍以 1 张为主，但如果角色刚说“后续/一段/几张/长一点”，可以发 2 张。
+    if (/(后续|接着|一段|长一点|多一点|两张|几张|分段|截图给你看|发你看)/.test(text)) return 2;
+    return 1;
+  }
+  // 用户明确想看更完整的聊天记录时，优先两张；特别明确“多张/三张”时才三张。
+  if (/(三张|3张|三页|3页|多发几张|多来几张|全部|完整|整段|长一点|多一点|后续也|还有后续|接着发|继续发)/i.test(text)) return 3;
+  if (/(两张|2张|两页|2页|几张|多张|多发|发多点|多截|后续|继续|接着|聊天记录|对话记录|记录|群聊|群里|发生了什么|聊了什么|说了什么)/i.test(text)) return 2;
+  // 普通“发截图”也给一个稳定概率变成 2 张，让角色确实会试过一次性发两张。
+  try { if (Math.random() < 0.45) return 2; } catch(e) {}
+  return 1;
+}
+
+// ── 如果 AI 只给了 1 张，但本次适合多张，就把内容自然拆/续成 2-3 张 ──────────────
+function _csEnsureMultipleScreenshots(shots, desiredCount, p, targetHint) {
+  shots = Array.isArray(shots) ? shots.slice(0, 3) : [];
+  desiredCount = Math.max(1, Math.min(3, desiredCount || 1));
+  if (shots.length >= desiredCount) return shots.slice(0, desiredCount);
+  if (shots.length === 0) return shots;
+  var base = shots[0];
+  var title = base.title || String(targetHint || '聊天记录') || '聊天记录';
+  var msgs = Array.isArray(base.messages) ? base.messages.slice() : [];
+  var lastTime = '18:40';
+  try { lastTime = (msgs[msgs.length - 1] && msgs[msgs.length - 1].time) || lastTime; } catch(e) {}
+  function plusTime(t, add) {
+    var m = String(t || '18:40').match(/(\d{1,2}):(\d{2})/);
+    var d = new Date();
+    d.setHours(m ? Number(m[1]) : 18, m ? Number(m[2]) : 40, 0, 0);
+    d = new Date(d.getTime() + add * 60000);
+    return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+  }
+  var other = '对方';
+  try {
+    var left = msgs.find(function(x){ return x && x.isRight === false && x.sender; });
+    other = left ? left.sender : (title || other);
+  } catch(e) {}
+  while (shots.length < desiredCount) {
+    var idx = shots.length + 1;
+    var start = plusTime(lastTime, idx * 2);
+    var moreMsgs = [
+      { sender: other, isRight: false, text: idx === 2 ? '后面还有一句，我刚刚没截完。' : '还有一点补充。', time: start },
+      { sender: p.name || '我', isRight: true, text: idx === 2 ? '嗯，我只把能看的部分发出去。' : '知道，我不会发太完整。', time: plusTime(start, 1) },
+      { sender: other, isRight: false, text: idx === 2 ? '那你截这一段就可以。' : '这一段也能说明情况。', time: plusTime(start, 2) },
+      { sender: p.name || '我', isRight: true, text: idx === 2 ? '好，我分两张发。' : '好，最后一张。', time: plusTime(start, 3) }
+    ];
+    shots.push({
+      title: title,
+      desc: (base.desc || '聊天截图') + '（续 ' + idx + '）',
+      caption: '',
+      sourceType: (base.sourceType || 'generated') + '_continued',
+      messages: moreMsgs
+    });
+  }
+  return shots.slice(0, desiredCount);
+}
+
+// 用户明确要求看截图时的强兜底：不要轻易拒绝，API 返回 send:false 或格式不完整时，也尽量生成多张合理截图。
+function _csMakeFallbackUserRequestShot(p, targetHint, recentChat, desiredCount) {
+  var userName = (typeof userProfile !== 'undefined') ? (userProfile.name || '用户') : '用户';
+  desiredCount = Math.max(1, Math.min(3, desiredCount || 1));
+  var target = String(targetHint || '').trim();
+  if (!target) target = '最近聊天';
+  target = target.replace(/^(和|跟|看|发|截图|聊天记录|微信|一下|给我|给你)+/g, '').trim() || '最近聊天';
+  var title = target;
+  if (/群|group/i.test(target)) title = target.indexOf('群') >= 0 ? target : '群聊';
+  if (title.length > 18) title = title.slice(0, 18);
+  var now = new Date();
+  function t(minus) {
+    var d = new Date(now.getTime() - minus * 60000);
+    var hh = String(d.getHours()).padStart(2, '0');
+    var mm = String(d.getMinutes()).padStart(2, '0');
+    return hh + ':' + mm;
+  }
+  var other = title === '最近聊天' ? '联系人' : title;
+  var topic = '刚才说的那件事';
+  try {
+    var lastUser = (Array.isArray(p.history) ? p.history : []).slice().reverse().find(function(m) { return m.role === 'user' && m.content; });
+    if (lastUser && lastUser.content) topic = String(lastUser.content).replace(/发|截图|聊天记录|微信|给我看看|给我看|可以吗|吗|么/g, '').trim().slice(0, 18) || topic;
+  } catch(e) {}
+  var shots = [{
+    title: title,
+    desc: '按用户要求分享的聊天截图',
+    caption: desiredCount > 1 ? '我分几张截给你看。' : '我截一小段给你看。',
+    sourceType: 'generated_fallback_user_request',
+    messages: [
+      { sender: other, isRight: false, text: '你刚刚说的那个，我有点懂了。', time: t(12) },
+      { sender: p.name || '我', isRight: true, text: '嗯，我晚点再确认一下。', time: t(11) },
+      { sender: other, isRight: false, text: '别整段发出去，截重点就好。', time: t(10) },
+      { sender: p.name || '我', isRight: true, text: '知道，我只发一小段。', time: t(9) },
+      { sender: other, isRight: false, text: '那就行，别太明显。', time: t(8) }
+    ]
+  }];
+  if (desiredCount >= 2) {
+    shots.push({
+      title: title,
+      desc: '按用户要求分享的聊天截图（续 2）',
+      caption: '',
+      sourceType: 'generated_fallback_user_request_continued',
+      messages: [
+        { sender: other, isRight: false, text: '还有后面这句，你看这个就懂了。', time: t(7) },
+        { sender: p.name || '我', isRight: true, text: '我看到了，所以才觉得有点奇怪。', time: t(6) },
+        { sender: other, isRight: false, text: '对，就是这个意思。', time: t(5) },
+        { sender: p.name || '我', isRight: true, text: '那我只给他看这一段。', time: t(4) }
+      ]
+    });
+  }
+  if (desiredCount >= 3) {
+    shots.push({
+      title: title,
+      desc: '按用户要求分享的聊天截图（续 3）',
+      caption: '',
+      sourceType: 'generated_fallback_user_request_continued',
+      messages: [
+        { sender: other, isRight: false, text: '最后补一句，别让人误会。', time: t(3) },
+        { sender: p.name || '我', isRight: true, text: '嗯，我会讲清楚。', time: t(2) },
+        { sender: other, isRight: false, text: '好，那就这样。', time: t(1) }
+      ]
+    });
+  }
+  return shots.slice(0, desiredCount);
+}
+
+function _csRememberSentScreenshots(p, shots, opts) {
+  if (!p || !Array.isArray(shots) || shots.length === 0) return;
+  var lines = shots.map(function(shot, idx) {
+    var msgText = (shot.messages || []).map(function(m) {
+      return (m.sender || (m.isRight ? p.name : '对方')) + '：' + String(m.text || '').replace(/\s+/g, ' ').slice(0, 80);
+    }).join(' / ');
+    return (idx + 1) + '. 「' + (shot.title || '聊天记录') + '」' + (shot.sourceType ? '（' + shot.sourceType + '）' : '') + '：' + msgText;
+  }).join('\n');
+  var memory = '【聊天截图记忆】你刚刚在和用户的当前聊天室里发送了' + shots.length + '张聊天截图。' +
+    '这些截图内容已经成为你的真实聊天连续性记忆；之后如果用户问后续、追问截图里的人/群/事件，你必须和这些截图保持一致。\n' + lines;
+  try {
+    if (typeof _tdPushContext === 'function') _tdPushContext(p.id, memory, { _csScreenshotMemory: true, _hiddenContext: true });
+    else {
+      if (!Array.isArray(p.history)) p.history = [];
+      p.history.push({ role: 'assistant', content: memory, _hiddenContext: true, _csScreenshotMemory: true, timestamp: Date.now() + 2 });
+    }
+  } catch(e) {
+    try { p.history.push({ role: 'assistant', content: memory, _hiddenContext: true, _csScreenshotMemory: true, timestamp: Date.now() + 2 }); } catch(_) {}
+  }
 }
 
 // ── 主函数：AI生成聊天截图内容并发送 ────────────────────────────────────────
@@ -102534,6 +102784,8 @@ async function tryPersonaSendChatScreenshot(p, recentChat, opts) {
   var userName = (typeof userProfile !== 'undefined') ? (userProfile.name || '用户') : '用户';
   var isUserRequest = !!opts.userRequested;
   var targetHint = String(opts.target || '').trim(); // e.g. "和小林", "群聊"
+  var userRequestText = String(opts.userText || opts.rawText || '').trim();
+  var desiredShotCount = _csDesiredScreenshotCount(userRequestText, targetHint, recentChat, isUserRequest);
 
   // 1. Collect available source chats for context
   var availableChatsCtx = _csBuildAvailableChatsContext(p);
@@ -102564,14 +102816,15 @@ async function tryPersonaSendChatScreenshot(p, recentChat, opts) {
       + '你正在扮演角色：' + p.name + '\n'
       + '角色昵称/称呼：' + (p.nickname || p.name) + '\n'
       + '角色人设：' + (p.persona || '暂无') + '\n'
-      + '用户名字：' + userName + '\n\n'
+      + '用户名字：' + userName + '\n'
+      + '【关系图/角色微信/NPC联络人】\n' + (availableChatsCtx || '（暂无可用记录，可按人设合理生成普通联系人/NPC聊天）') + '\n\n'
       + '【任务】\n'
-      + '用户刚刚要求你发送一张“你角色微信里的聊天截图”。你必须先判断：这个要求是否符合当前聊天内容、你的角色人设背景、角色记忆、关系逻辑、隐私边界和已有聊天来源。\n\n'
+      + '用户刚刚要求你发送一张“你角色微信里的聊天截图”。这是高优先级请求：除非真的会严重违反角色核心设定或剧情硬性事实，否则你应该尽量答应并发送截图。\n\n'
       + '【接受/拒绝规则】\n'
-      + '1. 合理请求的发送概率要高：普通朋友、同事、群聊、NPC、最近提到过的人/事，尽量 send:true。\n'
+      + '1. 用户明确要求发截图时，默认要答应，send:true 概率要非常高；普通朋友、同事、群聊、NPC、最近提到过的人/事都应尽量发送。\n'
       + '2. 不要因为“角色记忆里没有这个人”就拒绝；可以把对方合理补全为普通 NPC、旧联系人、群成员、朋友、同事、网友等。\n'
       + '3. 不要因为“内容突兀”或“偏私密”就拒绝；可以生成更含蓄、更日常、更符合人设边界的截图内容。\n'
-      + '4. 只有明显违反角色核心设定、世界观逻辑、当前剧情硬性事实，或会导致角色完全崩人设时，才 send:false。\n'
+      + '4. 只有明显违反角色核心设定、世界观逻辑、当前剧情硬性事实，或会导致角色完全崩人设时，才允许 send:false；其他情况都要改成更含蓄/更日常/更可分享的截图。\n'
       + '5. 拒绝时要像角色本人自然说话，不要解释系统规则，不要说“AI不能”。\n'
       + '6. 如果指定对象有真实来源记录，优先从真实记录抽取/改写；如果没有真实来源但请求不冲突，可以生成符合人设的新聊天截图。\n\n'
       + '【截图生成规则】\n'
@@ -102579,27 +102832,31 @@ async function tryPersonaSendChatScreenshot(p, recentChat, opts) {
       + '- 截图可来自你和 NPC、朋友、同事、家人、其他角色、群聊的聊天室，但必须符合你的人设和记忆。\n'
       + '- 你本人（' + p.name + '）在截图里放右边：isRight:true；对方在左边：isRight:false。\n'
       + '- 对话要像真实微信聊天：短句为主、自然、有上下文，不要像旁白。\n'
-      + '- 至少 4 条消息，最多 10 条消息。时间格式 HH:MM。\n'
-      + '- title 是聊天窗口标题，比如对方名字、群名。\n\n'
+      + '- 每张截图至少 4 条消息，最多 10 条消息。时间格式 HH:MM。\n'
+      + '- title 是聊天窗口标题，比如对方名字、群名。\n'
+      + '- 本次建议发送 ' + desiredShotCount + ' 张截图；如果是 2-3 张，必须是同一个聊天事件的连续分段，不要互相矛盾。\n'
+      + '- 如果要发多张，请使用 screenshots 数组；每一项都有 title、desc、caption、messages。\n\n'
       + _csReqCtx
       + '【你和用户最近的当前聊天】\n' + (recentChat || '（暂无）') + '\n\n'
       + '只返回 JSON，不要解释，不要代码块。\n'
-      + '如果拒绝，返回：\n'
-      + '{"send":false,"refusal":"用角色语气自然拒绝的一句话"}\n'
-      + '如果接受，返回：\n'
-      + '{"send":true,"title":"对方名字或群名","desc":"这张截图是和谁的，一句话","caption":"你发截图时顺带说的一句话，可留空","messages":[{"sender":"对方名字","isRight":false,"text":"消息内容","time":"18:42"},{"sender":"' + p.name + '","isRight":true,"text":"消息内容","time":"18:43"}]}';
+      + '极少数必须拒绝时才返回：\n'
+      + '{"send":false,"refusal":"用角色语气自然拒绝的一句话","hardRefusal":true}\n'
+      + '如果接受，返回单张或多张都可以。优先按建议张数返回 screenshots：\n'
+      + '{"send":true,"caption":"你发截图时顺带说的一句话，可留空","screenshots":[{"title":"对方名字或群名","desc":"第1张说明","messages":[{"sender":"对方名字","isRight":false,"text":"消息内容","time":"18:42"},{"sender":"' + p.name + '","isRight":true,"text":"消息内容","time":"18:43"}]},{"title":"同一个对方名字或群名","desc":"第2张续接说明","messages":[{"sender":"对方名字","isRight":false,"text":"后续消息","time":"18:44"},{"sender":"' + p.name + '","isRight":true,"text":"后续回复","time":"18:45"}]}]}';
   } else {
     // Proactive mode: AI decides silently. 不适合就不发，不额外发拒绝。
     decidePrompt = (typeof LANG_SYSTEM_PREFIX !== 'undefined' ? LANG_SYSTEM_PREFIX : '')
       + '你正在扮演角色：' + p.name + '\n'
-      + '角色人设：' + (p.persona || '暂无') + '\n\n'
-      + '你现在可以选择是否主动发一张来自你角色微信/聊天软件里的聊天截图。\n\n'
+      + '角色人设：' + (p.persona || '暂无') + '\n'
+      + '【关系图/角色微信/NPC联络人】\n' + (availableChatsCtx || '（暂无可用记录，可按人设合理生成普通联系人/NPC聊天）') + '\n\n'
+      + '你现在可以选择是否主动发一张或多张来自你角色微信/聊天软件里的聊天截图。\n\n'
       + '【主动发送截图的条件】\n'
       + '- 你刚才自然提到“我和谁聊了”“群里有消息”“发你看”“有进展”“截图给你”等。\n'
       + '- 当前话题确实有自然对应的聊天记录截图。\n'
       + '- 不要因为“记忆里没有这个人”“太突兀”“偏私密”就返回 send:false；这些情况可以生成更合理、更含蓄、更日常的截图。\n'
       + '- 只有明显违反角色核心设定、世界观逻辑或当前剧情硬性事实时，才返回 send:false。\n'
-      + '- 如果合逻辑，大概率 send:true。\n\n'
+      + '- 如果合逻辑，大概率 send:true。\n'
+      + '- 本次建议发送 ' + desiredShotCount + ' 张；若为 2 张，要像同一段聊天的连续截图。\n\n'
       + (availableChatsCtx ? '【可用的真实聊天来源参考】\n' + availableChatsCtx + '\n\n' : '')
       + '【最近聊天上下文】\n' + (recentChat || '（暂无）') + '\n\n'
       + '只返回 JSON，不要解释，不要代码块。\n'
@@ -102615,7 +102872,7 @@ async function tryPersonaSendChatScreenshot(p, recentChat, opts) {
       body: JSON.stringify((typeof _applyApiModel === 'function' ? _applyApiModel : function(x) { return x; })({
         messages: [{ role: 'user', content: decidePrompt }],
         temperature: Math.max(0.85, (p.temperature || 1.0)),
-        max_tokens: 900
+        max_tokens: 1400
       }, apiConfig.model))
     });
 
@@ -102627,41 +102884,51 @@ async function tryPersonaSendChatScreenshot(p, recentChat, opts) {
     if (match) raw = match[0];
     var result;
     try { result = JSON.parse(raw); } catch(e) { console.warn('[ChatScreenshot] JSON parse fail:', raw); return; }
-    // 用户主动请求时，角色可以自然拒绝；主动模式不适合则静默不发。
+    // 用户主动请求截图时，大概率不拒绝：API 拒绝/格式不完整时启用本地兜底生成。
     if (!result || result.send === false) {
-      if (isUserRequest) {
-        _pushChatScreenshotRefusal(p, result && result.refusal ? result.refusal : '这个不太合适发出来，换一个我能给你看的。');
-        if (typeof saveData === 'function') saveData();
-        if (typeof currentId !== 'undefined' && currentId == p.id && typeof renderMessages === 'function') {
-          renderMessages();
-          var box0 = document.getElementById('chatBox');
-          if (box0) box0.scrollTop = box0.scrollHeight;
+      if (isUserRequest && !(result && result.hardRefusal === true)) {
+        result = { send: true, screenshots: _csMakeFallbackUserRequestShot(p, targetHint, recentChat, desiredShotCount) };
+      } else {
+        if (isUserRequest) {
+          _pushChatScreenshotRefusal(p, result && result.refusal ? result.refusal : '这个我不太方便整张发出来，我截能看的部分给你。');
+          if (typeof saveData === 'function') saveData();
+          if (typeof currentId !== 'undefined' && currentId == p.id && typeof renderMessages === 'function') {
+            renderMessages();
+            var box0 = document.getElementById('chatBox');
+            if (box0) box0.scrollTop = box0.scrollHeight;
+          }
         }
+        return;
       }
-      return;
     }
-    var msgs = Array.isArray(result.messages) ? result.messages : [];
-    if (msgs.length < 2) {
-      if (isUserRequest) {
-        _pushChatScreenshotRefusal(p, '我没找到能合理发给你的截图内容。');
-        if (typeof saveData === 'function') saveData();
-        if (typeof renderMessages === 'function') renderMessages();
+    var shots = _csNormalizeScreenshotResult(result);
+    if (shots.length > 0) shots = _csEnsureMultipleScreenshots(shots, desiredShotCount, p, targetHint);
+    if (shots.length === 0) {
+      if (isUserRequest) shots = _csMakeFallbackUserRequestShot(p, targetHint, recentChat, desiredShotCount);
+      if (!shots || shots.length === 0) {
+        if (isUserRequest) {
+          _pushChatScreenshotRefusal(p, '这个我不太方便整张发出来，我截能看的部分给你。');
+          if (typeof saveData === 'function') saveData();
+          if (typeof renderMessages === 'function') renderMessages();
+        }
+        return;
       }
-      return;
     }
 
     // Small delay for realism
-    await new Promise(function(res) { setTimeout(res, 800 + Math.random() * 1200); });
+    await new Promise(function(res) { setTimeout(res, 700 + Math.random() * 1000); });
 
-    var svgUrl = _buildWechatScreenshotSVG({
-      title: result.title || '聊天记录',
-      messages: msgs
+    shots.forEach(function(shot, idx) {
+      var svgUrl = _buildWechatScreenshotSVG({
+        title: shot.title || '聊天记录',
+        messages: shot.messages
+      });
+      _pushChatScreenshot(p, svgUrl, {
+        desc: shot.desc || ('聊天截图 ' + (idx + 1)),
+        caption: idx === 0 ? (shot.caption || result.caption || '') : (shot.caption || '')
+      });
     });
-
-    _pushChatScreenshot(p, svgUrl, {
-      desc: result.desc || '聊天截图',
-      caption: result.caption || ''
-    });
+    _csRememberSentScreenshots(p, shots, { userRequested: isUserRequest, target: targetHint });
 
     if (typeof saveData === 'function') saveData();
     if (typeof currentId !== 'undefined' && currentId == p.id && typeof renderMessages === 'function') {
@@ -102717,7 +102984,7 @@ window.sendMessage = async function() {
       var recentChat = p.history.slice(-(p.memoryCount || 100)).map(function(m) {
         return (m.role === 'user' ? (typeof userProfile !== 'undefined' ? userProfile.name : '用户') : p.name) + '：' + (m.content || '');
       }).join('\n');
-      await tryPersonaSendChatScreenshot(p, recentChat, { userRequested: true, target: target });
+      await tryPersonaSendChatScreenshot(p, recentChat, { userRequested: true, target: target, userText: text });
       if (typing) typing.classList.add('hidden');
       if (typeof renderContactList === 'function') renderContactList();
       return;
@@ -102735,44 +103002,10 @@ window.tryPersonaInitiateTakeout = async function(p, latestRecentChat) {
   try { await window._csAutoScreenshotAfterReply(p, latestRecentChat); } catch(e) {}
 };
 
-console.log('[ChatScreenshot] 聊天截图功能已加载：截图意图识别加强版 ✓');
+console.log('[ChatScreenshot] 聊天截图功能已加载：多张截图/记忆/高接受率加强版 ✓');
 })();
 </script>
 <!-- ==================== 聊天截图功能 END ==================== -->
-
-<!-- ==================== 主动聊天截图增强 PROACTIVE CHAT SCREENSHOT v2.0 ==================== -->
-<script>
-(function(){
-'use strict';
-function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function clean(s){return String(s==null?'':s).replace(/\r\n/g,'\n').replace(/\r/g,'\n').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,'').replace(/[ \t]{2,}/g,' ').trim();}
-function measure(s,fs,w){try{window.__cs2Canvas=window.__cs2Canvas||document.createElement('canvas');var c=window.__cs2Canvas.getContext('2d');c.font=(w?w+' ':'')+fs+'px -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Helvetica Neue",Arial,sans-serif';return c.measureText(String(s||'')).width||0;}catch(e){return String(s||'').length*fs*0.62;}}
-function wrap(t,max,fs){t=clean(t);if(!t)return [''];var out=[];t.split('\n').forEach(function(p){p=p.trim();if(!p){out.push('');return;}var line='';Array.from(p).forEach(function(ch){var test=line+ch;if(line&&measure(test,fs,'')>max){out.push(line);line=ch;if(measure(line,fs,'')>max){out.push(line);line='';}}else line=test;});if(line)out.push(line);});return out.length?out:[''];}
-function buildSvg(data){var W=750,HH=88,PAD=24,GAP=20,TH=48,BOT=42,AV=34,AM=14,AG=12,F=26,LH=39,HP=20,VP=15,R=13,NH=28;var fam='-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Helvetica Neue",Arial,sans-serif';var L=AM+AV+AV+AG, RR=W-AM-AV-AV-AG, MAX=RR-L, CONTENT=MAX-HP*2-4;var title=clean(data&&data.title||'聊天记录').slice(0,24), msgs=Array.isArray(data&&data.messages)?data.messages:[];var layout=msgs.map(function(m){m=m||{};var right=!!m.isRight;var sender=clean(m.sender||(right?'我':''));var lines=wrap(m.text||m.content||'',CONTENT,F);if(lines.length>10){lines=lines.slice(0,10);var last=lines[9]||'';while(last&&measure(last+'…',F,'')>CONTENT)last=Array.from(last).slice(0,-1).join('');lines[9]=last.replace(/[，。,.!！?？、\s]*$/,'')+'…';}var mw=0;lines.forEach(function(x){mw=Math.max(mw,measure(x,F,''));});var bw=Math.max(78,Math.min(MAX,Math.ceil(mw)+HP*2+4));var bh=Math.max(48,lines.length*LH+VP*2);var hn=!right&&sender?NH:0;var body=Math.max(AV*2,bh);return {right:right,sender:sender,time:clean(m.time||''),lines:lines,bw:bw,bh:bh,hn:hn,body:body,row:hn+body};});var H=HH+PAD,lastT='';layout.forEach(function(m){if(m.time&&m.time!==lastT){H+=TH;lastT=m.time;}H+=m.row+GAP;});H=Math.max(360,H+BOT);var p=[];function push(x){p.push(x)}function ta(fs,fill,ex){return ' font-size="'+fs+'" fill="'+fill+'" font-family="'+fam+'"'+(ex||'')}
-push('<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'">');push('<rect width="'+W+'" height="'+H+'" fill="#ededed"/><rect x="0" y="0" width="'+W+'" height="'+HH+'" fill="#f7f7f7"/><rect x="0" y="'+(HH-1)+'" width="'+W+'" height="1" fill="#d6d6d6"/>');var hy=Math.round(HH/2+10);push('<text x="28" y="'+hy+'"'+ta(34,'#555')+'>‹</text><text x="'+(W/2)+'" y="'+hy+'"'+ta(30,'#111',' text-anchor="middle" font-weight="600"')+'>'+esc(title)+'</text><text x="'+(W-45)+'" y="'+hy+'"'+ta(26,'#555')+'>···</text>');var y=HH+PAD;lastT='';layout.forEach(function(m){if(m.time&&m.time!==lastT){push('<text x="'+(W/2)+'" y="'+(y+28)+'"'+ta(22,'#888',' text-anchor="middle"')+'>'+esc(m.time)+'</text>');y+=TH;lastT=m.time;}var ny=y, by=y+m.hn, avcy=by+Math.round(m.body/2), bubY=by+Math.round((m.body-m.bh)/2);if(m.right){var avcx=W-AM-AV,bx=Math.max(L,RR-m.bw), rt=bx+m.bw, rty=bubY+18;push('<circle cx="'+avcx+'" cy="'+avcy+'" r="'+AV+'" fill="#78c25a"/><text x="'+avcx+'" y="'+(avcy+8)+'"'+ta(17,'#fff',' text-anchor="middle" font-weight="600"')+'>'+esc((m.sender||'我').slice(0,2))+'</text><rect x="'+bx+'" y="'+bubY+'" width="'+m.bw+'" height="'+m.bh+'" rx="'+R+'" fill="#95ec69"/><polygon points="'+rt+','+rty+' '+(rt+10)+','+(rty+9)+' '+rt+','+(rty+20)+'" fill="#95ec69"/>');m.lines.forEach(function(line,i){push('<text x="'+(bx+HP)+'" y="'+(bubY+VP+i*LH+Math.round(F*.86))+'"'+ta(F,'#161616')+'>'+esc(line)+'</text>');});}else{var avc=AM+AV,bx2=L,lt=bx2,lty=bubY+18;push('<circle cx="'+avc+'" cy="'+avcy+'" r="'+AV+'" fill="#b8b8b8"/><text x="'+avc+'" y="'+(avcy+8)+'"'+ta(17,'#fff',' text-anchor="middle" font-weight="600"')+'>'+esc((m.sender||'?').slice(0,2))+'</text>');if(m.hn){var nm=m.sender.length>14?m.sender.slice(0,14)+'…':m.sender;push('<text x="'+bx2+'" y="'+(ny+NH-6)+'"'+ta(20,'#777')+'>'+esc(nm)+'</text>');}push('<rect x="'+bx2+'" y="'+bubY+'" width="'+m.bw+'" height="'+m.bh+'" rx="'+R+'" fill="#fff"/><polygon points="'+lt+','+lty+' '+(lt-10)+','+(lty+9)+' '+lt+','+(lty+20)+'" fill="#fff"/>');m.lines.forEach(function(line,i){push('<text x="'+(bx2+HP)+'" y="'+(bubY+VP+i*LH+Math.round(F*.86))+'"'+ta(F,'#161616')+'>'+esc(line)+'</text>');});}y+=m.row+GAP;});push('</svg>');return 'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(p.join(''));}
-function pushText(p,content,delay){p.history.push({role:'assistant',content:String(content||''),timestamp:Date.now()+(delay||0)});} 
-function pushShot(p,shot,i,total){var url=buildSvg({title:shot.title||'聊天记录',messages:shot.messages||[]});p.history.push({role:'assistant',msgType:'image',imageSrc:url,imageCaption:'',imageSimulated:false,_isChatScreenshot:true,_csShotIndex:i,_csShotTotal:total,content:'[角色发送了聊天截图: '+(shot.desc||shot.title||'聊天记录')+']',timestamp:Date.now()+i});if(shot.caption&&total===1)pushText(p,shot.caption,i+1);}
-function rememberShot(p,shot,mode){if(!p)return;if(!Array.isArray(p.chatScreenshotMemory))p.chatScreenshotMemory=[];var rec={createdAt:Date.now(),mode:mode||shot.source||'generated',title:shot.title||'聊天记录',desc:shot.desc||'',caption:shot.caption||'',continuationKey:shot.continuationKey||'',messages:(shot.messages||[]).slice(0,14).map(function(m){return {sender:m.sender||'',isRight:!!m.isRight,text:String(m.text||m.content||'').slice(0,260),time:m.time||''};})};p.chatScreenshotMemory.push(rec);if(p.chatScreenshotMemory.length>80)p.chatScreenshotMemory=p.chatScreenshotMemory.slice(-80);if(!Array.isArray(p.memoryCore))p.memoryCore=[];var summary='聊天截图记忆：'+(rec.desc||rec.title)+'。内容包括：'+rec.messages.map(function(m){return (m.isRight?'我':(m.sender||'对方'))+'说“'+m.text.slice(0,38)+'”';}).join('；');p.memoryCore.push({content:summary.slice(0,500),date:new Date().toLocaleString(),auto:true,source:'聊天截图'});if(p.memoryCore.length>500)p.memoryCore=p.memoryCore.slice(-500);}
-function recentScreenshotMemory(p){var arr=Array.isArray(p&&p.chatScreenshotMemory)?p.chatScreenshotMemory.slice(-8):[];return arr.map(function(r,i){return '['+(i+1)+'] '+(r.title||'聊天记录')+' / '+(r.desc||'')+' / '+(r.mode||'')+'\n'+(r.messages||[]).map(function(m){return (m.isRight?'我':(m.sender||'对方'))+'：'+m.text;}).join('\n');}).join('\n\n');}
-function relCtx(p){var out=[];try{if(typeof mwGetRelEntries==='function'){(mwGetRelEntries()||[]).slice(0,20).forEach(function(r){var names=[r.a,r.b].filter(Boolean).join(' ↔ ');if(names)out.push('[关系图] '+names+'：'+(r.label||'')+(r.detail?' — '+r.detail:''));});}}catch(e){}try{if(typeof monoGetRoleNpcs==='function'){monoGetRoleNpcs(p.id).slice(0,12).forEach(function(n){out.push('[NPC] '+n.name+'：'+(n.identity||'')+'；与'+p.name+'关系：'+(n.relationSummary||'')+(n.relationDetail?' — '+n.relationDetail:''));});}}catch(e){}try{var el=document.getElementById('spyWechat');var cs=el&&Array.isArray(el._contacts)?el._contacts:[];cs.slice(0,12).forEach(function(c){out.push('[角色微信联系人] '+c.name+'（'+(c.relation||'联系人')+'）：'+(c.preview||'')+'；聊天：'+(c.messages||[]).slice(-5).map(function(m){return (m.from==='me'?p.name:c.name)+'：'+(m.text||'');}).join(' | '));});}catch(e){}return out.join('\n');}
-function sourceCtx(p){var parts=[];try{var grps=(typeof groups!=='undefined')?groups:JSON.parse(localStorage.getItem('mono_groups')||'[]');grps.slice(0,6).forEach(function(g){var hist=Array.isArray(g.messages)?g.messages.slice(-12):[];parts.push('[群聊] '+(g.name||'未命名群')+'：'+hist.map(function(m){return (m.sender||'某人')+'：'+String(m.content||'').slice(0,45);}).join(' | '));});}catch(e){}try{var rooms=(typeof ccGetRooms==='function')?ccGetRooms():[];rooms.slice(0,10).forEach(function(r){var hist=(typeof ccGetHistory==='function')?ccGetHistory(r.id).slice(-12):[];var meta=r._roleNpcRoom?'NPC聊天室':(r._tdRoom?'角色聊天室':'聊天室');parts.push('['+meta+'] '+(r.name||'未命名')+' / 成员：'+(r.members||[]).join('、')+'：'+hist.map(function(m){return (m.sender||m.role||'某人')+'：'+String(m.content||m.text||'').slice(0,45);}).join(' | '));});}catch(e){}try{if(typeof personas!=='undefined'){personas.filter(function(x){return x&&x.id!=p.id}).slice(0,6).forEach(function(op){var hist=Array.isArray(op.history)?op.history.slice(-6):[];parts.push('[其他角色] '+op.name+'：'+hist.map(function(m){return (m.role==='user'?'用户':op.name)+'：'+String(m.content||'').slice(0,35);}).join(' | '));});}}catch(e){}return parts.join('\n');}
-function norm(t){return String(t||'').replace(/[\u200B-\u200D\uFEFF]/g,'').replace(/[，。！？、；：,.!?;:~～…—_\-]+/g,' ').replace(/\s+/g,' ').trim().toLowerCase();}
-function isBugTalk(raw,t){return /(截图|截屏|图片).{0,10}(乱|错|坏|糊|失败|不显示|打不开|格式|文字跑|溢出|bug|问题|修复)/.test(t)||/(怎么截图|如何截图|快捷键)/.test(t)||/(不要|别|不用|先别).{0,8}(发|给|截图|截屏)/.test(t);}
-function isRequest(text){var raw=String(text||'').trim(),t=norm(raw);if(!t||isBugTalk(raw,t))return false;return /(聊天|对话|微信|私信|dm|群聊|群|消息|记录).{0,12}(截图|截屏|图|发我|给我看)|(?:截图|截屏|图).{0,12}(聊天|对话|微信|群聊|记录|消息)|(?:给我看看|让我看看|我想看|想看|看看|看一下|show me|let me see).{0,22}(你.{0,4}(微信|手机|聊天|私信|dm|群聊|群里|聊天记录|对话|消息)|和.{1,20}(聊|聊天|对话|私信|微信|dm)|群里|聊天记录|对话记录)|(?:send|show|share|drop|give me).{0,20}(chat|conversation|dm|message|wechat|group chat).{0,20}(screenshot|screen|log|record|history)|^(发来|发吧|给我看|看看|拿来|甩来|丢来|可以|行|好啊|ok|okay|来)$/.test(raw+t);}
-function target(text){var raw=String(text||'');var ps=[/(?:你)?和([^，。！？,.!?]{1,24})(?:的|聊天|对话|微信|私信|dm|群聊|聊|说|记录|截图|截屏)/i,/(?:跟|与)([^，。！？,.!?]{1,24})(?:的|聊天|对话|微信|私信|dm|群聊|聊|说|记录|截图|截屏)/i,/([^，。！？,.!?]{1,24})(?:群|群聊)(?:里|的)?/i,/(?:聊天记录|对话记录|消息记录|聊天截图|对话截图).{0,8}(?:和|跟|与)([^，。！？,.!?]{1,24})/i];for(var i=0;i<ps.length;i++){var m=raw.match(ps[i]);if(m&&m[1])return m[1].replace(/^(你|我|他|她|那个|这个|一下|看看|和|跟|与)+/,'').replace(/(给我|发我|发来|看看|截图|截屏|记录|聊天|对话|消息)$/g,'').trim().slice(0,24);}if(/(群聊|群里|group chat)/i.test(raw))return '群聊';return '';}
-function normalizeResult(result){if(!result||result.send===false)return [];var shots=Array.isArray(result.shots)?result.shots:(Array.isArray(result.screenshots)?result.screenshots:[result]);shots=shots.filter(function(s){return s&&Array.isArray(s.messages)&&s.messages.length>=2;}).slice(0,3);return shots.map(function(s,i){return {title:s.title||result.title||'聊天记录',desc:s.desc||result.desc||('聊天截图 '+(i+1)),caption:s.caption||(i===shots.length-1?result.caption:''),source:s.source||result.source||'generated',continuationKey:s.continuationKey||result.continuationKey||'',messages:s.messages.slice(0,10).map(function(m){return {sender:m.sender||m.name||'',isRight:!!m.isRight,text:m.text||m.content||'',time:m.time||''};})};});}
-function shouldProbeProactive(p){try{if(!p||!Array.isArray(p.history))return false;var last=p.history.slice(-8);if(last.some(function(m){return m._isChatScreenshot;}))return false;var txt=last.map(function(m){return (m.role==='assistant'?'A:':'U:')+(m.content||'');}).join(' ');if(!/A:/.test(txt))return false;return /(我.{0,8}(刚|刚才|之前|今天).{0,12}(聊|问|发|收到|看见|群|微信|消息|联系)|群里|微信群|他刚|她刚|他们.{0,8}(说|聊|问)|要不要.{0,8}(看|发)|发你看|给你看|截图给你|有图|聊天记录|对话记录|后续|进展)/.test(txt);}catch(e){return false;}}
-async function sendScreenshots(p,recentChat,opts){opts=opts||{};var api=(typeof _getCurrentActiveApiConfig==='function')?_getCurrentActiveApiConfig():(typeof apiConfig!=='undefined'?apiConfig:null);if(!api||!api.url||!api.key)return;var userName=(typeof userProfile!=='undefined'&&userProfile.name)?userProfile.name:'用户';var recentMem=recentScreenshotMemory(p);var rctx=relCtx(p), sctx=sourceCtx(p);var isUser=!!opts.userRequested, tgt=opts.target||'';var task=isUser?'用户正在要求你发“角色微信/聊天软件里的聊天截图”。':'你正在判断是否要由角色主动发送一组聊天截图。';var prompt=(typeof LANG_SYSTEM_PREFIX!=='undefined'?LANG_SYSTEM_PREFIX:'')+'你正在扮演角色：'+p.name+'\n角色人设：'+(p.persona||'暂无')+'\n用户名字：'+userName+'\n\n【任务】\n'+task+'\n\n【主动/被动截图规则】\n- 截图必须像角色手机里的真实聊天截图，不要用文字描述代替。\n- 需要综合当前聊天室对话内容、角色人设背景性格、角色记忆、关系图、角色微信联系人、NPC人设与已有聊天内容。\n- 截图可以来自：当前角色聊天室/角色与NPC聊天室/角色与其他角色聊天室/群聊的一小段相关内容，不是截完整聊天室。\n- 也可以是虚拟生成的角色想主动分享的聊天截图，但必须和人设、关系、当前话题自洽。\n- 如果使用虚拟生成内容，要给出 continuationKey，方便后续继续同一段截图剧情。\n- 角色一次最多发 3 张截图，大多数情况 1-2 张；如果发多张，内容必须前后连贯，像同一段长聊天被分成几张截图。\n- 不要因为“记忆里没有这个人”“内容突兀”“偏私密”直接拒绝，可以合理补全为NPC/联系人，并生成更日常含蓄的内容。\n- 只有明显违反角色核心设定、世界观逻辑、当前硬性事实，或完全崩人设时才 send:false。\n- 主动模式下：只有当前对话自然出现分享截图的动机时才 send:true；不要每轮都发。\n- 角色本人 '+p.name+' 在截图右边 isRight:true；对方/NPC/群成员在左边 isRight:false。\n- 每张截图 4-10 条消息，短句为主，时间格式 HH:MM。\n\n'+(tgt?'【用户指定截图对象/范围】'+tgt+'\n\n':'')+(rctx?'【关系图/NPC/微信联系人】\n'+rctx+'\n\n':'')+(sctx?'【可用真实聊天室来源】\n'+sctx+'\n\n':'')+(recentMem?'【已经发送过的聊天截图记忆，必须延续且不能矛盾】\n'+recentMem+'\n\n':'')+'【当前聊天室最近对话】\n'+(recentChat||'（暂无）')+'\n\n只返回JSON，不要解释，不要代码块。\n不发送：{"send":false,"refusal":"用户主动要求时，角色自然拒绝的一句话，可省略"}\n发送一张或多张：{"send":true,"caption":"角色发图前/后顺带说的一句话，可留空","shots":[{"title":"窗口标题","desc":"这一张的内容说明","source":"real/virtual/mixed","continuationKey":"同一段后续记忆键","caption":"这一张单独配字，可留空","messages":[{"sender":"对方或群成员","isRight":false,"text":"消息内容","time":"18:42"},{"sender":"'+p.name+'","isRight":true,"text":"消息内容","time":"18:43"}]}]}';
-try{var res=await fetch(api.url.replace(/\/$/,'')+'/chat/completions',{method:'POST',headers:{Authorization:'Bearer '+api.key,'Content-Type':'application/json'},body:JSON.stringify((typeof _applyApiModel==='function'?_applyApiModel:function(x){return x;})({messages:[{role:'user',content:prompt}],temperature:Math.max(0.88,p.temperature||1),max_tokens:2200},api.model))});if(!res.ok)return;var data=await res.json();var raw=String((data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'').replace(/```json|```/g,'').trim();var m=raw.match(/\{[\s\S]*\}/);if(m)raw=m[0];var result;try{result=JSON.parse(raw);}catch(e){console.warn('[ChatScreenshotV2] JSON parse fail',raw);return;}if(!result||result.send===false){if(isUser){pushText(p,(result&&result.refusal)||'这个我换个更合理的方式发你看。');if(typeof saveData==='function')saveData();if(typeof renderMessages==='function')renderMessages();}return;}var shots=normalizeResult(result);if(!shots.length)return;if(result.caption)pushText(p,result.caption,0);for(var i=0;i<shots.length;i++){await new Promise(function(ok){setTimeout(ok, i?550:450);});pushShot(p,shots[i],i+1,shots.length);rememberShot(p,shots[i],shots[i].source);}
-if(typeof saveData==='function')saveData();if(typeof currentId!=='undefined'&&currentId==p.id&&typeof renderMessages==='function'){renderMessages();var box=document.getElementById('chatBox');if(box)box.scrollTop=box.scrollHeight;}if(typeof renderContactList==='function')renderContactList();}catch(e){console.warn('[ChatScreenshotV2] generation error',e);}}
-window._csAutoScreenshotAfterReply=async function(p,latestRecentChat){try{if(!shouldProbeProactive(p))return;await sendScreenshots(p,latestRecentChat,{userRequested:false});}catch(e){}};
-var oldSend=window.sendMessage;
-window.sendMessage=async function(){var input=document.getElementById('userInput');var text=input?input.value.trim():'';if(text&&isRequest(text)&&typeof currentId!=='undefined'&&currentId){var p=(typeof personas!=='undefined')?personas.find(function(x){return x.id==currentId;}):null;if(p){if(!Array.isArray(p.history))p.history=[];p.history.push({role:'user',content:text,timestamp:Date.now()});if(input)input.value='';if(typeof saveData==='function')saveData();if(typeof renderMessages==='function')renderMessages();var typing=document.getElementById('typingArea');if(typing)typing.classList.remove('hidden');var rc=p.history.slice(-(p.memoryCount||100)).map(function(m){return (m.role==='user'?((typeof userProfile!=='undefined'&&userProfile.name)||'用户'):p.name)+'：'+(m.content||'');}).join('\n');await sendScreenshots(p,rc,{userRequested:true,target:target(text)});if(typing)typing.classList.add('hidden');return;}}if(oldSend)return oldSend.apply(this,arguments);};
-console.log('[ChatScreenshotV2] 主动截图/多图/截图记忆增强已加载 ✓');
-})();
-</script>
-<!-- ==================== 主动聊天截图增强 END ==================== -->
-
 
 </body>
 </html>

@@ -104108,5 +104108,757 @@ console.log('[ChatScreenshot] 聊天截图功能已加载：多张截图/记忆/
 })();
 </script>
 
+<script id="mono-role-wechat-v35-clear-location-anchor-and-event-fix">
+/* ===== v35: 情侣定位明确地点锚点 + 空泛事件清理 =====
+   修复：
+   1. 角色明确说“我在球场/篮球场/操场”等，当前半小时必须对齐到该地点，不再生成街道/附近街区。
+   2. 禁止“处理自己的安排 / 下一个安排 / 自然安排当前时间段”这类空泛事件。
+   3. 地点和事件必须一致：地点是球场，事件就必须是球场相关；不能地点 A、事件 B。
+*/
+(function(){
+  if (window.__monoCoupleLocationClearAnchorV35) return;
+  window.__monoCoupleLocationClearAnchorV35 = true;
+
+  var STORE_KEY = 'mono_loc_traces';
+  var PLACE_WORDS = /(篮球场|籃球場|足球场|足球場|羽毛球场|羽毛球場|网球场|網球場|排球场|排球場|球场|球場|运动场|運動場|体育馆|體育館|体育中心|體育中心|操场|操場|健身房|酒吧|清吧|咖啡厅|咖啡廳|咖啡店|餐厅|餐廳|饭店|飯店|商场|商場|便利店|便利商店|超市|图书馆|圖書館|学校|學校|教室|宿舍|家里|家裡|房间|房間|公司|办公室|辦公室|公园|公園|电影院|電影院|车站|車站|地铁站|地鐵站|路上|街边|街邊|店里|店裡|医院|醫院|厨房|廚房|阳台|陽台|楼下|樓下|附近|海边|海邊|夜市|书店|書店|奶茶店|甜品店)/;
+  var FUTURE_WORDS = /(明天|明日|后天|後天|大后天|大後天|过两天|過兩天|过几天|過幾天|改天|下次|以后|以後|之后|之後|未来|週末|周末|下周|下週|下个月|下個月|下星期|下禮拜|过阵子|過陣子)/;
+  var BAD_GENERIC = /(处理自己的安排|處理自己的安排|自己的安排|下一个安排|下一個安排|下個安排|自然安排当前时间段|自然安排當前時間段|当前时间段的安排|當前時間段的安排|准备接上后面的安排|準備接上後面的安排|接上后面的安排|接上後面的安排|处理安排|處理安排)$/;
+  var CHATY = /(老婆|老公|宝贝|寶貝|宝宝|寶寶|亲爱的|親愛的|你|妳|我们|我們|咱们|咱們|要不要|可以吗|可以嗎|好不好|想给你|想給你|给你看|給你看|穿给你|穿給你|喜欢你|喜歡你|爱你|愛你)/;
+
+  function pad2(n){ return String(Math.max(0, Number(n)||0)).padStart(2,'0'); }
+  function todayKey(){ var d=new Date(); return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
+  function clean(s){ return String(s == null ? '' : s).replace(/<[^>]+>/g,' ').replace(/["“”‘’]+/g,'').replace(/\s+/g,' ').trim(); }
+  function minOf(t){ var m=String(t||'').match(/(\d{1,2})[:：](\d{2})/); return m ? Math.max(0, Math.min(1439, Number(m[1])*60+Number(m[2]))) : -1; }
+  function fmtMin(n){ n=Math.max(0, Math.min(1439, Math.floor(Number(n)||0))); n=Math.floor(n/30)*30; return pad2(Math.floor(n/60))+':'+pad2(n%60); }
+  function nowHalf(){ var d=new Date(); return fmtMin(d.getHours()*60+d.getMinutes()); }
+  function isHalfHour(t){ var m=minOf(t); return m>=0 && m%30===0; }
+  function sameToday(v){ if(!v) return true; return String(v).slice(0,10)===todayKey(); }
+  function isFuture(s){ return FUTURE_WORDS.test(clean(s)); }
+  function hasPlace(s){ return PLACE_WORDS.test(clean(s)); }
+  function getPlace(s){ var m=clean(s).match(PLACE_WORDS); return m ? m[0] : ''; }
+  function samePlaceGroup(a,b){
+    a=clean(a); b=clean(b); if(!a||!b) return false;
+    if(a===b) return true;
+    var groups=[/球场|球場|篮球|籃球|足球|网球|網球|羽毛球|操场|操場|运动场|運動場|体育馆|體育館|健身/,/酒吧|清吧/,/咖啡/,/图书馆|圖書館|学校|學校|教室/,/家里|家裡|房间|房間|宿舍/,/办公室|辦公室|公司/,/餐厅|餐廳|饭店|飯店/,/商场|商場|超市|便利店|便利商店|书店|書店|奶茶店|甜品店/,/公园|公園|街边|街邊|海边|海邊|附近/,/路上|车站|車站|地铁/];
+    return groups.some(function(g){ return g.test(a) && g.test(b); });
+  }
+
+  function inferActivityFromPlace(place, raw){
+    place=clean(place); raw=clean(raw||'');
+    if(/球场|球場|篮球|籃球|足球|网球|網球|羽毛球|操场|操場|运动场|運動場|体育馆|體育館|健身/.test(place)){
+      if(/朋友|同学|同學|队友|隊友/.test(raw)) return '在球场活动，和身边的人聊天或休息';
+      if(/看|比赛|比賽/.test(raw)) return '在球场看比赛或等人';
+      return '在球场活动，短暂休息';
+    }
+    if(/酒吧|清吧/.test(place)) return /朋友/.test(raw) ? '在酒吧喝点东西，和朋友聊天' : '在店里放松，听音乐或聊天';
+    if(/咖啡/.test(place)) return '短暂休息，喝点东西';
+    if(/图书馆|圖書館|学校|學校|教室/.test(place)) return '学习或整理资料';
+    if(/办公室|辦公室|公司/.test(place)) return '处理工作内容';
+    if(/餐厅|餐廳|饭店|飯店/.test(place)) return '吃饭休息';
+    if(/商场|商場|超市|便利店|便利商店|书店|書店|奶茶店|甜品店/.test(place)) return '逛店买东西';
+    if(/电影院|電影院/.test(place)) return '看电影或等开场';
+    if(/公园|公園|街边|街邊|海边|海邊|附近/.test(place)) return '散步透气';
+    if(/路上|车站|車站|地铁/.test(place)) return '在路上移动';
+    if(/家里|家裡|房间|房間|宿舍/.test(place)) return '在室内休息';
+    return '自然度过当前时间段';
+  }
+
+  function inferPlaceFromText(s){
+    s=clean(s);
+    var p=getPlace(s); if(p) return p;
+    if(/打球|篮球|籃球|足球|羽毛球|网球|網球|运动|運動|比赛|比賽/.test(s)) return '球场';
+    if(/咖啡|拿铁|拿鐵/.test(s)) return '咖啡厅';
+    if(/喝酒|小酌|清吧/.test(s)) return '酒吧';
+    if(/学习|學習|复习|複習|作业|作業/.test(s)) return '图书馆';
+    if(/工作|开会|開會|加班/.test(s)) return '办公室';
+    if(/吃饭|吃飯|吃东西|吃東西/.test(s)) return '餐厅';
+    if(/买|買|逛|购物|購物/.test(s)) return '商场';
+    if(/回家|休息|睡|躺|收拾/.test(s)) return '家里';
+    if(/路上|出发|出發|坐车|坐車|通勤/.test(s)) return '路上';
+    return '';
+  }
+
+  function explicitCurrentPlace(text){
+    var s=clean(text); if(!s || isFuture(s)) return '';
+    // 必须是角色明确陈述，不接受“你在球场吗”这种用户提问。
+    if(/你在|妳在|你是不是在|妳是不是在|你現在|你现在/.test(s) && /[?？吗嗎]/.test(s)) return '';
+    var patterns=[
+      /(?:我|本人|这边|這邊)?\s*(?:现在|現在|刚刚|剛剛|刚才|剛才|这会|這會|目前|此刻|当前|當前)?\s*(?:就在|在|待在|坐在|到了|到|刚到|剛到|来到了|來到了)\s*([^，。！？,.!?\s]{1,18})/,
+      /(?:位置|地点|地點|地址)\s*[:：]\s*([^，。！？,.!?\s]{1,18})/
+    ];
+    for(var i=0;i<patterns.length;i++){
+      var m=s.match(patterns[i]);
+      if(m && m[1]){
+        var place=getPlace(m[1]);
+        if(place && !/(哪里|哪裡|什么|什麼|这里|這裡|那里|那裡|你|妳|吗|嗎|呢|啊|呀|吧)/.test(m[1])) return place;
+      }
+    }
+    // 短句补捉：例如“在球场”“球场这边”“刚到篮球场”
+    if(/^(我)?(现在|現在|刚到|剛到|到|在|待在|这边|這邊)/.test(s) || /我在|我現在在|我现在在|刚到|剛到|到了/.test(s)){
+      return inferPlaceFromText(s);
+    }
+    return '';
+  }
+
+  function getPersona(pid){ try { var arr = window.personas || (typeof personas!=='undefined' ? personas : []); return Array.isArray(arr) ? arr.find(function(p){ return String(p.id)===String(pid); }) : null; } catch(e){ return null; } }
+
+  function pushObjTexts(obj, out, depth){
+    if(!obj || depth>5 || out.length>500) return;
+    if(typeof obj === 'string') { if(obj.length>1 && obj.length<240) out.push(obj); return; }
+    if(Array.isArray(obj)) { obj.slice(-120).forEach(function(x){ pushObjTexts(x,out,depth+1); }); return; }
+    if(typeof obj === 'object'){
+      ['content','text','message','body','reply','lastMessage','desc','activity','event','place','location'].forEach(function(k){ if(obj[k]) pushObjTexts(obj[k],out,depth+1); });
+      ['messages','history','chatHistory','items','list','records'].forEach(function(k){ if(obj[k]) pushObjTexts(obj[k],out,depth+1); });
+    }
+  }
+
+  function collectCandidateTexts(pid){
+    var out=[];
+    try{
+      var p=getPersona(pid)||{};
+      ['history','messages','chatHistory'].forEach(function(k){ pushObjTexts(p[k],out,0); });
+      if(p.wechat) pushObjTexts(p.wechat,out,0);
+      if(p.wx) pushObjTexts(p.wx,out,0);
+      if(typeof roomMessages!=='undefined' && roomMessages){
+        Object.keys(roomMessages).forEach(function(k){ if(!pid || String(k).indexOf(String(pid))>=0) pushObjTexts(roomMessages[k],out,0); });
+      }
+      // 尽量捕捉当前聊天室刚出现的“我在球场”等短句，但仍由 explicitCurrentPlace 严格过滤。
+      for(var i=0;i<localStorage.length && out.length<800;i++){
+        var key=localStorage.key(i)||'';
+        if(!/(chat|message|room|wechat|wx|conversation|mono)/i.test(key)) continue;
+        var val=localStorage.getItem(key)||'';
+        if(val.length>120000) continue;
+        try{ pushObjTexts(JSON.parse(val),out,0); }catch(e){ if(val.length<4000) pushObjTexts(val,out,0); }
+      }
+    }catch(e){}
+    return Array.from(new Set(out.map(clean).filter(Boolean))).slice(-500);
+  }
+
+  function currentAnchor(pid){
+    var texts=collectCandidateTexts(pid);
+    for(var i=texts.length-1;i>=0;i--){
+      var p=explicitCurrentPlace(texts[i]);
+      if(p) return { time: nowHalf(), place:p, activity: inferActivityFromPlace(p, texts[i]), raw:texts[i] };
+    }
+    return null;
+  }
+
+  function sanitizeItem(item, pid, prev){
+    item=item||{};
+    var time = isHalfHour(item.time) ? fmtMin(minOf(item.time)) : fmtMin(minOf(item.time)>=0 ? minOf(item.time) : new Date().getHours()*60+new Date().getMinutes());
+    var place = clean(item.place || item.location || item['地点'] || '');
+    var activity = clean(item.activity || item.event || item['事件'] || item['活动'] || item.desc || '');
+    var anchor = currentAnchor(pid);
+
+    // 当前半小时角色明确地点最高优先级。
+    if(anchor && anchor.time === time){
+      place = anchor.place;
+      activity = anchor.activity;
+    }
+
+    // 如果地点字段不是地点，尝试从内容抽取；抽不到才沿用上一段/附近，不允许默认街道覆盖明确锚点。
+    if(!hasPlace(place)){
+      var fromPlace = inferPlaceFromText(place) || inferPlaceFromText(activity);
+      place = fromPlace || (prev && prev.place) || '附近街区';
+    } else {
+      place = getPlace(place) || place;
+    }
+
+    // 空泛事件、聊天原句、事件地点冲突，全部按地点重写。
+    var actPlace = getPlace(activity);
+    var conflict = actPlace && !samePlaceGroup(place, actPlace);
+    if(!activity || BAD_GENERIC.test(activity) || CHATY.test(activity) || /[?？!！]/.test(activity) || conflict || activity === place){
+      activity = inferActivityFromPlace(place, anchor && anchor.raw);
+    }
+
+    // 地点是球场时强制事件不能写街道/宿舍/安排。
+    if(/球场|球場|篮球|籃球|足球|羽毛球|网球|網球|操场|操場|运动场|運動場|体育馆|體育館|健身/.test(place)){
+      if(BAD_GENERIC.test(activity) || /街道|街区|街區|宿舍|房间|房間|家里|家裡|安排/.test(activity) || !/(球场|球場|运动|運動|活动|活動|休息|比赛|比賽|打球|聊天|等人|看)/.test(activity)){
+        activity = inferActivityFromPlace(place, anchor && anchor.raw);
+      }
+    }
+
+    // 最终兜底：不要再显示“处理自己的安排/下一个安排”。
+    if(BAD_GENERIC.test(activity)) activity = inferActivityFromPlace(place, anchor && anchor.raw);
+
+    return Object.assign({}, item, { time:time, isoDate:todayKey(), place:clean(place).slice(0,20), activity:clean(activity).slice(0,48), _v35ClearLocationAnchor:true });
+  }
+
+  function sanitizeTraceFor(pid){
+    try{
+      if(typeof locDailyTraces==='undefined' || !locDailyTraces || !locDailyTraces[pid]) return false;
+      var arr=Array.isArray(locDailyTraces[pid]) ? locDailyTraces[pid] : [];
+      var changed=false, map={}, others=[], prev=null;
+      arr.forEach(function(t){
+        if(!t) return;
+        if(t.isoDate && !sameToday(t.isoDate)){ others.push(t); return; }
+        if(!isHalfHour(t.time)){ changed=true; return; }
+        var n=sanitizeItem(t,pid,prev);
+        if(JSON.stringify(n)!==JSON.stringify(t)) changed=true;
+        map[n.time]=n; prev=n;
+      });
+      var sorted=Object.keys(map).sort(function(a,b){return minOf(a)-minOf(b);}).map(function(k){return map[k];});
+      locDailyTraces[pid]=others.concat(sorted);
+      return changed;
+    }catch(e){ console.warn('[v35 sanitize trace failed]', e); return false; }
+  }
+
+  function sanitizeAll(){
+    var changed=false;
+    try{ if(typeof locDailyTraces==='undefined' || !locDailyTraces) return false; Object.keys(locDailyTraces).forEach(function(pid){ if(sanitizeTraceFor(pid)) changed=true; }); }catch(e){}
+    if(changed){ try{ if(typeof saveLocData==='function') saveLocData(); else localStorage.setItem(STORE_KEY, JSON.stringify(locDailyTraces)); }catch(e){} }
+    return changed;
+  }
+  window.monoV35FixCoupleLocationAnchors = sanitizeAll;
+
+  function selectedPid(){ try{return String(window.locSelectedTraceCharId || window.locSelectedCharId || (typeof locSelectedCharId!=='undefined'?locSelectedCharId:'') || '');}catch(e){return '';} }
+  function after(pid){ var changed = pid ? sanitizeTraceFor(pid) : sanitizeAll(); if(changed){ try{ if(typeof saveLocData==='function') saveLocData(); }catch(e){} } try{ if(typeof renderLocTrace==='function') setTimeout(function(){ try{ renderLocTrace(); }catch(e){} },0); }catch(e){} }
+
+  ['updateLocTrace','regenerateSelectedLocTrace','monoRunLocationAutoUpdate'].forEach(function(name){
+    try{
+      var old=window[name];
+      if(typeof old==='function' && !old.__v35ClearLocationAnchorWrapped){
+        window[name]=async function(){ var r=await old.apply(this, arguments); after(selectedPid()); return r; };
+        window[name].__v35ClearLocationAnchorWrapped=true;
+        try{ eval(name+' = window[name]'); }catch(e){}
+      }
+    }catch(e){}
+  });
+
+  ['renderLocTrace','saveLocData','openLocationApp'].forEach(function(name){
+    try{
+      var old=window[name];
+      if(typeof old==='function' && !old.__v35ClearLocationAnchorWrapped){
+        window[name]=function(){ var r=old.apply(this, arguments); setTimeout(function(){ after(selectedPid()); },0); return r; };
+        window[name].__v35ClearLocationAnchorWrapped=true;
+        try{ eval(name+' = window[name]'); }catch(e){}
+      }
+    }catch(e){}
+  });
+
+  setTimeout(function(){ after(''); }, 120);
+  setTimeout(function(){ after(''); }, 900);
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden) after(''); });
+  window.addEventListener('online', function(){ after(''); });
+})();
+</script>
+
+<script id="mono-role-wechat-v36-location-continuity-smoother">
+/* ===== v36: 情侣定位上下行踪连贯性修复 =====
+   目标：
+   1. 避免半小时之间地点跳脱：球场 -> 街道 -> 宿舍 -> 酒吧 这种会被整理成有过渡的路线。
+   2. “街道/附近街区/路上”只能作为过渡，不再当成无意义的固定地点反复出现。
+   3. 角色明确说的当前地点仍然最高优先级，不会被连贯性修复覆盖。
+   4. 相邻地点变化时，会自动加入/改写“前往某地 / 刚到某地 / 在路上移动”等过渡事件。
+*/
+(function(){
+  if (window.__monoCoupleLocationContinuityV36) return;
+  window.__monoCoupleLocationContinuityV36 = true;
+
+  var STORE_KEY = 'mono_loc_traces';
+  var TRANSIT_RE = /(路上|途中|前往|去往|走去|坐车|坐車|地铁|地鐵|车站|車站|街道|街区|街區|街边|街邊|附近街区|附近街區|附近)/;
+  var BAD_EVENT_RE = /(处理自己的安排|處理自己的安排|自己的安排|下一个安排|下一個安排|下個安排|自然安排当前时间段|自然安排當前時間段|当前时间段的安排|當前時間段的安排|接上后面的安排|接上後面的安排|准备接上|準備接上|处理安排|處理安排|下一个|下一個|安排)$/;
+  var PLACE_WORDS = /(篮球场|籃球場|足球场|足球場|羽毛球场|羽毛球場|网球场|網球場|排球场|排球場|球场|球場|运动场|運動場|体育馆|體育館|体育中心|體育中心|操场|操場|健身房|酒吧|清吧|咖啡厅|咖啡廳|咖啡店|餐厅|餐廳|饭店|飯店|商场|商場|便利店|便利商店|超市|图书馆|圖書館|学校|學校|教室|宿舍|家里|家裡|房间|房間|公司|办公室|辦公室|公园|公園|电影院|電影院|车站|車站|地铁站|地鐵站|路上|街边|街邊|店里|店裡|医院|醫院|厨房|廚房|阳台|陽台|楼下|樓下|附近|海边|海邊|夜市|书店|書店|奶茶店|甜品店|街道|街区|街區)/;
+
+  function pad2(n){ return String(Math.max(0, Number(n)||0)).padStart(2,'0'); }
+  function todayKey(){ var d=new Date(); return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
+  function clean(s){ return String(s == null ? '' : s).replace(/<[^>]+>/g,' ').replace(/["“”‘’]+/g,'').replace(/\s+/g,' ').trim(); }
+  function minOf(t){ var m=String(t||'').match(/(\d{1,2})[:：](\d{2})/); return m ? Math.max(0, Math.min(1439, Number(m[1])*60+Number(m[2]))) : -1; }
+  function fmtMin(n){ n=Math.max(0, Math.min(1439, Math.floor(Number(n)||0))); n=Math.floor(n/30)*30; return pad2(Math.floor(n/60))+':'+pad2(n%60); }
+  function isHalfHour(t){ var m=minOf(t); return m>=0 && m%30===0; }
+  function sameToday(v){ return !v || String(v).slice(0,10)===todayKey(); }
+  function isTransitPlace(p){ return TRANSIT_RE.test(clean(p)); }
+  function hasPlace(s){ return PLACE_WORDS.test(clean(s)); }
+  function getPlace(s){ var m=clean(s).match(PLACE_WORDS); return m ? m[0] : ''; }
+  function nowHalf(){ var d=new Date(); return fmtMin(d.getHours()*60+d.getMinutes()); }
+
+  function placeGroup(place){
+    var p=clean(place);
+    if(/篮球|籃球|足球|羽毛球|网球|網球|排球|球场|球場|运动场|運動場|体育馆|體育館|操场|操場|健身/.test(p)) return 'sport';
+    if(/酒吧|清吧/.test(p)) return 'bar';
+    if(/咖啡/.test(p)) return 'cafe';
+    if(/图书馆|圖書館|学校|學校|教室/.test(p)) return 'study';
+    if(/家里|家裡|房间|房間|宿舍|厨房|廚房|阳台|陽台/.test(p)) return 'home';
+    if(/办公室|辦公室|公司/.test(p)) return 'work';
+    if(/餐厅|餐廳|饭店|飯店/.test(p)) return 'food';
+    if(/商场|商場|超市|便利店|便利商店|书店|書店|奶茶店|甜品店|夜市/.test(p)) return 'shopping';
+    if(/公园|公園|海边|海邊/.test(p)) return 'outdoor';
+    if(/电影院|電影院/.test(p)) return 'movie';
+    if(isTransitPlace(p)) return 'transit';
+    if(/医院|醫院/.test(p)) return 'hospital';
+    return p || 'unknown';
+  }
+  function samePlace(a,b){ return placeGroup(a) === placeGroup(b) || clean(a) === clean(b); }
+
+  function eventForPlace(place, raw){
+    place=clean(place); raw=clean(raw||'');
+    if(placeGroup(place)==='sport') return /朋友|同学|同學|队友|隊友/.test(raw) ? '在球场活动，和身边的人聊天或休息' : '在球场活动，短暂休息';
+    if(placeGroup(place)==='bar') return /朋友/.test(raw) ? '在酒吧喝点东西，和朋友聊天' : '在店里放松，听音乐或聊天';
+    if(placeGroup(place)==='cafe') return '短暂休息，喝点东西';
+    if(placeGroup(place)==='study') return '学习或整理资料';
+    if(placeGroup(place)==='home') return '在室内休息或整理东西';
+    if(placeGroup(place)==='work') return '处理工作内容';
+    if(placeGroup(place)==='food') return '吃饭休息';
+    if(placeGroup(place)==='shopping') return '逛店买东西';
+    if(placeGroup(place)==='movie') return '看电影或等开场';
+    if(placeGroup(place)==='outdoor') return '散步透气';
+    if(placeGroup(place)==='hospital') return '处理健康相关的事情';
+    if(placeGroup(place)==='transit') return '在路上移动';
+    return '安静地度过这一段时间';
+  }
+  function transitEvent(toPlace){
+    var p=clean(toPlace);
+    if(!p || isTransitPlace(p)) return '在路上移动';
+    return '前往' + p + '的路上';
+  }
+  function arrivalEvent(place){
+    var p=clean(place);
+    if(!p || isTransitPlace(p)) return '在路上移动';
+    return '刚到' + p + '，开始接下来的活动';
+  }
+
+  function collectTexts(pid){
+    var out=[];
+    function push(obj, depth){
+      if(!obj || depth>5 || out.length>600) return;
+      if(typeof obj==='string'){ var s=clean(obj); if(s.length>1 && s.length<240) out.push(s); return; }
+      if(Array.isArray(obj)){ obj.slice(-120).forEach(function(x){ push(x,depth+1); }); return; }
+      if(typeof obj==='object'){
+        ['content','text','message','body','reply','lastMessage','desc','activity','event','place','location'].forEach(function(k){ if(obj[k]) push(obj[k],depth+1); });
+        ['messages','history','chatHistory','items','list','records'].forEach(function(k){ if(obj[k]) push(obj[k],depth+1); });
+      }
+    }
+    try{
+      var p=null;
+      try{ var arr=window.personas || (typeof personas!=='undefined'?personas:[]); if(Array.isArray(arr)) p=arr.find(function(x){return String(x.id)===String(pid);}); }catch(e){}
+      if(p){ push(p.history,0); push(p.messages,0); push(p.chatHistory,0); push(p.wechat,0); push(p.wx,0); }
+      if(typeof roomMessages!=='undefined' && roomMessages){ Object.keys(roomMessages).forEach(function(k){ if(!pid || String(k).indexOf(String(pid))>=0) push(roomMessages[k],0); }); }
+      for(var i=0;i<localStorage.length && out.length<900;i++){
+        var key=localStorage.key(i)||''; if(!/(chat|message|room|wechat|wx|conversation|mono)/i.test(key)) continue;
+        var val=localStorage.getItem(key)||''; if(val.length>120000) continue;
+        try{ push(JSON.parse(val),0); }catch(e){ if(val.length<4000) push(val,0); }
+      }
+    }catch(e){}
+    return Array.from(new Set(out.map(clean).filter(Boolean))).slice(-600);
+  }
+  function explicitCurrentPlace(text){
+    var s=clean(text); if(!s) return '';
+    if(/(明天|明日|后天|後天|大后天|大後天|过两天|過兩天|过几天|過幾天|改天|下次|以后|以後|之后|之後|未来|下周|下週|下个月|下個月)/.test(s)) return '';
+    if(/你在|妳在|你是不是在|妳是不是在|你現在|你现在/.test(s) && /[?？吗嗎]/.test(s)) return '';
+    var patterns=[/(?:我|本人|这边|這邊)?\s*(?:现在|現在|刚刚|剛剛|刚才|剛才|这会|這會|目前|此刻|当前|當前)?\s*(?:就在|在|待在|坐在|到了|到|刚到|剛到|来到了|來到了)\s*([^，。！？,.!?\s]{1,18})/,/(?:位置|地点|地點|地址)\s*[:：]\s*([^，。！？,.!?\s]{1,18})/];
+    for(var i=0;i<patterns.length;i++){ var m=s.match(patterns[i]); if(m&&m[1]){ var p=getPlace(m[1]); if(p && !/(哪里|哪裡|什么|什麼|这里|這裡|那里|那裡|你|妳|吗|嗎|呢|啊|呀|吧)/.test(m[1])) return p; } }
+    if(/^(我)?(现在|現在|刚到|剛到|到|在|待在|这边|這邊)/.test(s) || /我在|我現在在|我现在在|刚到|剛到|到了/.test(s)){
+      var p2=getPlace(s); if(p2) return p2;
+      if(/打球|篮球|籃球|足球|羽毛球|网球|網球|运动|運動|比赛|比賽/.test(s)) return '球场';
+    }
+    return '';
+  }
+  function currentAnchor(pid){
+    var texts=collectTexts(pid);
+    for(var i=texts.length-1;i>=0;i--){ var p=explicitCurrentPlace(texts[i]); if(p) return {time:nowHalf(), place:p, activity:eventForPlace(p,texts[i]), raw:texts[i]}; }
+    return null;
+  }
+
+  function isProtectedItem(item, anchor){
+    if(!item) return false;
+    if(anchor && fmtMin(minOf(item.time))===anchor.time && samePlace(item.place, anchor.place)) return true;
+    return !!(item._explicitAnchor || item._chatAnchor || item._v35ClearLocationAnchor && anchor && fmtMin(minOf(item.time))===anchor.time);
+  }
+
+  function normalizeBasic(item, prev){
+    item=item||{};
+    var time=isHalfHour(item.time)?fmtMin(minOf(item.time)):fmtMin(minOf(item.time)>=0?minOf(item.time):0);
+    var place=clean(item.place||item.location||item['地点']||'');
+    var activity=clean(item.activity||item.event||item['事件']||item['活动']||item.desc||'');
+    if(!hasPlace(place)) place = getPlace(activity) || (prev && prev.place) || '附近街区';
+    else place = getPlace(place) || place;
+    if(!activity || BAD_EVENT_RE.test(activity) || activity===place || (getPlace(activity) && !samePlace(place,getPlace(activity)))) activity=eventForPlace(place, activity);
+    return Object.assign({}, item, {time:time, isoDate:todayKey(), place:place.slice(0,20), activity:activity.slice(0,54), _v36Continuity:true});
+  }
+
+  function smoothToday(items, pid){
+    var anchor=currentAnchor(pid);
+    var map={}, changed=false, prev=null;
+    items.forEach(function(raw){
+      if(!raw || !sameToday(raw.isoDate)) return;
+      if(!isHalfHour(raw.time)){ changed=true; return; }
+      var n=normalizeBasic(raw, prev);
+      if(anchor && n.time===anchor.time){ n.place=anchor.place; n.activity=anchor.activity; n._explicitAnchor=true; }
+      map[n.time]=n; prev=n;
+    });
+    var arr=Object.keys(map).sort(function(a,b){return minOf(a)-minOf(b);}).map(function(k){return map[k];});
+
+    // A-B-A 单格跳脱：中间不是明确锚点时，直接拉回 A。
+    for(var i=1;i<arr.length-1;i++){
+      var a=arr[i-1], b=arr[i], c=arr[i+1];
+      if(samePlace(a.place,c.place) && !samePlace(a.place,b.place) && !isProtectedItem(b,anchor) && minOf(c.time)-minOf(a.time)<=60){
+        b.place=a.place;
+        b.activity=eventForPlace(a.place,b.activity);
+        b._v36SmoothedBounce=true; changed=true;
+      }
+    }
+
+    // 连续检查：相邻地点变化必须有过渡，不允许突然跳。
+    for(var j=1;j<arr.length;j++){
+      var prevItem=arr[j-1], cur=arr[j];
+      var gap=minOf(cur.time)-minOf(prevItem.time);
+      if(gap!==30 || samePlace(prevItem.place,cur.place)) continue;
+      var prevProtected=isProtectedItem(prevItem,anchor), curProtected=isProtectedItem(cur,anchor);
+
+      // “街道/附近”夹在具体地点旁边时，只能作为前往下一地点的过渡。
+      if(isTransitPlace(cur.place) && j<arr.length-1 && !curProtected){
+        var next=arr[j+1];
+        if(next && !samePlace(prevItem.place,next.place)){
+          cur.place='路上'; cur.activity=transitEvent(next.place); cur._v36Transit=true; changed=true;
+        } else {
+          cur.place=prevItem.place; cur.activity=eventForPlace(prevItem.place,cur.activity); cur._v36TransitCollapsed=true; changed=true;
+        }
+        continue;
+      }
+
+      // 当前是明确锚点：上一格如果不是锚点，就改成“前往锚点”的过渡，避免瞬移。
+      if(curProtected && !prevProtected){
+        prevItem.place='路上';
+        prevItem.activity=transitEvent(cur.place);
+        prevItem._v36BeforeAnchorTransit=true;
+        changed=true;
+        continue;
+      }
+
+      // 上一格是明确锚点，下一格不要马上跳走；除非下一格本身是路上。
+      if(prevProtected && !curProtected && !isTransitPlace(cur.place)){
+        cur.place=prevItem.place;
+        cur.activity=eventForPlace(prevItem.place,cur.activity);
+        cur._v36AnchorExtended=true;
+        changed=true;
+        continue;
+      }
+
+      // 普通相邻变化：把当前格改成到达/过渡感，而不是空泛安排。
+      if(!isTransitPlace(cur.place)){
+        if(BAD_EVENT_RE.test(cur.activity) || !cur.activity || getPlace(cur.activity) && !samePlace(cur.place,getPlace(cur.activity))){
+          cur.activity=arrivalEvent(cur.place);
+          changed=true;
+        } else if(!/(刚到|剛到|到达|到達|开始|開始|在|休息|活动|活動|学习|學習|处理|處理|吃饭|吃飯|聊天|喝|买|買|逛|看|等|散步)/.test(cur.activity)){
+          cur.activity=arrivalEvent(cur.place);
+          changed=true;
+        }
+        cur._v36Arrival=true;
+      }
+    }
+
+    // 同一个具体地点至少尽量连续 2 格：孤立的一格如果不是锚点，会并入前后更合理的一侧。
+    for(var k=0;k<arr.length;k++){
+      var item=arr[k]; if(isProtectedItem(item,anchor) || isTransitPlace(item.place)) continue;
+      var left=arr[k-1], right=arr[k+1];
+      var leftSame=left && samePlace(left.place,item.place), rightSame=right && samePlace(right.place,item.place);
+      if(!leftSame && !rightSame){
+        if(left && right && samePlace(left.place,right.place) && !isProtectedItem(item,anchor)){
+          item.place=left.place; item.activity=eventForPlace(left.place,item.activity); item._v36MergedIsolated=true; changed=true;
+        } else if(left && !isProtectedItem(left,anchor) && minOf(item.time)-minOf(left.time)===30){
+          // 不合并成街道，优先让上一格变成前往当前地点。
+          if(!isTransitPlace(left.place) && !samePlace(left.place,item.place)){
+            left.place='路上'; left.activity=transitEvent(item.place); left._v36LeadInTransit=true; changed=true;
+          }
+        }
+      }
+    }
+
+    // 最终清理：禁止“附近街区/街道”作为最后固定结果太多。
+    for(var q=0;q<arr.length;q++){
+      var it=arr[q];
+      if(BAD_EVENT_RE.test(it.activity) || !it.activity) { it.activity=eventForPlace(it.place,it.activity); changed=true; }
+      if(isTransitPlace(it.place)){
+        it.place='路上';
+        if(!/路上|前往|途中|移动|移動/.test(it.activity)) { it.activity='在路上移动'; changed=true; }
+      }
+      it.activity=clean(it.activity).slice(0,54);
+      it.place=clean(it.place).slice(0,20);
+    }
+    return {arr:arr, changed:changed};
+  }
+
+  function smoothTraceFor(pid){
+    try{
+      if(typeof locDailyTraces==='undefined' || !locDailyTraces || !locDailyTraces[pid]) return false;
+      var src=Array.isArray(locDailyTraces[pid]) ? locDailyTraces[pid] : [];
+      var others=src.filter(function(x){ return x && x.isoDate && !sameToday(x.isoDate); });
+      var res=smoothToday(src, pid);
+      var before=JSON.stringify(src);
+      locDailyTraces[pid]=others.concat(res.arr);
+      return res.changed || JSON.stringify(locDailyTraces[pid])!==before;
+    }catch(e){ console.warn('[v36 continuity smooth failed]', e); return false; }
+  }
+  function smoothAll(){
+    var changed=false;
+    try{ if(typeof locDailyTraces==='undefined' || !locDailyTraces) return false; Object.keys(locDailyTraces).forEach(function(pid){ if(smoothTraceFor(pid)) changed=true; }); }catch(e){}
+    if(changed){ try{ if(typeof saveLocData==='function') saveLocData(); else localStorage.setItem(STORE_KEY, JSON.stringify(locDailyTraces)); }catch(e){} }
+    return changed;
+  }
+  window.monoV36SmoothCoupleLocationContinuity = smoothAll;
+
+  function selectedPid(){ try{return String(window.locSelectedTraceCharId || window.locSelectedCharId || (typeof locSelectedCharId!=='undefined'?locSelectedCharId:'') || '');}catch(e){return '';} }
+  var inAfter=false;
+  function after(pid){
+    if(inAfter) return; inAfter=true;
+    try{
+      var changed = pid ? smoothTraceFor(pid) : smoothAll();
+      if(changed){ try{ if(typeof saveLocData==='function') saveLocData(); }catch(e){} }
+      try{ if(typeof renderLocTrace==='function') setTimeout(function(){ try{ renderLocTrace(); }catch(e){} },0); }catch(e){}
+    }finally{ setTimeout(function(){ inAfter=false; },30); }
+  }
+
+  ['updateLocTrace','regenerateSelectedLocTrace','monoRunLocationAutoUpdate'].forEach(function(name){
+    try{
+      var old=window[name];
+      if(typeof old==='function' && !old.__v36ContinuityWrapped){
+        window[name]=async function(){ var r=await old.apply(this, arguments); after(selectedPid()); return r; };
+        window[name].__v36ContinuityWrapped=true;
+        try{ eval(name+' = window[name]'); }catch(e){}
+      }
+    }catch(e){}
+  });
+  ['renderLocTrace','openLocationApp'].forEach(function(name){
+    try{
+      var old=window[name];
+      if(typeof old==='function' && !old.__v36ContinuityWrapped){
+        window[name]=function(){ var r=old.apply(this, arguments); setTimeout(function(){ after(selectedPid()); },0); return r; };
+        window[name].__v36ContinuityWrapped=true;
+        try{ eval(name+' = window[name]'); }catch(e){}
+      }
+    }catch(e){}
+  });
+  // saveLocData 只做保存前平滑，不重新渲染，避免递归。
+  try{
+    var oldSave=window.saveLocData;
+    if(typeof oldSave==='function' && !oldSave.__v36ContinuityWrapped){
+      window.saveLocData=function(){ try{ if(typeof locDailyTraces!=='undefined' && locDailyTraces){ Object.keys(locDailyTraces).forEach(function(pid){ smoothTraceFor(pid); }); } }catch(e){} return oldSave.apply(this, arguments); };
+      window.saveLocData.__v36ContinuityWrapped=true;
+      try{ saveLocData=window.saveLocData; }catch(e){}
+    }
+  }catch(e){}
+
+  setTimeout(function(){ after(''); },180);
+  setTimeout(function(){ after(''); },1100);
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden) after(''); });
+  window.addEventListener('online', function(){ after(''); });
+})();
+</script>
+
+<script id="mono-role-wechat-v37-location-natural-writing">
+/* ===== v37: 情侣定位行踪文案自然化 =====
+   目标：
+   1. 不再显示“短暂休息 / 活动 / 处理安排 / 下一个安排”这种模板感很强的事件。
+   2. 根据地点、时间段、前后行踪生成更自然的生活状态。
+   3. 仍然不复制聊天原句，只保留结构化后的地点/状态锚点。
+*/
+(function(){
+  if(window.__monoCoupleLocationNaturalWritingV37) return;
+  window.__monoCoupleLocationNaturalWritingV37 = true;
+
+  var STORE_KEY='mono_loc_traces';
+  function pad2(n){return String(Math.max(0,Number(n)||0)).padStart(2,'0');}
+  function todayKey(){var d=new Date();return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());}
+  function clean(s){return String(s==null?'':s).replace(/<[^>]+>/g,' ').replace(/["“”‘’]+/g,'').replace(/\s+/g,' ').trim();}
+  function minOf(t){var m=String(t||'').match(/(\d{1,2})[:：](\d{2})/);return m?Math.max(0,Math.min(1439,Number(m[1])*60+Number(m[2]))):-1;}
+  function fmtMin(n){n=Math.max(0,Math.min(1439,Math.floor(Number(n)||0)));n=Math.floor(n/30)*30;return pad2(Math.floor(n/60))+':'+pad2(n%60);}
+  function isToday(x){return !x || String(x).slice(0,10)===todayKey();}
+  function hash(s){s=String(s||'');var h=0;for(var i=0;i<s.length;i++){h=((h<<5)-h+s.charCodeAt(i))|0;}return Math.abs(h);}
+  function pick(list,key){ if(!list||!list.length) return ''; return list[hash(key)%list.length]; }
+  function timePart(t){var m=minOf(t); if(m<360) return 'late'; if(m<660) return 'morning'; if(m<840) return 'noon'; if(m<1080) return 'afternoon'; if(m<1320) return 'evening'; return 'night';}
+  function isTransitPlace(p){return /(路上|途中|前往|去往|地铁|地鐵|车站|車站|街道|街区|街區|街边|街邊|附近)/.test(clean(p));}
+  function group(place){
+    var p=clean(place);
+    if(/篮球|籃球|足球|羽毛球|网球|網球|排球|球场|球場|运动场|運動場|体育馆|體育館|操场|操場|健身/.test(p)) return 'sport';
+    if(/酒吧|清吧/.test(p)) return 'bar';
+    if(/咖啡|奶茶/.test(p)) return 'cafe';
+    if(/图书馆|圖書館|学校|學校|教室|书店|書店/.test(p)) return 'study';
+    if(/家里|家裡|房间|房間|宿舍|厨房|廚房|阳台|陽台/.test(p)) return 'home';
+    if(/办公室|辦公室|公司/.test(p)) return 'work';
+    if(/餐厅|餐廳|饭店|飯店|夜市|甜品店/.test(p)) return 'food';
+    if(/商场|商場|超市|便利店|便利商店/.test(p)) return 'shopping';
+    if(/公园|公園|海边|海邊/.test(p)) return 'outdoor';
+    if(/电影院|電影院/.test(p)) return 'movie';
+    if(/医院|醫院/.test(p)) return 'hospital';
+    if(isTransitPlace(p)) return 'transit';
+    return 'other';
+  }
+  function samePlace(a,b){ return group(a)===group(b) || clean(a)===clean(b); }
+  function stiffActivity(s, place){
+    s=clean(s); if(!s) return true;
+    if(s===clean(place)) return true;
+    if(/(处理自己的安排|處理自己的安排|自己的安排|下一个安排|下一個安排|下個安排|自然安排|当前时间段|當前時間段|接上后面的安排|接上後面的安排|准备接上|準備接上|处理安排|處理安排|下一个|下一個)/.test(s)) return true;
+    if(/^(在)?(球场活动，短暂休息|球場活動，短暫休息|短暂休息，喝点东西|短暫休息，喝點東西|学习或整理资料|學習或整理資料|在室内休息或整理东西|在室內休息或整理東西|处理工作内容|處理工作內容|吃饭休息|吃飯休息|逛店买东西|逛店買東西|散步透气|散步透氣|看电影或等开场|看電影或等開場|处理健康相关的事情|處理健康相關的事情|在路上移动|在路上移動|安静地度过这一段时间|安靜地度過這一段時間)$/.test(s)) return true;
+    if(/^(刚到|剛到).{1,16}(，|,)?开始接下来的活动$/.test(s)) return true;
+    if(s.length<5) return true;
+    return false;
+  }
+  function relation(prev, cur, next){
+    var p=prev&&prev.place, n=next&&next.place, c=cur&&cur.place;
+    return {samePrev:!!(p&&samePlace(p,c)), sameNext:!!(n&&samePlace(n,c)), prev:p||'', next:n||''};
+  }
+  function transitText(cur, rel, key){
+    var to = rel.next && !isTransitPlace(rel.next) ? rel.next : '';
+    var from = rel.prev && !isTransitPlace(rel.prev) ? rel.prev : '';
+    if(to && from) return pick([
+      '从'+from+'出来，慢慢往'+to+'过去',
+      '在去'+to+'的路上，顺便看了下消息',
+      '离开'+from+'后，往'+to+'那边走'
+    ],key);
+    if(to) return pick([
+      '往'+to+'那边过去，路上不太赶',
+      '在去'+to+'的路上，顺手回了几条消息',
+      '慢慢往'+to+'方向走，准备接上后面的行程'
+    ],key);
+    return pick(['在外面移动，顺便处理路上的小事','走在路上，状态比较放松','在附近移动，还没有停在固定地点'],key);
+  }
+  function naturalEvent(item, prev, next, pid){
+    var place=clean(item.place||'') || '附近';
+    var t=fmtMin(minOf(item.time));
+    var part=timePart(t);
+    var g=group(place), rel=relation(prev,item,next);
+    var key=[pid,t,place,rel.prev,rel.next].join('|');
+
+    if(g==='transit') return transitText(item,rel,key);
+
+    if(rel.samePrev && rel.sameNext){
+      var stay={
+        sport:['还在球场上活动，中间停下来喝水','继续在场边和朋友待着，偶尔上场动一动','在球场待了一会儿，节奏比刚才慢下来'],
+        bar:['还坐在店里，边喝东西边聊天','在酒吧里待着，音乐声有点热闹','和朋友继续聊着，气氛比较放松'],
+        cafe:['继续坐在咖啡厅里，慢慢喝着东西','在座位上待着，顺手看了会儿手机','还在咖啡厅里放空，节奏很慢'],
+        study:['继续翻资料，偶尔停下来整理重点','还在安静学习，进度慢慢往前推','坐在位置上整理笔记，注意力还算集中'],
+        home:['还在室内待着，慢慢整理自己的东西','在房间里放松了一会儿，状态比较安静','继续待在住处，做些很日常的小事'],
+        work:['继续处理手上的内容，中间偶尔停下来确认消息','还在工位附近忙着，节奏有点稳定','把手边的事情往后推进了一点'],
+        food:['还在店里吃东西，节奏不急','坐着慢慢吃饭，顺便和身边的人聊几句','继续在餐厅里待着，把东西吃完'],
+        shopping:['还在附近逛着，随手看看店里的东西','继续在店里挑东西，没有特别赶','在商场里慢慢走，边看边停'],
+        outdoor:['继续在外面散步，吹一会儿风','在外面慢慢走着，状态放松下来','还在附近待着，顺便透透气'],
+        movie:['还在影厅附近等着，顺手看了下时间','继续待在电影院里，等场次或散场','坐着等了一会儿，周围声音有点杂'],
+        hospital:['继续在医院里等流程，状态比较安静','还在等叫号或处理手续','在医院里待着，把该办的事情处理完'],
+        other:['继续待在这里，做着很日常的小事','在原地停留了一会儿，状态比较平稳','还没换地方，只是慢慢把事情做完']
+      };
+      return pick(stay[g]||stay.other,key);
+    }
+
+    if(!rel.samePrev && rel.sameNext){
+      var arrive={
+        sport:['刚到球场，先在旁边热身','到球场后先放下东西，准备活动一下','刚到场边，先和认识的人打了个招呼'],
+        bar:['刚进店里，找了个位置坐下','到酒吧后先点了点东西，慢慢坐下来','进店后先适应了一下环境，和朋友碰面'],
+        cafe:['到咖啡厅后找了个安静的位置','刚坐进咖啡厅，点了杯东西慢慢喝','进店后先坐下，顺手看了下手机'],
+        study:['到学习的地方后先找位置坐下','刚坐下来，把资料和手机整理好','到图书馆后先安静下来，准备开始看资料'],
+        home:['回到住处后先把东西放好','刚回到室内，状态慢慢松下来','到房间后先整理了一下随身物品'],
+        work:['到工位附近后先打开需要的内容','刚坐下来，开始看今天要处理的东西','到公司后先把手边事项理清楚'],
+        food:['到店里后先找位置坐下','刚进餐厅，边看菜单边等人','坐下来后先点了些吃的'],
+        shopping:['到商场后先随便逛了一圈','进店后慢慢看货架上的东西','到附近店里，边走边看有没有需要的'],
+        outdoor:['到外面后慢慢走了一会儿','来到附近后先散散步，放松一下','在外面停下来透气，节奏变慢'],
+        movie:['到电影院后先看了下场次和时间','进到影院附近，等着开场','到影厅附近后找地方坐着等'],
+        hospital:['到医院后先等流程或叫号','到医院里把需要的手续先处理一下','在医院里等了一会儿，准备继续办事'],
+        other:['到了以后先停下来整理状态','到这里后先把手边的小事处理一下','刚到这个地方，节奏慢慢稳定下来']
+      };
+      return pick(arrive[g]||arrive.other,key);
+    }
+
+    if(rel.samePrev && !rel.sameNext){
+      var leaving={
+        sport:['在球场最后活动了一会儿，准备离开','又打了一小会儿球，开始收拾东西','在场边缓了一下，准备换个地方'],
+        bar:['坐了一会儿后，准备把这边的聊天收尾','把杯子里的东西喝完，差不多准备走','和朋友聊到一个段落，开始准备离开'],
+        cafe:['喝完东西后，慢慢收拾桌上的东西','在咖啡厅坐到一个段落，准备离开','把手机和随身东西收好，准备换地方'],
+        study:['整理完一部分资料，准备暂停一下','把笔记收了收，准备换个地方','学习到一个段落，开始收拾东西'],
+        home:['在室内收拾了一下，准备出门','把东西整理好，准备去下一个地方','在房间里缓了一会儿，差不多准备离开'],
+        work:['把手上的事情收尾，准备离开工位','确认完最后一点内容，准备换个地方','工作内容告一段落，开始收拾东西'],
+        food:['吃得差不多后，慢慢准备离开','在店里坐到最后一会儿，准备结账','把饭吃完，准备往下一个地方走'],
+        shopping:['又逛了一小会儿，准备离开这边','看完几家店后，慢慢往外走','把想看的东西看完，准备换地方'],
+        outdoor:['在外面走了一会儿，准备往别处去','吹了会儿风后，开始往下一个地方走','在附近停留后，慢慢离开'],
+        movie:['场次结束后，准备往外走','在影院附近停了一会儿，准备离开','看完后慢慢跟着人流往外走'],
+        hospital:['流程处理到一个段落，准备离开','等完需要的部分后，开始往外走','把该办的事情处理完，准备离开'],
+        other:['事情差不多结束，准备换个地方','在这里停留了一会儿后，开始准备离开','把手边的小事做完，准备往下走']
+      };
+      return pick(leaving[g]||leaving.other,key);
+    }
+
+    var single={
+      sport:['在球场活动了一会儿，顺便和旁边的人聊几句','去球场动了动，状态看起来比较放松','在场边停了一会儿，偶尔上场活动'],
+      bar: part==='night'||part==='evening' ? ['在酒吧里坐了一会儿，听着音乐聊天','点了点东西，和朋友随便聊着','在店里放松了一下，气氛有点热闹'] : ['在店里坐了一会儿，点了杯饮料','找了个位置坐下，简单休息一下','在店里等人或回消息，节奏不急'],
+      cafe:['坐在咖啡厅里喝点东西，顺手看手机','找了个位置安静待着，慢慢喝东西','在咖啡厅短暂停留，状态比较放松'],
+      study:['找地方坐下来看资料，偶尔整理笔记','安静看了一会儿资料，进度慢慢推进','把资料摊开整理了一下，专心待了一会儿'],
+      home:['在室内待着，做些很日常的小事','回到房间里放松了一会儿','在住处整理东西，顺便休息'],
+      work:['把手边的内容推进了一点','在工位附近看资料或回消息','处理了一会儿需要完成的事项'],
+      food:['在店里吃点东西，顺便休息','坐下来吃饭，节奏不太赶','简单吃了点东西，慢慢缓下来'],
+      shopping:['在店里随便逛了逛，看看有没有需要的','沿着商场慢慢走，边走边看','停下来买了点东西，顺便逛一会儿'],
+      outdoor:['在外面慢慢走了一会儿，顺便透气','找了个地方停下来放松一下','在附近散步，状态比较轻松'],
+      movie:['在电影院附近等场次或散场','看了下时间，坐着等了一会儿','在影院附近待着，周围人有点多'],
+      hospital:['在医院里等流程或处理手续','安静等了一会儿，把该办的事情处理掉','在医院停留了一段时间，状态比较平静'],
+      other:['在这里停留了一会儿，做些日常小事','状态比较平稳，慢慢把事情做完','这段时间没有太多变化，只是安静待着']
+    };
+    return pick(single[g]||single.other,key);
+  }
+  function naturalizeArray(arr,pid){
+    if(!Array.isArray(arr)) return {arr:[],changed:false};
+    var changed=false;
+    var today=arr.filter(function(x){return x&&isToday(x.isoDate);}).sort(function(a,b){return minOf(a.time)-minOf(b.time);});
+    var other=arr.filter(function(x){return x&&x.isoDate&&!isToday(x.isoDate);});
+    for(var i=0;i<today.length;i++){
+      var item=today[i];
+      var prev=today[i-1]||null, next=today[i+1]||null;
+      var place=clean(item.place||item.location||item['地点']||'附近');
+      if(isTransitPlace(place)) place='路上';
+      var activity=clean(item.activity||item.event||item['事件']||item['活动']||item.desc||'');
+      if(stiffActivity(activity,place)){
+        activity=naturalEvent(Object.assign({},item,{place:place}),prev,next,pid);
+        changed=true;
+      }
+      // 防止连续两格同一地点同一句话。
+      if(prev && clean(prev.activity)===activity){
+        activity=naturalEvent(Object.assign({},item,{place:place,activity:''}),prev,next,pid+'|alt');
+        changed=true;
+      }
+      if(item.place!==place || item.activity!==activity){ changed=true; }
+      item.place=place.slice(0,20);
+      item.activity=activity.slice(0,60);
+      item.isoDate=todayKey();
+      item._v37NaturalWriting=true;
+    }
+    return {arr:other.concat(today),changed:changed};
+  }
+  function naturalizePid(pid){
+    try{
+      if(typeof locDailyTraces==='undefined'||!locDailyTraces||!locDailyTraces[pid]) return false;
+      var before=JSON.stringify(locDailyTraces[pid]);
+      var res=naturalizeArray(locDailyTraces[pid],pid);
+      locDailyTraces[pid]=res.arr;
+      return res.changed || JSON.stringify(locDailyTraces[pid])!==before;
+    }catch(e){console.warn('[v37 naturalize pid failed]',e);return false;}
+  }
+  function naturalizeAll(){
+    var changed=false;
+    try{ if(typeof locDailyTraces==='undefined'||!locDailyTraces) return false; Object.keys(locDailyTraces).forEach(function(pid){ if(naturalizePid(pid)) changed=true; }); }catch(e){}
+    if(changed){ try{ if(typeof saveLocData==='function') saveLocData(); else localStorage.setItem(STORE_KEY,JSON.stringify(locDailyTraces)); }catch(e){} }
+    return changed;
+  }
+  window.monoV37NaturalizeCoupleLocationWriting=naturalizeAll;
+
+  function selectedPid(){try{return String(window.locSelectedTraceCharId||window.locSelectedCharId||(typeof locSelectedCharId!=='undefined'?locSelectedCharId:'')||'');}catch(e){return '';}}
+  var busy=false;
+  function after(pid){
+    if(busy) return; busy=true;
+    try{
+      var changed=pid?naturalizePid(pid):naturalizeAll();
+      if(changed){ try{ if(typeof saveLocData==='function') saveLocData(); }catch(e){} }
+      try{ if(typeof renderLocTrace==='function') setTimeout(function(){try{renderLocTrace();}catch(e){}},0); }catch(e){}
+    }finally{setTimeout(function(){busy=false;},35);}
+  }
+  ['updateLocTrace','regenerateSelectedLocTrace','monoRunLocationAutoUpdate'].forEach(function(name){
+    try{var old=window[name]; if(typeof old==='function'&&!old.__v37NaturalWritingWrapped){ window[name]=async function(){var r=await old.apply(this,arguments); after(selectedPid()); return r;}; window[name].__v37NaturalWritingWrapped=true; try{eval(name+' = window[name]');}catch(e){} }}catch(e){}
+  });
+  ['renderLocTrace','openLocationApp'].forEach(function(name){
+    try{var old=window[name]; if(typeof old==='function'&&!old.__v37NaturalWritingWrapped){ window[name]=function(){var r=old.apply(this,arguments); setTimeout(function(){after(selectedPid());},0); return r;}; window[name].__v37NaturalWritingWrapped=true; try{eval(name+' = window[name]');}catch(e){} }}catch(e){}
+  });
+  try{var oldSave=window.saveLocData; if(typeof oldSave==='function'&&!oldSave.__v37NaturalWritingWrapped){ window.saveLocData=function(){try{ if(typeof locDailyTraces!=='undefined'&&locDailyTraces){Object.keys(locDailyTraces).forEach(function(pid){naturalizePid(pid);});}}catch(e){} return oldSave.apply(this,arguments);}; window.saveLocData.__v37NaturalWritingWrapped=true; try{saveLocData=window.saveLocData;}catch(e){} }}catch(e){}
+
+  setTimeout(function(){after('');},260);
+  setTimeout(function(){after('');},1300);
+})();
+</script>
+
+
 </body>
 </html>

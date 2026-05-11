@@ -103961,5 +103961,152 @@ console.log('[ChatScreenshot] 聊天截图功能已加载：多张截图/记忆/
 })();
 </script>
 
+
+<script id="mono-role-wechat-v34-single-couple-location-auto-entry">
+/* ===== v34: 情侣定位只保留一个自动补全入口 =====
+   修复：旧版 v29/v30 与新版 v31 同时存在时，界面出现两个“自动更新/自动生成”，并可能多次触发自动补全。
+   处理：
+   1. 彻底隐藏/删除 v29 旧按钮、旧弹窗、旧样式显示。
+   2. 统一自动补全角色存储 key，v29/v31 读到同一份设置。
+   3. 给 monoRunLocationAutoUpdate 加半小时级防抖，避免 focus / visibility / openLocationApp 多入口重复触发。
+   4. 只显示 v31 的一个“自动更新”按钮。
+*/
+(function(){
+  if (window.__monoCoupleLocationSingleAutoEntryV34) return;
+  window.__monoCoupleLocationSingleAutoEntryV34 = true;
+
+  var CANON_AUTO_KEY = 'mono_loc_auto_update_roles_v29';
+  var ALT_AUTO_KEY = 'mono_loc_auto_update_roles_v33';
+  var DEBOUNCE_KEY = 'mono_loc_auto_update_single_run_v34';
+
+  function pad2(n){ return String(Math.max(0, Number(n)||0)).padStart(2,'0'); }
+  function slotKey(){
+    var d = new Date();
+    var mm = d.getMinutes() >= 30 ? 30 : 0;
+    var day = d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
+    return day + ' ' + pad2(d.getHours()) + ':' + pad2(mm);
+  }
+  function parseIds(key){
+    try { var a = JSON.parse(localStorage.getItem(key) || '[]'); return Array.isArray(a) ? a.map(String).filter(Boolean) : []; }
+    catch(e){ return []; }
+  }
+  function unique(arr){ return Array.from(new Set((arr||[]).map(String).filter(Boolean))); }
+  function syncAutoKeys(){
+    try {
+      var ids = unique(parseIds(CANON_AUTO_KEY).concat(parseIds(ALT_AUTO_KEY)));
+      localStorage.setItem(CANON_AUTO_KEY, JSON.stringify(ids));
+      localStorage.setItem(ALT_AUTO_KEY, JSON.stringify(ids));
+    } catch(e) {}
+  }
+
+  function removeOldAutoUI(){
+    try {
+      var oldRow = document.getElementById('locAutoV29Row');
+      if (oldRow) oldRow.remove();
+      var oldModal = document.getElementById('locAutoV29Modal');
+      if (oldModal) oldModal.remove();
+      var oldBtn = document.getElementById('locAutoV29Btn');
+      if (oldBtn) oldBtn.remove();
+      document.querySelectorAll('.loc-auto-v29-row,#locAutoV29Modal,.loc-auto-v29-box').forEach(function(el){
+        try { el.remove(); } catch(e){ el.style.display='none'; }
+      });
+    } catch(e) {}
+  }
+  function ensureHideStyle(){
+    if (document.getElementById('monoLocV34HideOldAutoStyle')) return;
+    var st = document.createElement('style');
+    st.id = 'monoLocV34HideOldAutoStyle';
+    st.textContent = '#locAutoV29Row,#locAutoV29Modal,.loc-auto-v29-row,.loc-auto-v29-box{display:none!important;visibility:hidden!important;pointer-events:none!important;}';
+    document.head.appendChild(st);
+  }
+
+  function makeV31TheOnlyRow(){
+    ensureHideStyle();
+    removeOldAutoUI();
+    try {
+      var rows = Array.from(document.querySelectorAll('#locAutoV31Row,.loc-auto-v31-row'));
+      rows.forEach(function(row, idx){ if (idx > 0) row.remove(); });
+    } catch(e) {}
+  }
+
+  // 统一保存入口：如果旧弹窗/旧逻辑保存 v29，v31 也能读；如果后续代码保存 v33，也同步回 v29。
+  var oldSetItem = localStorage.setItem.bind(localStorage);
+  localStorage.setItem = function(key, val){
+    var r = oldSetItem(key, val);
+    try {
+      if (key === CANON_AUTO_KEY && localStorage.getItem(ALT_AUTO_KEY) !== val) oldSetItem(ALT_AUTO_KEY, val);
+      if (key === ALT_AUTO_KEY && localStorage.getItem(CANON_AUTO_KEY) !== val) oldSetItem(CANON_AUTO_KEY, val);
+    } catch(e) {}
+    return r;
+  };
+  syncAutoKeys();
+
+  // 防止 v29 / v30 / v31 多个事件入口在同一个半小时槽内连续调用 API。
+  function wrapRunner(){
+    var old = window.monoRunLocationAutoUpdate;
+    if (typeof old !== 'function' || old.__v34SingleAutoWrapped) return;
+    window.monoRunLocationAutoUpdate = async function(opts){
+      opts = opts || {};
+      syncAutoKeys();
+      makeV31TheOnlyRow();
+      var key = slotKey();
+      var now = Date.now();
+      try {
+        var last = JSON.parse(localStorage.getItem(DEBOUNCE_KEY) || '{}');
+        // 用户手动保存/打开设置后允许强制跑；普通自动事件 8 秒内只跑一次，避免两个自动入口同时触发。
+        if (!opts.manual && !opts.fromUser && last.slot === key && now - Number(last.t || 0) < 8000) return { skipped:true, reason:'v34-single-auto-debounce' };
+        localStorage.setItem(DEBOUNCE_KEY, JSON.stringify({ slot:key, t:now }));
+      } catch(e) {}
+      var res = await old.apply(this, arguments);
+      makeV31TheOnlyRow();
+      return res;
+    };
+    window.monoRunLocationAutoUpdate.__v34SingleAutoWrapped = true;
+    try { eval('monoRunLocationAutoUpdate = window.monoRunLocationAutoUpdate'); } catch(e) {}
+  }
+
+  // 如果旧 v29 入口还尝试打开旧弹窗，直接转到 v31 弹窗。
+  window.openLocAutoUpdateModal = function(){
+    syncAutoKeys();
+    makeV31TheOnlyRow();
+    try { if (typeof window.openAutoModalV31 === 'function') return window.openAutoModalV31(); } catch(e) {}
+    try {
+      var btn = document.getElementById('locAutoV31Btn');
+      if (btn) btn.click();
+    } catch(e) {}
+  };
+
+  // 包装渲染和打开情侣定位，防止旧 UI 又被 v29 插回来。
+  ['renderLocTrace','openLocationApp'].forEach(function(name){
+    try {
+      var old = window[name];
+      if (typeof old === 'function' && !old.__v34SingleAutoEntryWrapped) {
+        window[name] = function(){
+          var r = old.apply(this, arguments);
+          setTimeout(function(){ syncAutoKeys(); wrapRunner(); makeV31TheOnlyRow(); }, 0);
+          setTimeout(makeV31TheOnlyRow, 250);
+          return r;
+        };
+        window[name].__v34SingleAutoEntryWrapped = true;
+        try { eval(name + ' = window[name]'); } catch(e) {}
+      }
+    } catch(e) {}
+  });
+
+  // 观察 DOM，旧行一插入就删掉，只留下一个 v31 行。
+  try {
+    var mo = new MutationObserver(function(){ makeV31TheOnlyRow(); wrapRunner(); });
+    mo.observe(document.documentElement, { childList:true, subtree:true });
+  } catch(e) {}
+
+  ensureHideStyle();
+  wrapRunner();
+  makeV31TheOnlyRow();
+  setTimeout(function(){ syncAutoKeys(); wrapRunner(); makeV31TheOnlyRow(); }, 100);
+  setTimeout(makeV31TheOnlyRow, 800);
+  document.addEventListener('DOMContentLoaded', function(){ setTimeout(function(){ syncAutoKeys(); wrapRunner(); makeV31TheOnlyRow(); }, 600); });
+})();
+</script>
+
 </body>
 </html>

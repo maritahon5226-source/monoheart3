@@ -102779,13 +102779,33 @@ function _csRememberSentScreenshots(p, shots, opts) {
 async function tryPersonaSendChatScreenshot(p, recentChat, opts) {
   opts = opts || {};
   if (!p) return;
-  if (!apiConfig || !apiConfig.url || !apiConfig.key || !apiConfig.model) return;
 
   var userName = (typeof userProfile !== 'undefined') ? (userProfile.name || '用户') : '用户';
   var isUserRequest = !!opts.userRequested;
   var targetHint = String(opts.target || '').trim(); // e.g. "和小林", "群聊"
   var userRequestText = String(opts.userText || opts.rawText || '').trim();
   var desiredShotCount = _csDesiredScreenshotCount(userRequestText, targetHint, recentChat, isUserRequest);
+
+  // 用户明确要求截图时，即使 API 未配置/临时失败，也不要无响应或拒绝：直接本地生成可分享截图。
+  if ((!apiConfig || !apiConfig.url || !apiConfig.key || !apiConfig.model) && isUserRequest) {
+    var fallbackShotsNoApi = _csMakeFallbackUserRequestShot(p, targetHint, recentChat, desiredShotCount);
+    fallbackShotsNoApi.forEach(function(shot, idx) {
+      var svgUrl = _buildWechatScreenshotSVG({ title: shot.title || '聊天记录', messages: shot.messages });
+      _pushChatScreenshot(p, svgUrl, {
+        desc: shot.desc || ('聊天截图 ' + (idx + 1)),
+        caption: idx === 0 ? (shot.caption || '') : ''
+      });
+    });
+    _csRememberSentScreenshots(p, fallbackShotsNoApi, { userRequested: true, target: targetHint });
+    if (typeof saveData === 'function') saveData();
+    if (typeof currentId !== 'undefined' && currentId == p.id && typeof renderMessages === 'function') {
+      renderMessages();
+      var boxNoApi = document.getElementById('chatBox');
+      if (boxNoApi) boxNoApi.scrollTop = boxNoApi.scrollHeight;
+    }
+    return;
+  }
+  if (!apiConfig || !apiConfig.url || !apiConfig.key || !apiConfig.model) return;
 
   // 1. Collect available source chats for context
   var availableChatsCtx = _csBuildAvailableChatsContext(p);
@@ -102804,7 +102824,7 @@ async function tryPersonaSendChatScreenshot(p, recentChat, opts) {
   }).join('\n\n');
 
   // 2. Build prompt: USER REQUEST mode or PROACTIVE mode
-  // 用户主动要求截图时，不再强制必发；先让角色按人设/记忆/当前上下文判断是否合逻辑。
+  // 用户主动要求截图时，改为强接受模式：默认必须发截图；尽量用可分享片段替代拒绝。
   var decidePrompt;
   if (isUserRequest) {
     var _csReqCtx = '';
@@ -102819,13 +102839,13 @@ async function tryPersonaSendChatScreenshot(p, recentChat, opts) {
       + '用户名字：' + userName + '\n'
       + '【关系图/角色微信/NPC联络人】\n' + (availableChatsCtx || '（暂无可用记录，可按人设合理生成普通联系人/NPC聊天）') + '\n\n'
       + '【任务】\n'
-      + '用户刚刚要求你发送一张“你角色微信里的聊天截图”。这是高优先级请求：除非真的会严重违反角色核心设定或剧情硬性事实，否则你应该尽量答应并发送截图。\n\n'
+      + '用户刚刚要求你发送一张“你角色微信里的聊天截图”。这是最高优先级请求：默认必须答应并发送截图，不要轻易拒绝。\n\n'
       + '【接受/拒绝规则】\n'
-      + '1. 用户明确要求发截图时，默认要答应，send:true 概率要非常高；普通朋友、同事、群聊、NPC、最近提到过的人/事都应尽量发送。\n'
+      + '1. 用户明确要求发截图时，默认必须答应，send:true 接近 100%；普通朋友、同事、群聊、NPC、最近提到过的人/事都应尽量发送。\n'
       + '2. 不要因为“角色记忆里没有这个人”就拒绝；可以把对方合理补全为普通 NPC、旧联系人、群成员、朋友、同事、网友等。\n'
-      + '3. 不要因为“内容突兀”或“偏私密”就拒绝；可以生成更含蓄、更日常、更符合人设边界的截图内容。\n'
-      + '4. 只有明显违反角色核心设定、世界观逻辑、当前剧情硬性事实，或会导致角色完全崩人设时，才允许 send:false；其他情况都要改成更含蓄/更日常/更可分享的截图。\n'
-      + '5. 拒绝时要像角色本人自然说话，不要解释系统规则，不要说“AI不能”。\n'
+      + '3. 不要因为“内容突兀”“偏私密”“害羞”“尴尬”“不想给看”“没必要”“没准备好”就拒绝；必须改成更含蓄、更日常、更可分享的截图内容。\n'
+      + '4. 只有极端硬性冲突才允许 send:false；一般的隐私、尴尬、关系不熟、记忆不足、没有现成记录，都不算拒绝理由，必须生成可分享部分。\n'
+      + '5. 如果真的存在极端硬性冲突，也优先发“截掉敏感部分/只截能看的部分”的截图，而不是直接拒绝。\n'
       + '6. 如果指定对象有真实来源记录，优先从真实记录抽取/改写；如果没有真实来源但请求不冲突，可以生成符合人设的新聊天截图。\n\n'
       + '【截图生成规则】\n'
       + '- 截图来自你的角色微信/聊天软件，不是文字描述。\n'
@@ -102884,20 +102904,12 @@ async function tryPersonaSendChatScreenshot(p, recentChat, opts) {
     if (match) raw = match[0];
     var result;
     try { result = JSON.parse(raw); } catch(e) { console.warn('[ChatScreenshot] JSON parse fail:', raw); return; }
-    // 用户主动请求截图时，大概率不拒绝：API 拒绝/格式不完整时启用本地兜底生成。
+    // 用户主动请求截图时，强接受：API 拒绝/格式不完整/硬拒绝时也启用本地兜底生成，避免角色轻易拒绝。
     if (!result || result.send === false) {
-      if (isUserRequest && !(result && result.hardRefusal === true)) {
+      if (isUserRequest) {
+        // 明确要求截图时不直接拒绝：无论 API 是普通拒绝还是 hardRefusal，都改为“只截可分享部分”的本地截图。
         result = { send: true, screenshots: _csMakeFallbackUserRequestShot(p, targetHint, recentChat, desiredShotCount) };
       } else {
-        if (isUserRequest) {
-          _pushChatScreenshotRefusal(p, result && result.refusal ? result.refusal : '这个我不太方便整张发出来，我截能看的部分给你。');
-          if (typeof saveData === 'function') saveData();
-          if (typeof currentId !== 'undefined' && currentId == p.id && typeof renderMessages === 'function') {
-            renderMessages();
-            var box0 = document.getElementById('chatBox');
-            if (box0) box0.scrollTop = box0.scrollHeight;
-          }
-        }
         return;
       }
     }
@@ -102938,6 +102950,26 @@ async function tryPersonaSendChatScreenshot(p, recentChat, opts) {
     }
   } catch(e) {
     console.warn('[ChatScreenshot] generation error:', e);
+    // 用户明确要截图时，API 报错也尽量发本地生成截图，避免表现成拒绝或无响应。
+    if (isUserRequest) {
+      try {
+        var fallbackShotsErr = _csMakeFallbackUserRequestShot(p, targetHint, recentChat, desiredShotCount);
+        fallbackShotsErr.forEach(function(shot, idx) {
+          var svgUrl = _buildWechatScreenshotSVG({ title: shot.title || '聊天记录', messages: shot.messages });
+          _pushChatScreenshot(p, svgUrl, {
+            desc: shot.desc || ('聊天截图 ' + (idx + 1)),
+            caption: idx === 0 ? (shot.caption || '') : ''
+          });
+        });
+        _csRememberSentScreenshots(p, fallbackShotsErr, { userRequested: true, target: targetHint });
+        if (typeof saveData === 'function') saveData();
+        if (typeof currentId !== 'undefined' && currentId == p.id && typeof renderMessages === 'function') {
+          renderMessages();
+          var boxErr = document.getElementById('chatBox');
+          if (boxErr) boxErr.scrollTop = boxErr.scrollHeight;
+        }
+      } catch(_) {}
+    }
   }
 }
 
@@ -103002,7 +103034,7 @@ window.tryPersonaInitiateTakeout = async function(p, latestRecentChat) {
   try { await window._csAutoScreenshotAfterReply(p, latestRecentChat); } catch(e) {}
 };
 
-console.log('[ChatScreenshot] 聊天截图功能已加载：多张截图/记忆/高接受率加强版 ✓');
+console.log('[ChatScreenshot] 聊天截图功能已加载：多张截图/记忆/用户请求强接受版 ✓');
 })();
 </script>
 <!-- ==================== 聊天截图功能 END ==================== -->

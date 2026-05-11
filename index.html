@@ -102061,6 +102061,377 @@ if (document.readyState === 'loading') {
 })();
 </script>
 
+<script id="mono-role-wechat-v31-location-final-rules">
+/* ===== v31: 情侣定位最终规则覆盖层 =====
+   1. 今日行踪只允许 HH:00 / HH:30，16:10 / 16:40 等错误时间直接清理删除。
+   2. 更新只补缺失半小时；如果当前半小时已生成，不重复显示同一时间。
+   3. 重新生成全部会清空当前角色今天旧行踪，再从 00:00 生成到当前半小时。
+   4. 聊天只做结构化轻参考，不复制原句；未来日期内容不进入今天。
+   5. 角色自己确认“我在某地”会成为当前半小时锚点，地点/事件/状态一起对齐，并加入过渡。
+   6. 用户可多选绑定角色自动补全，离线后上线/在线跨半小时都会自动补齐。
+*/
+(function(){
+  if (window.__monoV31LocationFinalRules) return;
+  window.__monoV31LocationFinalRules = true;
+
+  var AUTO_KEY = 'mono_loc_auto_update_roles_v29';
+  var AUTO_LOCK = false;
+  var LAST_AUTO_SLOT_KEY = 'mono_loc_auto_update_last_slot_v31';
+  var oldFull = (typeof window.generateFullDayTrace === 'function') ? window.generateFullDayTrace : null;
+  var oldInc = (typeof window.generateIncrementalTrace === 'function') ? window.generateIncrementalTrace : null;
+
+  function toastSoft(msg){ try{ if(typeof toast==='function') toast(msg); else if(typeof showToast==='function') showToast(msg); else console.log(msg); }catch(e){ console.log(msg); } }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]); }); }
+  function pad2(n){ return String(Math.max(0, Number(n)||0)).padStart(2,'0'); }
+  function todayKey(){ try { return new Date().toLocaleDateString('zh-TW'); } catch(e){ return new Date().toISOString().slice(0,10); } }
+  function todayAlt(){ try { return new Date().toLocaleDateString('zh-CN'); } catch(e){ return todayKey(); } }
+  function isoToday(){ return new Date().toISOString().slice(0,10); }
+  function isTodayLike(v){ if(!v) return true; v=String(v); return v===todayKey() || v===todayAlt() || v===isoToday(); }
+  function minOf(t){ var m=String(t||'').replace('：',':').match(/^\s*(\d{1,2}):(\d{2})\s*$/); return m ? (+m[1]*60 + +m[2]) : -1; }
+  function fmtMin(m){ m=Math.max(0, Math.min(1439, Math.floor((Number(m)||0)/30)*30)); return pad2(Math.floor(m/60))+':'+pad2(m%60); }
+  function isHalfHour(t){ var m=minOf(t); return m>=0 && m%30===0; }
+  function currentHalfMin(){ var n=new Date(); return n.getHours()*60 + (n.getMinutes()>=30?30:0); }
+  function currentSlot(){ return fmtMin(currentHalfMin()); }
+  function fullSlots(){ var out=[], end=currentHalfMin(); for(var m=0;m<=end;m+=30) out.push(fmtMin(m)); return out; }
+  function slotsAfter(last){ var out=[], start=last ? minOf(last)+30 : 0, end=currentHalfMin(); for(var m=start;m<=end;m+=30) out.push(fmtMin(m)); return out; }
+  function cleanText(s){ return String(s||'').replace(/\[heart_voice\][\s\S]*?\[\/heart_voice\]/g,' ').replace(/<[^>]+>/g,' ').replace(/[\r\n]+/g,' ').replace(/\s+/g,' ').trim(); }
+  function cleanField(s,max){ return cleanText(s).replace(/[|｜]/g,' ').replace(/[。！？!?]/g,'').slice(0,max||40); }
+  function pidOf(rel){ return rel && (rel.personaId != null ? rel.personaId : rel.id); }
+  function getPersona(pid){ try { return (typeof personas!=='undefined' && Array.isArray(personas)) ? personas.find(function(p){ return String(p.id)===String(pid); }) : null; } catch(e){ return null; } }
+  function activeRelations(){ try { return (locRelations||[]).filter(function(r){ return !!getPersona(pidOf(r)); }); } catch(e){ return []; } }
+  function ensureSelectedPid(){
+    var rels=activeRelations(); if(!rels.length) return null;
+    var cur=window.locSelectedTraceCharId || (typeof locSelectedCharId!=='undefined' ? locSelectedCharId : null);
+    if(!cur || !rels.some(function(r){ return String(pidOf(r))===String(cur); })) cur=pidOf(rels[0]);
+    window.locSelectedTraceCharId=cur; try{ locSelectedCharId=cur; }catch(e){}
+    return cur;
+  }
+  function msgTs(m){ var ts=m && (m.timestamp||m.time||m.createdAt||m.date||m.sentAt); if(!ts) return 0; if(typeof ts==='number') return ts; if(/^\d+$/.test(String(ts))) return Number(ts); var d=new Date(ts); return isNaN(d.getTime())?0:d.getTime(); }
+  function dayStart(){ var d=new Date(); d.setHours(0,0,0,0); return d.getTime(); }
+  function dayEnd(){ var d=new Date(); d.setHours(23,59,59,999); return d.getTime(); }
+  function futureText(text){ return /(明天|明晚|后天|後天|大后天|大後天|过两天|過兩天|过几天|過幾天|下周|下週|下星期|下个月|下個月|以后|以後|改天|下次|未来|未來)/.test(text); }
+
+  function inferActivityFromPlace(place){
+    place=String(place||'');
+    if(/酒吧|清吧|bar|夜店|KTV/i.test(place)) return '在店里放松，听音乐或聊天';
+    if(/咖啡|茶|饮品|飲品/.test(place)) return '点饮料休息';
+    if(/学校|學校|图书馆|圖書館|教室/.test(place)) return '学习或整理资料';
+    if(/公司|办公室|辦公室/.test(place)) return '处理工作';
+    if(/餐厅|餐廳|饭|飯|食堂/.test(place)) return '吃饭休息';
+    if(/家|宿舍|公寓/.test(place)) return '在室内休息';
+    if(/车站|車站|地铁|地鐵|机场|機場|路上/.test(place)) return '准备移动';
+    if(/商场|商場|店|超市|市场|市場/.test(place)) return '逛店买东西';
+    if(/公园|公園|海边|海邊/.test(place)) return '散步透气';
+    if(/电影院|電影院/.test(place)) return '看电影或等开场';
+    if(/医院|醫院|诊所|診所/.test(place)) return '处理预约或等候';
+    if(/健身房/.test(place)) return '运动或整理装备';
+    return '处理自己的安排';
+  }
+  function inferPlaceFromActivity(act){
+    act=String(act||'');
+    if(/酒|喝|听音乐|聽音樂|放松|聊天/.test(act)) return '附近店里';
+    if(/学习|學習|复习|複習|上课|上課|作业|资料/.test(act)) return '图书馆';
+    if(/工作|开会|開會|会议|會議/.test(act)) return '办公室';
+    if(/吃|饭|飯/.test(act)) return '附近餐厅';
+    if(/咖啡/.test(act)) return '咖啡厅';
+    if(/休息|收拾|换衣|換衣|睡/.test(act)) return '家里';
+    if(/约会|約會|见面|見面/.test(act)) return '约定地点附近';
+    if(/出发|出發|回去|回家|坐车|坐車|赶路|趕路|路上/.test(act)) return '路上';
+    if(/买|逛|购物/.test(act)) return '商场';
+    return '附近街区';
+  }
+  function makePair(place, activity){
+    place=cleanField(place,24); activity=cleanField(activity,42);
+    if(!place && activity) place=inferPlaceFromActivity(activity);
+    if(!activity && place) activity=inferActivityFromPlace(place);
+    if(!place) place='附近街区';
+    if(!activity) activity='处理自己的安排';
+    if(place===activity) activity=inferActivityFromPlace(place) || '处理相关事情';
+    return { place:place, activity:activity };
+  }
+  function normalizeItem(raw, slot, prev){
+    var place='', activity='';
+    if(raw && typeof raw==='object'){
+      place=raw.place||raw.location||raw['地点']||raw.address||raw.where||'';
+      activity=raw.activity||raw.event||raw['事件']||raw['活动']||raw['正在做的事']||raw.doing||raw.desc||'';
+    }
+    var pair=makePair(place, activity);
+    if((!place || pair.place==='附近街区') && prev && prev.place) pair.place=prev.place;
+    if(!activity && prev && prev.activity) pair.activity='延续上一段安排';
+    return { time:slot, place:pair.place, activity:pair.activity, isoDate:todayKey(), _v31Clean:true };
+  }
+  function sanitizeList(list){
+    var today=todayKey(), by={}, other=[];
+    (Array.isArray(list)?list:[]).forEach(function(t){
+      if(!t) return;
+      var day=t.isoDate||t.day||'';
+      if(day && !isTodayLike(day)){ other.push(t); return; }
+      var time=String(t.time||'').replace('：',':').trim();
+      if(!isHalfHour(time)) return; // 关键：16:10 / 16:40 等直接删除，不显示、不四舍五入。
+      time=fmtMin(minOf(time));
+      by[time]=normalizeItem(t, time, by[time]||null);
+      by[time].isoDate=today;
+    });
+    return other.concat(Object.keys(by).sort(function(a,b){ return minOf(a)-minOf(b); }).map(function(k){ return by[k]; }));
+  }
+  function todayOnly(list){ return sanitizeList(list).filter(function(t){ return !t.isoDate || isTodayLike(t.isoDate||t.day); }); }
+  function otherDays(list){ return (Array.isArray(list)?list:[]).filter(function(t){ return t && (t.isoDate||t.day) && !isTodayLike(t.isoDate||t.day); }); }
+  function hardCleanAll(){
+    try{
+      if(typeof locDailyTraces==='undefined' || !locDailyTraces) locDailyTraces={};
+      Object.keys(locDailyTraces).forEach(function(pid){ locDailyTraces[pid]=sanitizeList(locDailyTraces[pid]||[]); });
+      try{ localStorage.setItem('mono_loc_traces', JSON.stringify(locDailyTraces)); }catch(e){}
+      try{ if(typeof saveLocData==='function') saveLocData(); }catch(e){}
+    }catch(e){}
+  }
+
+  function isCharacterMsg(m, persona){
+    var r=String((m&&m.role)||'').toLowerCase();
+    if(r==='user') return false;
+    if(r==='assistant'||r==='char'||r==='character'||r==='bot') return true;
+    var sid=String((m&&(m.senderId||m.personaId||m.charId||m.fromId||m.from))||'');
+    if(persona && sid && sid===String(persona.id)) return true;
+    var text=cleanText(m&&m.content||'');
+    return /我(现在|現在|这会|這會|刚|剛)?(在|到|到了|正在|待在)|我在/.test(text);
+  }
+  function extractPlace(text){
+    text=cleanText(text);
+    var known='酒吧|清吧|夜店|KTV|咖啡厅|咖啡廳|咖啡店|学校|學校|图书馆|圖書館|教室|公司|办公室|辦公室|家里|家裡|家|宿舍|公寓|餐厅|餐廳|饭店|飯店|食堂|商场|商場|超市|市场|市場|电影院|電影院|医院|醫院|诊所|診所|健身房|公园|公園|海边|海邊|车站|車站|地铁站|地鐵站|机场|機場|路上';
+    var k=text.match(new RegExp('('+known+')','i'));
+    if(k) return cleanField(k[1],16);
+    var m=text.match(/(?:我(?:现在|現在|这会|這會)?(?:就在|在)|现在在|現在在|刚到|剛到|到了|待在|正在)([^，。！？,.!?\s]{1,12})/);
+    if(m && !/(什么|什麼|哪里|哪裡|这边|這邊|那里|那裡|这里|這裡|你|我|吗|嗎)/.test(m[1])) return cleanField(m[1],16);
+    return '';
+  }
+  function extractActivity(text, place){
+    text=cleanText(text);
+    var m=text.match(/(学习|學習|复习|複習|工作|开会|開會|休息|吃饭|吃飯|喝酒|喝点东西|喝點東西|喝咖啡|买东西|買東西|逛街|散步|约会|約會|换衣服|換衣服|穿衣服|收拾|回家|回去|出门|出門|坐车|坐車|等人|见面|見面|看电影|看電影|听音乐|聽音樂|聊天|放松|等位|排队|排隊)/);
+    if(m) return m[1];
+    if(/朋友/.test(text) && /酒吧|清吧|咖啡|餐厅|餐廳|店/.test(place||text)) return '和朋友聊天放松';
+    return place ? inferActivityFromPlace(place) : '';
+  }
+  function slotFromText(text, ts){
+    text=cleanText(text);
+    var m=text.match(/(\d{1,2})\s*[:：]\s*(\d{1,2})/);
+    if(m) return fmtMin((+m[1])*60 + (+m[2]));
+    var h=text.match(/(\d{1,2})\s*(点|點|时|時)(半)?/);
+    if(h) return fmtMin((+h[1])*60 + (h[3]?30:0));
+    if(/现在|現在|目前|这会|這會|刚刚|剛剛|刚到|剛到|正在|我在/.test(text)) return (function(){ var d=new Date(ts||Date.now()); return fmtMin(d.getHours()*60+(d.getMinutes()>=30?30:0)); })();
+    if(/上午|早上/.test(text)) return '09:00';
+    if(/中午/.test(text)) return '12:00';
+    if(/下午/.test(text)) return '15:00';
+    if(/傍晚/.test(text)) return '18:00';
+    if(/晚上|今晚/.test(text)) return '20:00';
+    var d=new Date(ts||Date.now()); return fmtMin(d.getHours()*60+(d.getMinutes()>=30?30:0));
+  }
+  function collectAnchors(persona){
+    try{
+      if(!persona || !Array.isArray(persona.history)) return [];
+      var st=dayStart(), en=dayEnd(), tmp={};
+      persona.history.forEach(function(m,idx){
+        var ts=msgTs(m); if(!ts || ts<st || ts>en) return;
+        var text=cleanText(m.content||''); if(!text || futureText(text)) return;
+        if(!isCharacterMsg(m, persona)) return;
+        var place=extractPlace(text), activity=extractActivity(text, place);
+        if(!place && !activity) return;
+        var pair=makePair(place, activity), slot=slotFromText(text, ts);
+        if(minOf(slot)>currentHalfMin()) return;
+        var priority=(/现在|現在|目前|这会|這會|刚到|剛到|我在/.test(text)?10:5) + (place?3:0) + (activity?2:0) + idx/10000;
+        if(!tmp[slot] || priority>tmp[slot].priority) tmp[slot]={slot:slot, place:pair.place, activity:pair.activity, priority:priority, ts:ts};
+      });
+      return Object.keys(tmp).map(function(k){ return tmp[k]; }).sort(function(a,b){ return minOf(a.slot)-minOf(b.slot); }).slice(-12);
+    }catch(e){ return []; }
+  }
+  function applyAnchors(persona, traces){
+    var arr=todayOnly(traces||[]), anchors=collectAnchors(persona);
+    if(!anchors.length) return arr;
+    var map={}; arr.forEach(function(t){ map[t.time]=t; });
+    anchors.forEach(function(a){
+      var slot=a.slot;
+      if(!map[slot]) return;
+      map[slot].place=a.place;
+      map[slot].activity=a.activity;
+      map[slot]._chatAnchor='v31';
+      var pm=minOf(slot)-30, prev=fmtMin(pm);
+      if(pm>=0 && map[prev] && map[prev].place && map[prev].place!==a.place && !/路上|途中|车|車|地铁|地鐵/.test(map[prev].place)){
+        map[prev].place='路上';
+        map[prev].activity='前往'+a.place+'，准备接上后面的安排';
+        map[prev]._transition='v31';
+      }
+    });
+    return Object.keys(map).sort(function(a,b){ return minOf(a)-minOf(b); }).map(function(k){ return map[k]; });
+  }
+  function normalizeForSlots(rawList, slots, persona){
+    var input=Array.isArray(rawList)?rawList:[], byTime={}, used={};
+    input.forEach(function(t){ if(!t) return; var tm=String(t.time||'').replace('：',':').trim(); if(isHalfHour(tm) && slots.indexOf(fmtMin(minOf(tm)))>=0) byTime[fmtMin(minOf(tm))]=t; });
+    var prev=null, out=[];
+    slots.forEach(function(slot,idx){
+      var raw=byTime[slot] || input[idx] || null; // API 返回 16:40 时只借用地点/事件，时间强制改成 slot。
+      var item=normalizeItem(raw, slot, prev);
+      if(prev && item.place===prev.place && item.activity===prev.activity) item.activity='继续'+item.activity.replace(/^继续/,'');
+      out.push(item); prev=item;
+    });
+    return applyAnchors(persona, out);
+  }
+  async function genSlots(persona, region, slots, mode, last){
+    if(!slots.length) return [];
+    var res=[];
+    if(mode==='incremental' && oldInc) res = await oldInc(persona, region, last);
+    else if(oldFull) res = await oldFull(persona, region);
+    return normalizeForSlots(res, slots, persona);
+  }
+
+  window.generateFullDayTrace = async function(persona, region){ return genSlots(persona, region, fullSlots(), 'full', null); };
+  window.generateIncrementalTrace = async function(persona, region, fromTime){ return genSlots(persona, region, slotsAfter(fromTime||null), 'incremental', fromTime); };
+  try{ eval('generateFullDayTrace = window.generateFullDayTrace; generateIncrementalTrace = window.generateIncrementalTrace;'); }catch(e){}
+
+  async function updateOne(pid, silent){
+    var p=getPersona(pid); if(!p) return false;
+    try{ if(typeof loadLocData==='function') loadLocData(); }catch(e){}
+    try{ if(typeof _checkMidnightReset==='function') _checkMidnightReset(); }catch(e){}
+    hardCleanAll();
+    if(typeof locDailyTraces==='undefined' || !locDailyTraces) locDailyTraces={};
+    var oldList=locDailyTraces[pid]||[], existing=todayOnly(oldList).sort(function(a,b){ return minOf(a.time)-minOf(b.time); });
+    var last=existing.length ? existing[existing.length-1].time : null;
+    var slots=slotsAfter(last);
+    if(!slots.length){ if(!silent) toastSoft('当前时间段已经生成完，没有新的半小时行踪。'); return false; }
+    var region=(locCharRegions&&locCharRegions[pid]) || locUserRegionName || '未知地区';
+    var fresh=await genSlots(p, region, slots, last?'incremental':'full', last);
+    var exists={}; existing.forEach(function(t){ exists[t.time]=true; });
+    fresh=fresh.filter(function(t){ return t && isHalfHour(t.time) && !exists[t.time]; });
+    if(!fresh.length){ if(!silent) toastSoft('当前时间段已经生成完，没有新的半小时行踪。'); return false; }
+    var merged=applyAnchors(p, existing.concat(fresh)).filter(function(t){ return minOf(t.time)<=currentHalfMin(); });
+    locDailyTraces[pid]=otherDays(oldList).concat(merged);
+    try{
+      var latest=merged[merged.length-1];
+      if(latest){ if(typeof locCharLocations==='undefined'||!locCharLocations) locCharLocations={}; locCharLocations[pid]=Array.isArray(locCharLocations[pid])?locCharLocations[pid]:[]; locCharLocations[pid].push({address:latest.place,time:new Date().toISOString(),source:'trace-v31-update',day:todayKey()}); if(locCharLocations[pid].length>48) locCharLocations[pid]=locCharLocations[pid].slice(-48); }
+    }catch(e){}
+    try{ if(typeof saveLocData==='function') saveLocData(); }catch(e){}
+    return true;
+  }
+  window.updateLocTrace = async function(){
+    var pid=ensureSelectedPid(); if(!pid){ alert('请先选择要生成行踪的角色'); return; }
+    var p=getPersona(pid), btn=document.getElementById('locTraceUpdateBtn'), old=btn&&btn.innerHTML;
+    try{
+      if(btn){ btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin" style="font-size:9px;"></i>生成中'; }
+      var changed=await updateOne(pid,false);
+      try{ if(typeof renderLocTrace==='function') renderLocTrace(); if(typeof _renderCharBar==='function') _renderCharBar(); if(typeof _renderBotMap==='function') _renderBotMap(); }catch(e){}
+      if(changed) toastSoft('已补全 '+((p&&p.name)||'该角色')+' 的新半小时行踪。');
+    }catch(err){ console.error('[v31 update failed]',err); toastSoft('生成失败：'+((err&&err.message)||'未知错误')); }
+    finally{ if(btn){ btn.disabled=false; btn.innerHTML=old||btn.innerHTML; } }
+  };
+  try{ eval('updateLocTrace = window.updateLocTrace'); }catch(e){}
+
+  window.regenerateSelectedLocTrace = async function(){
+    var pid=ensureSelectedPid(), p=pid&&getPersona(pid); if(!p){ toastSoft('请先选择要重新生成行踪的角色。'); return; }
+    var btn=document.getElementById('locTraceRegenerateBtn'), up=document.getElementById('locTraceUpdateBtn'), old=btn&&btn.innerHTML, oldU=up&&up.innerHTML;
+    try{
+      if(btn){ btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin" style="font-size:9px;"></i>重新生成中'; } if(up) up.disabled=true;
+      hardCleanAll();
+      var slots=fullSlots(); if(!slots.length){ toastSoft('当前时间还没有可生成的半小时行踪。'); return; }
+      var region=(locCharRegions&&locCharRegions[pid]) || locUserRegionName || '未知地区';
+      var traces=await genSlots(p, region, slots, 'full', null);
+      if(typeof locDailyTraces==='undefined'||!locDailyTraces) locDailyTraces={};
+      var keep=otherDays(locDailyTraces[pid]||[]); // 清掉当前角色今天所有旧/错误/重复行踪，真正重建。
+      locDailyTraces[pid]=keep.concat(applyAnchors(p,traces));
+      try{ var latest=traces[traces.length-1]; if(latest){ if(typeof locCharLocations==='undefined'||!locCharLocations) locCharLocations={}; locCharLocations[pid]=Array.isArray(locCharLocations[pid])?locCharLocations[pid]:[]; locCharLocations[pid]=locCharLocations[pid].filter(function(x){ return !(x&&isTodayLike(x.day||'')); }); locCharLocations[pid].push({address:latest.place,time:new Date().toISOString(),source:'trace-v31-regenerate',day:todayKey()}); } }catch(e){}
+      try{ if(typeof saveLocData==='function') saveLocData(); }catch(e){}
+      try{ if(typeof renderLocTrace==='function') renderLocTrace(); if(typeof _renderCharBar==='function') _renderCharBar(); if(typeof _renderBotMap==='function') _renderBotMap(); }catch(e){}
+      toastSoft('已清掉当前角色今天旧行踪，并重新生成到当前半小时。');
+    }catch(err){ console.error('[v31 regenerate failed]',err); toastSoft('重新生成失败：'+((err&&err.message)||'未知错误')); }
+    finally{ if(btn){ btn.disabled=false; btn.innerHTML=old||'<i class="fas fa-redo" style="margin-right:3px;font-size:9px;"></i>重新生成全部'; } if(up){ up.disabled=false; up.innerHTML=oldU||up.innerHTML; } }
+  };
+  try{ eval('regenerateSelectedLocTrace = window.regenerateSelectedLocTrace'); }catch(e){}
+
+  function loadAutoIds(){ try{ return JSON.parse(localStorage.getItem(AUTO_KEY)||'[]').map(String); }catch(e){ return []; } }
+  function saveAutoIds(ids){ ids=Array.from(new Set((ids||[]).map(String).filter(Boolean))); try{ localStorage.setItem(AUTO_KEY,JSON.stringify(ids)); }catch(e){} return ids; }
+  function boundIds(){ return activeRelations().map(function(r){ return String(pidOf(r)); }); }
+  function enabledAutoIds(){ var b=new Set(boundIds()); return loadAutoIds().filter(function(id){ return b.has(String(id)); }); }
+  window.monoRunLocationAutoUpdate = async function(opts){
+    opts=opts||{}; if(AUTO_LOCK) return; var ids=enabledAutoIds(); if(!ids.length) return;
+    AUTO_LOCK=true; var changed=0;
+    try{
+      for(var i=0;i<ids.length;i++){ try{ if(await updateOne(ids[i],true)) changed++; }catch(e){ console.warn('[v31 auto update failed]',ids[i],e); } }
+      try{ if(typeof renderLocTrace==='function') renderLocTrace(); if(typeof _renderCharBar==='function') _renderCharBar(); if(typeof _renderBotMap==='function') _renderBotMap(); }catch(e){}
+      if(changed && !opts.silent) toastSoft('已自动补全 '+changed+' 个角色的半小时行踪。');
+    }finally{ AUTO_LOCK=false; }
+  };
+  function autoSlotKey(){ return todayKey()+' '+currentSlot(); }
+  async function autoTick(force){
+    try{ if(document.hidden && !force) return; }catch(e){}
+    try{ if(navigator && navigator.onLine===false) return; }catch(e){}
+    var key=autoSlotKey();
+    if(!force && localStorage.getItem(LAST_AUTO_SLOT_KEY)===key) return;
+    try{ localStorage.setItem(LAST_AUTO_SLOT_KEY,key); }catch(e){}
+    if(typeof window.monoRunLocationAutoUpdate==='function') await window.monoRunLocationAutoUpdate({silent:true,reason:force?'force':'half-hour'});
+  }
+
+  function ensureAutoStyle(){
+    if(document.getElementById('monoV31LocationAutoStyle')) return;
+    var st=document.createElement('style'); st.id='monoV31LocationAutoStyle'; st.textContent='\
+.loc-auto-v31-row{display:flex;align-items:center;gap:7px;padding:8px 14px;background:#fff;border-bottom:1px solid #f2f2f2;position:relative;z-index:65;}\
+.loc-auto-v31-btn{border:1px solid #e7e7e7;background:#fff;color:#222;border-radius:999px;padding:6px 10px;font-size:10px;font-weight:850;font-family:inherit;}\
+.loc-auto-v31-btn.active{background:#111;color:#fff;border-color:#111;}\
+.loc-auto-v31-hint{font-size:9px;color:#aaa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}\
+#locAutoV31Modal{position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:999999;display:none;align-items:center;justify-content:center;padding:18px;}\
+#locAutoV31Modal.open{display:flex;}\
+.loc-auto-v31-box{width:min(350px,92vw);max-height:76vh;background:#fff;border-radius:24px;overflow:hidden;box-shadow:0 22px 60px rgba(0,0,0,.28);display:flex;flex-direction:column;}\
+.loc-auto-v31-head{display:flex;align-items:center;justify-content:space-between;padding:15px 16px;border-bottom:1px solid #f1f1f1;}\
+.loc-auto-v31-title{font-size:13px;font-weight:900;color:#111;}\
+.loc-auto-v31-close{border:0;background:#f5f5f5;width:28px;height:28px;border-radius:50%;font-size:14px;}\
+.loc-auto-v31-body{padding:12px 16px;overflow:auto;}\
+.loc-auto-v31-desc{font-size:10px;color:#888;line-height:1.55;margin-bottom:10px;}\
+.loc-auto-v31-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f5f5f5;}\
+.loc-auto-v31-avatar{width:30px;height:30px;border-radius:50%;object-fit:cover;background:#eee;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#555;flex:0 0 auto;}\
+.loc-auto-v31-name{font-size:12px;font-weight:850;color:#222;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}\
+.loc-auto-v31-check{width:18px;height:18px;accent-color:#111;}\
+.loc-auto-v31-foot{display:flex;gap:8px;padding:12px 16px;border-top:1px solid #f1f1f1;}\
+.loc-auto-v31-save,.loc-auto-v31-clear{flex:1;border-radius:15px;padding:10px;border:1px solid #eee;font-size:11px;font-weight:900;font-family:inherit;}\
+.loc-auto-v31-save{background:#111;color:#fff;border-color:#111;}\
+.loc-auto-v31-clear{background:#fafafa;color:#333;}'; document.head.appendChild(st);
+  }
+  function ensureAutoModal(){
+    ensureAutoStyle(); var m=document.getElementById('locAutoV31Modal'); if(m) return m;
+    m=document.createElement('div'); m.id='locAutoV31Modal';
+    m.innerHTML='<div class="loc-auto-v31-box"><div class="loc-auto-v31-head"><div class="loc-auto-v31-title">自动更新行踪</div><button class="loc-auto-v31-close" type="button">×</button></div><div class="loc-auto-v31-body"><div class="loc-auto-v31-desc">可多选已绑定角色。勾选后，离线后重新进入网页、打开情侣定位、网络恢复、页面重新可见，以及在线进入新的半小时区间时，会自动补全缺失行踪；逻辑等同点击该角色「更新行踪」，只补新半小时，不重复生成。</div><div id="locAutoV31List"></div></div><div class="loc-auto-v31-foot"><button class="loc-auto-v31-clear" type="button">全部关闭</button><button class="loc-auto-v31-save" type="button">保存</button></div></div>';
+    document.body.appendChild(m);
+    m.addEventListener('click',function(ev){ if(ev.target===m) m.classList.remove('open'); },true);
+    m.querySelector('.loc-auto-v31-close').onclick=function(){ m.classList.remove('open'); };
+    m.querySelector('.loc-auto-v31-clear').onclick=function(){ m.querySelectorAll('.loc-auto-v31-check').forEach(function(c){ c.checked=false; }); };
+    m.querySelector('.loc-auto-v31-save').onclick=function(){ var ids=[]; m.querySelectorAll('.loc-auto-v31-check:checked').forEach(function(c){ ids.push(c.value); }); saveAutoIds(ids); m.classList.remove('open'); injectAutoRow(); toastSoft(ids.length?'已开启 '+ids.length+' 个角色自动补全行踪。':'已关闭所有角色自动补全行踪。'); autoTick(true); };
+    return m;
+  }
+  function openAutoModal(){
+    var m=ensureAutoModal(), list=m.querySelector('#locAutoV31List'), enabled=new Set(loadAutoIds()), ids=boundIds();
+    if(!ids.length) list.innerHTML='<div style="font-size:11px;color:#aaa;text-align:center;padding:18px 4px;">还没有绑定角色，请先绑定角色。</div>';
+    else list.innerHTML=ids.map(function(id){ var p=getPersona(id)||{}; var av=p.avatar?'<img class="loc-auto-v31-avatar" src="'+esc(p.avatar)+'" onerror="this.style.display=\'none\'">':'<div class="loc-auto-v31-avatar">'+esc((p.name||'?')[0])+'</div>'; return '<label class="loc-auto-v31-item">'+av+'<span class="loc-auto-v31-name">'+esc(p.name||'角色')+'</span><input class="loc-auto-v31-check" type="checkbox" value="'+esc(id)+'" '+(enabled.has(String(id))?'checked':'')+'></label>'; }).join('');
+    m.classList.add('open');
+  }
+  function injectAutoRow(){
+    ensureAutoStyle(); var view=document.getElementById('locTraceView'); if(!view) return; var header=view.querySelector('.loc-trace-header'); if(!header) return;
+    var row=document.getElementById('locAutoV31Row'); if(!row){ row=document.createElement('div'); row.id='locAutoV31Row'; row.className='loc-auto-v31-row'; header.insertAdjacentElement('afterend',row); }
+    var count=enabledAutoIds().length;
+    row.innerHTML='<button type="button" class="loc-auto-v31-btn '+(count?'active':'')+'" id="locAutoV31Btn"><i class="fas fa-clock" style="font-size:9px;margin-right:4px;"></i>自动更新</button><span class="loc-auto-v31-hint">'+(count?('已开启 '+count+' 个角色，在线/上线自动补全'):'可多选角色，在线/上线自动补全')+'</span>';
+    var btn=row.querySelector('#locAutoV31Btn'); if(btn) btn.onclick=function(ev){ ev.preventDefault(); ev.stopPropagation(); openAutoModal(); };
+  }
+  function rebindButtons(){ var up=document.getElementById('locTraceUpdateBtn'); if(up) up.onclick=function(ev){ if(ev){ev.preventDefault();ev.stopPropagation();} window.updateLocTrace(); return false; }; var rg=document.getElementById('locTraceRegenerateBtn'); if(rg) rg.onclick=function(ev){ if(ev){ev.preventDefault();ev.stopPropagation();} window.regenerateSelectedLocTrace(); return false; }; injectAutoRow(); }
+
+  var oldRender=window.renderLocTrace;
+  if(typeof oldRender==='function' && !oldRender.__v31Wrapped){ window.renderLocTrace=function(){ hardCleanAll(); var r=oldRender.apply(this,arguments); setTimeout(rebindButtons,0); return r; }; window.renderLocTrace.__v31Wrapped=true; try{ eval('renderLocTrace = window.renderLocTrace'); }catch(e){} }
+  var oldOpen=window.openLocationApp;
+  if(typeof oldOpen==='function' && !oldOpen.__v31Wrapped){ window.openLocationApp=function(){ var r=oldOpen.apply(this,arguments); setTimeout(function(){ hardCleanAll(); rebindButtons(); autoTick(true); },120); return r; }; window.openLocationApp.__v31Wrapped=true; try{ eval('openLocationApp = window.openLocationApp'); }catch(e){} }
+
+  hardCleanAll();
+  setTimeout(function(){ try{ hardCleanAll(); if(typeof renderLocTrace==='function') renderLocTrace(); rebindButtons(); autoTick(true); }catch(e){} },500);
+  document.addEventListener('DOMContentLoaded',function(){ setTimeout(function(){ rebindButtons(); autoTick(true); },800); });
+  document.addEventListener('visibilitychange',function(){ if(!document.hidden) setTimeout(function(){ autoTick(true); },600); });
+  window.addEventListener('focus',function(){ setTimeout(function(){ autoTick(true); },600); });
+  window.addEventListener('online',function(){ setTimeout(function(){ autoTick(true); },600); });
+  setInterval(function(){ autoTick(false); }, 60000);
+})();
+</script>
+
+
 <!-- ==================== 聊天截图功能 CHAT SCREENSHOT FEATURE v1.1 ==================== -->
 <script>
 (function() {
@@ -103038,6 +103409,557 @@ console.log('[ChatScreenshot] 聊天截图功能已加载：多张截图/记忆/
 })();
 </script>
 <!-- ==================== 聊天截图功能 END ==================== -->
+
+
+<script id="mono-role-wechat-v32-location-no-chat-copy-postfilter">
+/* ===== v32: 情侣定位“绝不复制聊天原句”最终后处理 =====
+   修复重点：就算 API/旧逻辑把聊天原句放进 place/activity，保存和显示前也会二次清洗。
+   - 不显示“我/你/老婆/想穿给你看/过两天我们去约会”等聊天口吻。
+   - 未来日期聊天不进入今天。
+   - 只抽地点/事件倾向，自动补全另一项。
+   - place 只保留地点；activity 只保留自然行踪事件。
+*/
+(function(){
+  if (window.__monoV32LocationNoChatCopyPostfilter) return;
+  window.__monoV32LocationNoChatCopyPostfilter = true;
+
+  function pad2(n){ return String(Math.max(0, Number(n)||0)).padStart(2,'0'); }
+  function todayKey(){ try { return new Date().toLocaleDateString('zh-TW'); } catch(e){ return new Date().toISOString().slice(0,10); } }
+  function todayAlt(){ try { return new Date().toLocaleDateString('zh-CN'); } catch(e){ return todayKey(); } }
+  function isoToday(){ return new Date().toISOString().slice(0,10); }
+  function isTodayLike(v){ if(!v) return true; v=String(v); return v===todayKey() || v===todayAlt() || v===isoToday(); }
+  function minOf(t){ var m=String(t||'').replace('：',':').match(/^\s*(\d{1,2}):(\d{2})\s*$/); return m ? (+m[1]*60 + +m[2]) : -1; }
+  function fmtMin(m){ m=Math.max(0, Math.min(1439, Math.floor((Number(m)||0)/30)*30)); return pad2(Math.floor(m/60))+':'+pad2(m%60); }
+  function isHalfHour(t){ var m=minOf(t); return m>=0 && m%30===0; }
+  function cleanText(s){ return String(s||'').replace(/\[heart_voice\][\s\S]*?\[\/heart_voice\]/g,' ').replace(/<[^>]+>/g,' ').replace(/[\r\n]+/g,' ').replace(/\s+/g,' ').trim(); }
+  function stripPunc(s){ return cleanText(s).replace(/[“”"'`「」『』《》【】\[\]（）()]/g,'').replace(/[。！？!?；;，,、]+/g,' ').replace(/\s+/g,' ').trim(); }
+  function cleanField(s,max){ return stripPunc(s).replace(/[|｜]/g,' ').slice(0,max||40).trim(); }
+  function futureText(text){ return /(明天|明晚|后天|後天|大后天|大後天|过两天|過兩天|过几天|過幾天|下周|下週|下星期|下个月|下個月|以后|以後|改天|下次|未来|未來|过段时间|過段時間)/.test(cleanText(text)); }
+
+  var PLACE_WORDS = '酒吧|清吧|夜店|KTV|咖啡厅|咖啡廳|咖啡店|奶茶店|学校|學校|图书馆|圖書館|教室|公司|办公室|辦公室|家里|家裡|家|宿舍|公寓|餐厅|餐廳|饭店|飯店|食堂|商场|商場|超市|市场|市場|电影院|電影院|医院|醫院|诊所|診所|健身房|公园|公園|海边|海邊|车站|車站|地铁站|地鐵站|机场|機場|路上|街区|街區|附近|楼下|樓下|店里|店裡|便利店|书店|書店|服装店|服裝店|美容院|沙龙|沙龍|摄影棚|攝影棚|工作室|练习室|練習室|排练室|排練室';
+  var PLACE_RE = new RegExp('(' + PLACE_WORDS + ')','i');
+
+  function inferActivityFromPlace(place){
+    place=String(place||'');
+    if(/酒吧|清吧|bar|夜店|KTV/i.test(place)) return '在店里放松，听音乐或聊天';
+    if(/咖啡|奶茶|茶|饮品|飲品/.test(place)) return '点饮料休息';
+    if(/学校|學校|图书馆|圖書館|教室/.test(place)) return '学习或整理资料';
+    if(/公司|办公室|辦公室|工作室/.test(place)) return '处理工作安排';
+    if(/餐厅|餐廳|饭|飯|食堂/.test(place)) return '吃饭休息';
+    if(/家|宿舍|公寓/.test(place)) return '在室内休息';
+    if(/车站|車站|地铁|地鐵|机场|機場|路上/.test(place)) return '在路上移动';
+    if(/商场|商場|店|超市|市场|市場/.test(place)) return '逛店买东西';
+    if(/公园|公園|海边|海邊/.test(place)) return '散步透气';
+    if(/电影院|電影院/.test(place)) return '看电影或等开场';
+    if(/医院|醫院|诊所|診所/.test(place)) return '处理预约或等候';
+    if(/健身房/.test(place)) return '运动或整理装备';
+    return '处理自己的安排';
+  }
+  function inferPlaceFromActivity(act){
+    act=String(act||'');
+    if(/酒|喝|听音乐|聽音樂|放松|聊天/.test(act)) return '附近店里';
+    if(/学习|學習|复习|複習|上课|上課|作业|資料|资料/.test(act)) return '图书馆';
+    if(/工作|开会|開會|会议|會議/.test(act)) return '办公室';
+    if(/吃|饭|飯/.test(act)) return '附近餐厅';
+    if(/咖啡|奶茶|饮料|飲料/.test(act)) return '咖啡厅';
+    if(/休息|收拾|换衣|換衣|睡/.test(act)) return '家里';
+    if(/约会|約會|见面|見面/.test(act)) return '约定地点附近';
+    if(/出发|出發|回去|回家|坐车|坐車|赶路|趕路|路上/.test(act)) return '路上';
+    if(/买|買|逛|购物|購物/.test(act)) return '商场';
+    return '附近街区';
+  }
+
+  function extractPlace(text){
+    text=cleanText(text);
+    var k=text.match(PLACE_RE);
+    if(k) return cleanField(k[1],16);
+    var m=text.match(/(?:我(?:现在|現在|这会|這會)?(?:就在|在)|现在在|現在在|刚到|剛到|到了|待在|正在)([^，。！？,.!?\s]{1,12})/);
+    if(m && !/(什么|什麼|哪里|哪裡|这边|這邊|那里|那裡|这里|這裡|你|我|吗|嗎|呢|啊|呀|吧)/.test(m[1])) return cleanField(m[1],16);
+    return '';
+  }
+  function extractActivity(text, place){
+    text=cleanText(text);
+    if(futureText(text)) return '';
+    if(/朋友/.test(text) && /酒吧|清吧|咖啡|餐厅|餐廳|店/.test(place||text)) return '和朋友聊天放松';
+    if(/喝点东西|喝點東西|小酌|喝酒/.test(text)) return place && /酒吧|清吧/.test(place) ? '在酒吧喝点东西，和朋友聊天' : '喝点东西休息';
+    if(/喝咖啡|咖啡/.test(text)) return '喝咖啡休息';
+    if(/学习|學習|复习|複習|写作业|寫作業|整理资料|整理資料/.test(text)) return '学习或整理资料';
+    if(/工作|开会|開會|处理工作|處理工作/.test(text)) return '处理工作安排';
+    if(/吃饭|吃飯|吃东西|吃東西/.test(text)) return '吃饭休息';
+    if(/买东西|買東西|逛街|购物|購物/.test(text)) return '逛店买东西';
+    if(/散步|透气|透氣/.test(text)) return '散步透气';
+    if(/看电影|看電影/.test(text)) return '看电影或等开场';
+    if(/等人|见面|見面/.test(text)) return '等人见面';
+    if(/回家|回去|出发|出發|路上|坐车|坐車/.test(text)) return '在路上移动';
+    if(/休息|躺|睡|收拾/.test(text)) return '在室内休息';
+    return place ? inferActivityFromPlace(place) : '';
+  }
+
+  function isChattySentence(s){
+    s=cleanText(s); if(!s) return false;
+    if(futureText(s)) return true;
+    if(/[？?！!]/.test(s)) return true;
+    if(/^(我|你|我们|我們|咱们|咱們|宝贝|寶貝|宝宝|老婆|老公|亲爱的|親愛的|乖|嗯|啊|呀|嘛|欸)/.test(s)) return true;
+    if(/(我想|想给你|想給你|给你看|給你看|穿给你|穿給你|你看|你要|要不要|可以吗|可以嗎|好不好|行不行|嘛|呀|呢|啦|哦|喔|老婆|老公|宝贝|寶貝)/.test(s)) return true;
+    if(s.length>28 && /(我|你|我们|我們|今天|下午|晚上|约会|約會|穿|看|说|說)/.test(s)) return true;
+    return false;
+  }
+
+  function normalizedComparable(s){ return stripPunc(s).replace(/\s/g,'').slice(0,80); }
+  function collectTodayChatTexts(persona){
+    var out=[];
+    try{
+      var arr = [];
+      if(persona && Array.isArray(persona.history)) arr = arr.concat(persona.history);
+      if(persona && persona.wechat && Array.isArray(persona.wechat.messages)) arr = arr.concat(persona.wechat.messages);
+      if(persona && persona.wx && Array.isArray(persona.wx.messages)) arr = arr.concat(persona.wx.messages);
+      if(typeof roomMessages!=='undefined' && roomMessages && persona){
+        Object.keys(roomMessages).forEach(function(k){
+          if(String(k).indexOf(String(persona.id))>=0 && Array.isArray(roomMessages[k])) arr = arr.concat(roomMessages[k]);
+        });
+      }
+      var start=new Date(); start.setHours(0,0,0,0); var st=start.getTime(); var end=st+86400000;
+      arr.forEach(function(m){
+        var c=cleanText((m&&(m.content||m.text||m.message||m.body))||''); if(!c) return;
+        var ts=m&&(m.timestamp||m.time||m.createdAt||m.date||m.sentAt); var mt=0;
+        if(typeof ts==='number') mt=ts; else if(/^\d+$/.test(String(ts||''))) mt=Number(ts); else { var d=new Date(ts||Date.now()); mt=isNaN(d.getTime())?Date.now():d.getTime(); }
+        if(mt>=st && mt<=end) out.push(c);
+      });
+    }catch(e){}
+    return out;
+  }
+
+  function looksCopiedFromChat(field, chatTexts){
+    var f=normalizedComparable(field); if(!f) return false;
+    if(isChattySentence(field)) return true;
+    for(var i=0;i<(chatTexts||[]).length;i++){
+      var c=normalizedComparable(chatTexts[i]); if(!c || c.length<6) continue;
+      if(c.indexOf(f)>=0 || f.indexOf(c)>=0) return true;
+      if(f.length>=10 && c.indexOf(f.slice(0,10))>=0) return true;
+    }
+    return false;
+  }
+
+  function splitNaturalPair(item, chatTexts, prev){
+    item=item||{};
+    var rawPlace=cleanText(item.place||item.location||item['地点']||'');
+    var rawActivity=cleanText(item.activity||item.event||item['事件']||item['活动']||item.desc||'');
+    var combined=[rawPlace, rawActivity].filter(Boolean).join('，');
+    var copiedPlace=looksCopiedFromChat(rawPlace, chatTexts);
+    var copiedAct=looksCopiedFromChat(rawActivity, chatTexts);
+    var badCombined=futureText(combined);
+
+    var place = copiedPlace || badCombined ? extractPlace(combined) : cleanField(rawPlace,20);
+    var activity = copiedAct || badCombined ? extractActivity(combined, place) : cleanField(rawActivity,42);
+
+    // 如果 place 写成一句事件/聊天话，就重新提取地点；如果没有地点，用活动反推。
+    if(!place || isChattySentence(place) || place.length>18){
+      place = extractPlace(combined) || inferPlaceFromActivity(activity);
+    }
+    // 如果 activity 还是原句/聊天口吻，就基于地点重写。
+    if(!activity || isChattySentence(activity) || futureText(activity) || activity===place){
+      activity = extractActivity(combined, place) || inferActivityFromPlace(place);
+    }
+    // 字段互相污染时再清一次。
+    if(PLACE_RE.test(activity) && activity.length<=10 && !/休息|聊天|学习|工作|吃|喝|逛|走|等|处理|放松/.test(activity)){
+      place = cleanField(activity,16);
+      activity = inferActivityFromPlace(place);
+    }
+    if(!PLACE_RE.test(place) && /^(在|去|到)/.test(place)) place = cleanField(place.replace(/^(在|去|到|到了|待在)/,''),16);
+    if(futureText(combined) && !extractPlace(combined)){
+      place = prev && prev.place ? prev.place : inferPlaceFromActivity(activity);
+      activity = prev && prev.activity ? '延续上一段安排' : inferActivityFromPlace(place);
+    }
+    place=cleanField(place,20) || (prev&&prev.place) || '附近街区';
+    activity=cleanField(activity,42) || inferActivityFromPlace(place);
+    if(place===activity) activity=inferActivityFromPlace(place);
+    return { place:place, activity:activity };
+  }
+
+  function getPersona(pid){ try { return (typeof personas!=='undefined' && Array.isArray(personas)) ? personas.find(function(p){ return String(p.id)===String(pid); }) : null; } catch(e){ return null; } }
+  function sanitizePersonaTrace(pid){
+    try{
+      if(typeof locDailyTraces==='undefined' || !locDailyTraces || !locDailyTraces[pid]) return false;
+      var persona=getPersona(pid) || {};
+      var chatTexts=collectTodayChatTexts(persona);
+      var changed=false, by={}, other=[];
+      (Array.isArray(locDailyTraces[pid])?locDailyTraces[pid]:[]).forEach(function(t){
+        if(!t) return;
+        var day=t.isoDate||t.day||'';
+        if(day && !isTodayLike(day)){ other.push(t); return; }
+        var time=String(t.time||'').replace('：',':').trim();
+        if(!isHalfHour(time)){ changed=true; return; }
+        time=fmtMin(minOf(time));
+        var prev=by[time] || null;
+        var pair=splitNaturalPair(t, chatTexts, prev);
+        var next=Object.assign({}, t, { time:time, place:pair.place, activity:pair.activity, isoDate:todayKey(), _v32NoChatCopy:true });
+        if(next.place!==t.place || next.activity!==t.activity || next.time!==t.time || next.isoDate!==t.isoDate) changed=true;
+        by[time]=next;
+      });
+      var sorted=Object.keys(by).sort(function(a,b){return minOf(a)-minOf(b);}).map(function(k){return by[k];});
+      locDailyTraces[pid]=other.concat(sorted);
+      return changed;
+    }catch(e){ console.warn('[v32 sanitize persona trace failed]',e); return false; }
+  }
+  function sanitizeAllTraces(){
+    var changed=false;
+    try{
+      if(typeof locDailyTraces==='undefined' || !locDailyTraces) return false;
+      Object.keys(locDailyTraces).forEach(function(pid){ if(sanitizePersonaTrace(pid)) changed=true; });
+      if(changed){ try{ localStorage.setItem('mono_loc_traces', JSON.stringify(locDailyTraces)); }catch(e){} }
+    }catch(e){}
+    return changed;
+  }
+  window.monoSanitizeLocationNoChatCopy = sanitizeAllTraces;
+
+  function selectedPid(){ try { return String(window.locSelectedTraceCharId || (typeof locSelectedCharId!=='undefined' ? locSelectedCharId : '') || ''); } catch(e){ return ''; } }
+  function persistAndRender(changed){
+    if(!changed) return;
+    try{ if(typeof saveLocData==='function') saveLocData(); }catch(e){}
+    try{ if(typeof renderLocTrace==='function') setTimeout(function(){ try{ renderLocTrace(); }catch(e){} },0); }catch(e){}
+  }
+
+  var oldRender=window.renderLocTrace;
+  if(typeof oldRender==='function' && !oldRender.__v32NoChatCopyWrapped){
+    window.renderLocTrace=function(){ sanitizeAllTraces(); return oldRender.apply(this, arguments); };
+    window.renderLocTrace.__v32NoChatCopyWrapped=true;
+    try{ eval('renderLocTrace = window.renderLocTrace'); }catch(e){}
+  }
+
+  var oldSave=window.saveLocData;
+  if(typeof oldSave==='function' && !oldSave.__v32NoChatCopyWrapped){
+    window.saveLocData=function(){ sanitizeAllTraces(); return oldSave.apply(this, arguments); };
+    window.saveLocData.__v32NoChatCopyWrapped=true;
+    try{ eval('saveLocData = window.saveLocData'); }catch(e){}
+  }
+
+  function wrapAsync(name){
+    var old=window[name];
+    if(typeof old==='function' && !old.__v32NoChatCopyWrapped){
+      window[name]=async function(){
+        var r=await old.apply(this, arguments);
+        var pid=selectedPid();
+        var changed=pid ? sanitizePersonaTrace(pid) : sanitizeAllTraces();
+        persistAndRender(changed);
+        return r;
+      };
+      window[name].__v32NoChatCopyWrapped=true;
+      try{ eval(name + ' = window[name]'); }catch(e){}
+    }
+  }
+  wrapAsync('updateLocTrace');
+  wrapAsync('regenerateSelectedLocTrace');
+  wrapAsync('monoRunLocationAutoUpdate');
+
+  function wrapGenerator(name){
+    var old=window[name];
+    if(typeof old==='function' && !old.__v32NoChatCopyWrapped){
+      window[name]=async function(){
+        var r=await old.apply(this, arguments);
+        try{
+          var persona = arguments[0] && arguments[0].id ? arguments[0] : null;
+          var chatTexts = persona ? collectTodayChatTexts(persona) : [];
+          if(Array.isArray(r)){
+            var prev=null;
+            r=r.map(function(t){ var pair=splitNaturalPair(t, chatTexts, prev); var time=t&&t.time&&isHalfHour(t.time)?fmtMin(minOf(t.time)):(t&&t.time)||''; var out=Object.assign({}, t, { place:pair.place, activity:pair.activity, time:time, isoDate:todayKey(), _v32NoChatCopy:true }); prev=out; return out; });
+          }
+        }catch(e){}
+        return r;
+      };
+      window[name].__v32NoChatCopyWrapped=true;
+      try{ eval(name + ' = window[name]'); }catch(e){}
+    }
+  }
+  wrapGenerator('generateFullDayTrace');
+  wrapGenerator('generateIncrementalTrace');
+
+  // 初次加载立即清洗一次，防止旧数据继续显示。
+  setTimeout(function(){ var changed=sanitizeAllTraces(); persistAndRender(changed); }, 80);
+  setTimeout(function(){ var changed=sanitizeAllTraces(); persistAndRender(changed); }, 600);
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden){ var changed=sanitizeAllTraces(); persistAndRender(changed); } });
+  window.addEventListener('online', function(){ var changed=sanitizeAllTraces(); persistAndRender(changed); });
+})();
+</script>
+
+
+<script>
+/* ===== v33 Couple Location Strict Chat Reference Patch =====
+   目标：情侣定位只参考“明确说了角色地点 / 时间 / 行动状态”的聊天信息。
+   - 不复制聊天原句。
+   - 未来计划、暧昧闲聊、没有明确地点/时间/状态的内容不影响今天行踪。
+   - 角色明确说“我在某地 / 现在在某地”时，才作为当前半小时锚点。
+*/
+(function(){
+  if(window.__monoCoupleLocationStrictChatReferenceV33) return;
+  window.__monoCoupleLocationStrictChatReferenceV33 = true;
+
+  var STORE_KEY = 'mono_loc_traces';
+  var AUTO_KEY = 'mono_loc_auto_update_roles_v33';
+  var PLACE_WORDS = /(酒吧|清吧|咖啡厅|咖啡店|餐厅|飯店|饭店|商场|商場|便利店|超市|图书馆|圖書館|学校|學校|教室|宿舍|家里|家裡|房间|房間|公司|办公室|辦公室|公园|公園|电影院|電影院|车站|車站|地铁站|地鐵站|路上|街边|街邊|店里|店裡|医院|醫院|健身房|操场|操場|厨房|廚房|阳台|陽台|楼下|樓下|附近|海边|海邊|夜市|书店|書店|奶茶店|甜品店|便利商店)/;
+  var ACT_WORDS = /(喝|吃|等|逛|买|買|坐|休息|学习|學習|复习|複習|写作业|寫作業|工作|开会|開會|聊天|散步|看电影|看電影|回家|出发|出發|准备|準備|通勤|坐车|坐車|放松|听音乐|聽音樂|见面|見面|约会|約會|运动|運動|上课|上課|加班|排队|排隊|收拾|做饭|做飯|睡|躺|洗澡|洗漱)/;
+  var TIME_WORDS = /(今天|今日|现在|現在|刚刚|剛剛|刚才|剛才|这会|這會|这时候|這時候|目前|此刻|当前|當前|早上|上午|中午|下午|傍晚|晚上|今晚|半夜|凌晨|\b\d{1,2}[:：]\d{2}\b|\b\d{1,2}点|\b\d{1,2}點)/;
+  var FUTURE_WORDS = /(明天|明日|后天|後天|大后天|大後天|过两天|過兩天|过几天|過幾天|改天|下次|以后|之後|之后|未来|週末|周末|下周|下週|下个月|下個月|下星期|下禮拜|过阵子|過陣子)/;
+  var CHAT_PRONOUN = /(老婆|老公|宝贝|寶貝|宝宝|寶寶|亲爱的|親愛的|你|妳|我们|我們|咱们|咱們|要不要|可以吗|可以嗎|好不好|想给你|想給你|给你看|給你看|穿给你|穿給你|亲|抱|喜欢你|愛你|爱你)/;
+
+  function todayKey(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function clean(s){ return String(s==null?'':s).replace(/<[^>]+>/g,' ').replace(/["“”‘’]+/g,'').replace(/\s+/g,' ').trim(); }
+  function minOf(t){ var m=String(t||'').match(/(\d{1,2})[:：](\d{2})/); return m ? Math.max(0, Math.min(1439, Number(m[1])*60+Number(m[2]))) : -1; }
+  function fmtMin(n){ n=Math.max(0, Math.min(1439, Math.floor(Number(n)||0))); n=Math.floor(n/30)*30; return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0'); }
+  function nowHalf(){ return fmtMin(new Date().getHours()*60+new Date().getMinutes()); }
+  function isHalfHour(t){ var m=minOf(t); return m>=0 && m%30===0; }
+  function sameToday(v){ if(!v) return true; return String(v).slice(0,10)===todayKey(); }
+  function norm(s){ return clean(s).replace(/[\s，。！？,.!?：:；;、()（）\[\]【】]/g,'').slice(0,90); }
+  function isFuture(s){ return FUTURE_WORDS.test(clean(s)); }
+  function hasRealTime(s){ return TIME_WORDS.test(clean(s)); }
+  function hasPlace(s){ return PLACE_WORDS.test(clean(s)); }
+  function hasAct(s){ return ACT_WORDS.test(clean(s)); }
+
+  function extractExplicitCurrentPlace(s){
+    s=clean(s);
+    if(isFuture(s)) return '';
+    var patterns=[
+      /(?:我|本人|这边|這邊)?(?:现在|現在|刚刚|剛剛|刚才|剛才|这会|這會|目前|此刻|当前|當前)?\s*(?:就在|在|待在|坐在|到了|到|来到了|來到了)\s*([^，。！？,.!?\s]{1,14})/,
+      /(?:位置|地点|地點|地址)\s*[:：]\s*([^，。！？,.!?\s]{1,14})/,
+      /(?:定位|坐标|座標)\s*[:：]?\s*([^，。！？,.!?\s]{1,14})/
+    ];
+    for(var i=0;i<patterns.length;i++){
+      var m=s.match(patterns[i]);
+      if(m && m[1] && PLACE_WORDS.test(m[1]) && !/(哪里|哪裡|什么|什麼|这里|這裡|那里|那裡|这边|這邊|你|妳|我|吗|嗎|呢|啊|呀|吧)/.test(m[1])) return clean(m[1]).slice(0,16);
+    }
+    var p=s.match(PLACE_WORDS); return p && /我在|我現在在|我现在在|正在|待在|到了|刚到|剛到/.test(s) ? p[0] : '';
+  }
+
+  function explicitChatAnchor(s){
+    s=clean(s);
+    if(!s || isFuture(s)) return null;
+    // 最高优先级：角色明确说自己当前在某地。
+    var currentPlace=extractExplicitCurrentPlace(s);
+    if(currentPlace){
+      return {type:'current_place', place:currentPlace, activity:inferActivity(s,currentPlace), time:nowHalf(), confidence:1};
+    }
+    // 其他参考必须同时具备明确时间 + 地点/活动；否则不准影响行踪。
+    if(!hasRealTime(s)) return null;
+    if(!(hasPlace(s) || hasAct(s))) return null;
+    // 如果只是聊天口吻但没有清楚地点/行动，不参考。
+    if(CHAT_PRONOUN.test(s) && !hasPlace(s) && !hasAct(s)) return null;
+    var place=(s.match(PLACE_WORDS)||[''])[0] || inferPlaceFromActivity(s);
+    var activity=inferActivity(s,place);
+    if(!place && !activity) return null;
+    return {type:'structured_today_hint', place:place||inferPlaceFromActivity(activity), activity:activity||inferActivityFromPlace(place), time:inferTimeSlot(s), confidence:0.65};
+  }
+
+  function inferTimeSlot(s){
+    s=clean(s);
+    var hm=s.match(/(\d{1,2})[:：](\d{2})/); if(hm) return fmtMin(Number(hm[1])*60+Number(hm[2]));
+    var h=s.match(/(\d{1,2})[点點]/); if(h) return fmtMin(Number(h[1])*60);
+    if(/凌晨/.test(s)) return '02:00';
+    if(/早上|上午/.test(s)) return '09:00';
+    if(/中午/.test(s)) return '12:00';
+    if(/下午/.test(s)) return '15:00';
+    if(/傍晚/.test(s)) return '18:00';
+    if(/晚上|今晚/.test(s)) return '20:00';
+    return nowHalf();
+  }
+  function inferPlaceFromActivity(a){
+    a=clean(a);
+    if(/酒|小酌|清吧/.test(a)) return '酒吧';
+    if(/咖啡|拿铁|拿鐵/.test(a)) return '咖啡厅';
+    if(/学习|學習|复习|複習|作业|作業|资料|資料/.test(a)) return '图书馆';
+    if(/工作|开会|開會|加班/.test(a)) return '办公室';
+    if(/吃饭|吃飯|餐|饭|飯/.test(a)) return '餐厅';
+    if(/买|買|逛|购物|購物/.test(a)) return '商场';
+    if(/散步|透气|透氣/.test(a)) return '公园';
+    if(/电影|電影/.test(a)) return '电影院';
+    if(/回家|家里|家裡|休息|睡|躺|收拾/.test(a)) return '家里';
+    if(/上课|上課|教室|学校|學校/.test(a)) return '学校';
+    if(/路上|出发|出發|坐车|坐車|通勤/.test(a)) return '路上';
+    return '附近街区';
+  }
+  function inferActivityFromPlace(p){
+    p=clean(p);
+    if(/酒吧|清吧/.test(p)) return '在店里放松，听音乐或聊天';
+    if(/咖啡/.test(p)) return '短暂休息，喝点东西';
+    if(/图书馆|圖書館|学校|學校|教室/.test(p)) return '学习或整理资料';
+    if(/办公室|辦公室|公司/.test(p)) return '处理工作安排';
+    if(/餐厅|餐廳|饭店|飯店/.test(p)) return '吃饭休息';
+    if(/商场|商場|超市|便利店|书店|書店/.test(p)) return '逛店买东西';
+    if(/电影院|電影院/.test(p)) return '看电影或等开场';
+    if(/公园|公園|街边|街邊|海边|海邊/.test(p)) return '散步透气';
+    if(/路上|车站|車站|地铁/.test(p)) return '在路上移动';
+    if(/家里|家裡|房间|房間|宿舍/.test(p)) return '在室内休息';
+    return '自然安排当前时间段';
+  }
+  function inferActivity(s, place){
+    s=clean(s);
+    if(/朋友/.test(s) && /酒吧|清吧/.test(place||s)) return '在酒吧喝点东西，和朋友聊天';
+    if(/喝点东西|喝點東西|小酌|喝酒/.test(s)) return /酒吧|清吧/.test(place||s) ? '在酒吧喝点东西，和朋友聊天' : '喝点东西休息';
+    if(/咖啡|拿铁|拿鐵/.test(s)) return '短暂休息，喝点东西';
+    if(/学习|學習|复习|複習|写作业|寫作業|整理资料|整理資料/.test(s)) return '学习或整理资料';
+    if(/工作|开会|開會|加班/.test(s)) return '处理工作安排';
+    if(/吃饭|吃飯|吃东西|吃東西/.test(s)) return '吃饭休息';
+    if(/买东西|買東西|逛街|购物|購物/.test(s)) return '逛店买东西';
+    if(/散步|透气|透氣/.test(s)) return '散步透气';
+    if(/电影|電影/.test(s)) return '看电影或等开场';
+    if(/等人|见面|見面/.test(s)) return '等人见面';
+    if(/回家|回去|出发|出發|路上|坐车|坐車|通勤/.test(s)) return '在路上移动';
+    if(/休息|躺|睡|收拾/.test(s)) return '在室内休息';
+    return place ? inferActivityFromPlace(place) : '';
+  }
+
+  function collectRawTodayChats(persona){
+    var out=[];
+    try{
+      var arr=[];
+      if(persona){
+        ['history','messages','chatHistory'].forEach(function(k){ if(Array.isArray(persona[k])) arr=arr.concat(persona[k]); });
+        if(persona.wechat && Array.isArray(persona.wechat.messages)) arr=arr.concat(persona.wechat.messages);
+        if(persona.wx && Array.isArray(persona.wx.messages)) arr=arr.concat(persona.wx.messages);
+      }
+      if(typeof roomMessages!=='undefined' && roomMessages && persona){
+        Object.keys(roomMessages).forEach(function(k){ if(String(k).indexOf(String(persona.id))>=0 && Array.isArray(roomMessages[k])) arr=arr.concat(roomMessages[k]); });
+      }
+      var st=new Date(); st.setHours(0,0,0,0); var start=st.getTime(), end=start+86400000;
+      arr.forEach(function(m){
+        var txt=clean((m&&(m.content||m.text||m.message||m.body||m.reply))||''); if(!txt) return;
+        var ts=m&&(m.timestamp||m.time||m.createdAt||m.date||m.sentAt); var mt=Date.now();
+        if(typeof ts==='number') mt=ts; else if(/^\d+$/.test(String(ts||''))) mt=Number(ts); else { var d=new Date(ts||Date.now()); if(!isNaN(d.getTime())) mt=d.getTime(); }
+        if(mt>=start && mt<=end) out.push(txt);
+      });
+    }catch(e){}
+    return out;
+  }
+  function getPersona(pid){ try{return Array.isArray(window.personas||personas) ? (window.personas||personas).find(function(p){return String(p.id)===String(pid);}) : null;}catch(e){return null;} }
+  function collectStrictAnchors(persona){ return collectRawTodayChats(persona).map(explicitChatAnchor).filter(Boolean); }
+
+  function looksLikeCopiedChat(field, rawChats){
+    field=clean(field); var f=norm(field); if(!f) return false;
+    if(isFuture(field)) return true;
+    // 聊天口吻、问句、第一/第二人称长句都不允许出现在行踪字段。
+    if(/[？?！!]/.test(field)) return true;
+    if(CHAT_PRONOUN.test(field)) return true;
+    if(/^(我|你|妳|我们|我們|咱们|咱們|嗯|啊|欸|呀|嘛|啦|哦|喔)/.test(field)) return true;
+    if(field.length>24 && /(我|你|妳|我们|我們|说|說|想|要|穿|看|喜欢|喜歡)/.test(field)) return true;
+    for(var i=0;i<(rawChats||[]).length;i++){
+      var c=norm(rawChats[i]);
+      if(c.length<8) continue;
+      if(c.indexOf(f)>=0 || f.indexOf(c)>=0) return true;
+      if(f.length>=10 && c.indexOf(f.slice(0,10))>=0) return true;
+    }
+    return false;
+  }
+
+  function naturalize(item, persona, prev){
+    item=item||{};
+    var rawChats=collectRawTodayChats(persona||{});
+    var anchors=collectStrictAnchors(persona||{});
+    var time=isHalfHour(item.time) ? fmtMin(minOf(item.time)) : fmtMin(minOf(item.time)>=0 ? minOf(item.time) : new Date().getHours()*60+new Date().getMinutes());
+    var place=clean(item.place||item.location||item['地点']||'');
+    var activity=clean(item.activity||item.event||item['事件']||item['活动']||item.desc||'');
+
+    // 当前半小时锚点最高优先级：角色明确说我在某地。
+    var exact=anchors.filter(function(a){return a.time===time;}).sort(function(a,b){return b.confidence-a.confidence;})[0];
+    if(exact){
+      place=exact.place || place || inferPlaceFromActivity(exact.activity);
+      activity=exact.activity || inferActivityFromPlace(place);
+    }
+
+    // 没有明确锚点时，不允许聊天原句影响字段；只用原本生成结构或自然推断。
+    if(!place || looksLikeCopiedChat(place, rawChats) || !hasPlace(place)){
+      var extracted = exact && exact.place ? exact.place : (hasPlace(place)?(place.match(PLACE_WORDS)||[''])[0]:'');
+      place = extracted || (activity && !looksLikeCopiedChat(activity,rawChats) ? inferPlaceFromActivity(activity) : (prev&&prev.place)||'附近街区');
+    }
+    if(!activity || looksLikeCopiedChat(activity, rawChats) || activity===place){
+      activity = exact && exact.activity ? exact.activity : inferActivityFromPlace(place);
+    }
+    // 如果字段互相污染，强制分开。
+    if(hasPlace(activity) && !/(休息|聊天|学习|學習|工作|吃|喝|逛|散步|移动|移動|处理|處理|放松|等|看电影|看電影)/.test(activity)){
+      place=(activity.match(PLACE_WORDS)||[place])[0];
+      activity=inferActivityFromPlace(place);
+    }
+    if(!hasPlace(place) && /^(在|去|到|待在)/.test(place)) place=clean(place.replace(/^(在|去|到|到了|待在)/,''));
+    place=clean(place).slice(0,20) || '附近街区';
+    activity=clean(activity).slice(0,44) || inferActivityFromPlace(place);
+    if(activity===place) activity=inferActivityFromPlace(place);
+    return Object.assign({}, item, {time:time, isoDate:todayKey(), place:place, activity:activity, _v33StrictChatReference:true});
+  }
+
+  function sanitizeTraceFor(pid){
+    try{
+      if(typeof locDailyTraces==='undefined' || !locDailyTraces || !locDailyTraces[pid]) return false;
+      var persona=getPersona(pid)||{};
+      var changed=false, map={}, others=[], prev=null;
+      (Array.isArray(locDailyTraces[pid])?locDailyTraces[pid]:[]).forEach(function(t){
+        if(!t) return;
+        if(t.isoDate && !sameToday(t.isoDate)){ others.push(t); return; }
+        if(!isHalfHour(t.time)){ changed=true; return; }
+        var n=naturalize(t, persona, prev);
+        if(JSON.stringify(n)!==JSON.stringify(t)) changed=true;
+        map[n.time]=n; prev=n;
+      });
+      var sorted=Object.keys(map).sort(function(a,b){return minOf(a)-minOf(b);}).map(function(k){return map[k];});
+      locDailyTraces[pid]=others.concat(sorted);
+      return changed;
+    }catch(e){ console.warn('[v33 strict location sanitize failed]', e); return false; }
+  }
+  function sanitizeAll(){
+    var changed=false;
+    try{ if(typeof locDailyTraces==='undefined' || !locDailyTraces) return false; Object.keys(locDailyTraces).forEach(function(pid){ if(sanitizeTraceFor(pid)) changed=true; }); }catch(e){}
+    if(changed){ try{ if(typeof saveLocData==='function') saveLocData(); else localStorage.setItem(STORE_KEY, JSON.stringify(locDailyTraces)); }catch(e){} }
+    return changed;
+  }
+  window.monoStrictSanitizeCoupleLocationFromChat = sanitizeAll;
+
+  function selectedPid(){ try{return String(window.locSelectedTraceCharId || window.locSelectedCharId || (typeof locSelectedCharId!=='undefined'?locSelectedCharId:'') || '');}catch(e){return '';} }
+  function afterChange(pid){
+    var changed=pid ? sanitizeTraceFor(pid) : sanitizeAll();
+    if(changed){ try{ if(typeof saveLocData==='function') saveLocData(); }catch(e){} }
+    try{ if(typeof renderLocTrace==='function') setTimeout(function(){try{renderLocTrace();}catch(e){}},0); }catch(e){}
+  }
+
+  function wrapAsync(name){
+    var old=window[name];
+    if(typeof old==='function' && !old.__v33StrictChatReferenceWrapped){
+      window[name]=async function(){ var r=await old.apply(this, arguments); afterChange(selectedPid()); return r; };
+      window[name].__v33StrictChatReferenceWrapped=true;
+      try{ eval(name+' = window[name]'); }catch(e){}
+    }
+  }
+  ['updateLocTrace','regenerateSelectedLocTrace','monoRunLocationAutoUpdate'].forEach(wrapAsync);
+
+  function wrapRenderSave(name){
+    var old=window[name];
+    if(typeof old==='function' && !old.__v33StrictChatReferenceWrapped){
+      window[name]=function(){ sanitizeAll(); return old.apply(this, arguments); };
+      window[name].__v33StrictChatReferenceWrapped=true;
+      try{ eval(name+' = window[name]'); }catch(e){}
+    }
+  }
+  wrapRenderSave('renderLocTrace');
+  wrapRenderSave('saveLocData');
+
+  function wrapGenerator(name){
+    var old=window[name];
+    if(typeof old==='function' && !old.__v33StrictChatReferenceWrapped){
+      window[name]=async function(){
+        var r=await old.apply(this, arguments);
+        try{
+          var persona=(arguments[0] && arguments[0].id) ? arguments[0] : getPersona(selectedPid());
+          if(Array.isArray(r)){ var prev=null; r=r.map(function(t){ var n=naturalize(t, persona, prev); prev=n; return n; }); }
+        }catch(e){}
+        return r;
+      };
+      window[name].__v33StrictChatReferenceWrapped=true;
+      try{ eval(name+' = window[name]'); }catch(e){}
+    }
+  }
+  ['generateFullDayTrace','generateIncrementalTrace'].forEach(wrapGenerator);
+
+  setTimeout(function(){ afterChange(''); }, 80);
+  setTimeout(function(){ afterChange(''); }, 700);
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden) afterChange(''); });
+  window.addEventListener('online', function(){ afterChange(''); });
+})();
+</script>
 
 </body>
 </html>

@@ -104471,14 +104471,12 @@ console.log('[ChatScreenshot] 聊天截图功能已加载：多张截图/记忆/
 (function(){
   function getCurrentFrostedColor(){
     try {
-      var page = document.getElementById('chatPage');
+      /* Per-role only: never reuse the old value already sitting on #chatPage,
+         otherwise one character's glass title color leaks into another character. */
       var p = (typeof personas !== 'undefined' && typeof currentId !== 'undefined')
-        ? personas.find(function(x){ return x.id == currentId; })
+        ? personas.find(function(x){ return String(x.id) === String(currentId); })
         : null;
-      var c = (p && p.frostedTitleColor) ||
-        ((page && page.style.getPropertyValue('--theme-frosted-name-color')) || '').trim() ||
-        '#ffffff';
-      return c;
+      return (p && p.frostedTitleColor) ? p.frostedTitleColor : '#ffffff';
     } catch(e) { return '#ffffff'; }
   }
   function isFrostedPage(page){
@@ -104545,5 +104543,189 @@ console.log('[ChatScreenshot] 聊天截图功能已加载：多张截图/记忆/
   setInterval(forceFrostedTitleColor, 600);
 })();
 </script>
+
+
+<!-- === 2026-05-12 FIX: Frosted title color is scoped per current persona only === -->
+<script id="monoFrostedTitleColorPerPersonaFix">
+(function(){
+  function getCurrentPersona(){
+    try {
+      if (typeof personas === 'undefined' || typeof currentId === 'undefined') return null;
+      return personas.find(function(x){ return String(x.id) === String(currentId); }) || null;
+    } catch(e) { return null; }
+  }
+  function isFrostedActive(page){
+    return !!(page && (page.classList.contains('chat-theme-frosted') || page.classList.contains('bubble-preset-frosted')));
+  }
+  function getPersonaFrostedColor(){
+    var p = getCurrentPersona();
+    return (p && p.frostedTitleColor) ? p.frostedTitleColor : '#ffffff';
+  }
+  function applyPerPersonaFrostedColor(){
+    try {
+      var page = document.getElementById('chatPage');
+      if (!isFrostedActive(page)) return;
+      var c = getPersonaFrostedColor();
+      page.setAttribute('data-frosted-color-persona-id', (typeof currentId !== 'undefined' && currentId != null) ? String(currentId) : '');
+      page.style.setProperty('--theme-frosted-name-color', c);
+      page.style.setProperty('--mono-frosted-ui-color', c);
+      page.style.setProperty('--mono-frosted-title-ui-color', c);
+      var selectors = [
+        '#headName', '#headHeartVoice', '#headHeartVoiceInner', '#headHeartVoiceInner *',
+        '#offlineModeBtn', '#offlineModeBtn *',
+        '#chatContactsBtn', '#chatContactsBtn *',
+        '.chat-header-back-btn', '.chat-header-back-btn *',
+        '.call-header-btn', '.call-header-btn *',
+        '.chat-header button', '.chat-header button *',
+        '.chat-footer button', '.chat-footer button *',
+        '.chat-plus-btn', '.chat-plus-btn *',
+        '.chat-voice-record-btn', '.chat-voice-record-btn *',
+        '.plus-panel-btn', '.plus-panel-btn *'
+      ];
+      page.querySelectorAll(selectors.join(',')).forEach(function(el){
+        el.style.setProperty('color', c, 'important');
+        el.style.setProperty('fill', 'currentColor', 'important');
+        el.style.setProperty('stroke', 'currentColor', 'important');
+      });
+    } catch(e) {}
+  }
+  function runSoon(){
+    applyPerPersonaFrostedColor();
+    setTimeout(applyPerPersonaFrostedColor, 0);
+    setTimeout(applyPerPersonaFrostedColor, 80);
+    setTimeout(applyPerPersonaFrostedColor, 220);
+  }
+  var oldSelectPersona = window.selectPersona;
+  if (typeof oldSelectPersona === 'function' && !oldSelectPersona.__frostedPerPersonaPatched) {
+    var patchedSelectPersona = function(id){
+      var r = oldSelectPersona.apply(this, arguments);
+      runSoon();
+      return r;
+    };
+    patchedSelectPersona.__frostedPerPersonaPatched = true;
+    window.selectPersona = patchedSelectPersona;
+  }
+  var oldApplyBubbleStyles = window.applyBubbleStyles;
+  if (typeof oldApplyBubbleStyles === 'function' && !oldApplyBubbleStyles.__frostedPerPersonaPatched) {
+    var patchedApplyBubbleStyles = function(p){
+      var r = oldApplyBubbleStyles.apply(this, arguments);
+      // If this is a live preview object, allow preview only for the currently opened editor/chat.
+      // If switching chats, the current persona color immediately resets it.
+      runSoon();
+      return r;
+    };
+    patchedApplyBubbleStyles.__frostedPerPersonaPatched = true;
+    window.applyBubbleStyles = patchedApplyBubbleStyles;
+  }
+  document.addEventListener('DOMContentLoaded', runSoon);
+  window.addEventListener('load', runSoon);
+  document.addEventListener('click', function(){ setTimeout(applyPerPersonaFrostedColor, 0); }, true);
+  document.addEventListener('input', function(e){
+    if (e && e.target && e.target.id === 'pFrostedTitleColor') {
+      // Preview only while editing the currently selected persona.
+      setTimeout(applyPerPersonaFrostedColor, 0);
+    }
+  }, true);
+})();
+</script>
+
+
+<!-- === 2026-05-12 FIX: Frosted title color must not connect to default theme === -->
+<script id="monoFrostedTitleColorThemeScopedFix">
+(function(){
+  function page(){ return document.getElementById('chatPage'); }
+  function isFrostedActive(p){
+    return !!(p && (p.classList.contains('chat-theme-frosted') || p.classList.contains('bubble-preset-frosted')));
+  }
+  function currentPersona(){
+    try {
+      if (typeof personas === 'undefined' || typeof currentId === 'undefined') return null;
+      return personas.find(function(x){ return String(x.id) === String(currentId); }) || null;
+    } catch(e){ return null; }
+  }
+  function frostedColor(){
+    var p = currentPersona();
+    return (p && p.frostedTitleColor) ? p.frostedTitleColor : '#ffffff';
+  }
+  var scopedSelectors = [
+    '#headName', '#headHeartVoice', '#headHeartVoiceInner', '#headHeartVoiceInner *',
+    '#offlineModeBtn', '#offlineModeBtn *',
+    '#chatContactsBtn', '#chatContactsBtn *',
+    '.chat-header-back-btn', '.chat-header-back-btn *',
+    '.call-header-btn', '.call-header-btn *',
+    '.chat-header button', '.chat-header button *',
+    '.chat-footer button', '.chat-footer button *',
+    '.chat-plus-btn', '.chat-plus-btn *',
+    '.chat-voice-record-btn', '.chat-voice-record-btn *',
+    '.plus-panel-btn', '.plus-panel-btn *'
+  ];
+  function clearFrostedInlineColor(p){
+    if (!p) return;
+    p.style.removeProperty('--theme-frosted-name-color');
+    p.style.removeProperty('--mono-frosted-ui-color');
+    p.style.removeProperty('--mono-frosted-title-ui-color');
+    p.removeAttribute('data-frosted-color-persona-id');
+    try {
+      p.querySelectorAll(scopedSelectors.join(',')).forEach(function(el){
+        el.style.removeProperty('color');
+        el.style.removeProperty('fill');
+        el.style.removeProperty('stroke');
+      });
+    } catch(e) {}
+  }
+  function applyOnlyWhenGlass(){
+    var p = page();
+    if (!p) return;
+    if (!isFrostedActive(p)) {
+      clearFrostedInlineColor(p);
+      return;
+    }
+    var c = frostedColor();
+    p.setAttribute('data-frosted-color-persona-id', (typeof currentId !== 'undefined' && currentId != null) ? String(currentId) : '');
+    p.style.setProperty('--theme-frosted-name-color', c);
+    p.style.setProperty('--mono-frosted-ui-color', c);
+    p.style.setProperty('--mono-frosted-title-ui-color', c);
+    try {
+      p.querySelectorAll(scopedSelectors.join(',')).forEach(function(el){
+        el.style.setProperty('color', c, 'important');
+        el.style.setProperty('fill', 'currentColor', 'important');
+        el.style.setProperty('stroke', 'currentColor', 'important');
+      });
+    } catch(e) {}
+  }
+  function run(){
+    applyOnlyWhenGlass();
+    setTimeout(applyOnlyWhenGlass, 0);
+    setTimeout(applyOnlyWhenGlass, 80);
+    setTimeout(applyOnlyWhenGlass, 220);
+  }
+  ['selectPersona','applyBubbleStyles','livePreviewBubble','renderChat','openChat','savePersona','savePersonaSettings'].forEach(function(name){
+    var old = window[name];
+    if (typeof old === 'function' && !old.__frostedThemeScopedPatched) {
+      var patched = function(){
+        var r = old.apply(this, arguments);
+        run();
+        return r;
+      };
+      patched.__frostedThemeScopedPatched = true;
+      window[name] = patched;
+    }
+  });
+  document.addEventListener('DOMContentLoaded', function(){
+    run();
+    var p = page();
+    if (p && window.MutationObserver) {
+      new MutationObserver(function(){ run(); }).observe(p, {attributes:true, attributeFilter:['class','style'], childList:true, subtree:true});
+    }
+  });
+  window.addEventListener('load', run);
+  document.addEventListener('click', function(){ setTimeout(applyOnlyWhenGlass, 0); }, true);
+  document.addEventListener('input', function(e){
+    if (e && e.target && (e.target.id === 'pFrostedTitleColor' || e.target.name === 'chatTheme' || e.target.name === 'bubblePreset')) run();
+  }, true);
+  setInterval(applyOnlyWhenGlass, 500);
+})();
+</script>
+
 </body>
 </html>

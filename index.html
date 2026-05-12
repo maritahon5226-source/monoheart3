@@ -24382,10 +24382,10 @@ body:not(.ios-fullscreen).chat-page-active.chat-preset-frosted-active #chatPage.
           <div id="frostedBubbleBlurControl" style="margin-top:12px;padding:10px;border:1px solid #eee;border-radius:10px;background:#fafafa;">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;">
               <span style="font-size:10px;font-weight:800;color:#666;letter-spacing:.5px;">信息气泡模糊度 Bubble Blur</span>
-              <span id="pFrostedBubbleBlurValue" style="font-size:10px;color:#888;font-weight:700;min-width:42px;text-align:right;">8px</span>
+              <span id="pFrostedBubbleBlurValue" style="font-size:10px;color:#888;font-weight:700;min-width:42px;text-align:right;">9px</span>
             </div>
-            <input type="range" id="pFrostedBubbleBlur" min="0" max="18" step="1" value="8" oninput="livePreviewBubble()" style="width:100%;accent-color:#1a1a1a;">
-            <p style="font-size:10px;color:#999;line-height:1.55;margin:6px 0 0;">数值越高，气泡越有玻璃模糊感；数值越低，气泡越清透。</p>
+            <input type="range" id="pFrostedBubbleBlur" min="0" max="30" step="3" value="9" oninput="livePreviewBubble()" style="width:100%;accent-color:#1a1a1a;">
+            <p style="font-size:10px;color:#999;line-height:1.55;margin:6px 0 0;">每一格为 3px，调节差距更明显；数值越高，气泡越有玻璃模糊感。</p>
           </div>
         </div>
         <label style="display:flex;align-items:flex-start;gap:8px;margin-top:12px;padding:10px 12px;border:1px solid rgba(0,0,0,0.06);border-radius:10px;background:#fff;cursor:pointer;font-size:11px;color:#555;line-height:1.55;">
@@ -30442,8 +30442,8 @@ function openEditor(isEdit=false) {
     if (document.getElementById('pFrostedAiBubbleColor')) document.getElementById('pFrostedAiBubbleColor').value = p.frostedAiBubbleColor || '#ffffff';
     if (document.getElementById('pFrostedUserTextColor')) document.getElementById('pFrostedUserTextColor').value = p.frostedUserTextColor || '#ffffff';
     if (document.getElementById('pFrostedUserBubbleColor')) document.getElementById('pFrostedUserBubbleColor').value = p.frostedUserBubbleColor || '#bed6db';
-    if (document.getElementById('pFrostedBubbleBlur')) document.getElementById('pFrostedBubbleBlur').value = (p.frostedBubbleBlur != null ? p.frostedBubbleBlur : 8);
-    if (document.getElementById('pFrostedBubbleBlurValue')) document.getElementById('pFrostedBubbleBlurValue').textContent = (p.frostedBubbleBlur != null ? p.frostedBubbleBlur : 8) + 'px';
+    if (document.getElementById('pFrostedBubbleBlur')) document.getElementById('pFrostedBubbleBlur').value = (p.frostedBubbleBlur != null ? p.frostedBubbleBlur : 9);
+    if (document.getElementById('pFrostedBubbleBlurValue')) document.getElementById('pFrostedBubbleBlurValue').textContent = (p.frostedBubbleBlur != null ? p.frostedBubbleBlur : 9) + 'px';
     if (typeof monoUpdateFrostedMessageColorPreview === 'function') monoUpdateFrostedMessageColorPreview();
     const _bgForEditor = p.chatBgImage === '__ref__'
       ? (localStorage.getItem('mono_bg_' + p.id) || '')
@@ -30509,7 +30509,7 @@ function savePersona() {
   const selectedFrostedAiBubbleColor = (document.getElementById('pFrostedAiBubbleColor') || {}).value || '#ffffff';
   const selectedFrostedUserTextColor = (document.getElementById('pFrostedUserTextColor') || {}).value || '#ffffff';
   const selectedFrostedUserBubbleColor = (document.getElementById('pFrostedUserBubbleColor') || {}).value || '#bed6db';
-  const selectedFrostedBubbleBlur = Math.max(0, Math.min(18, parseInt((document.getElementById('pFrostedBubbleBlur') || {}).value, 10) || 0));
+  const selectedFrostedBubbleBlur = Math.max(0, Math.min(30, parseInt((document.getElementById('pFrostedBubbleBlur') || {}).value, 10) || 0));
   const _saveOshiBlue = (document.getElementById('pOshiGlowBlue') || {}).value || '#cfd3d8';
   const _saveOshiPink = (document.getElementById('pOshiGlowPink') || {}).value || '#e5e5e5';
   const _saveOshiShowHeart = !document.getElementById('pOshiGlowShowHeart') || document.getElementById('pOshiGlowShowHeart').checked;
@@ -38716,7 +38716,7 @@ function applyBubbleStyles(p) {
       chatPage.style.setProperty('--frosted-ai-bubble-color', (p && p.frostedAiBubbleColor) ? p.frostedAiBubbleColor : '#ffffff');
       chatPage.style.setProperty('--frosted-user-text-color', (p && p.frostedUserTextColor) ? p.frostedUserTextColor : '#ffffff');
       chatPage.style.setProperty('--frosted-user-bubble-color', (p && p.frostedUserBubbleColor) ? p.frostedUserBubbleColor : '#bed6db');
-      chatPage.style.setProperty('--frosted-bubble-blur', ((p && p.frostedBubbleBlur != null) ? p.frostedBubbleBlur : 8) + 'px');
+      chatPage.style.setProperty('--frosted-bubble-blur', ((p && p.frostedBubbleBlur != null) ? p.frostedBubbleBlur : 9) + 'px');
     }
   } catch (e) {}
   applyFrostedMessageMetaVisibility(p);
@@ -38763,7 +38763,7 @@ function livePreviewBubble() {
   const tmpFrostedAiBubbleColor = (document.getElementById('pFrostedAiBubbleColor') || {}).value || '#ffffff';
   const tmpFrostedUserTextColor = (document.getElementById('pFrostedUserTextColor') || {}).value || '#ffffff';
   const tmpFrostedUserBubbleColor = (document.getElementById('pFrostedUserBubbleColor') || {}).value || '#bed6db';
-  const tmpFrostedBubbleBlur = Math.max(0, Math.min(18, parseInt((document.getElementById('pFrostedBubbleBlur') || {}).value, 10) || 0));
+  const tmpFrostedBubbleBlur = Math.max(0, Math.min(30, parseInt((document.getElementById('pFrostedBubbleBlur') || {}).value, 10) || 0));
   const tmpFrostedBubbleBlurValue = document.getElementById('pFrostedBubbleBlurValue');
   if (tmpFrostedBubbleBlurValue) tmpFrostedBubbleBlurValue.textContent = tmpFrostedBubbleBlur + 'px';
   const tmpOshiBlue = (document.getElementById('pOshiGlowBlue') || {}).value || '#cfd3d8';
@@ -104850,7 +104850,7 @@ body.chat-page-active #chatPage #chatBox .empty-state {
   --frosted-ai-bubble-color: var(--frosted-ai-bubble-color, #ffffff);
   --frosted-user-text-color: var(--frosted-user-text-color, #ffffff);
   --frosted-user-bubble-color: var(--frosted-user-bubble-color, #bed6db);
-  --frosted-bubble-blur: var(--frosted-bubble-blur, 8px);
+  --frosted-bubble-blur: var(--frosted-bubble-blur, 9px);
 }
 #chatPage.bubble-preset-frosted .bubble-ai,
 #chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-ai,
@@ -104860,8 +104860,8 @@ body.chat-page-active #chatPage #chatBox .empty-state {
     color-mix(in srgb, var(--frosted-ai-bubble-color, #ffffff) 34%, transparent),
     color-mix(in srgb, var(--frosted-ai-bubble-color, #ffffff) 22%, transparent)
   ) !important;
-  backdrop-filter: blur(var(--frosted-bubble-blur, 8px)) saturate(1.12) !important;
-  -webkit-backdrop-filter: blur(var(--frosted-bubble-blur, 8px)) saturate(1.12) !important;
+  backdrop-filter: blur(var(--frosted-bubble-blur, 9px)) saturate(1.12) !important;
+  -webkit-backdrop-filter: blur(var(--frosted-bubble-blur, 9px)) saturate(1.12) !important;
   border-color: color-mix(in srgb, var(--frosted-ai-bubble-color, #ffffff) 38%, transparent) !important;
   text-shadow: 0 1px 5px rgba(0,0,0,0.20) !important;
 }
@@ -104873,8 +104873,8 @@ body.chat-page-active #chatPage #chatBox .empty-state {
     color-mix(in srgb, var(--frosted-user-bubble-color, #bed6db) 36%, transparent),
     color-mix(in srgb, var(--frosted-user-bubble-color, #bed6db) 24%, transparent)
   ) !important;
-  backdrop-filter: blur(var(--frosted-bubble-blur, 8px)) saturate(1.12) !important;
-  -webkit-backdrop-filter: blur(var(--frosted-bubble-blur, 8px)) saturate(1.12) !important;
+  backdrop-filter: blur(var(--frosted-bubble-blur, 9px)) saturate(1.12) !important;
+  -webkit-backdrop-filter: blur(var(--frosted-bubble-blur, 9px)) saturate(1.12) !important;
   border-color: color-mix(in srgb, var(--frosted-user-bubble-color, #bed6db) 40%, transparent) !important;
   text-shadow: 0 1px 5px rgba(0,0,0,0.20) !important;
 }
@@ -104882,8 +104882,8 @@ body.chat-page-active #chatPage #chatBox .empty-state {
 #chatPage.bubble-preset-frosted .bubble-call,
 #chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-voice,
 #chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-call {
-  backdrop-filter: blur(var(--frosted-bubble-blur, 8px)) saturate(1.12) !important;
-  -webkit-backdrop-filter: blur(var(--frosted-bubble-blur, 8px)) saturate(1.12) !important;
+  backdrop-filter: blur(var(--frosted-bubble-blur, 9px)) saturate(1.12) !important;
+  -webkit-backdrop-filter: blur(var(--frosted-bubble-blur, 9px)) saturate(1.12) !important;
 }
 </style>
 <script id="monoFrostedMessageBubbleColorFixScript">
@@ -104897,12 +104897,12 @@ body.chat-page-active #chatPage #chatBox .empty-state {
     try {
       var aiText=val('pFrostedAiTextColor','#ffffff'), aiBubble=val('pFrostedAiBubbleColor','#ffffff');
       var uText=val('pFrostedUserTextColor','#ffffff'), uBubble=val('pFrostedUserBubbleColor','#bed6db');
-      var blur=Math.max(0, Math.min(18, parseInt(val('pFrostedBubbleBlur','8'),10) || 0));
+      var blur=Math.max(0, Math.min(30, parseInt(val('pFrostedBubbleBlur','9'),10) || 0));
       var bv=document.getElementById('pFrostedBubbleBlurValue'); if (bv) bv.textContent=blur+'px';
       var ap=document.getElementById('pFrostedAiBubblePreview');
       var up=document.getElementById('pFrostedUserBubblePreview');
-      if (ap) { ap.style.color=aiText; ap.style.background='color-mix(in srgb, '+aiBubble+' 32%, transparent)'; ap.style.border='1px solid color-mix(in srgb, '+aiBubble+' 40%, transparent)'; }
-      if (up) { up.style.color=uText; up.style.background='color-mix(in srgb, '+uBubble+' 34%, transparent)'; up.style.border='1px solid color-mix(in srgb, '+uBubble+' 40%, transparent)'; }
+      if (ap) { ap.style.color=aiText; ap.style.background='color-mix(in srgb, '+aiBubble+' 32%, transparent)'; ap.style.border='1px solid color-mix(in srgb, '+aiBubble+' 40%, transparent)'; ap.style.backdropFilter='blur('+blur+'px) saturate(1.12)'; ap.style.webkitBackdropFilter='blur('+blur+'px) saturate(1.12)'; }
+      if (up) { up.style.color=uText; up.style.background='color-mix(in srgb, '+uBubble+' 34%, transparent)'; up.style.border='1px solid color-mix(in srgb, '+uBubble+' 40%, transparent)'; up.style.backdropFilter='blur('+blur+'px) saturate(1.12)'; up.style.webkitBackdropFilter='blur('+blur+'px) saturate(1.12)'; }
     } catch(e) {}
   };
   function applyFrostedMessageColors(source){
@@ -104914,7 +104914,7 @@ body.chat-page-active #chatPage #chatBox .empty-state {
       page.style.setProperty('--frosted-ai-bubble-color', p.frostedAiBubbleColor || '#ffffff');
       page.style.setProperty('--frosted-user-text-color', p.frostedUserTextColor || '#ffffff');
       page.style.setProperty('--frosted-user-bubble-color', p.frostedUserBubbleColor || '#bed6db');
-      page.style.setProperty('--frosted-bubble-blur', ((p.frostedBubbleBlur != null) ? p.frostedBubbleBlur : 8) + 'px');
+      page.style.setProperty('--frosted-bubble-blur', ((p.frostedBubbleBlur != null) ? p.frostedBubbleBlur : 9) + 'px');
     } catch(e) {}
   }
   window.monoApplyFrostedMessageColors = applyFrostedMessageColors;
@@ -104936,12 +104936,116 @@ body.chat-page-active #chatPage #chatBox .empty-state {
         frostedAiBubbleColor: val('pFrostedAiBubbleColor','#ffffff'),
         frostedUserTextColor: val('pFrostedUserTextColor','#ffffff'),
         frostedUserBubbleColor: val('pFrostedUserBubbleColor','#bed6db'),
-        frostedBubbleBlur: Math.max(0, Math.min(18, parseInt(val('pFrostedBubbleBlur','8'),10) || 0))
+        frostedBubbleBlur: Math.max(0, Math.min(30, parseInt(val('pFrostedBubbleBlur','9'),10) || 0))
       });
     }
   }, true);
   document.addEventListener('DOMContentLoaded', function(){ monoUpdateFrostedMessageColorPreview(); applyFrostedMessageColors(); });
   window.addEventListener('load', function(){ monoUpdateFrostedMessageColorPreview(); applyFrostedMessageColors(); });
+})();
+</script>
+
+
+
+<!-- === 2026-05-12 FIX: FROSTED BUBBLE BLUR 0 = FULLY CLEAR/TRANSPARENT === -->
+<style id="monoFrostedBlurZeroClearFix">
+/* 当玻璃主题气泡模糊度为 0 时，气泡底色和雾面层也同步降到几乎透明。 */
+#chatPage.chat-theme-frosted,
+#chatPage.bubble-preset-frosted {
+  --frosted-ai-bubble-alpha-top: 34%;
+  --frosted-ai-bubble-alpha-bottom: 22%;
+  --frosted-user-bubble-alpha-top: 36%;
+  --frosted-user-bubble-alpha-bottom: 24%;
+  --frosted-bubble-border-alpha: 38%;
+  --frosted-bubble-shadow-alpha: 0.20;
+  --frosted-bubble-saturate: 1.12;
+}
+
+#chatPage.bubble-preset-frosted .bubble-ai,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-ai,
+.gc-page.bubble-preset-frosted .bubble-ai {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--frosted-ai-bubble-color, #ffffff) var(--frosted-ai-bubble-alpha-top, 34%), transparent),
+    color-mix(in srgb, var(--frosted-ai-bubble-color, #ffffff) var(--frosted-ai-bubble-alpha-bottom, 22%), transparent)
+  ) !important;
+  backdrop-filter: blur(var(--frosted-bubble-blur, 9px)) saturate(var(--frosted-bubble-saturate, 1.12)) !important;
+  -webkit-backdrop-filter: blur(var(--frosted-bubble-blur, 9px)) saturate(var(--frosted-bubble-saturate, 1.12)) !important;
+  border-color: color-mix(in srgb, var(--frosted-ai-bubble-color, #ffffff) var(--frosted-bubble-border-alpha, 38%), transparent) !important;
+  text-shadow: 0 1px 5px rgba(0,0,0,var(--frosted-bubble-shadow-alpha, 0.20)) !important;
+}
+
+#chatPage.bubble-preset-frosted .bubble-user,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-user,
+.gc-page.bubble-preset-frosted .bubble-user {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--frosted-user-bubble-color, #bed6db) var(--frosted-user-bubble-alpha-top, 36%), transparent),
+    color-mix(in srgb, var(--frosted-user-bubble-color, #bed6db) var(--frosted-user-bubble-alpha-bottom, 24%), transparent)
+  ) !important;
+  backdrop-filter: blur(var(--frosted-bubble-blur, 9px)) saturate(var(--frosted-bubble-saturate, 1.12)) !important;
+  -webkit-backdrop-filter: blur(var(--frosted-bubble-blur, 9px)) saturate(var(--frosted-bubble-saturate, 1.12)) !important;
+  border-color: color-mix(in srgb, var(--frosted-user-bubble-color, #bed6db) var(--frosted-bubble-border-alpha, 40%), transparent) !important;
+  text-shadow: 0 1px 5px rgba(0,0,0,var(--frosted-bubble-shadow-alpha, 0.20)) !important;
+}
+</style>
+<script id="monoFrostedBlurZeroClearFixScript">
+(function(){
+  function n(v){ v=parseInt(v,10); return isNaN(v)?9:Math.max(0,Math.min(30,v)); }
+  function getP(){ try { return (typeof personas !== 'undefined' && typeof currentId !== 'undefined') ? (personas.find(function(x){return String(x.id)===String(currentId);})||null) : null; } catch(e){ return null; } }
+  function isGlass(page){ return !!(page && (page.classList.contains('chat-theme-frosted') || page.classList.contains('bubble-preset-frosted'))); }
+  function applyZeroClear(source){
+    try{
+      var page=document.getElementById('chatPage');
+      if(!isGlass(page)) return;
+      var p=source || getP() || {};
+      var blur=n(p.frostedBubbleBlur != null ? p.frostedBubbleBlur : (document.getElementById('pFrostedBubbleBlur') && document.getElementById('pFrostedBubbleBlur').value));
+      page.style.setProperty('--frosted-bubble-blur', blur + 'px');
+      if(blur === 0){
+        page.style.setProperty('--frosted-ai-bubble-alpha-top','7%');
+        page.style.setProperty('--frosted-ai-bubble-alpha-bottom','4%');
+        page.style.setProperty('--frosted-user-bubble-alpha-top','8%');
+        page.style.setProperty('--frosted-user-bubble-alpha-bottom','5%');
+        page.style.setProperty('--frosted-bubble-border-alpha','18%');
+        page.style.setProperty('--frosted-bubble-shadow-alpha','0.10');
+        page.style.setProperty('--frosted-bubble-saturate','1');
+      } else {
+        page.style.setProperty('--frosted-ai-bubble-alpha-top','34%');
+        page.style.setProperty('--frosted-ai-bubble-alpha-bottom','22%');
+        page.style.setProperty('--frosted-user-bubble-alpha-top','36%');
+        page.style.setProperty('--frosted-user-bubble-alpha-bottom','24%');
+        page.style.setProperty('--frosted-bubble-border-alpha','38%');
+        page.style.setProperty('--frosted-bubble-shadow-alpha','0.20');
+        page.style.setProperty('--frosted-bubble-saturate','1.12');
+      }
+    }catch(e){}
+  }
+  window.monoApplyFrostedBlurZeroClear = applyZeroClear;
+  var oldColor=window.monoApplyFrostedMessageColors;
+  if(typeof oldColor==='function' && !oldColor.__zeroClearPatched){
+    var wrapped=function(p){ var r=oldColor.apply(this, arguments); setTimeout(function(){applyZeroClear(p);},0); return r; };
+    wrapped.__zeroClearPatched=true;
+    window.monoApplyFrostedMessageColors=wrapped;
+  }
+  var oldPreview=window.monoUpdateFrostedMessageColorPreview;
+  if(typeof oldPreview==='function' && !oldPreview.__zeroClearPatched){
+    var wrappedPrev=function(){ var r=oldPreview.apply(this, arguments); try{
+      var el=document.getElementById('pFrostedBubbleBlur');
+      var blur=n(el && el.value);
+      ['pFrostedAiBubblePreview','pFrostedUserBubblePreview'].forEach(function(id){
+        var box=document.getElementById(id); if(!box) return;
+        if(blur===0){ box.style.backdropFilter='none'; box.style.webkitBackdropFilter='none'; box.style.opacity='0.72'; }
+        else { box.style.opacity='1'; }
+      });
+    }catch(e){} return r; };
+    wrappedPrev.__zeroClearPatched=true;
+    window.monoUpdateFrostedMessageColorPreview=wrappedPrev;
+  }
+  document.addEventListener('input', function(e){ if(e && e.target && e.target.id==='pFrostedBubbleBlur') setTimeout(function(){applyZeroClear();},0); }, true);
+  ['DOMContentLoaded','load'].forEach(function(ev){ window.addEventListener(ev,function(){ setTimeout(function(){applyZeroClear();},0); setTimeout(function(){applyZeroClear();},160); }); });
+  var oldApply=window.applyBubbleStyles;
+  if(typeof oldApply==='function' && !oldApply.__zeroClearPatched){
+    var patched=function(p){ var r=oldApply.apply(this, arguments); setTimeout(function(){applyZeroClear(p);},0); setTimeout(function(){applyZeroClear(p);},120); return r; };
+    patched.__zeroClearPatched=true; window.applyBubbleStyles=patched;
+  }
 })();
 </script>
 

@@ -2601,6 +2601,20 @@ body.ios-fullscreen.chat-page-active.chat-theme-frosted-active #contactsDrawer {
     background: rgba(255,255,255,0.14);
     color: #fff;
 }
+
+/* 玻璃聊天室：可选隐藏消息旁头像和名字 */
+#chatPage.chat-theme-frosted.frosted-hide-message-meta .msg-meta {
+  display: none !important;
+}
+#chatPage.chat-theme-frosted.frosted-hide-message-meta .msg-row.ai {
+  justify-content: flex-start !important;
+}
+#chatPage.chat-theme-frosted.frosted-hide-message-meta .msg-row.user {
+  justify-content: flex-end !important;
+}
+#chatPage.chat-theme-frosted.frosted-hide-message-meta .msg-content {
+  min-width: 0 !important;
+}
 #chatPage.chat-theme-frosted .empty-state,
 #chatPage.chat-theme-frosted .empty-state i,
 #chatPage.chat-theme-frosted .empty-state p {
@@ -19817,6 +19831,484 @@ body:not(.ios-fullscreen).chat-page-active.chat-preset-frosted-active #chatPage.
 }
 </style>
 
+
+
+<style id="mono-glass-water-bubble-fix">
+/* =========================================================
+   Glass Theme Default Bubbles: 水感透明气泡
+   - 只影响玻璃主题默认信息气泡
+   - 不影响微信 / iMessage / LINE / retro / journal 等其它气泡预设
+   ========================================================= */
+#chatPage.bubble-preset-frosted .bubble-ai,
+#chatPage.bubble-preset-frosted .bubble-user,
+.gc-page.bubble-preset-frosted .bubble-ai,
+.gc-page.bubble-preset-frosted .bubble-user,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-ai,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-user {
+    position: relative !important;
+    isolation: isolate !important;
+    overflow: hidden !important;
+    border-radius: 23px !important;
+    color: var(--frosted-text, #fff) !important;
+    border: 1px solid rgba(255,255,255,0.42) !important;
+    background:
+        radial-gradient(circle at 18% 10%, rgba(255,255,255,0.72) 0 2px, rgba(255,255,255,0.30) 3px, transparent 16px),
+        radial-gradient(circle at 86% 18%, rgba(255,255,255,0.38) 0 1px, transparent 13px),
+        linear-gradient(135deg, rgba(255,255,255,0.42) 0%, rgba(255,255,255,0.20) 34%, rgba(186,225,235,0.16) 62%, rgba(255,255,255,0.26) 100%) !important;
+    backdrop-filter: blur(9px) saturate(1.55) brightness(1.06) !important;
+    -webkit-backdrop-filter: blur(9px) saturate(1.55) brightness(1.06) !important;
+    box-shadow:
+        inset 0 1px 1px rgba(255,255,255,0.70),
+        inset 0 -12px 22px rgba(255,255,255,0.10),
+        inset 10px 0 24px rgba(255,255,255,0.08),
+        inset -10px 0 18px rgba(120,170,190,0.08),
+        0 8px 18px rgba(20,35,45,0.10),
+        0 2px 6px rgba(255,255,255,0.16) !important;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.14) !important;
+}
+
+#chatPage.bubble-preset-frosted .bubble-ai,
+.gc-page.bubble-preset-frosted .bubble-ai,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-ai {
+    background:
+        radial-gradient(circle at 18% 10%, rgba(255,255,255,0.76) 0 2px, rgba(255,255,255,0.30) 3px, transparent 17px),
+        radial-gradient(circle at 82% 20%, rgba(255,255,255,0.34) 0 1px, transparent 13px),
+        linear-gradient(135deg, rgba(255,255,255,0.40) 0%, rgba(255,255,255,0.18) 45%, rgba(210,238,246,0.14) 100%) !important;
+    border-bottom-left-radius: 23px !important;
+}
+
+#chatPage.bubble-preset-frosted .bubble-user,
+.gc-page.bubble-preset-frosted .bubble-user,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-user {
+    background:
+        radial-gradient(circle at 20% 12%, rgba(255,255,255,0.78) 0 2px, rgba(255,255,255,0.32) 3px, transparent 17px),
+        radial-gradient(circle at 88% 18%, rgba(255,255,255,0.36) 0 1px, transparent 13px),
+        linear-gradient(135deg, rgba(226,248,252,0.40) 0%, rgba(196,228,236,0.20) 46%, rgba(255,255,255,0.24) 100%) !important;
+    border-bottom-right-radius: 23px !important;
+}
+
+/* 重新打开水感高光层：之前旧玻璃样式把伪元素关掉了 */
+#chatPage.bubble-preset-frosted .bubble-ai::before,
+#chatPage.bubble-preset-frosted .bubble-user::before,
+.gc-page.bubble-preset-frosted .bubble-ai::before,
+.gc-page.bubble-preset-frosted .bubble-user::before,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-ai::before,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-user::before {
+    content: '' !important;
+    display: block !important;
+    position: absolute !important;
+    inset: 1px 2px auto 2px !important;
+    height: 46% !important;
+    border-radius: 22px 22px 18px 18px !important;
+    pointer-events: none !important;
+    z-index: -1 !important;
+    background:
+        linear-gradient(180deg, rgba(255,255,255,0.52), rgba(255,255,255,0.10) 72%, transparent) !important;
+    opacity: 0.86 !important;
+}
+
+#chatPage.bubble-preset-frosted .bubble-ai::after,
+#chatPage.bubble-preset-frosted .bubble-user::after,
+.gc-page.bubble-preset-frosted .bubble-ai::after,
+.gc-page.bubble-preset-frosted .bubble-user::after,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-ai::after,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-user::after {
+    content: '' !important;
+    display: block !important;
+    position: absolute !important;
+    width: 42% !important;
+    height: 160% !important;
+    left: -18% !important;
+    top: -42% !important;
+    transform: rotate(18deg) !important;
+    border-radius: 999px !important;
+    pointer-events: none !important;
+    z-index: -1 !important;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent) !important;
+    opacity: 0.65 !important;
+}
+
+#chatPage.bubble-preset-frosted .bubble-ai *,
+#chatPage.bubble-preset-frosted .bubble-user *,
+.gc-page.bubble-preset-frosted .bubble-ai *,
+.gc-page.bubble-preset-frosted .bubble-user *,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-ai *,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-user * {
+    position: relative;
+    z-index: 1;
+}
+
+#chatPage.bubble-preset-frosted .quote-block,
+.gc-page.bubble-preset-frosted .quote-block,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .quote-block {
+    background: rgba(255,255,255,0.14) !important;
+    border-left-color: rgba(255,255,255,0.58) !important;
+    border-radius: 14px !important;
+}
+</style>
+
+
+
+<style id="glass-clear-default-bubble-fix">
+/* 2026-05-12: Make the glass theme default message bubbles look clear and transparent,
+   not thick frosted blocks. This only targets the default glass bubbles and keeps other
+   bubble presets such as WeChat / iMessage / LINE / retro / journal unchanged. */
+#chatPage.bubble-preset-frosted .bubble-ai,
+#chatPage.bubble-preset-frosted .bubble-user,
+.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-ai,
+.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-user,
+.gc-page.bubble-preset-frosted .bubble-ai,
+.gc-page.bubble-preset-frosted .bubble-user {
+    background: linear-gradient(145deg,
+        rgba(255, 255, 255, 0.115) 0%,
+        rgba(255, 255, 255, 0.045) 46%,
+        rgba(255, 255, 255, 0.018) 100%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.34) !important;
+    box-shadow:
+        0 10px 28px rgba(0, 0, 0, 0.10),
+        inset 0 1px 0 rgba(255, 255, 255, 0.36),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.075) !important;
+    backdrop-filter: blur(7px) saturate(150%) brightness(1.03) !important;
+    -webkit-backdrop-filter: blur(7px) saturate(150%) brightness(1.03) !important;
+    color: var(--frosted-text, rgba(255, 255, 255, 0.94)) !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.16) !important;
+    border-radius: 22px !important;
+}
+
+#chatPage.bubble-preset-frosted .bubble-ai,
+.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-ai,
+.gc-page.bubble-preset-frosted .bubble-ai {
+    background: linear-gradient(145deg,
+        rgba(255, 255, 255, 0.105) 0%,
+        rgba(255, 255, 255, 0.040) 48%,
+        rgba(255, 255, 255, 0.014) 100%) !important;
+    border-color: rgba(255, 255, 255, 0.30) !important;
+    border-bottom-left-radius: 22px !important;
+}
+
+#chatPage.bubble-preset-frosted .bubble-user,
+.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-user,
+.gc-page.bubble-preset-frosted .bubble-user {
+    background: linear-gradient(145deg,
+        rgba(255, 255, 255, 0.135) 0%,
+        rgba(200, 230, 236, 0.050) 48%,
+        rgba(255, 255, 255, 0.018) 100%) !important;
+    border-color: rgba(255, 255, 255, 0.38) !important;
+    border-bottom-right-radius: 22px !important;
+}
+
+/* Add a tiny glass highlight instead of a thick milky overlay. */
+#chatPage.bubble-preset-frosted .bubble-ai::before,
+#chatPage.bubble-preset-frosted .bubble-user::before,
+.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-ai::before,
+.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-user::before,
+.gc-page.bubble-preset-frosted .bubble-ai::before,
+.gc-page.bubble-preset-frosted .bubble-user::before {
+    content: "" !important;
+    display: block !important;
+    position: absolute !important;
+    inset: 1px 1px auto 1px !important;
+    height: 42% !important;
+    border-radius: inherit !important;
+    background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.00)) !important;
+    pointer-events: none !important;
+    opacity: 0.72 !important;
+}
+
+#chatPage.bubble-preset-frosted .bubble-ai::after,
+#chatPage.bubble-preset-frosted .bubble-user::after,
+.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-ai::after,
+.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-user::after,
+.gc-page.bubble-preset-frosted .bubble-ai::after,
+.gc-page.bubble-preset-frosted .bubble-user::after {
+    display: none !important;
+}
+
+#chatPage.bubble-preset-frosted .bubble-ai > *,
+#chatPage.bubble-preset-frosted .bubble-user > *,
+.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-ai > *,
+.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-user > *,
+.gc-page.bubble-preset-frosted .bubble-ai > *,
+.gc-page.bubble-preset-frosted .bubble-user > * {
+    position: relative !important;
+    z-index: 1 !important;
+}
+</style>
+
+
+
+<style id="mono-glass-bubble-low-blur-final">
+/* 2026-05-12 final: 降低玻璃主题默认信息气泡的磨砂感和模糊度
+   只影响玻璃主题默认气泡，不影响微信 / iMessage / LINE / retro / oshi glow / journal 等预设。 */
+#chatPage.bubble-preset-frosted .bubble-ai,
+#chatPage.bubble-preset-frosted .bubble-user,
+.gc-page.bubble-preset-frosted .bubble-ai,
+.gc-page.bubble-preset-frosted .bubble-user,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-ai,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-user {
+  background: linear-gradient(145deg,
+      rgba(255,255,255,0.072) 0%,
+      rgba(255,255,255,0.030) 48%,
+      rgba(255,255,255,0.012) 100%) !important;
+  border: 1px solid rgba(255,255,255,0.24) !important;
+  box-shadow:
+      0 6px 18px rgba(0,0,0,0.075),
+      inset 0 1px 0 rgba(255,255,255,0.22),
+      inset 0 -1px 0 rgba(255,255,255,0.035) !important;
+  backdrop-filter: blur(2px) saturate(118%) brightness(1.01) !important;
+  -webkit-backdrop-filter: blur(2px) saturate(118%) brightness(1.01) !important;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.12) !important;
+}
+
+#chatPage.bubble-preset-frosted .bubble-ai,
+.gc-page.bubble-preset-frosted .bubble-ai,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-ai {
+  background: linear-gradient(145deg,
+      rgba(255,255,255,0.060) 0%,
+      rgba(255,255,255,0.025) 50%,
+      rgba(255,255,255,0.010) 100%) !important;
+  border-color: rgba(255,255,255,0.21) !important;
+}
+
+#chatPage.bubble-preset-frosted .bubble-user,
+.gc-page.bubble-preset-frosted .bubble-user,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-user {
+  background: linear-gradient(145deg,
+      rgba(255,255,255,0.078) 0%,
+      rgba(220,240,245,0.032) 50%,
+      rgba(255,255,255,0.012) 100%) !important;
+  border-color: rgba(255,255,255,0.25) !important;
+}
+
+/* 高光也减淡，避免看起来像一层白色磨砂膜。 */
+#chatPage.bubble-preset-frosted .bubble-ai::before,
+#chatPage.bubble-preset-frosted .bubble-user::before,
+.gc-page.bubble-preset-frosted .bubble-ai::before,
+.gc-page.bubble-preset-frosted .bubble-user::before,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-ai::before,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-user::before {
+  background: linear-gradient(180deg, rgba(255,255,255,0.070), rgba(255,255,255,0.000)) !important;
+  opacity: 0.42 !important;
+}
+
+#chatPage.bubble-preset-frosted .bubble-ai::after,
+#chatPage.bubble-preset-frosted .bubble-user::after,
+.gc-page.bubble-preset-frosted .bubble-ai::after,
+.gc-page.bubble-preset-frosted .bubble-user::after,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-ai::after,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-user::after {
+  display: none !important;
+  opacity: 0 !important;
+}
+
+/* 语音/通话气泡也跟随降低磨砂感，避免同一主题里突兀。 */
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-voice,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-call,
+#chatPage.bubble-preset-frosted .bubble-voice,
+#chatPage.bubble-preset-frosted .bubble-call {
+  background: rgba(255,255,255,0.055) !important;
+  border-color: rgba(255,255,255,0.22) !important;
+  backdrop-filter: blur(2px) saturate(118%) brightness(1.01) !important;
+  -webkit-backdrop-filter: blur(2px) saturate(118%) brightness(1.01) !important;
+}
+</style>
+
+
+
+<style id="glass-bubble-width-slightly-shorter-fix">
+/* 玻璃主题默认信息气泡：宽度稍微缩短，只影响玻璃默认气泡，不影响其它气泡预设 */
+#chatPage.bubble-preset-frosted .msg-content,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .msg-content,
+.gc-page.bubble-preset-frosted .msg-content {
+  max-width: min(74vw, 305px) !important;
+}
+
+#chatPage.bubble-preset-frosted .bubble-ai,
+#chatPage.bubble-preset-frosted .bubble-user,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-ai,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-user,
+.gc-page.bubble-preset-frosted .bubble-ai,
+.gc-page.bubble-preset-frosted .bubble-user {
+  max-width: min(74vw, 305px) !important;
+  width: fit-content !important;
+  box-sizing: border-box !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+}
+
+#chatPage.bubble-preset-frosted .bubble-voice,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-voice,
+.gc-page.bubble-preset-frosted .bubble-voice {
+  max-width: min(68vw, 280px) !important;
+}
+</style>
+
+
+
+<style id="glass-bubble-width-more-shorter-fix">
+/* 2026-05-12: 玻璃主题默认信息气泡再缩短一档。
+   只影响玻璃主题默认气泡，不影响微信 / iMessage / LINE / retro / oshi glow / journal 等其它气泡预设。 */
+#chatPage.bubble-preset-frosted .msg-content,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .msg-content,
+.gc-page.bubble-preset-frosted .msg-content {
+  max-width: min(60vw, 238px) !important;
+  width: fit-content !important;
+}
+
+#chatPage.bubble-preset-frosted .bubble,
+#chatPage.bubble-preset-frosted .bubble-ai,
+#chatPage.bubble-preset-frosted .bubble-user,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-ai,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-user,
+.gc-page.bubble-preset-frosted .bubble,
+.gc-page.bubble-preset-frosted .bubble-ai,
+.gc-page.bubble-preset-frosted .bubble-user {
+  max-width: min(60vw, 238px) !important;
+  width: fit-content !important;
+  box-sizing: border-box !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+  padding-left: 13px !important;
+  padding-right: 13px !important;
+}
+
+#chatPage.bubble-preset-frosted .bubble-voice,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-voice,
+.gc-page.bubble-preset-frosted .bubble-voice {
+  max-width: min(56vw, 218px) !important;
+}
+
+@media (max-width: 430px) {
+  #chatPage.bubble-preset-frosted .msg-content,
+  #chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .msg-content,
+  .gc-page.bubble-preset-frosted .msg-content,
+  #chatPage.bubble-preset-frosted .bubble,
+  #chatPage.bubble-preset-frosted .bubble-ai,
+  #chatPage.bubble-preset-frosted .bubble-user,
+  #chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble,
+  #chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-ai,
+  #chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-user,
+  .gc-page.bubble-preset-frosted .bubble,
+  .gc-page.bubble-preset-frosted .bubble-ai,
+  .gc-page.bubble-preset-frosted .bubble-user {
+    max-width: min(56vw, 220px) !important;
+  }
+}
+</style>
+
+
+
+<style id="glass-bubble-vertical-padding-tighter-fix">
+/* 2026-05-12: 只缩小玻璃主题默认信息气泡中文字上下空间，不再继续改横向宽度。 */
+#chatPage.bubble-preset-frosted .bubble,
+#chatPage.bubble-preset-frosted .bubble-ai,
+#chatPage.bubble-preset-frosted .bubble-user,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-ai,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-user,
+.gc-page.bubble-preset-frosted .bubble,
+.gc-page.bubble-preset-frosted .bubble-ai,
+.gc-page.bubble-preset-frosted .bubble-user {
+  padding-top: 5px !important;
+  padding-bottom: 5px !important;
+  line-height: 1.32 !important;
+  min-height: 0 !important;
+}
+
+/* 兼容文字被包在内部容器里的情况，避免里面自己的 margin/padding 又把上下撑高。 */
+#chatPage.bubble-preset-frosted .bubble > *,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble > *,
+.gc-page.bubble-preset-frosted .bubble > * {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  line-height: 1.32 !important;
+}
+
+/* 图片、截图、卡片类消息不要被压太扁，只针对纯文字气泡保持紧凑。 */
+#chatPage.bubble-preset-frosted .bubble:has(img),
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble:has(img),
+.gc-page.bubble-preset-frosted .bubble:has(img) {
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+}
+
+/* 语音/通话气泡也稍微收紧，但保留可点击高度。 */
+#chatPage.bubble-preset-frosted .bubble-voice,
+#chatPage.bubble-preset-frosted .bubble-call,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-voice,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-call,
+.gc-page.bubble-preset-frosted .bubble-voice,
+.gc-page.bubble-preset-frosted .bubble-call {
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+  min-height: 30px !important;
+}
+</style>
+
+
+
+<style id="glass-bubble-padding-width-final-override">
+/* 2026-05-12: 最终覆盖：还原玻璃主题默认气泡横向宽度与左右 padding，
+   并把文字上下空间从过紧调整为稍微宽一点。
+   只影响玻璃主题默认气泡，不影响 WeChat / iMessage / LINE / retro / oshi glow / journal 等气泡预设。 */
+#chatPage.bubble-preset-frosted .msg-content,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .msg-content,
+.gc-page.bubble-preset-frosted .msg-content {
+  max-width: min(82vw, 340px) !important;
+  width: auto !important;
+}
+
+#chatPage.bubble-preset-frosted .bubble,
+#chatPage.bubble-preset-frosted .bubble-ai,
+#chatPage.bubble-preset-frosted .bubble-user,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-ai,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-user,
+.gc-page.bubble-preset-frosted .bubble,
+.gc-page.bubble-preset-frosted .bubble-ai,
+.gc-page.bubble-preset-frosted .bubble-user {
+  max-width: 100% !important;
+  width: fit-content !important;
+  box-sizing: border-box !important;
+  padding: 8px 16px !important;
+  line-height: 1.46 !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+}
+
+/* 覆盖上一版把内部文字压得太紧的规则 */
+#chatPage.bubble-preset-frosted .bubble > *,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble > *,
+.gc-page.bubble-preset-frosted .bubble > * {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  line-height: 1.46 !important;
+}
+
+/* 图片、截图、卡片类消息保持正常点击和显示空间，不被文字气泡规则压扁 */
+#chatPage.bubble-preset-frosted .bubble:has(img),
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble:has(img),
+.gc-page.bubble-preset-frosted .bubble:has(img) {
+  padding: 10px 12px !important;
+}
+
+/* 语音/通话气泡跟随恢复为正常按钮高度 */
+#chatPage.bubble-preset-frosted .bubble-voice,
+#chatPage.bubble-preset-frosted .bubble-call,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-voice,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-call,
+.gc-page.bubble-preset-frosted .bubble-voice,
+.gc-page.bubble-preset-frosted .bubble-call {
+  max-width: min(82vw, 340px) !important;
+  padding: 8px 16px !important;
+  line-height: 1.46 !important;
+  min-height: 34px !important;
+}
+</style>
+
 </head>
 <body>
 <!-- In-App Notification Toast -->
@@ -23873,6 +24365,12 @@ body:not(.ios-fullscreen).chat-page-active.chat-preset-frosted-active #chatPage.
           <input type="color" id="pFrostedTitleColor" value="#ffffff" oninput="livePreviewBubble()" style="width:38px;height:32px;border:1px solid #ddd;border-radius:8px;padding:2px;background:#fff;cursor:pointer;">
           <div id="pFrostedTitleColorPreview" style="flex:1;padding:8px 12px;border-radius:999px;background:linear-gradient(180deg,#a8c5cd 0%,#8ea8b0 100%);color:#ffffff;font-size:12px;font-weight:700;text-align:center;text-shadow:0 1px 6px rgba(0,0,0,0.18);">角色名字预览</div>
         </div>
+        <label style="display:flex;align-items:flex-start;gap:8px;margin-top:12px;padding:10px 12px;border:1px solid rgba(0,0,0,0.06);border-radius:10px;background:#fff;cursor:pointer;font-size:11px;color:#555;line-height:1.55;">
+          <input type="checkbox" id="pFrostedHideMessageMeta" onchange="livePreviewBubble()" style="width:16px;height:16px;accent-color:#1a1a1a;margin-top:1px;flex-shrink:0;">
+          <span>隐藏聊天室信息旁的头像和名字
+            <span style="display:block;font-size:10px;color:#999;margin-top:2px;">只在玻璃聊天室主题下生效；开启后角色和用户消息旁边的小头像、名字都会隐藏。</span>
+          </span>
+        </label>
       </div>
     </div>
     <!-- Custom Bubble CSS -->
@@ -29683,6 +30181,7 @@ function saveCurrentPersona() {
     bubbleUserFontColor: p.bubbleUserFontColor || '',
     chatTheme: getEffectiveChatTheme(p),
     frostedTitleColor: p.frostedTitleColor || '#ffffff',
+    frostedHideMessageMeta: !!p.frostedHideMessageMeta,
     chatBgImage: p.chatBgImage || ''
   };
   const blob = new Blob([JSON.stringify(exportData, null, 2)], {type: 'application/json'});
@@ -29802,6 +30301,7 @@ function openEditor(isEdit=false) {
     if (document.getElementById('pMetaUnreadColor')) document.getElementById('pMetaUnreadColor').value = '#cccccc';
     if (document.getElementById('pFrostedTitleColor')) document.getElementById('pFrostedTitleColor').value = '#ffffff';
     if (document.getElementById('pFrostedTitleColorPreview')) document.getElementById('pFrostedTitleColorPreview').style.color = '#ffffff';
+    if (document.getElementById('pFrostedHideMessageMeta')) document.getElementById('pFrostedHideMessageMeta').checked = false;
     document.getElementById('pChatBgImg').style.display = 'none';
     document.getElementById('pChatBgPlaceholder').style.display = '';
     document.getElementById('pChatBgImg').src = '';
@@ -29914,6 +30414,7 @@ function openEditor(isEdit=false) {
     if (document.getElementById('pMetaUnreadColor')) document.getElementById('pMetaUnreadColor').value = p.metaUnreadColor || '#cccccc';
     if (document.getElementById('pFrostedTitleColor')) document.getElementById('pFrostedTitleColor').value = p.frostedTitleColor || '#ffffff';
     if (document.getElementById('pFrostedTitleColorPreview')) document.getElementById('pFrostedTitleColorPreview').style.color = p.frostedTitleColor || '#ffffff';
+    if (document.getElementById('pFrostedHideMessageMeta')) document.getElementById('pFrostedHideMessageMeta').checked = !!p.frostedHideMessageMeta;
     const _bgForEditor = p.chatBgImage === '__ref__'
       ? (localStorage.getItem('mono_bg_' + p.id) || '')
       : (p.chatBgImage || '');
@@ -29973,6 +30474,7 @@ function savePersona() {
   const parsedAutoMsgMax = Math.max(parsedAutoMsgMin, parseInt((document.getElementById('pAutoMsgMaxInterval') || {}).value, 10) || parsedAutoMsgMin);
   const selectedChatTheme = normalizeChatTheme((document.getElementById('pChatTheme') || {}).value || 'default');
   const selectedFrostedTitleColor = (document.getElementById('pFrostedTitleColor') || {}).value || '#ffffff';
+  const selectedFrostedHideMessageMeta = !!(document.getElementById('pFrostedHideMessageMeta') && document.getElementById('pFrostedHideMessageMeta').checked);
   const _saveOshiBlue = (document.getElementById('pOshiGlowBlue') || {}).value || '#cfd3d8';
   const _saveOshiPink = (document.getElementById('pOshiGlowPink') || {}).value || '#e5e5e5';
   const _saveOshiShowHeart = !document.getElementById('pOshiGlowShowHeart') || document.getElementById('pOshiGlowShowHeart').checked;
@@ -29983,11 +30485,11 @@ function savePersona() {
     const p = personas.find(x=>x.id==currentId);
     const _saveAiColor = document.getElementById('pBubbleAiFontColorEnabled').checked ? (document.getElementById('pBubbleAiFontColor').value||'') : '';
     const _saveUserColor = document.getElementById('pBubbleUserFontColorEnabled').checked ? (document.getElementById('pBubbleUserFontColor').value||'') : '';
-    if(p){ p.name=name; p.nickname=document.getElementById('pNick').value.trim(); p.userMaskId=selectedUserMaskId; p.persona=document.getElementById('pPersona').value.trim()||'一个简单的角色设定'; p.avatar=avatar; p.minReplyCount=minReply; p.maxReplyCount=maxReply; p.temperature=temperature; p.timeAwareness=timeAwareness; p.allowSticker=allowSticker; p.stickerLibraryIds=stickerLibraryIds; p.allowVoice=allowVoice; p.voiceId=voiceId; p.voiceSpeed=voiceSpeed; p.voiceLang=voiceLang; p.outputLang=outputLang; p.enableTranslation=enableTranslation; p.translateLang=translateLang; p.voiceFreq=voiceFreq; p.memoryCount=parseInt(document.getElementById('pMemoryCount').value)||100; p.autoMsg=document.getElementById('pAutoMsg').checked; p.autoMsgMinInterval=parsedAutoMsgMin; p.autoMsgMaxInterval=parsedAutoMsgMax; p.autoDiary=document.getElementById('pAutoDiary').checked; p.autoDiaryTime=document.getElementById('pAutoDiaryTime').value||'21:00'; p.diaryIncludeOfflineMemory=!document.getElementById('monoDiaryOfflineSetting') || document.getElementById('monoDiaryOfflineSetting').checked; p.autoMoments=document.getElementById('pAutoMoments').checked; p.autoMomentsTime=document.getElementById('pAutoMomentsTime').value||'20:00'; p.momentsIncludeOfflineMemory=!document.getElementById('monoMomentsOfflineSetting') || document.getElementById('monoMomentsOfflineSetting').checked; p.autoSummary=document.getElementById('pAutoSummary').checked; p.autoSummaryInterval=parseInt(document.getElementById('pAutoSummaryInterval').value)||20; p.bubbleAiCss=document.getElementById('pBubbleAiCss').value.trim(); p.bubbleUserCss=document.getElementById('pBubbleUserCss').value.trim(); p.chatRoomCustomCss=(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(); p.bubbleAiFontColor=_saveAiColor; p.bubbleUserFontColor=_saveUserColor; p.bubblePreset=(document.getElementById('pBubblePreset')||{}).value||'none'; p.chatTheme=selectedChatTheme; p.frostedTitleColor=selectedFrostedTitleColor; p.oshiGlowBlue=_saveOshiBlue; p.oshiGlowPink=_saveOshiPink; p.oshiGlowShowHeart=_saveOshiShowHeart; p.hideTimestamp=document.getElementById('pHideTimestamp')?document.getElementById('pHideTimestamp').checked:false; p.metaTimeColor=(document.getElementById('pMetaTimeColor')||{}).value||''; p.metaNameColor=(document.getElementById('pMetaNameColor')||{}).value||''; p.metaReadColor=(document.getElementById('pMetaReadColor')||{}).value||''; p.metaUnreadColor=(document.getElementById('pMetaUnreadColor')||{}).value||''; if(document.getElementById('pChatBgImg').src && document.getElementById('pChatBgImg').style.display!=='none') p.chatBgImage=document.getElementById('pChatBgImg').src; else p.chatBgImage=''; p.replyMode=_getSelectedReplyMode(); var _spd=document.querySelector('input[name="pReplySpeed"]:checked'); p.replySpeed=_spd?_spd.value:'fast'; p.replySpeedCustomMin=parseInt(document.getElementById('pReplySpeedCustomMin').value)||0; p.replySpeedCustomMax=parseInt(document.getElementById('pReplySpeedCustomMax').value)||10; p.heartVoiceGenerateEnabled=heartVoiceGenerateEnabled; p.showHeartVoiceInHeader=heartVoiceEnabled; p.heartVoiceEnabled=heartVoiceEnabled; p.heartVoiceMode=heartVoiceMode; p.allowCallTts=document.getElementById('pAllowCallTts').checked; if (p.momentsNickname == null || !String(p.momentsNickname).trim()) p.momentsNickname = name; if (p.momentsSignature == null) p.momentsSignature = ''; if (p.momentsBanner == null) p.momentsBanner = ''; }
+    if(p){ p.name=name; p.nickname=document.getElementById('pNick').value.trim(); p.userMaskId=selectedUserMaskId; p.persona=document.getElementById('pPersona').value.trim()||'一个简单的角色设定'; p.avatar=avatar; p.minReplyCount=minReply; p.maxReplyCount=maxReply; p.temperature=temperature; p.timeAwareness=timeAwareness; p.allowSticker=allowSticker; p.stickerLibraryIds=stickerLibraryIds; p.allowVoice=allowVoice; p.voiceId=voiceId; p.voiceSpeed=voiceSpeed; p.voiceLang=voiceLang; p.outputLang=outputLang; p.enableTranslation=enableTranslation; p.translateLang=translateLang; p.voiceFreq=voiceFreq; p.memoryCount=parseInt(document.getElementById('pMemoryCount').value)||100; p.autoMsg=document.getElementById('pAutoMsg').checked; p.autoMsgMinInterval=parsedAutoMsgMin; p.autoMsgMaxInterval=parsedAutoMsgMax; p.autoDiary=document.getElementById('pAutoDiary').checked; p.autoDiaryTime=document.getElementById('pAutoDiaryTime').value||'21:00'; p.diaryIncludeOfflineMemory=!document.getElementById('monoDiaryOfflineSetting') || document.getElementById('monoDiaryOfflineSetting').checked; p.autoMoments=document.getElementById('pAutoMoments').checked; p.autoMomentsTime=document.getElementById('pAutoMomentsTime').value||'20:00'; p.momentsIncludeOfflineMemory=!document.getElementById('monoMomentsOfflineSetting') || document.getElementById('monoMomentsOfflineSetting').checked; p.autoSummary=document.getElementById('pAutoSummary').checked; p.autoSummaryInterval=parseInt(document.getElementById('pAutoSummaryInterval').value)||20; p.bubbleAiCss=document.getElementById('pBubbleAiCss').value.trim(); p.bubbleUserCss=document.getElementById('pBubbleUserCss').value.trim(); p.chatRoomCustomCss=(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(); p.bubbleAiFontColor=_saveAiColor; p.bubbleUserFontColor=_saveUserColor; p.bubblePreset=(document.getElementById('pBubblePreset')||{}).value||'none'; p.chatTheme=selectedChatTheme; p.frostedTitleColor=selectedFrostedTitleColor; p.frostedHideMessageMeta=selectedFrostedHideMessageMeta; p.oshiGlowBlue=_saveOshiBlue; p.oshiGlowPink=_saveOshiPink; p.oshiGlowShowHeart=_saveOshiShowHeart; p.hideTimestamp=document.getElementById('pHideTimestamp')?document.getElementById('pHideTimestamp').checked:false; p.metaTimeColor=(document.getElementById('pMetaTimeColor')||{}).value||''; p.metaNameColor=(document.getElementById('pMetaNameColor')||{}).value||''; p.metaReadColor=(document.getElementById('pMetaReadColor')||{}).value||''; p.metaUnreadColor=(document.getElementById('pMetaUnreadColor')||{}).value||''; if(document.getElementById('pChatBgImg').src && document.getElementById('pChatBgImg').style.display!=='none') p.chatBgImage=document.getElementById('pChatBgImg').src; else p.chatBgImage=''; p.replyMode=_getSelectedReplyMode(); var _spd=document.querySelector('input[name="pReplySpeed"]:checked'); p.replySpeed=_spd?_spd.value:'fast'; p.replySpeedCustomMin=parseInt(document.getElementById('pReplySpeedCustomMin').value)||0; p.replySpeedCustomMax=parseInt(document.getElementById('pReplySpeedCustomMax').value)||10; p.heartVoiceGenerateEnabled=heartVoiceGenerateEnabled; p.showHeartVoiceInHeader=heartVoiceEnabled; p.heartVoiceEnabled=heartVoiceEnabled; p.heartVoiceMode=heartVoiceMode; p.allowCallTts=document.getElementById('pAllowCallTts').checked; if (p.momentsNickname == null || !String(p.momentsNickname).trim()) p.momentsNickname = name; if (p.momentsSignature == null) p.momentsSignature = ''; if (p.momentsBanner == null) p.momentsBanner = ''; }
   } else {
     const _saveAiColor = document.getElementById('pBubbleAiFontColorEnabled').checked ? (document.getElementById('pBubbleAiFontColor').value||'') : '';
     const _saveUserColor = document.getElementById('pBubbleUserFontColorEnabled').checked ? (document.getElementById('pBubbleUserFontColor').value||'') : '';
-    const newP = { id:Date.now(), name, nickname:document.getElementById('pNick').value.trim()||name, userMaskId:selectedUserMaskId, momentsNickname:name, momentsSignature:'', momentsBanner:'', persona:document.getElementById('pPersona').value.trim()||'一个简单的角色设定', avatar, history:[], memoryCore:[], lastHeartVoice:null, autoSummary:document.getElementById('pAutoSummary').checked, autoSummaryInterval:parseInt(document.getElementById('pAutoSummaryInterval').value)||20, minReplyCount:minReply, maxReplyCount:maxReply, temperature:temperature, timeAwareness:timeAwareness, allowSticker:allowSticker, stickerLibraryIds:stickerLibraryIds, allowVoice:allowVoice, voiceId:voiceId, voiceSpeed:voiceSpeed, voiceLang:voiceLang, outputLang:outputLang, enableTranslation:enableTranslation, translateLang:translateLang, voiceFreq:voiceFreq, memoryCount:parseInt(document.getElementById('pMemoryCount').value)||100, autoMsg:document.getElementById('pAutoMsg').checked, autoMsgMinInterval:parsedAutoMsgMin, autoMsgMaxInterval:parsedAutoMsgMax, autoDiary:document.getElementById('pAutoDiary').checked, autoDiaryTime:document.getElementById('pAutoDiaryTime').value||'21:00', diaryIncludeOfflineMemory:!document.getElementById('monoDiaryOfflineSetting') || document.getElementById('monoDiaryOfflineSetting').checked, autoMoments:document.getElementById('pAutoMoments').checked, autoMomentsTime:document.getElementById('pAutoMomentsTime').value||'20:00', momentsIncludeOfflineMemory:!document.getElementById('monoMomentsOfflineSetting') || document.getElementById('monoMomentsOfflineSetting').checked, bubbleAiCss:document.getElementById('pBubbleAiCss').value.trim(), bubbleUserCss:document.getElementById('pBubbleUserCss').value.trim(), chatRoomCustomCss:(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(), bubbleAiFontColor:_saveAiColor, bubbleUserFontColor:_saveUserColor, bubblePreset:(document.getElementById('pBubblePreset')||{}).value||'none', chatTheme:selectedChatTheme, frostedTitleColor:selectedFrostedTitleColor, oshiGlowBlue:_saveOshiBlue, oshiGlowPink:_saveOshiPink, oshiGlowShowHeart:_saveOshiShowHeart, hideTimestamp:document.getElementById('pHideTimestamp')?document.getElementById('pHideTimestamp').checked:false, metaTimeColor:(document.getElementById('pMetaTimeColor')||{}).value||'', metaNameColor:(document.getElementById('pMetaNameColor')||{}).value||'', metaReadColor:(document.getElementById('pMetaReadColor')||{}).value||'', metaUnreadColor:(document.getElementById('pMetaUnreadColor')||{}).value||'', chatBgImage:(document.getElementById('pChatBgImg').style.display!=='none'?document.getElementById('pChatBgImg').src:''), replyMode:_getSelectedReplyMode(), replySpeed:(document.querySelector('input[name="pReplySpeed"]:checked')||{}).value||'fast', replySpeedCustomMin:parseInt(document.getElementById('pReplySpeedCustomMin').value)||0, replySpeedCustomMax:parseInt(document.getElementById('pReplySpeedCustomMax').value)||10, heartVoiceGenerateEnabled:heartVoiceGenerateEnabled, showHeartVoiceInHeader:heartVoiceEnabled, heartVoiceEnabled:heartVoiceEnabled, heartVoiceMode:heartVoiceMode, allowCallTts:document.getElementById('pAllowCallTts').checked };
+    const newP = { id:Date.now(), name, nickname:document.getElementById('pNick').value.trim()||name, userMaskId:selectedUserMaskId, momentsNickname:name, momentsSignature:'', momentsBanner:'', persona:document.getElementById('pPersona').value.trim()||'一个简单的角色设定', avatar, history:[], memoryCore:[], lastHeartVoice:null, autoSummary:document.getElementById('pAutoSummary').checked, autoSummaryInterval:parseInt(document.getElementById('pAutoSummaryInterval').value)||20, minReplyCount:minReply, maxReplyCount:maxReply, temperature:temperature, timeAwareness:timeAwareness, allowSticker:allowSticker, stickerLibraryIds:stickerLibraryIds, allowVoice:allowVoice, voiceId:voiceId, voiceSpeed:voiceSpeed, voiceLang:voiceLang, outputLang:outputLang, enableTranslation:enableTranslation, translateLang:translateLang, voiceFreq:voiceFreq, memoryCount:parseInt(document.getElementById('pMemoryCount').value)||100, autoMsg:document.getElementById('pAutoMsg').checked, autoMsgMinInterval:parsedAutoMsgMin, autoMsgMaxInterval:parsedAutoMsgMax, autoDiary:document.getElementById('pAutoDiary').checked, autoDiaryTime:document.getElementById('pAutoDiaryTime').value||'21:00', diaryIncludeOfflineMemory:!document.getElementById('monoDiaryOfflineSetting') || document.getElementById('monoDiaryOfflineSetting').checked, autoMoments:document.getElementById('pAutoMoments').checked, autoMomentsTime:document.getElementById('pAutoMomentsTime').value||'20:00', momentsIncludeOfflineMemory:!document.getElementById('monoMomentsOfflineSetting') || document.getElementById('monoMomentsOfflineSetting').checked, bubbleAiCss:document.getElementById('pBubbleAiCss').value.trim(), bubbleUserCss:document.getElementById('pBubbleUserCss').value.trim(), chatRoomCustomCss:(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(), bubbleAiFontColor:_saveAiColor, bubbleUserFontColor:_saveUserColor, bubblePreset:(document.getElementById('pBubblePreset')||{}).value||'none', chatTheme:selectedChatTheme, frostedTitleColor:selectedFrostedTitleColor, frostedHideMessageMeta:selectedFrostedHideMessageMeta, oshiGlowBlue:_saveOshiBlue, oshiGlowPink:_saveOshiPink, oshiGlowShowHeart:_saveOshiShowHeart, hideTimestamp:document.getElementById('pHideTimestamp')?document.getElementById('pHideTimestamp').checked:false, metaTimeColor:(document.getElementById('pMetaTimeColor')||{}).value||'', metaNameColor:(document.getElementById('pMetaNameColor')||{}).value||'', metaReadColor:(document.getElementById('pMetaReadColor')||{}).value||'', metaUnreadColor:(document.getElementById('pMetaUnreadColor')||{}).value||'', chatBgImage:(document.getElementById('pChatBgImg').style.display!=='none'?document.getElementById('pChatBgImg').src:''), replyMode:_getSelectedReplyMode(), replySpeed:(document.querySelector('input[name="pReplySpeed"]:checked')||{}).value||'fast', replySpeedCustomMin:parseInt(document.getElementById('pReplySpeedCustomMin').value)||0, replySpeedCustomMax:parseInt(document.getElementById('pReplySpeedCustomMax').value)||10, heartVoiceGenerateEnabled:heartVoiceGenerateEnabled, showHeartVoiceInHeader:heartVoiceEnabled, heartVoiceEnabled:heartVoiceEnabled, heartVoiceMode:heartVoiceMode, allowCallTts:document.getElementById('pAllowCallTts').checked };
     personas.push(newP); currentId=newP.id;
   }
   saveData(); renderContactList(); if(currentId) selectPersona(currentId); closeEditor(); renderDiaryTabs();
@@ -38175,6 +38677,7 @@ function applyBubbleStyles(p) {
     var frostedTitleColor = (p && p.frostedTitleColor) ? p.frostedTitleColor : '#ffffff';
     if (chatPage) chatPage.style.setProperty('--theme-frosted-name-color', frostedTitleColor);
   } catch (e) {}
+  applyFrostedMessageMetaVisibility(p);
   // Apply preset class
   applyBubblePresetClass(p.bubblePreset || 'none');
   let css = '';
@@ -38213,10 +38716,11 @@ function livePreviewBubble() {
   const tmpUserColor = userEnabled ? ((document.getElementById('pBubbleUserFontColor') || {}).value || '') : '';
   const tmpPreset = (document.getElementById('pBubblePreset') || {}).value || 'none';
   const tmpFrostedTitleColor = (document.getElementById('pFrostedTitleColor') || {}).value || '#ffffff';
+  const tmpFrostedHideMessageMeta = !!(document.getElementById('pFrostedHideMessageMeta') && document.getElementById('pFrostedHideMessageMeta').checked);
   const tmpOshiBlue = (document.getElementById('pOshiGlowBlue') || {}).value || '#cfd3d8';
   const tmpOshiPink = (document.getElementById('pOshiGlowPink') || {}).value || '#e5e5e5';
   const tmpOshiShowHeart = !document.getElementById('pOshiGlowShowHeart') || document.getElementById('pOshiGlowShowHeart').checked;
-  applyBubbleStyles({ bubbleAiCss: tmpAi.trim(), bubbleUserCss: tmpUser.trim(), bubbleAiFontColor: tmpAiColor, bubbleUserFontColor: tmpUserColor, bubblePreset: tmpPreset, chatTheme: normalizeChatTheme((document.getElementById('pChatTheme') || {}).value || 'default'), frostedTitleColor: tmpFrostedTitleColor, oshiGlowBlue: tmpOshiBlue, oshiGlowPink: tmpOshiPink, oshiGlowShowHeart: tmpOshiShowHeart });
+  applyBubbleStyles({ bubbleAiCss: tmpAi.trim(), bubbleUserCss: tmpUser.trim(), bubbleAiFontColor: tmpAiColor, bubbleUserFontColor: tmpUserColor, bubblePreset: tmpPreset, chatTheme: normalizeChatTheme((document.getElementById('pChatTheme') || {}).value || 'default'), frostedTitleColor: tmpFrostedTitleColor, frostedHideMessageMeta: tmpFrostedHideMessageMeta, oshiGlowBlue: tmpOshiBlue, oshiGlowPink: tmpOshiPink, oshiGlowShowHeart: tmpOshiShowHeart });
   const previewPersona = personas.find(x => x.id == currentId);
   if (previewPersona && (typeof normalizeBubblePreset === 'function' ? normalizeBubblePreset(previewPersona.bubblePreset) : previewPersona.bubblePreset) === 'oshiglow' && previewPersona.oshiGlowShowHeart !== tmpOshiShowHeart) {
     previewPersona.oshiGlowShowHeart = tmpOshiShowHeart;
@@ -38397,6 +38901,15 @@ function toggleFrostedTitleColorControl(theme) {
   var wrap = document.getElementById('frostedTitleColorWrap');
   if (wrap) wrap.style.display = theme === 'frosted' ? 'block' : 'none';
 }
+function applyFrostedMessageMetaVisibility(p) {
+  try {
+    var chatPage = document.getElementById('chatPage');
+    if (!chatPage) return;
+    var theme = getEffectiveChatTheme(p);
+    var hide = !!(p && p.frostedHideMessageMeta);
+    chatPage.classList.toggle('frosted-hide-message-meta', theme === 'frosted' && hide);
+  } catch (e) {}
+}
 function migrateLegacyFrostedThemeIfNeeded(p) {
   try {
     if (p && !p.chatTheme && p.bubblePreset === 'frosted') {
@@ -38453,6 +38966,7 @@ function applyChatThemeClass(theme) {
       if (theme === 'frosted') el.classList.add('chat-theme-frosted');
     });
     document.body.classList.toggle('chat-theme-frosted-active', theme === 'frosted');
+    if (theme !== 'frosted' && chatPage) chatPage.classList.remove('frosted-hide-message-meta');
     if (typeof updateMonoViewportMetrics === 'function') updateMonoViewportMetrics();
     syncFrostedComposerState();
   } catch (e) {}
@@ -95630,11 +96144,13 @@ function monoImportPersonaPackage(event) {
         lastHeartVoice: settings.lastHeartVoice || null,
         heartVoiceGenerateEnabled: settings.heartVoiceGenerateEnabled !== false,
         chatTheme: normalizeChatTheme(settings.chatTheme || 'default'),
-        frostedTitleColor: settings.frostedTitleColor || '#ffffff'
+        frostedTitleColor: settings.frostedTitleColor || '#ffffff',
+        frostedHideMessageMeta: !!settings.frostedHideMessageMeta
       }, settings);
       newPersona.id = newId;
       newPersona.chatTheme = normalizeChatTheme(newPersona.chatTheme || 'default');
       newPersona.frostedTitleColor = newPersona.frostedTitleColor || '#ffffff';
+      newPersona.frostedHideMessageMeta = !!newPersona.frostedHideMessageMeta;
       if (!Array.isArray(newPersona.history)) newPersona.history = [];
       personas.push(newPersona);
       if (Array.isArray(data.offlineSessions) && data.offlineSessions.length) {
@@ -96136,7 +96652,7 @@ if (document.readyState === 'loading') {
         bubbleUserFontColor: persona.bubbleUserFontColor || '',
         bubblePreset: persona.bubblePreset || 'none',
         chatTheme: getEffectiveChatTheme(persona),
-        frostedTitleColor: persona.frostedTitleColor || '#ffffff',
+        frostedTitleColor: persona.frostedTitleColor || '#ffffff', frostedHideMessageMeta: !!persona.frostedHideMessageMeta,
         chatRoomCustomCss: persona.chatRoomCustomCss || '',
         chatBgImage: persona.chatBgImage || '',
         replyMode: persona.replyMode || 'normal',
@@ -103802,5 +104318,232 @@ console.log('[ChatScreenshot] 聊天截图功能已加载：多张截图/记忆/
 </script>
 <!-- ==================== 聊天截图功能 END ==================== -->
 
+
+
+<!-- === 2026-05-12 GLASS BUBBLE WIDTH RESTORE + SLIGHTLY MORE VERTICAL PADDING === -->
+<style id="glass-bubble-width-restored-padding-plus-fix">
+/* 还原玻璃主题默认信息气泡的横向宽度，并把文字上下留白稍微加回来。
+   只影响玻璃主题默认气泡，不影响微信 / iMessage / LINE / retro / oshi glow / journal 等其它气泡预设。 */
+#chatPage.bubble-preset-frosted .msg-content,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .msg-content,
+.gc-page.bubble-preset-frosted .msg-content {
+  max-width: min(82vw, 340px) !important;
+  width: auto !important;
+}
+
+#chatPage.bubble-preset-frosted .bubble,
+#chatPage.bubble-preset-frosted .bubble-ai,
+#chatPage.bubble-preset-frosted .bubble-user,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-ai,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-user,
+.gc-page.bubble-preset-frosted .bubble,
+.gc-page.bubble-preset-frosted .bubble-ai,
+.gc-page.bubble-preset-frosted .bubble-user {
+  max-width: min(82vw, 340px) !important;
+  width: fit-content !important;
+  box-sizing: border-box !important;
+  padding-top: 7px !important;
+  padding-bottom: 7px !important;
+  padding-left: 16px !important;
+  padding-right: 16px !important;
+  line-height: 1.40 !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+  min-height: 0 !important;
+}
+
+#chatPage.bubble-preset-frosted .bubble > *,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble > *,
+.gc-page.bubble-preset-frosted .bubble > * {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  line-height: 1.40 !important;
+}
+
+/* 图片、截图、卡片类消息保留更舒服的上下空间。 */
+#chatPage.bubble-preset-frosted .bubble:has(img),
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble:has(img),
+.gc-page.bubble-preset-frosted .bubble:has(img) {
+  padding-top: 9px !important;
+  padding-bottom: 9px !important;
+}
+
+#chatPage.bubble-preset-frosted .bubble-voice,
+#chatPage.bubble-preset-frosted .bubble-call,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-voice,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-call,
+.gc-page.bubble-preset-frosted .bubble-voice,
+.gc-page.bubble-preset-frosted .bubble-call {
+  max-width: min(74vw, 305px) !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+  min-height: 34px !important;
+}
+</style>
+
+
+
+<!-- === 2026-05-12 FIX: Frosted title color also controls heart-voice + offline text === -->
+<style id="monoFrostedTitleColorHeartOfflineFix">
+/* Make the frosted title color the single source for header UI text/icons. */
+#chatPage.chat-theme-frosted,
+#chatPage.bubble-preset-frosted {
+  --mono-frosted-title-ui-color: var(--theme-frosted-name-color, var(--mono-frosted-ui-color, #ffffff));
+}
+
+/* Header title/name + heart voice: override older inline/default styles. */
+#chatPage.chat-theme-frosted #headName,
+#chatPage.bubble-preset-frosted #headName,
+#chatPage.chat-theme-frosted #headHeartVoice,
+#chatPage.bubble-preset-frosted #headHeartVoice,
+#chatPage.chat-theme-frosted #headHeartVoiceInner,
+#chatPage.bubble-preset-frosted #headHeartVoiceInner,
+#chatPage.chat-theme-frosted #headHeartVoiceInner .hv-segment,
+#chatPage.bubble-preset-frosted #headHeartVoiceInner .hv-segment,
+#chatPage.chat-theme-frosted #headHeartVoiceInner .hv-tag,
+#chatPage.bubble-preset-frosted #headHeartVoiceInner .hv-tag,
+#chatPage.chat-theme-frosted #headHeartVoiceInner .hv-val,
+#chatPage.bubble-preset-frosted #headHeartVoiceInner .hv-val,
+#chatPage.chat-theme-frosted #headHeartVoiceInner .hv-dot,
+#chatPage.bubble-preset-frosted #headHeartVoiceInner .hv-dot,
+#chatPage.chat-theme-frosted #headHeartVoiceInner .hv-thought,
+#chatPage.bubble-preset-frosted #headHeartVoiceInner .hv-thought,
+#chatPage.chat-theme-frosted #headHeartVoiceInner .hv-heart,
+#chatPage.bubble-preset-frosted #headHeartVoiceInner .hv-heart,
+#chatPage.chat-theme-frosted #headHeartVoiceInner .hv-emotion-badge,
+#chatPage.bubble-preset-frosted #headHeartVoiceInner .hv-emotion-badge {
+  color: var(--mono-frosted-title-ui-color) !important;
+}
+
+/* Top buttons: includes the offline button text “线下”, contact button, back arrow and call icons. */
+#chatPage.chat-theme-frosted .chat-header button,
+#chatPage.bubble-preset-frosted .chat-header button,
+#chatPage.chat-theme-frosted .chat-header button *,
+#chatPage.bubble-preset-frosted .chat-header button *,
+#chatPage.chat-theme-frosted .chat-header i,
+#chatPage.bubble-preset-frosted .chat-header i,
+#chatPage.chat-theme-frosted #offlineModeBtn,
+#chatPage.bubble-preset-frosted #offlineModeBtn,
+#chatPage.chat-theme-frosted #offlineModeBtn *,
+#chatPage.bubble-preset-frosted #offlineModeBtn *,
+#chatPage.chat-theme-frosted #chatContactsBtn,
+#chatPage.bubble-preset-frosted #chatContactsBtn,
+#chatPage.chat-theme-frosted #chatContactsBtn *,
+#chatPage.bubble-preset-frosted #chatContactsBtn *,
+#chatPage.chat-theme-frosted .chat-header-back-btn,
+#chatPage.bubble-preset-frosted .chat-header-back-btn,
+#chatPage.chat-theme-frosted .chat-header-back-btn *,
+#chatPage.bubble-preset-frosted .chat-header-back-btn *,
+#chatPage.chat-theme-frosted .call-header-btn,
+#chatPage.bubble-preset-frosted .call-header-btn,
+#chatPage.chat-theme-frosted .call-header-btn *,
+#chatPage.bubble-preset-frosted .call-header-btn * {
+  color: var(--mono-frosted-title-ui-color) !important;
+  fill: currentColor !important;
+  stroke: currentColor !important;
+}
+
+/* Bottom composer buttons and plus panel icons/text also follow the same color. */
+#chatPage.chat-theme-frosted .chat-footer button,
+#chatPage.bubble-preset-frosted .chat-footer button,
+#chatPage.chat-theme-frosted .chat-footer button *,
+#chatPage.bubble-preset-frosted .chat-footer button *,
+#chatPage.chat-theme-frosted .chat-plus-btn,
+#chatPage.bubble-preset-frosted .chat-plus-btn,
+#chatPage.chat-theme-frosted .chat-plus-btn *,
+#chatPage.bubble-preset-frosted .chat-plus-btn *,
+#chatPage.chat-theme-frosted .chat-voice-record-btn,
+#chatPage.bubble-preset-frosted .chat-voice-record-btn,
+#chatPage.chat-theme-frosted .chat-voice-record-btn *,
+#chatPage.bubble-preset-frosted .chat-voice-record-btn *,
+#chatPage.chat-theme-frosted .plus-panel-btn,
+#chatPage.bubble-preset-frosted .plus-panel-btn,
+#chatPage.chat-theme-frosted .plus-panel-btn *,
+#chatPage.bubble-preset-frosted .plus-panel-btn * {
+  color: var(--mono-frosted-title-ui-color) !important;
+  fill: currentColor !important;
+  stroke: currentColor !important;
+}
+</style>
+<script id="monoFrostedTitleColorHeartOfflineFixScript">
+(function(){
+  function getCurrentFrostedColor(){
+    try {
+      var page = document.getElementById('chatPage');
+      var p = (typeof personas !== 'undefined' && typeof currentId !== 'undefined')
+        ? personas.find(function(x){ return x.id == currentId; })
+        : null;
+      var c = (p && p.frostedTitleColor) ||
+        ((page && page.style.getPropertyValue('--theme-frosted-name-color')) || '').trim() ||
+        '#ffffff';
+      return c;
+    } catch(e) { return '#ffffff'; }
+  }
+  function isFrostedPage(page){
+    return !!(page && (page.classList.contains('chat-theme-frosted') || page.classList.contains('bubble-preset-frosted')));
+  }
+  function forceFrostedTitleColor(){
+    try {
+      var page = document.getElementById('chatPage');
+      if (!isFrostedPage(page)) return;
+      var c = getCurrentFrostedColor();
+      page.style.setProperty('--theme-frosted-name-color', c);
+      page.style.setProperty('--mono-frosted-ui-color', c);
+      page.style.setProperty('--mono-frosted-title-ui-color', c);
+
+      var selectors = [
+        '#headName', '#headHeartVoice', '#headHeartVoiceInner', '#headHeartVoiceInner *',
+        '#offlineModeBtn', '#offlineModeBtn *',
+        '#chatContactsBtn', '#chatContactsBtn *',
+        '.chat-header-back-btn', '.chat-header-back-btn *',
+        '.call-header-btn', '.call-header-btn *',
+        '.chat-header button', '.chat-header button *', '.chat-footer button', '.chat-footer button *',
+        '.chat-plus-btn', '.chat-plus-btn *', '.chat-voice-record-btn', '.chat-voice-record-btn *',
+        '.plus-panel-btn', '.plus-panel-btn *'
+      ];
+      page.querySelectorAll(selectors.join(',')).forEach(function(el){
+        el.style.setProperty('color', c, 'important');
+        el.style.setProperty('fill', 'currentColor', 'important');
+        el.style.setProperty('stroke', 'currentColor', 'important');
+      });
+    } catch(e) {}
+  }
+  var oldApplyBubbleStyles = window.applyBubbleStyles;
+  if (typeof oldApplyBubbleStyles === 'function' && !oldApplyBubbleStyles.__frostedColorHeartOfflinePatched) {
+    var patched = function(p){
+      var r = oldApplyBubbleStyles.apply(this, arguments);
+      setTimeout(forceFrostedTitleColor, 0);
+      setTimeout(forceFrostedTitleColor, 80);
+      return r;
+    };
+    patched.__frostedColorHeartOfflinePatched = true;
+    window.applyBubbleStyles = patched;
+  }
+  var oldLivePreviewBubble = window.livePreviewBubble;
+  if (typeof oldLivePreviewBubble === 'function' && !oldLivePreviewBubble.__frostedColorHeartOfflinePatched) {
+    var patchedPreview = function(){
+      var r = oldLivePreviewBubble.apply(this, arguments);
+      setTimeout(forceFrostedTitleColor, 0);
+      return r;
+    };
+    patchedPreview.__frostedColorHeartOfflinePatched = true;
+    window.livePreviewBubble = patchedPreview;
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    forceFrostedTitleColor();
+    var input = document.getElementById('pFrostedTitleColor');
+    if (input) input.addEventListener('input', function(){ setTimeout(forceFrostedTitleColor, 0); });
+    var page = document.getElementById('chatPage');
+    if (page && window.MutationObserver) {
+      new MutationObserver(function(){ forceFrostedTitleColor(); }).observe(page, { childList:true, subtree:true, attributes:true, attributeFilter:['class','style'] });
+    }
+  });
+  window.addEventListener('load', forceFrostedTitleColor);
+  document.addEventListener('click', function(){ setTimeout(forceFrostedTitleColor, 0); }, true);
+  setInterval(forceFrostedTitleColor, 600);
+})();
+</script>
 </body>
 </html>

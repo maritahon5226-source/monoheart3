@@ -104630,100 +104630,162 @@ console.log('[ChatScreenshot] 聊天截图功能已加载：多张截图/记忆/
 </script>
 
 
-<!-- === 2026-05-12 FIX: Frosted title color must not connect to default theme === -->
-<script id="monoFrostedTitleColorThemeScopedFix">
+
+<!-- === 2026-05-12 FIX: Default theme breaks glass color link + empty chat composer stays at bottom === -->
+<style id="monoThemeScopedColorAndEmptyChatInputFix">
+/* Empty/default chat must always fill the chat page so the composer stays at the bottom. */
+body.chat-page-active #chatPage.page,
+body.chat-page-active #chatPage.page.active {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+body.chat-page-active #chatPage #chatBox,
+body.chat-page-active #chatPage.chat-theme-frosted #chatBox,
+body.chat-page-active #chatPage.bubble-preset-frosted #chatBox {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  height: auto !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  box-sizing: border-box !important;
+}
+body.chat-page-active #chatPage #typingArea,
+body.chat-page-active #chatPage #quotePreview,
+body.chat-page-active #chatPage #multiDeleteBar,
+body.chat-page-active #chatPage .chat-footer {
+  flex: 0 0 auto !important;
+}
+body.chat-page-active #chatPage .chat-footer {
+  margin-top: auto !important;
+}
+body.chat-page-active #chatPage #chatBox .empty-state {
+  min-height: 100% !important;
+  height: auto !important;
+}
+
+/* Default theme should not inherit glass title-color variables or inline-color leftovers. */
+#chatPage:not(.chat-theme-frosted):not(.bubble-preset-frosted) {
+  --theme-frosted-name-color: initial !important;
+  --mono-frosted-ui-color: initial !important;
+  --mono-frosted-title-ui-color: initial !important;
+}
+</style>
+<script id="monoThemeScopedColorAndEmptyChatInputFixScript">
 (function(){
-  function page(){ return document.getElementById('chatPage'); }
-  function isFrostedActive(p){
-    return !!(p && (p.classList.contains('chat-theme-frosted') || p.classList.contains('bubble-preset-frosted')));
-  }
-  function currentPersona(){
+  var colorTargetsSelector = [
+    '#headName', '#headHeartVoice', '#headHeartVoiceInner', '#headHeartVoiceInner *',
+    '#offlineModeBtn', '#offlineModeBtn *', '#chatContactsBtn', '#chatContactsBtn *',
+    '.chat-header-back-btn', '.chat-header-back-btn *', '.call-header-btn', '.call-header-btn *',
+    '.chat-header button', '.chat-header button *', '.chat-footer button', '.chat-footer button *',
+    '.chat-plus-btn', '.chat-plus-btn *', '.chat-voice-record-btn', '.chat-voice-record-btn *',
+    '.plus-panel-btn', '.plus-panel-btn *'
+  ].join(',');
+
+  function getCurrentPersona(){
     try {
       if (typeof personas === 'undefined' || typeof currentId === 'undefined') return null;
       return personas.find(function(x){ return String(x.id) === String(currentId); }) || null;
-    } catch(e){ return null; }
+    } catch(e) { return null; }
   }
-  function frostedColor(){
-    var p = currentPersona();
-    return (p && p.frostedTitleColor) ? p.frostedTitleColor : '#ffffff';
+  function isGlass(page){
+    return !!(page && (page.classList.contains('chat-theme-frosted') || page.classList.contains('bubble-preset-frosted')));
   }
-  var scopedSelectors = [
-    '#headName', '#headHeartVoice', '#headHeartVoiceInner', '#headHeartVoiceInner *',
-    '#offlineModeBtn', '#offlineModeBtn *',
-    '#chatContactsBtn', '#chatContactsBtn *',
-    '.chat-header-back-btn', '.chat-header-back-btn *',
-    '.call-header-btn', '.call-header-btn *',
-    '.chat-header button', '.chat-header button *',
-    '.chat-footer button', '.chat-footer button *',
-    '.chat-plus-btn', '.chat-plus-btn *',
-    '.chat-voice-record-btn', '.chat-voice-record-btn *',
-    '.plus-panel-btn', '.plus-panel-btn *'
-  ];
-  function clearFrostedInlineColor(p){
-    if (!p) return;
-    p.style.removeProperty('--theme-frosted-name-color');
-    p.style.removeProperty('--mono-frosted-ui-color');
-    p.style.removeProperty('--mono-frosted-title-ui-color');
-    p.removeAttribute('data-frosted-color-persona-id');
+  function clearGlassColorFromDefault(page){
+    if (!page || isGlass(page)) return;
+    page.style.removeProperty('--theme-frosted-name-color');
+    page.style.removeProperty('--mono-frosted-ui-color');
+    page.style.removeProperty('--mono-frosted-title-ui-color');
+    page.removeAttribute('data-frosted-color-persona-id');
+    page.querySelectorAll(colorTargetsSelector).forEach(function(el){
+      el.style.removeProperty('color');
+      el.style.removeProperty('fill');
+      el.style.removeProperty('stroke');
+    });
+  }
+  function applyGlassColorOnlyWhenGlass(page){
+    if (!page) return;
+    if (!isGlass(page)) { clearGlassColorFromDefault(page); return; }
+    var p = getCurrentPersona();
+    var c = (p && p.frostedTitleColor) ? p.frostedTitleColor : '#ffffff';
+    page.style.setProperty('--theme-frosted-name-color', c);
+    page.style.setProperty('--mono-frosted-ui-color', c);
+    page.style.setProperty('--mono-frosted-title-ui-color', c);
+    page.setAttribute('data-frosted-color-persona-id', (typeof currentId !== 'undefined' && currentId != null) ? String(currentId) : '');
+    page.querySelectorAll(colorTargetsSelector).forEach(function(el){
+      el.style.setProperty('color', c, 'important');
+      el.style.setProperty('fill', 'currentColor', 'important');
+      el.style.setProperty('stroke', 'currentColor', 'important');
+    });
+  }
+  function keepComposerAtBottom(){
     try {
-      p.querySelectorAll(scopedSelectors.join(',')).forEach(function(el){
-        el.style.removeProperty('color');
-        el.style.removeProperty('fill');
-        el.style.removeProperty('stroke');
-      });
+      var page = document.getElementById('chatPage');
+      if (!page || page.style.display === 'none') return;
+      page.style.display = 'flex';
+      page.style.flexDirection = 'column';
+      page.style.overflow = 'hidden';
+      page.style.minHeight = '0';
+      var chatBox = document.getElementById('chatBox');
+      if (chatBox) {
+        chatBox.style.flex = '1 1 0%';
+        chatBox.style.minHeight = '0';
+        chatBox.style.height = 'auto';
+        chatBox.style.overflowY = 'auto';
+      }
+      var footer = page.querySelector('.chat-footer');
+      if (footer) {
+        footer.style.flex = '0 0 auto';
+        footer.style.marginTop = 'auto';
+        footer.style.position = 'relative';
+        footer.style.bottom = 'auto';
+        footer.style.transform = 'none';
+      }
     } catch(e) {}
   }
-  function applyOnlyWhenGlass(){
-    var p = page();
-    if (!p) return;
-    if (!isFrostedActive(p)) {
-      clearFrostedInlineColor(p);
-      return;
-    }
-    var c = frostedColor();
-    p.setAttribute('data-frosted-color-persona-id', (typeof currentId !== 'undefined' && currentId != null) ? String(currentId) : '');
-    p.style.setProperty('--theme-frosted-name-color', c);
-    p.style.setProperty('--mono-frosted-ui-color', c);
-    p.style.setProperty('--mono-frosted-title-ui-color', c);
-    try {
-      p.querySelectorAll(scopedSelectors.join(',')).forEach(function(el){
-        el.style.setProperty('color', c, 'important');
-        el.style.setProperty('fill', 'currentColor', 'important');
-        el.style.setProperty('stroke', 'currentColor', 'important');
-      });
-    } catch(e) {}
+  function runFix(){
+    var page = document.getElementById('chatPage');
+    applyGlassColorOnlyWhenGlass(page);
+    keepComposerAtBottom();
   }
-  function run(){
-    applyOnlyWhenGlass();
-    setTimeout(applyOnlyWhenGlass, 0);
-    setTimeout(applyOnlyWhenGlass, 80);
-    setTimeout(applyOnlyWhenGlass, 220);
-  }
-  ['selectPersona','applyBubbleStyles','livePreviewBubble','renderChat','openChat','savePersona','savePersonaSettings'].forEach(function(name){
-    var old = window[name];
-    if (typeof old === 'function' && !old.__frostedThemeScopedPatched) {
-      var patched = function(){
-        var r = old.apply(this, arguments);
-        run();
-        return r;
-      };
-      patched.__frostedThemeScopedPatched = true;
-      window[name] = patched;
-    }
+  window.monoThemeScopedColorAndEmptyInputFix = runFix;
+
+  ['DOMContentLoaded','load','resize','orientationchange'].forEach(function(ev){
+    window.addEventListener(ev, function(){ setTimeout(runFix, 0); setTimeout(runFix, 120); }, {passive:true});
   });
-  document.addEventListener('DOMContentLoaded', function(){
-    run();
-    var p = page();
-    if (p && window.MutationObserver) {
-      new MutationObserver(function(){ run(); }).observe(p, {attributes:true, attributeFilter:['class','style'], childList:true, subtree:true});
-    }
-  });
-  window.addEventListener('load', run);
-  document.addEventListener('click', function(){ setTimeout(applyOnlyWhenGlass, 0); }, true);
+  document.addEventListener('click', function(){ setTimeout(runFix, 0); setTimeout(runFix, 120); }, true);
   document.addEventListener('input', function(e){
-    if (e && e.target && (e.target.id === 'pFrostedTitleColor' || e.target.name === 'chatTheme' || e.target.name === 'bubblePreset')) run();
+    if (e && e.target && e.target.id === 'pFrostedTitleColor') setTimeout(runFix, 0);
   }, true);
-  setInterval(applyOnlyWhenGlass, 500);
+  if (window.MutationObserver) {
+    document.addEventListener('DOMContentLoaded', function(){
+      var page = document.getElementById('chatPage');
+      if (page) new MutationObserver(function(){ setTimeout(runFix, 0); }).observe(page, {childList:true, subtree:true, attributes:true, attributeFilter:['class','style']});
+      if (document.body) new MutationObserver(function(){ setTimeout(runFix, 0); }).observe(document.body, {attributes:true, attributeFilter:['class']});
+    });
+  }
+  var oldApplyBubbleStyles = window.applyBubbleStyles;
+  if (typeof oldApplyBubbleStyles === 'function' && !oldApplyBubbleStyles.__themeScopedColorEmptyInputFix) {
+    var patchedApply = function(){
+      var r = oldApplyBubbleStyles.apply(this, arguments);
+      setTimeout(runFix, 0); setTimeout(runFix, 120);
+      return r;
+    };
+    patchedApply.__themeScopedColorEmptyInputFix = true;
+    window.applyBubbleStyles = patchedApply;
+  }
+  var oldRenderChat = window.renderChat;
+  if (typeof oldRenderChat === 'function' && !oldRenderChat.__themeScopedColorEmptyInputFix) {
+    var patchedRender = function(){
+      var r = oldRenderChat.apply(this, arguments);
+      setTimeout(runFix, 0); setTimeout(runFix, 120);
+      return r;
+    };
+    patchedRender.__themeScopedColorEmptyInputFix = true;
+    window.renderChat = patchedRender;
+  }
+  setInterval(runFix, 700);
 })();
 </script>
 

@@ -41,7 +41,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Mono 5.4ver</title>
 <!-- PWA Meta Tags -->
-<meta name="theme-color" content="#1a1a1a">
+<meta name="theme-color" content="#ffffff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -18655,6 +18655,30 @@ body.editor-modal-open #chatPage .app-back-bar {
   z-index: 20; border-radius: 2px 8px 8px 2px;
 }
 
+
+
+/* ===== FIX: Custom chat background must show in default theme too =====
+#chatPage.mono-has-custom-bg #chatBox,
+#chatPage.mono-has-custom-bg .chat-messages {
+  background-image: var(--mono-chat-bg-image) !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  background-repeat: no-repeat !important;
+}
+#chatPage.mono-has-custom-bg.bubble-preset-wechat #chatBox,
+#chatPage.mono-has-custom-bg.bubble-preset-imessage #chatBox,
+#chatPage.mono-has-custom-bg.bubble-preset-line #chatBox,
+#chatPage.mono-has-custom-bg.bubble-preset-retro #chatBox,
+#chatPage.mono-has-custom-bg.bubble-preset-journal #chatBox {
+  background-image: var(--mono-chat-bg-image) !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  background-repeat: no-repeat !important;
+}
+#chatPage.mono-has-custom-bg:not(.chat-theme-frosted) #chatBox::before,
+#chatPage.mono-has-custom-bg:not(.chat-theme-frosted) .chat-messages::before {
+  content: none !important;
+}
 </style>
 <style>
 /* ===== Secondary API Management Styles ===== */
@@ -19519,7 +19543,7 @@ body.chat-page-active.chat-theme-frosted-active .phone-container,
 body.chat-page-active.chat-preset-frosted-active .phone-container,
 body.chat-page-active.chat-theme-frosted-active .phone-screen,
 body.chat-page-active.chat-preset-frosted-active .phone-screen {
-  background-color: #000 !important;
+  background-color: #ffffff !important;
 }
 #chatPage.chat-theme-frosted #inputBar.border-b,
 #chatPage.bubble-preset-frosted #inputBar.border-b,
@@ -19627,7 +19651,7 @@ body.chat-page-active.chat-preset-frosted-active .phone-screen {
 body.chat-page-active,
 body.chat-page-active .phone-container,
 body.chat-page-active .phone-screen {
-  background-color: #000 !important;
+  background-color: #ffffff !important;
 }
 
 body.chat-page-active #chatPage.page {
@@ -19768,6 +19792,31 @@ body.chat-page-active #chatPage #inputBar {
   });
 })();
 </script>
+
+<!-- === 2026-05-12 IOS NON-FULLSCREEN WHITE OUTER BACKGROUND FIX === -->
+<style id="monoIOSNonFullscreenWhiteBgFix">
+/* When iOS fullscreen/PWA mode is turned off, Safari shows the real webpage outside the phone UI.
+   Keep that outer layer white like the home screen instead of exposing the old black chat fallback. */
+html,
+body,
+body.chat-page-active,
+body.chat-page-active .phone-container,
+body.chat-page-active .phone-screen {
+  background-color: #ffffff !important;
+}
+
+/* Do not force a black fallback behind the chat page in browser mode. */
+body:not(.ios-fullscreen).chat-page-active #chatPage.page {
+  background-color: #ffffff;
+}
+
+/* Glass chat still keeps its own image/blur layer; only the outside/fallback background is white. */
+body:not(.ios-fullscreen).chat-page-active.chat-theme-frosted-active #chatPage.chat-theme-frosted,
+body:not(.ios-fullscreen).chat-page-active.chat-preset-frosted-active #chatPage.bubble-preset-frosted {
+  background-color: transparent !important;
+}
+</style>
+
 </head>
 <body>
 <!-- In-App Notification Toast -->
@@ -38556,16 +38605,27 @@ function openChatBgEditor() {
 }
 function handleChatBgSelect(input) {
   if (input.files && input.files[0]) {
+    const file = input.files[0];
     const reader = new FileReader();
     reader.onload = async function(e) {
-      const compressed = await compressImage(e.target.result, 800, 0.75);
-      document.getElementById('pChatBgImg').src = compressed;
-      document.getElementById('pChatBgImg').style.display = 'block';
-      document.getElementById('pChatBgPlaceholder').style.display = 'none';
+      let compressed = e.target.result;
+      try { compressed = await compressImage(e.target.result, 1200, 0.82); } catch(err) { compressed = e.target.result; }
+      const imgEl = document.getElementById('pChatBgImg');
+      if (imgEl) {
+        imgEl.src = compressed;
+        imgEl.style.display = 'block';
+      }
+      const ph = document.getElementById('pChatBgPlaceholder');
+      if (ph) ph.style.display = 'none';
       const p = personas.find(x => x.id == currentId);
-      if (p) { p.chatBgImage = compressed; applyChatBackground(p); saveData(); }
+      if (p) {
+        p.chatBgImage = compressed;
+        applyChatBackground(p);
+        saveData();
+      }
+      if (input) input.value = '';
     };
-    reader.readAsDataURL(input.files[0]);
+    reader.readAsDataURL(file);
   }
 }
 function resetChatBg() {
@@ -38576,28 +38636,35 @@ function resetChatBg() {
   if (p) { p.chatBgImage = ''; applyChatBackground(p); saveData(); }
   alert('\u804a\u5929\u5ba4\u80cc\u666f\u5df2\u91cd\u7f6e\u70ba\u9810\u8a2d\uff01');
 }
+function monoCssUrl(value) {
+  value = String(value || '');
+  return 'url("' + value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n|\r/g, '') + '")';
+}
 function applyChatBackground(p) {
   const chatBox = document.getElementById('chatBox');
   const chatPage = document.getElementById('chatPage');
   if (!chatBox) return;
-  // chatBgImage may be stored separately (as '__ref__') or inline
+  // chatBgImage may be stored separately (as '__ref__') or inline.
+  // Read through localStorage proxy so multi-world + IndexedDB cache both work.
   const bg = p && (p.chatBgImage === '__ref__'
     ? localStorage.getItem('mono_bg_' + p.id) || ''
     : (p.chatBgImage || ''));
+  const cssBg = bg ? monoCssUrl(bg) : '';
   if (chatPage) {
-    if (bg) chatPage.style.setProperty('--mono-chat-bg-image', 'url("' + bg + '")');
+    chatPage.classList.toggle('mono-has-custom-bg', !!bg);
+    if (bg) chatPage.style.setProperty('--mono-chat-bg-image', cssBg);
     else chatPage.style.removeProperty('--mono-chat-bg-image');
   }
   if (bg) {
-    chatBox.style.backgroundImage = 'url(' + bg + ')';
-    chatBox.style.backgroundSize = 'cover';
-    chatBox.style.backgroundPosition = 'center';
-    chatBox.style.backgroundRepeat = 'no-repeat';
+    chatBox.style.setProperty('background-image', cssBg, 'important');
+    chatBox.style.setProperty('background-size', 'cover', 'important');
+    chatBox.style.setProperty('background-position', 'center center', 'important');
+    chatBox.style.setProperty('background-repeat', 'no-repeat', 'important');
   } else {
-    chatBox.style.backgroundImage = '';
-    chatBox.style.backgroundSize = '';
-    chatBox.style.backgroundPosition = '';
-    chatBox.style.backgroundRepeat = '';
+    chatBox.style.removeProperty('background-image');
+    chatBox.style.removeProperty('background-size');
+    chatBox.style.removeProperty('background-position');
+    chatBox.style.removeProperty('background-repeat');
   }
 }
 // ===================== NEW: Custom System Font =====================

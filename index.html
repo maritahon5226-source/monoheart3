@@ -18668,6 +18668,9 @@ body.editor-modal-open #chatPage .app-back-bar {
         <button class="loc-rel-btn" onclick="openLocSettingsModal()" style="font-size:9px;">
           <i class="fas fa-cog" style="margin-right:2px;"></i>地区
         </button>
+        <button class="loc-rel-btn" id="locAutoUpdateToggleBtn" onclick="openLocAutoUpdateModal()" style="font-size:9px;">
+          <i class="fas fa-magic" style="margin-right:2px;"></i>自动
+        </button>
         <button class="loc-rel-btn" onclick="openLocBindModal()" style="font-size:9px;">
           <i class="fas fa-link" style="margin-right:2px;"></i>绑定
         </button>
@@ -18772,6 +18775,24 @@ body.editor-modal-open #chatPage .app-back-bar {
           <!-- Per-character region rows injected by JS -->
         </div>
         <div style="font-size:9px;color:#bbb;padding:2px 0 4px;text-align:center;">保存后地图將自动更新</div>
+      </div>
+    </div>
+    <!-- Auto-update modal -->
+    <div class="loc-modal-overlay" id="locAutoUpdateModal">
+      <div class="loc-modal-box">
+        <div class="loc-modal-title">
+          自动更新行踪
+          <span class="loc-modal-close" onclick="closeLocAutoUpdateModal()"><i class="fas fa-times"></i></span>
+        </div>
+        <div style="font-size:10px;color:#888;margin-bottom:12px;line-height:1.6;">
+          选择角色后，系统将在你<b>上线时自动补全离线期间</b>的行踪，并<b>每30分钟</b>自动更新最新行踪。
+        </div>
+        <div id="locAutoUpdatePersonaList">
+          <div class="loc-empty-msg">请先绑定角色</div>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end;">
+          <button class="loc-rel-btn" onclick="saveLocAutoUpdateSettings()" style="font-size:10px;padding:6px 14px;background:#1a1a1a;color:#fff;border-radius:8px;">保存</button>
+        </div>
       </div>
     </div>
     <!-- Bind relation modal -->
@@ -101996,6 +102017,232 @@ console.log('[ChatScreenshot] 聊天截图功能已加载：多张截图/记忆/
 })();
 </script>
 <!-- ==================== 聊天截图功能 END ==================== -->
+
+<!-- ==================== 情侶定位自动更新功能 START ==================== -->
+<script>
+(function() {
+'use strict';
+
+// ─── Storage key ───────────────────────────────────────────────────────────
+var AUTO_KEY = 'mono_loc_auto_update_ids'; // stores JSON array of personaId strings
+
+// ─── State ─────────────────────────────────────────────────────────────────
+var _autoUpdateIds = [];      // personaIds that have auto-update enabled
+var _autoTimer = null;        // setInterval handle
+var _autoRunning = false;     // prevent concurrent runs
+
+// ─── Load / Save ───────────────────────────────────────────────────────────
+function _loadAutoIds() {
+  try { _autoUpdateIds = JSON.parse(localStorage.getItem(AUTO_KEY) || '[]'); } catch(e) { _autoUpdateIds = []; }
+}
+function _saveAutoIds() {
+  localStorage.setItem(AUTO_KEY, JSON.stringify(_autoUpdateIds));
+}
+
+// ─── Header button styling helper ──────────────────────────────────────────
+function _refreshAutoBtn() {
+  var btn = document.getElementById('locAutoUpdateToggleBtn');
+  if (!btn) return;
+  if (_autoUpdateIds.length > 0) {
+    btn.style.background = '#1a1a1a';
+    btn.style.color = '#fff';
+  } else {
+    btn.style.background = '';
+    btn.style.color = '';
+  }
+}
+
+// ─── Modal open / close ────────────────────────────────────────────────────
+window.openLocAutoUpdateModal = function() {
+  _loadAutoIds();
+  var list = document.getElementById('locAutoUpdatePersonaList');
+  var rels = (typeof locRelations !== 'undefined') ? locRelations : [];
+  var ps   = (typeof personas   !== 'undefined') ? personas   : [];
+
+  if (!rels || !rels.length) {
+    list.innerHTML = '<div class="loc-empty-msg">请先绑定角色</div>';
+  } else {
+    list.innerHTML = rels.map(function(rel) {
+      var p = ps.find(function(x) { return x.id == rel.personaId; });
+      if (!p) return '';
+      var checked = _autoUpdateIds.indexOf(String(rel.personaId)) !== -1;
+      var avatarHtml = p.avatar
+        ? '<img src="' + p.avatar + '" onerror="this.style.display=\'none\'" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:1px solid #eee;flex-shrink:0;">'
+        : '<div style="width:34px;height:34px;border-radius:50%;background:#ddd;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">' + (p.name||'?')[0] + '</div>';
+      return '<label style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f0f0f0;cursor:pointer;">'
+        + avatarHtml
+        + '<div style="flex:1;min-width:0;">'
+        +   '<div style="font-size:12px;font-weight:700;color:#1a1a1a;">' + p.name + '</div>'
+        +   '<div style="font-size:10px;color:#aaa;">' + (rel.type==='couple'?'💑 情侶':'👥 朋友') + '</div>'
+        + '</div>'
+        + '<input type="checkbox" data-pid="' + rel.personaId + '" '
+        +   (checked ? 'checked' : '')
+        +   ' style="width:18px;height:18px;accent-color:#1a1a1a;cursor:pointer;flex-shrink:0;">'
+        + '</label>';
+    }).join('');
+  }
+  document.getElementById('locAutoUpdateModal').classList.add('open');
+};
+
+window.closeLocAutoUpdateModal = function() {
+  document.getElementById('locAutoUpdateModal').classList.remove('open');
+};
+
+window.saveLocAutoUpdateSettings = function() {
+  var boxes = document.querySelectorAll('#locAutoUpdatePersonaList input[type="checkbox"]');
+  _autoUpdateIds = [];
+  boxes.forEach(function(cb) { if (cb.checked) _autoUpdateIds.push(String(cb.dataset.pid)); });
+  _saveAutoIds();
+  _refreshAutoBtn();
+  closeLocAutoUpdateModal();
+  // Immediately run auto-update for newly enabled characters
+  _runAutoUpdate(true);
+  // Ensure timer is running
+  _startAutoTimer();
+};
+
+// ─── Core auto-update logic ─────────────────────────────────────────────────
+// Parse HH:MM to minutes-since-midnight
+function _timeToMin(str) {
+  if (!str) return 0;
+  var parts = String(str).split(':');
+  return parseInt(parts[0]||0)*60 + parseInt(parts[1]||0);
+}
+
+// Current time as HH:MM string
+function _nowHHMM() {
+  var d = new Date();
+  return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+}
+
+// Round current time DOWN to nearest 30-min slot, return as HH:MM
+function _currentSlot() {
+  var d = new Date();
+  var m = d.getHours()*60 + Math.floor(d.getMinutes()/30)*30;
+  return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0');
+}
+
+// Main auto-update runner
+// catchUp=true → also fill offline gap; catchUp=false → only fill up to now if last slot is stale
+async function _runAutoUpdate(catchUp) {
+  if (_autoRunning) return;
+  _autoRunning = true;
+  try {
+    _loadAutoIds();
+    if (!_autoUpdateIds.length) return;
+
+    var rels = (typeof locRelations !== 'undefined') ? locRelations : [];
+    var ps   = (typeof personas    !== 'undefined') ? personas    : [];
+    if (!rels || !rels.length) return;
+
+    // Ensure today's date check
+    if (typeof _checkMidnightReset === 'function') _checkMidnightReset();
+
+    var nowSlot = _currentSlot(); // e.g. "14:30"
+    var changed = false;
+
+    for (var i = 0; i < _autoUpdateIds.length; i++) {
+      var pid = _autoUpdateIds[i];
+      var rel = rels.find(function(r) { return String(r.personaId) === pid; });
+      if (!rel) continue;
+      var p = ps.find(function(x) { return String(x.id) === pid; });
+      if (!p) continue;
+
+      var region = (typeof locCharRegions !== 'undefined' && locCharRegions[p.id])
+                    || (typeof locUserRegionName !== 'undefined' ? locUserRegionName : '') || '未知地区';
+      var existing = (typeof locDailyTraces !== 'undefined' && locDailyTraces[p.id]) ? locDailyTraces[p.id] : [];
+
+      var needsUpdate = false;
+      if (existing.length === 0) {
+        needsUpdate = true; // no traces at all
+      } else {
+        var lastTime = existing[existing.length-1].time || '00:00';
+        // needs update if last slot is at least 30 min before current slot
+        needsUpdate = (_timeToMin(nowSlot) - _timeToMin(lastTime)) >= 30;
+      }
+
+      if (!needsUpdate) continue;
+
+      var newTraces = [];
+      try {
+        if (existing.length === 0) {
+          if (typeof generateFullDayTrace === 'function') {
+            newTraces = await generateFullDayTrace(p, region);
+          }
+        } else {
+          var lastTime2 = existing[existing.length-1].time || '00:00';
+          if (typeof generateIncrementalTrace === 'function') {
+            newTraces = await generateIncrementalTrace(p, region, lastTime2);
+          }
+        }
+      } catch(e) { newTraces = []; }
+
+      if (newTraces && newTraces.length > 0) {
+        if (typeof locDailyTraces !== 'undefined') {
+          locDailyTraces[p.id] = existing.concat(newTraces);
+        }
+        var last = newTraces[newTraces.length-1];
+        if (typeof locCharLocations !== 'undefined') {
+          if (!locCharLocations[p.id]) locCharLocations[p.id] = [];
+          locCharLocations[p.id].push({ address: last.place, time: new Date().toISOString() });
+          if (locCharLocations[p.id].length > 48) locCharLocations[p.id] = locCharLocations[p.id].slice(-48);
+        }
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      if (typeof saveLocData === 'function') saveLocData();
+      if (typeof renderLocTrace === 'function') renderLocTrace();
+      if (typeof locCurrentTab !== 'undefined' && locCurrentTab === 'map' && typeof _renderBotMap === 'function') _renderBotMap();
+      if (typeof renderLocRelation === 'function') renderLocRelation();
+    }
+  } catch(e) {
+    console.warn('[LocAutoUpdate] error:', e);
+  } finally {
+    _autoRunning = false;
+  }
+}
+
+// ─── 30-minute interval timer ───────────────────────────────────────────────
+function _startAutoTimer() {
+  if (_autoTimer) clearInterval(_autoTimer);
+  _autoTimer = setInterval(function() {
+    if (_autoUpdateIds.length > 0) {
+      _runAutoUpdate(false);
+    }
+  }, 30 * 60 * 1000); // every 30 minutes
+}
+
+// ─── Hook into openLocationApp for offline catch-up ────────────────────────
+(function() {
+  var _origOpen = typeof openLocationApp === 'function' ? openLocationApp : null;
+  window.openLocationApp = function() {
+    if (_origOpen) _origOpen.apply(this, arguments);
+    // After normal open, run offline catch-up asynchronously
+    _loadAutoIds();
+    _refreshAutoBtn();
+    if (_autoUpdateIds.length > 0) {
+      setTimeout(function() { _runAutoUpdate(true); }, 400);
+    }
+  };
+})();
+
+// ─── Init on page load ──────────────────────────────────────────────────────
+(function _initAutoUpdate() {
+  _loadAutoIds();
+  _refreshAutoBtn();
+  _startAutoTimer();
+  // Run catch-up after a short delay to ensure all globals are ready
+  if (_autoUpdateIds.length > 0) {
+    setTimeout(function() { _runAutoUpdate(true); }, 2000);
+  }
+})();
+
+console.log('[LocAutoUpdate] 情侣定位自动更新功能已加载 ✓');
+})();
+</script>
+<!-- ==================== 情侶定位自动更新功能 END ==================== -->
 
 </body>
 </html>

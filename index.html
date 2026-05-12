@@ -24365,6 +24365,29 @@ body:not(.ios-fullscreen).chat-page-active.chat-preset-frosted-active #chatPage.
           <input type="color" id="pFrostedTitleColor" value="#ffffff" oninput="livePreviewBubble()" style="width:38px;height:32px;border:1px solid #ddd;border-radius:8px;padding:2px;background:#fff;cursor:pointer;">
           <div id="pFrostedTitleColorPreview" style="flex:1;padding:8px 12px;border-radius:999px;background:linear-gradient(180deg,#a8c5cd 0%,#8ea8b0 100%);color:#ffffff;font-size:12px;font-weight:700;text-align:center;text-shadow:0 1px 6px rgba(0,0,0,0.18);">角色名字预览</div>
         </div>
+        <div id="frostedMessageColorControls" style="margin-top:12px;padding:12px;border:1px solid rgba(0,0,0,0.06);border-radius:12px;background:#fff;">
+          <div style="font-size:10px;font-weight:800;letter-spacing:0.7px;text-transform:uppercase;color:#666;margin-bottom:8px;">玻璃主题信息颜色 Message Bubble Colors</div>
+          <p style="font-size:10px;color:#999;line-height:1.6;margin:0 0 10px;">只影响玻璃聊天室的默认信息气泡；用户和角色的文字颜色、气泡颜色可以分开设置。</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:10px;color:#666;background:#fafafa;border:1px solid #eee;border-radius:10px;padding:8px;">角色文字<input type="color" id="pFrostedAiTextColor" value="#ffffff" oninput="livePreviewBubble()" style="width:34px;height:28px;border:1px solid #ddd;border-radius:7px;padding:2px;background:#fff;cursor:pointer;"></label>
+            <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:10px;color:#666;background:#fafafa;border:1px solid #eee;border-radius:10px;padding:8px;">角色气泡<input type="color" id="pFrostedAiBubbleColor" value="#ffffff" oninput="livePreviewBubble()" style="width:34px;height:28px;border:1px solid #ddd;border-radius:7px;padding:2px;background:#fff;cursor:pointer;"></label>
+            <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:10px;color:#666;background:#fafafa;border:1px solid #eee;border-radius:10px;padding:8px;">用户文字<input type="color" id="pFrostedUserTextColor" value="#ffffff" oninput="livePreviewBubble()" style="width:34px;height:28px;border:1px solid #ddd;border-radius:7px;padding:2px;background:#fff;cursor:pointer;"></label>
+            <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:10px;color:#666;background:#fafafa;border:1px solid #eee;border-radius:10px;padding:8px;">用户气泡<input type="color" id="pFrostedUserBubbleColor" value="#bed6db" oninput="livePreviewBubble()" style="width:34px;height:28px;border:1px solid #ddd;border-radius:7px;padding:2px;background:#fff;cursor:pointer;"></label>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:10px;align-items:flex-end;">
+            <div id="pFrostedAiBubblePreview" style="max-width:58%;padding:7px 14px;border-radius:18px;background:rgba(255,255,255,.28);color:#fff;font-size:11px;line-height:1.4;text-shadow:0 1px 5px rgba(0,0,0,.18);">角色气泡预览</div>
+            <div style="flex:1;"></div>
+            <div id="pFrostedUserBubblePreview" style="max-width:58%;padding:7px 14px;border-radius:18px;background:rgba(190,214,219,.28);color:#fff;font-size:11px;line-height:1.4;text-shadow:0 1px 5px rgba(0,0,0,.18);">用户气泡预览</div>
+          </div>
+          <div id="frostedBubbleBlurControl" style="margin-top:12px;padding:10px;border:1px solid #eee;border-radius:10px;background:#fafafa;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;">
+              <span style="font-size:10px;font-weight:800;color:#666;letter-spacing:.5px;">信息气泡模糊度 Bubble Blur</span>
+              <span id="pFrostedBubbleBlurValue" style="font-size:10px;color:#888;font-weight:700;min-width:42px;text-align:right;">8px</span>
+            </div>
+            <input type="range" id="pFrostedBubbleBlur" min="0" max="18" step="1" value="8" oninput="livePreviewBubble()" style="width:100%;accent-color:#1a1a1a;">
+            <p style="font-size:10px;color:#999;line-height:1.55;margin:6px 0 0;">数值越高，气泡越有玻璃模糊感；数值越低，气泡越清透。</p>
+          </div>
+        </div>
         <label style="display:flex;align-items:flex-start;gap:8px;margin-top:12px;padding:10px 12px;border:1px solid rgba(0,0,0,0.06);border-radius:10px;background:#fff;cursor:pointer;font-size:11px;color:#555;line-height:1.55;">
           <input type="checkbox" id="pFrostedHideMessageMeta" onchange="livePreviewBubble()" style="width:16px;height:16px;accent-color:#1a1a1a;margin-top:1px;flex-shrink:0;">
           <span>隐藏聊天室信息旁的头像和名字
@@ -30415,6 +30438,13 @@ function openEditor(isEdit=false) {
     if (document.getElementById('pFrostedTitleColor')) document.getElementById('pFrostedTitleColor').value = p.frostedTitleColor || '#ffffff';
     if (document.getElementById('pFrostedTitleColorPreview')) document.getElementById('pFrostedTitleColorPreview').style.color = p.frostedTitleColor || '#ffffff';
     if (document.getElementById('pFrostedHideMessageMeta')) document.getElementById('pFrostedHideMessageMeta').checked = !!p.frostedHideMessageMeta;
+    if (document.getElementById('pFrostedAiTextColor')) document.getElementById('pFrostedAiTextColor').value = p.frostedAiTextColor || '#ffffff';
+    if (document.getElementById('pFrostedAiBubbleColor')) document.getElementById('pFrostedAiBubbleColor').value = p.frostedAiBubbleColor || '#ffffff';
+    if (document.getElementById('pFrostedUserTextColor')) document.getElementById('pFrostedUserTextColor').value = p.frostedUserTextColor || '#ffffff';
+    if (document.getElementById('pFrostedUserBubbleColor')) document.getElementById('pFrostedUserBubbleColor').value = p.frostedUserBubbleColor || '#bed6db';
+    if (document.getElementById('pFrostedBubbleBlur')) document.getElementById('pFrostedBubbleBlur').value = (p.frostedBubbleBlur != null ? p.frostedBubbleBlur : 8);
+    if (document.getElementById('pFrostedBubbleBlurValue')) document.getElementById('pFrostedBubbleBlurValue').textContent = (p.frostedBubbleBlur != null ? p.frostedBubbleBlur : 8) + 'px';
+    if (typeof monoUpdateFrostedMessageColorPreview === 'function') monoUpdateFrostedMessageColorPreview();
     const _bgForEditor = p.chatBgImage === '__ref__'
       ? (localStorage.getItem('mono_bg_' + p.id) || '')
       : (p.chatBgImage || '');
@@ -30475,6 +30505,11 @@ function savePersona() {
   const selectedChatTheme = normalizeChatTheme((document.getElementById('pChatTheme') || {}).value || 'default');
   const selectedFrostedTitleColor = (document.getElementById('pFrostedTitleColor') || {}).value || '#ffffff';
   const selectedFrostedHideMessageMeta = !!(document.getElementById('pFrostedHideMessageMeta') && document.getElementById('pFrostedHideMessageMeta').checked);
+  const selectedFrostedAiTextColor = (document.getElementById('pFrostedAiTextColor') || {}).value || '#ffffff';
+  const selectedFrostedAiBubbleColor = (document.getElementById('pFrostedAiBubbleColor') || {}).value || '#ffffff';
+  const selectedFrostedUserTextColor = (document.getElementById('pFrostedUserTextColor') || {}).value || '#ffffff';
+  const selectedFrostedUserBubbleColor = (document.getElementById('pFrostedUserBubbleColor') || {}).value || '#bed6db';
+  const selectedFrostedBubbleBlur = Math.max(0, Math.min(18, parseInt((document.getElementById('pFrostedBubbleBlur') || {}).value, 10) || 0));
   const _saveOshiBlue = (document.getElementById('pOshiGlowBlue') || {}).value || '#cfd3d8';
   const _saveOshiPink = (document.getElementById('pOshiGlowPink') || {}).value || '#e5e5e5';
   const _saveOshiShowHeart = !document.getElementById('pOshiGlowShowHeart') || document.getElementById('pOshiGlowShowHeart').checked;
@@ -30485,11 +30520,11 @@ function savePersona() {
     const p = personas.find(x=>x.id==currentId);
     const _saveAiColor = document.getElementById('pBubbleAiFontColorEnabled').checked ? (document.getElementById('pBubbleAiFontColor').value||'') : '';
     const _saveUserColor = document.getElementById('pBubbleUserFontColorEnabled').checked ? (document.getElementById('pBubbleUserFontColor').value||'') : '';
-    if(p){ p.name=name; p.nickname=document.getElementById('pNick').value.trim(); p.userMaskId=selectedUserMaskId; p.persona=document.getElementById('pPersona').value.trim()||'一个简单的角色设定'; p.avatar=avatar; p.minReplyCount=minReply; p.maxReplyCount=maxReply; p.temperature=temperature; p.timeAwareness=timeAwareness; p.allowSticker=allowSticker; p.stickerLibraryIds=stickerLibraryIds; p.allowVoice=allowVoice; p.voiceId=voiceId; p.voiceSpeed=voiceSpeed; p.voiceLang=voiceLang; p.outputLang=outputLang; p.enableTranslation=enableTranslation; p.translateLang=translateLang; p.voiceFreq=voiceFreq; p.memoryCount=parseInt(document.getElementById('pMemoryCount').value)||100; p.autoMsg=document.getElementById('pAutoMsg').checked; p.autoMsgMinInterval=parsedAutoMsgMin; p.autoMsgMaxInterval=parsedAutoMsgMax; p.autoDiary=document.getElementById('pAutoDiary').checked; p.autoDiaryTime=document.getElementById('pAutoDiaryTime').value||'21:00'; p.diaryIncludeOfflineMemory=!document.getElementById('monoDiaryOfflineSetting') || document.getElementById('monoDiaryOfflineSetting').checked; p.autoMoments=document.getElementById('pAutoMoments').checked; p.autoMomentsTime=document.getElementById('pAutoMomentsTime').value||'20:00'; p.momentsIncludeOfflineMemory=!document.getElementById('monoMomentsOfflineSetting') || document.getElementById('monoMomentsOfflineSetting').checked; p.autoSummary=document.getElementById('pAutoSummary').checked; p.autoSummaryInterval=parseInt(document.getElementById('pAutoSummaryInterval').value)||20; p.bubbleAiCss=document.getElementById('pBubbleAiCss').value.trim(); p.bubbleUserCss=document.getElementById('pBubbleUserCss').value.trim(); p.chatRoomCustomCss=(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(); p.bubbleAiFontColor=_saveAiColor; p.bubbleUserFontColor=_saveUserColor; p.bubblePreset=(document.getElementById('pBubblePreset')||{}).value||'none'; p.chatTheme=selectedChatTheme; p.frostedTitleColor=selectedFrostedTitleColor; p.frostedHideMessageMeta=selectedFrostedHideMessageMeta; p.oshiGlowBlue=_saveOshiBlue; p.oshiGlowPink=_saveOshiPink; p.oshiGlowShowHeart=_saveOshiShowHeart; p.hideTimestamp=document.getElementById('pHideTimestamp')?document.getElementById('pHideTimestamp').checked:false; p.metaTimeColor=(document.getElementById('pMetaTimeColor')||{}).value||''; p.metaNameColor=(document.getElementById('pMetaNameColor')||{}).value||''; p.metaReadColor=(document.getElementById('pMetaReadColor')||{}).value||''; p.metaUnreadColor=(document.getElementById('pMetaUnreadColor')||{}).value||''; if(document.getElementById('pChatBgImg').src && document.getElementById('pChatBgImg').style.display!=='none') p.chatBgImage=document.getElementById('pChatBgImg').src; else p.chatBgImage=''; p.replyMode=_getSelectedReplyMode(); var _spd=document.querySelector('input[name="pReplySpeed"]:checked'); p.replySpeed=_spd?_spd.value:'fast'; p.replySpeedCustomMin=parseInt(document.getElementById('pReplySpeedCustomMin').value)||0; p.replySpeedCustomMax=parseInt(document.getElementById('pReplySpeedCustomMax').value)||10; p.heartVoiceGenerateEnabled=heartVoiceGenerateEnabled; p.showHeartVoiceInHeader=heartVoiceEnabled; p.heartVoiceEnabled=heartVoiceEnabled; p.heartVoiceMode=heartVoiceMode; p.allowCallTts=document.getElementById('pAllowCallTts').checked; if (p.momentsNickname == null || !String(p.momentsNickname).trim()) p.momentsNickname = name; if (p.momentsSignature == null) p.momentsSignature = ''; if (p.momentsBanner == null) p.momentsBanner = ''; }
+    if(p){ p.name=name; p.nickname=document.getElementById('pNick').value.trim(); p.userMaskId=selectedUserMaskId; p.persona=document.getElementById('pPersona').value.trim()||'一个简单的角色设定'; p.avatar=avatar; p.minReplyCount=minReply; p.maxReplyCount=maxReply; p.temperature=temperature; p.timeAwareness=timeAwareness; p.allowSticker=allowSticker; p.stickerLibraryIds=stickerLibraryIds; p.allowVoice=allowVoice; p.voiceId=voiceId; p.voiceSpeed=voiceSpeed; p.voiceLang=voiceLang; p.outputLang=outputLang; p.enableTranslation=enableTranslation; p.translateLang=translateLang; p.voiceFreq=voiceFreq; p.memoryCount=parseInt(document.getElementById('pMemoryCount').value)||100; p.autoMsg=document.getElementById('pAutoMsg').checked; p.autoMsgMinInterval=parsedAutoMsgMin; p.autoMsgMaxInterval=parsedAutoMsgMax; p.autoDiary=document.getElementById('pAutoDiary').checked; p.autoDiaryTime=document.getElementById('pAutoDiaryTime').value||'21:00'; p.diaryIncludeOfflineMemory=!document.getElementById('monoDiaryOfflineSetting') || document.getElementById('monoDiaryOfflineSetting').checked; p.autoMoments=document.getElementById('pAutoMoments').checked; p.autoMomentsTime=document.getElementById('pAutoMomentsTime').value||'20:00'; p.momentsIncludeOfflineMemory=!document.getElementById('monoMomentsOfflineSetting') || document.getElementById('monoMomentsOfflineSetting').checked; p.autoSummary=document.getElementById('pAutoSummary').checked; p.autoSummaryInterval=parseInt(document.getElementById('pAutoSummaryInterval').value)||20; p.bubbleAiCss=document.getElementById('pBubbleAiCss').value.trim(); p.bubbleUserCss=document.getElementById('pBubbleUserCss').value.trim(); p.chatRoomCustomCss=(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(); p.bubbleAiFontColor=_saveAiColor; p.bubbleUserFontColor=_saveUserColor; p.bubblePreset=(document.getElementById('pBubblePreset')||{}).value||'none'; p.chatTheme=selectedChatTheme; p.frostedTitleColor=selectedFrostedTitleColor; p.frostedHideMessageMeta=selectedFrostedHideMessageMeta; p.frostedAiTextColor=selectedFrostedAiTextColor; p.frostedAiBubbleColor=selectedFrostedAiBubbleColor; p.frostedUserTextColor=selectedFrostedUserTextColor; p.frostedUserBubbleColor=selectedFrostedUserBubbleColor; p.frostedBubbleBlur=selectedFrostedBubbleBlur; p.oshiGlowBlue=_saveOshiBlue; p.oshiGlowPink=_saveOshiPink; p.oshiGlowShowHeart=_saveOshiShowHeart; p.hideTimestamp=document.getElementById('pHideTimestamp')?document.getElementById('pHideTimestamp').checked:false; p.metaTimeColor=(document.getElementById('pMetaTimeColor')||{}).value||''; p.metaNameColor=(document.getElementById('pMetaNameColor')||{}).value||''; p.metaReadColor=(document.getElementById('pMetaReadColor')||{}).value||''; p.metaUnreadColor=(document.getElementById('pMetaUnreadColor')||{}).value||''; if(document.getElementById('pChatBgImg').src && document.getElementById('pChatBgImg').style.display!=='none') p.chatBgImage=document.getElementById('pChatBgImg').src; else p.chatBgImage=''; p.replyMode=_getSelectedReplyMode(); var _spd=document.querySelector('input[name="pReplySpeed"]:checked'); p.replySpeed=_spd?_spd.value:'fast'; p.replySpeedCustomMin=parseInt(document.getElementById('pReplySpeedCustomMin').value)||0; p.replySpeedCustomMax=parseInt(document.getElementById('pReplySpeedCustomMax').value)||10; p.heartVoiceGenerateEnabled=heartVoiceGenerateEnabled; p.showHeartVoiceInHeader=heartVoiceEnabled; p.heartVoiceEnabled=heartVoiceEnabled; p.heartVoiceMode=heartVoiceMode; p.allowCallTts=document.getElementById('pAllowCallTts').checked; if (p.momentsNickname == null || !String(p.momentsNickname).trim()) p.momentsNickname = name; if (p.momentsSignature == null) p.momentsSignature = ''; if (p.momentsBanner == null) p.momentsBanner = ''; }
   } else {
     const _saveAiColor = document.getElementById('pBubbleAiFontColorEnabled').checked ? (document.getElementById('pBubbleAiFontColor').value||'') : '';
     const _saveUserColor = document.getElementById('pBubbleUserFontColorEnabled').checked ? (document.getElementById('pBubbleUserFontColor').value||'') : '';
-    const newP = { id:Date.now(), name, nickname:document.getElementById('pNick').value.trim()||name, userMaskId:selectedUserMaskId, momentsNickname:name, momentsSignature:'', momentsBanner:'', persona:document.getElementById('pPersona').value.trim()||'一个简单的角色设定', avatar, history:[], memoryCore:[], lastHeartVoice:null, autoSummary:document.getElementById('pAutoSummary').checked, autoSummaryInterval:parseInt(document.getElementById('pAutoSummaryInterval').value)||20, minReplyCount:minReply, maxReplyCount:maxReply, temperature:temperature, timeAwareness:timeAwareness, allowSticker:allowSticker, stickerLibraryIds:stickerLibraryIds, allowVoice:allowVoice, voiceId:voiceId, voiceSpeed:voiceSpeed, voiceLang:voiceLang, outputLang:outputLang, enableTranslation:enableTranslation, translateLang:translateLang, voiceFreq:voiceFreq, memoryCount:parseInt(document.getElementById('pMemoryCount').value)||100, autoMsg:document.getElementById('pAutoMsg').checked, autoMsgMinInterval:parsedAutoMsgMin, autoMsgMaxInterval:parsedAutoMsgMax, autoDiary:document.getElementById('pAutoDiary').checked, autoDiaryTime:document.getElementById('pAutoDiaryTime').value||'21:00', diaryIncludeOfflineMemory:!document.getElementById('monoDiaryOfflineSetting') || document.getElementById('monoDiaryOfflineSetting').checked, autoMoments:document.getElementById('pAutoMoments').checked, autoMomentsTime:document.getElementById('pAutoMomentsTime').value||'20:00', momentsIncludeOfflineMemory:!document.getElementById('monoMomentsOfflineSetting') || document.getElementById('monoMomentsOfflineSetting').checked, bubbleAiCss:document.getElementById('pBubbleAiCss').value.trim(), bubbleUserCss:document.getElementById('pBubbleUserCss').value.trim(), chatRoomCustomCss:(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(), bubbleAiFontColor:_saveAiColor, bubbleUserFontColor:_saveUserColor, bubblePreset:(document.getElementById('pBubblePreset')||{}).value||'none', chatTheme:selectedChatTheme, frostedTitleColor:selectedFrostedTitleColor, frostedHideMessageMeta:selectedFrostedHideMessageMeta, oshiGlowBlue:_saveOshiBlue, oshiGlowPink:_saveOshiPink, oshiGlowShowHeart:_saveOshiShowHeart, hideTimestamp:document.getElementById('pHideTimestamp')?document.getElementById('pHideTimestamp').checked:false, metaTimeColor:(document.getElementById('pMetaTimeColor')||{}).value||'', metaNameColor:(document.getElementById('pMetaNameColor')||{}).value||'', metaReadColor:(document.getElementById('pMetaReadColor')||{}).value||'', metaUnreadColor:(document.getElementById('pMetaUnreadColor')||{}).value||'', chatBgImage:(document.getElementById('pChatBgImg').style.display!=='none'?document.getElementById('pChatBgImg').src:''), replyMode:_getSelectedReplyMode(), replySpeed:(document.querySelector('input[name="pReplySpeed"]:checked')||{}).value||'fast', replySpeedCustomMin:parseInt(document.getElementById('pReplySpeedCustomMin').value)||0, replySpeedCustomMax:parseInt(document.getElementById('pReplySpeedCustomMax').value)||10, heartVoiceGenerateEnabled:heartVoiceGenerateEnabled, showHeartVoiceInHeader:heartVoiceEnabled, heartVoiceEnabled:heartVoiceEnabled, heartVoiceMode:heartVoiceMode, allowCallTts:document.getElementById('pAllowCallTts').checked };
+    const newP = { id:Date.now(), name, nickname:document.getElementById('pNick').value.trim()||name, userMaskId:selectedUserMaskId, momentsNickname:name, momentsSignature:'', momentsBanner:'', persona:document.getElementById('pPersona').value.trim()||'一个简单的角色设定', avatar, history:[], memoryCore:[], lastHeartVoice:null, autoSummary:document.getElementById('pAutoSummary').checked, autoSummaryInterval:parseInt(document.getElementById('pAutoSummaryInterval').value)||20, minReplyCount:minReply, maxReplyCount:maxReply, temperature:temperature, timeAwareness:timeAwareness, allowSticker:allowSticker, stickerLibraryIds:stickerLibraryIds, allowVoice:allowVoice, voiceId:voiceId, voiceSpeed:voiceSpeed, voiceLang:voiceLang, outputLang:outputLang, enableTranslation:enableTranslation, translateLang:translateLang, voiceFreq:voiceFreq, memoryCount:parseInt(document.getElementById('pMemoryCount').value)||100, autoMsg:document.getElementById('pAutoMsg').checked, autoMsgMinInterval:parsedAutoMsgMin, autoMsgMaxInterval:parsedAutoMsgMax, autoDiary:document.getElementById('pAutoDiary').checked, autoDiaryTime:document.getElementById('pAutoDiaryTime').value||'21:00', diaryIncludeOfflineMemory:!document.getElementById('monoDiaryOfflineSetting') || document.getElementById('monoDiaryOfflineSetting').checked, autoMoments:document.getElementById('pAutoMoments').checked, autoMomentsTime:document.getElementById('pAutoMomentsTime').value||'20:00', momentsIncludeOfflineMemory:!document.getElementById('monoMomentsOfflineSetting') || document.getElementById('monoMomentsOfflineSetting').checked, bubbleAiCss:document.getElementById('pBubbleAiCss').value.trim(), bubbleUserCss:document.getElementById('pBubbleUserCss').value.trim(), chatRoomCustomCss:(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(), bubbleAiFontColor:_saveAiColor, bubbleUserFontColor:_saveUserColor, bubblePreset:(document.getElementById('pBubblePreset')||{}).value||'none', chatTheme:selectedChatTheme, frostedTitleColor:selectedFrostedTitleColor, frostedHideMessageMeta:selectedFrostedHideMessageMeta, frostedAiTextColor:selectedFrostedAiTextColor, frostedAiBubbleColor:selectedFrostedAiBubbleColor, frostedUserTextColor:selectedFrostedUserTextColor, frostedUserBubbleColor:selectedFrostedUserBubbleColor, frostedBubbleBlur:selectedFrostedBubbleBlur, oshiGlowBlue:_saveOshiBlue, oshiGlowPink:_saveOshiPink, oshiGlowShowHeart:_saveOshiShowHeart, hideTimestamp:document.getElementById('pHideTimestamp')?document.getElementById('pHideTimestamp').checked:false, metaTimeColor:(document.getElementById('pMetaTimeColor')||{}).value||'', metaNameColor:(document.getElementById('pMetaNameColor')||{}).value||'', metaReadColor:(document.getElementById('pMetaReadColor')||{}).value||'', metaUnreadColor:(document.getElementById('pMetaUnreadColor')||{}).value||'', chatBgImage:(document.getElementById('pChatBgImg').style.display!=='none'?document.getElementById('pChatBgImg').src:''), replyMode:_getSelectedReplyMode(), replySpeed:(document.querySelector('input[name="pReplySpeed"]:checked')||{}).value||'fast', replySpeedCustomMin:parseInt(document.getElementById('pReplySpeedCustomMin').value)||0, replySpeedCustomMax:parseInt(document.getElementById('pReplySpeedCustomMax').value)||10, heartVoiceGenerateEnabled:heartVoiceGenerateEnabled, showHeartVoiceInHeader:heartVoiceEnabled, heartVoiceEnabled:heartVoiceEnabled, heartVoiceMode:heartVoiceMode, allowCallTts:document.getElementById('pAllowCallTts').checked };
     personas.push(newP); currentId=newP.id;
   }
   saveData(); renderContactList(); if(currentId) selectPersona(currentId); closeEditor(); renderDiaryTabs();
@@ -38675,7 +38710,14 @@ function applyBubbleStyles(p) {
   try {
     var chatPage = document.getElementById('chatPage');
     var frostedTitleColor = (p && p.frostedTitleColor) ? p.frostedTitleColor : '#ffffff';
-    if (chatPage) chatPage.style.setProperty('--theme-frosted-name-color', frostedTitleColor);
+    if (chatPage) {
+      chatPage.style.setProperty('--theme-frosted-name-color', frostedTitleColor);
+      chatPage.style.setProperty('--frosted-ai-text-color', (p && p.frostedAiTextColor) ? p.frostedAiTextColor : '#ffffff');
+      chatPage.style.setProperty('--frosted-ai-bubble-color', (p && p.frostedAiBubbleColor) ? p.frostedAiBubbleColor : '#ffffff');
+      chatPage.style.setProperty('--frosted-user-text-color', (p && p.frostedUserTextColor) ? p.frostedUserTextColor : '#ffffff');
+      chatPage.style.setProperty('--frosted-user-bubble-color', (p && p.frostedUserBubbleColor) ? p.frostedUserBubbleColor : '#bed6db');
+      chatPage.style.setProperty('--frosted-bubble-blur', ((p && p.frostedBubbleBlur != null) ? p.frostedBubbleBlur : 8) + 'px');
+    }
   } catch (e) {}
   applyFrostedMessageMetaVisibility(p);
   // Apply preset class
@@ -38717,10 +38759,17 @@ function livePreviewBubble() {
   const tmpPreset = (document.getElementById('pBubblePreset') || {}).value || 'none';
   const tmpFrostedTitleColor = (document.getElementById('pFrostedTitleColor') || {}).value || '#ffffff';
   const tmpFrostedHideMessageMeta = !!(document.getElementById('pFrostedHideMessageMeta') && document.getElementById('pFrostedHideMessageMeta').checked);
+  const tmpFrostedAiTextColor = (document.getElementById('pFrostedAiTextColor') || {}).value || '#ffffff';
+  const tmpFrostedAiBubbleColor = (document.getElementById('pFrostedAiBubbleColor') || {}).value || '#ffffff';
+  const tmpFrostedUserTextColor = (document.getElementById('pFrostedUserTextColor') || {}).value || '#ffffff';
+  const tmpFrostedUserBubbleColor = (document.getElementById('pFrostedUserBubbleColor') || {}).value || '#bed6db';
+  const tmpFrostedBubbleBlur = Math.max(0, Math.min(18, parseInt((document.getElementById('pFrostedBubbleBlur') || {}).value, 10) || 0));
+  const tmpFrostedBubbleBlurValue = document.getElementById('pFrostedBubbleBlurValue');
+  if (tmpFrostedBubbleBlurValue) tmpFrostedBubbleBlurValue.textContent = tmpFrostedBubbleBlur + 'px';
   const tmpOshiBlue = (document.getElementById('pOshiGlowBlue') || {}).value || '#cfd3d8';
   const tmpOshiPink = (document.getElementById('pOshiGlowPink') || {}).value || '#e5e5e5';
   const tmpOshiShowHeart = !document.getElementById('pOshiGlowShowHeart') || document.getElementById('pOshiGlowShowHeart').checked;
-  applyBubbleStyles({ bubbleAiCss: tmpAi.trim(), bubbleUserCss: tmpUser.trim(), bubbleAiFontColor: tmpAiColor, bubbleUserFontColor: tmpUserColor, bubblePreset: tmpPreset, chatTheme: normalizeChatTheme((document.getElementById('pChatTheme') || {}).value || 'default'), frostedTitleColor: tmpFrostedTitleColor, frostedHideMessageMeta: tmpFrostedHideMessageMeta, oshiGlowBlue: tmpOshiBlue, oshiGlowPink: tmpOshiPink, oshiGlowShowHeart: tmpOshiShowHeart });
+  applyBubbleStyles({ bubbleAiCss: tmpAi.trim(), bubbleUserCss: tmpUser.trim(), bubbleAiFontColor: tmpAiColor, bubbleUserFontColor: tmpUserColor, bubblePreset: tmpPreset, chatTheme: normalizeChatTheme((document.getElementById('pChatTheme') || {}).value || 'default'), frostedTitleColor: tmpFrostedTitleColor, frostedHideMessageMeta: tmpFrostedHideMessageMeta, frostedAiTextColor: tmpFrostedAiTextColor, frostedAiBubbleColor: tmpFrostedAiBubbleColor, frostedUserTextColor: tmpFrostedUserTextColor, frostedUserBubbleColor: tmpFrostedUserBubbleColor, frostedBubbleBlur: tmpFrostedBubbleBlur, oshiGlowBlue: tmpOshiBlue, oshiGlowPink: tmpOshiPink, oshiGlowShowHeart: tmpOshiShowHeart });
   const previewPersona = personas.find(x => x.id == currentId);
   if (previewPersona && (typeof normalizeBubblePreset === 'function' ? normalizeBubblePreset(previewPersona.bubblePreset) : previewPersona.bubblePreset) === 'oshiglow' && previewPersona.oshiGlowShowHeart !== tmpOshiShowHeart) {
     previewPersona.oshiGlowShowHeart = tmpOshiShowHeart;
@@ -38733,6 +38782,7 @@ function livePreviewBubble() {
   if (userPreview) userPreview.style.color = tmpUserColor || '#ffffff';
   const frostedTitlePreview = document.getElementById('pFrostedTitleColorPreview');
   if (frostedTitlePreview) frostedTitlePreview.style.color = tmpFrostedTitleColor || '#ffffff';
+  if (typeof monoUpdateFrostedMessageColorPreview === 'function') monoUpdateFrostedMessageColorPreview();
 }
 function removeBubbleStyles() {
   const e = document.getElementById('customBubbleStyle'); if (e) e.remove();
@@ -104786,6 +104836,112 @@ body.chat-page-active #chatPage #chatBox .empty-state {
     window.renderChat = patchedRender;
   }
   setInterval(runFix, 700);
+})();
+</script>
+
+
+
+<!-- === 2026-05-12 GLASS DEFAULT MESSAGE BUBBLE BLUR + PER-ROLE COLORS === -->
+<style id="monoFrostedMessageBubbleColorFix">
+/* 只影响玻璃主题的默认信息气泡；不影响微信/iMessage/LINE/retro/oshiglow/journal 预设。 */
+#chatPage.chat-theme-frosted,
+#chatPage.bubble-preset-frosted {
+  --frosted-ai-text-color: var(--frosted-ai-text-color, #ffffff);
+  --frosted-ai-bubble-color: var(--frosted-ai-bubble-color, #ffffff);
+  --frosted-user-text-color: var(--frosted-user-text-color, #ffffff);
+  --frosted-user-bubble-color: var(--frosted-user-bubble-color, #bed6db);
+  --frosted-bubble-blur: var(--frosted-bubble-blur, 8px);
+}
+#chatPage.bubble-preset-frosted .bubble-ai,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-ai,
+.gc-page.bubble-preset-frosted .bubble-ai {
+  color: var(--frosted-ai-text-color, #ffffff) !important;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--frosted-ai-bubble-color, #ffffff) 34%, transparent),
+    color-mix(in srgb, var(--frosted-ai-bubble-color, #ffffff) 22%, transparent)
+  ) !important;
+  backdrop-filter: blur(var(--frosted-bubble-blur, 8px)) saturate(1.12) !important;
+  -webkit-backdrop-filter: blur(var(--frosted-bubble-blur, 8px)) saturate(1.12) !important;
+  border-color: color-mix(in srgb, var(--frosted-ai-bubble-color, #ffffff) 38%, transparent) !important;
+  text-shadow: 0 1px 5px rgba(0,0,0,0.20) !important;
+}
+#chatPage.bubble-preset-frosted .bubble-user,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-user,
+.gc-page.bubble-preset-frosted .bubble-user {
+  color: var(--frosted-user-text-color, #ffffff) !important;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--frosted-user-bubble-color, #bed6db) 36%, transparent),
+    color-mix(in srgb, var(--frosted-user-bubble-color, #bed6db) 24%, transparent)
+  ) !important;
+  backdrop-filter: blur(var(--frosted-bubble-blur, 8px)) saturate(1.12) !important;
+  -webkit-backdrop-filter: blur(var(--frosted-bubble-blur, 8px)) saturate(1.12) !important;
+  border-color: color-mix(in srgb, var(--frosted-user-bubble-color, #bed6db) 40%, transparent) !important;
+  text-shadow: 0 1px 5px rgba(0,0,0,0.20) !important;
+}
+#chatPage.bubble-preset-frosted .bubble-voice,
+#chatPage.bubble-preset-frosted .bubble-call,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-voice,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-call {
+  backdrop-filter: blur(var(--frosted-bubble-blur, 8px)) saturate(1.12) !important;
+  -webkit-backdrop-filter: blur(var(--frosted-bubble-blur, 8px)) saturate(1.12) !important;
+}
+</style>
+<script id="monoFrostedMessageBubbleColorFixScript">
+(function(){
+  function getCurrentPersona(){
+    try { return (typeof personas !== 'undefined' && typeof currentId !== 'undefined') ? (personas.find(function(x){ return String(x.id) === String(currentId); }) || null) : null; } catch(e) { return null; }
+  }
+  function isGlass(page){ return !!(page && (page.classList.contains('chat-theme-frosted') || page.classList.contains('bubble-preset-frosted'))); }
+  function val(id, fallback){ var el=document.getElementById(id); return (el && el.value) ? el.value : fallback; }
+  window.monoUpdateFrostedMessageColorPreview = function(){
+    try {
+      var aiText=val('pFrostedAiTextColor','#ffffff'), aiBubble=val('pFrostedAiBubbleColor','#ffffff');
+      var uText=val('pFrostedUserTextColor','#ffffff'), uBubble=val('pFrostedUserBubbleColor','#bed6db');
+      var blur=Math.max(0, Math.min(18, parseInt(val('pFrostedBubbleBlur','8'),10) || 0));
+      var bv=document.getElementById('pFrostedBubbleBlurValue'); if (bv) bv.textContent=blur+'px';
+      var ap=document.getElementById('pFrostedAiBubblePreview');
+      var up=document.getElementById('pFrostedUserBubblePreview');
+      if (ap) { ap.style.color=aiText; ap.style.background='color-mix(in srgb, '+aiBubble+' 32%, transparent)'; ap.style.border='1px solid color-mix(in srgb, '+aiBubble+' 40%, transparent)'; }
+      if (up) { up.style.color=uText; up.style.background='color-mix(in srgb, '+uBubble+' 34%, transparent)'; up.style.border='1px solid color-mix(in srgb, '+uBubble+' 40%, transparent)'; }
+    } catch(e) {}
+  };
+  function applyFrostedMessageColors(source){
+    try {
+      var page=document.getElementById('chatPage');
+      if (!isGlass(page)) return;
+      var p=source || getCurrentPersona() || {};
+      page.style.setProperty('--frosted-ai-text-color', p.frostedAiTextColor || '#ffffff');
+      page.style.setProperty('--frosted-ai-bubble-color', p.frostedAiBubbleColor || '#ffffff');
+      page.style.setProperty('--frosted-user-text-color', p.frostedUserTextColor || '#ffffff');
+      page.style.setProperty('--frosted-user-bubble-color', p.frostedUserBubbleColor || '#bed6db');
+      page.style.setProperty('--frosted-bubble-blur', ((p.frostedBubbleBlur != null) ? p.frostedBubbleBlur : 8) + 'px');
+    } catch(e) {}
+  }
+  window.monoApplyFrostedMessageColors = applyFrostedMessageColors;
+  var oldApply=window.applyBubbleStyles;
+  if (typeof oldApply==='function' && !oldApply.__frostedMsgColorPatched) {
+    var wrapped=function(p){ var r=oldApply.apply(this, arguments); setTimeout(function(){applyFrostedMessageColors(p);},0); setTimeout(function(){applyFrostedMessageColors(p);},80); return r; };
+    wrapped.__frostedMsgColorPatched=true; window.applyBubbleStyles=wrapped;
+  }
+  var oldSelect=window.selectPersona;
+  if (typeof oldSelect==='function' && !oldSelect.__frostedMsgColorPatched) {
+    var sel=function(){ var r=oldSelect.apply(this, arguments); setTimeout(function(){applyFrostedMessageColors();},0); setTimeout(function(){applyFrostedMessageColors();},120); return r; };
+    sel.__frostedMsgColorPatched=true; window.selectPersona=sel;
+  }
+  document.addEventListener('input', function(e){
+    if (e && e.target && /^pFrosted(Ai|User)(Text|Bubble)Color$/.test(e.target.id) || e.target.id === 'pFrostedBubbleBlur') {
+      monoUpdateFrostedMessageColorPreview();
+      applyFrostedMessageColors({
+        frostedAiTextColor: val('pFrostedAiTextColor','#ffffff'),
+        frostedAiBubbleColor: val('pFrostedAiBubbleColor','#ffffff'),
+        frostedUserTextColor: val('pFrostedUserTextColor','#ffffff'),
+        frostedUserBubbleColor: val('pFrostedUserBubbleColor','#bed6db'),
+        frostedBubbleBlur: Math.max(0, Math.min(18, parseInt(val('pFrostedBubbleBlur','8'),10) || 0))
+      });
+    }
+  }, true);
+  document.addEventListener('DOMContentLoaded', function(){ monoUpdateFrostedMessageColorPreview(); applyFrostedMessageColors(); });
+  window.addEventListener('load', function(){ monoUpdateFrostedMessageColorPreview(); applyFrostedMessageColors(); });
 })();
 </script>
 

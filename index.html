@@ -33,6 +33,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head><base href="https://d16ilfvy4mv02r.cloudfront.net/workspaces/sh0bDVYUIEw8H1dpwjAJvINuiJ6ETxg0/6c9a375e-adcc-44e2-9ec5-2d1ce63bc50b/files/">
@@ -1072,11 +1073,17 @@ window.onload = function() {
 <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@700&display=swap" rel="stylesheet">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Montserrat:wght@300;500;700&display=swap');
+:root {
+  --mono-app-vh: 1vh;
+  --mono-keyboard-offset: 0px;
+  --mono-chat-page-h: 100%;
+}
 body {
   font-family: 'Montserrat', 'Noto Serif TC', serif;
   background: #ffffff;
   color: #1a1a1a;
-  height: 100vh;
+  min-height: calc(var(--mono-app-vh, 1vh) * 100);
+  height: calc(var(--mono-app-vh, 1vh) * 100);
   overflow: hidden;
   position: relative;
   display: flex;
@@ -1087,7 +1094,7 @@ body {
   position: relative;
   width: 100%;
   max-width: 390px;
-  height: calc(100vh - 40px);
+  height: calc((var(--mono-app-vh, 1vh) * 100) - 40px);
   max-height: 844px;
   margin: 20px auto;
   border: 14px solid #1a1a1a;
@@ -1653,6 +1660,978 @@ body {
 .bubble-preset-journal .bubble-user,
 .bubble-preset-journal .msg-content,
 .bubble-preset-journal .msg-row { overflow: visible !important; }
+/* ══════════════════════════════════════════════
+   BUBBLE PRESET: Frosted Glass 玻璃聊天
+   ══════════════════════════════════════════════ */
+.bubble-preset-frosted {
+    --frosted-text: rgba(255,255,255,0.95);
+    --frosted-subtext: rgba(255,255,255,0.70);
+    --frosted-muted: rgba(255,255,255,0.58);
+    --frosted-glass: rgba(255,255,255,0.13);
+    --frosted-glass-strong: rgba(255,255,255,0.22);
+    --frosted-glass-soft: rgba(255,255,255,0.09);
+    --frosted-border: rgba(255,255,255,0.30);
+    --frosted-border-soft: rgba(255,255,255,0.18);
+    --frosted-shadow: 0 16px 40px rgba(12, 25, 31, 0.15), 0 4px 14px rgba(12, 25, 31, 0.08);
+    --frosted-shadow-soft: 0 8px 24px rgba(12, 25, 31, 0.10);
+    --frosted-blur: blur(22px) saturate(1.24);
+    --frosted-bubble-blur: blur(18px) saturate(1.18);
+    --frosted-page-overlay:
+      linear-gradient(180deg, rgba(20,34,42,0.18) 0%, rgba(20,34,42,0.06) 20%, rgba(20,34,42,0.10) 55%, rgba(20,34,42,0.18) 100%);
+    --frosted-accent: rgba(209, 237, 240, 0.90);
+}
+#chatPage.bubble-preset-frosted {
+    position: relative;
+    overflow: hidden !important;
+    isolation: isolate;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    height: 100% !important;
+    max-height: 100% !important;
+    min-height: 0;
+    box-sizing: border-box;
+    background:
+      linear-gradient(180deg, rgba(168,197,205,0.74) 0%, rgba(152,180,190,0.62) 100%) !important;
+}
+#chatPage.bubble-preset-frosted::before,
+#chatPage.bubble-preset-frosted::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+#chatPage.bubble-preset-frosted::before {
+    background-image: var(--mono-chat-bg-image, none);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    z-index: 0;
+}
+#chatPage.bubble-preset-frosted::after {
+    background: var(--frosted-page-overlay);
+    z-index: 0;
+}
+#chatPage.bubble-preset-frosted > * {
+    position: relative;
+    z-index: 1;
+}
+body.chat-page-active.chat-preset-frosted-active .menu-btn,
+body.chat-preset-frosted-active #chatPage .app-back-bar {
+    display: none !important;
+}
+#chatPage.bubble-preset-frosted #truthDareGameHost,
+#chatPage.bubble-preset-frosted #chatBox,
+#chatPage.bubble-preset-frosted #typingArea {
+    background: transparent !important;
+}
+#chatPage.bubble-preset-frosted #chatBox {
+    background-image: none !important;
+    display: block;
+    width: 100%;
+    flex: 1 1 0% !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    padding: 8px 18px 22px !important;
+}
+#chatPage.bubble-preset-frosted .chat-header {
+    min-height: 92px;
+    height: auto;
+    padding: calc(env(safe-area-inset-top, 0px) + 10px) 18px 4px;
+    box-sizing: border-box;
+    margin-top: 0;
+    position: relative;
+    justify-content: center;
+    align-items: flex-start;
+    border-bottom: none !important;
+    background: transparent !important;
+    overflow: visible;
+}
+#chatPage.bubble-preset-frosted .chat-header-back-btn {
+    display: flex;
+    position: absolute;
+    left: 18px;
+    top: calc(env(safe-area-inset-top, 0px) + 12px);
+    z-index: 2;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: 1px solid var(--frosted-border);
+    background: var(--frosted-glass-strong);
+    color: var(--frosted-text);
+    backdrop-filter: var(--frosted-blur);
+    -webkit-backdrop-filter: var(--frosted-blur);
+    box-shadow: var(--frosted-shadow-soft), inset 0 1px 0 rgba(255,255,255,0.26);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+#chatPage.bubble-preset-frosted .chat-header-back-btn i {
+    font-size: calc(15px * var(--fs, 1));
+}
+#chatPage.bubble-preset-frosted .chat-header-identity {
+    position: absolute;
+    left: 50%;
+    top: calc(env(safe-area-inset-top, 0px) + 2px);
+    transform: translateX(-50%);
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    text-align: center;
+    min-width: 0;
+    width: min(220px, calc(100% - 156px));
+}
+#chatPage.bubble-preset-frosted #headAvatar {
+    display: block !important;
+    width: 56px !important;
+    height: 56px !important;
+    border: 2px solid rgba(255,255,255,0.62) !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.16);
+}
+#chatPage.bubble-preset-frosted #headName {
+    max-width: 100%;
+    margin: 0;
+    font-size: calc(15px * var(--fs, 1));
+    font-weight: 700;
+    color: var(--frosted-text);
+    text-shadow: 0 1px 8px rgba(0,0,0,0.22);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+#chatPage.bubble-preset-frosted #headHeartVoice {
+    width: 180px !important;
+    opacity: 0.96;
+}
+#chatPage.bubble-preset-frosted #headHeartVoiceInner .hv-tag,
+#chatPage.bubble-preset-frosted #headHeartVoiceInner .hv-dot {
+    color: rgba(255,255,255,0.62);
+}
+#chatPage.bubble-preset-frosted #headHeartVoiceInner .hv-val,
+#chatPage.bubble-preset-frosted #headHeartVoiceInner .hv-thought,
+#chatPage.bubble-preset-frosted #headHeartVoiceInner .hv-heart {
+    color: rgba(255,255,255,0.92);
+}
+#chatPage.bubble-preset-frosted #headHeartVoiceInner .hv-emotion-badge {
+    background: rgba(255,255,255,0.20);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.18);
+}
+#chatPage.bubble-preset-frosted #modeStatus {
+    color: var(--frosted-subtext) !important;
+}
+#chatPage.bubble-preset-frosted .chat-header-actions {
+    position: absolute;
+    top: calc(env(safe-area-inset-top, 0px) + 12px);
+    right: 18px;
+    padding: 4px 6px;
+    border-radius: 999px;
+    border: 1px solid var(--frosted-border-soft);
+    background: rgba(255,255,255,0.16);
+    backdrop-filter: var(--frosted-blur);
+    -webkit-backdrop-filter: var(--frosted-blur);
+    box-shadow: var(--frosted-shadow-soft), inset 0 1px 0 rgba(255,255,255,0.16);
+    gap: 8px !important;
+}
+#chatPage.bubble-preset-frosted #offlineModeBtn,
+#chatPage.bubble-preset-frosted #wechatBtn,
+#chatPage.bubble-preset-frosted .call-header-btn {
+    min-height: 34px;
+    border: none !important;
+    background: transparent !important;
+    color: var(--frosted-text) !important;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: none;
+}
+#chatPage.bubble-preset-frosted #offlineModeBtn,
+#chatPage.bubble-preset-frosted #wechatBtn {
+    padding: 0 8px !important;
+    border-radius: 999px !important;
+    font-family: inherit !important;
+    font-size: calc(9px * var(--fs, 1)) !important;
+    letter-spacing: 0.5px !important;
+    text-transform: uppercase;
+}
+#chatPage.bubble-preset-frosted .call-header-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+}
+#chatPage.bubble-preset-frosted .call-header-btn i {
+    color: inherit;
+}
+#chatPage.bubble-preset-frosted .chat-messages {
+    flex: 1 1 0% !important;
+    flex-shrink: 1 !important;
+    height: 0 !important;
+    min-height: 0 !important;
+}
+#chatPage.bubble-preset-frosted .chat-header,
+#chatPage.bubble-preset-frosted #truthDareGameHost,
+#chatPage.bubble-preset-frosted #typingArea,
+#chatPage.bubble-preset-frosted #quotePreview,
+#chatPage.bubble-preset-frosted #multiDeleteBar,
+#chatPage.bubble-preset-frosted .chat-footer {
+    flex: 0 0 auto !important;
+}
+#chatPage.bubble-preset-frosted #typingArea {
+    padding-left: 18px !important;
+    padding-right: 18px !important;
+}
+#chatPage.bubble-preset-frosted .empty-state,
+#chatPage.bubble-preset-frosted .empty-state i,
+#chatPage.bubble-preset-frosted .empty-state p {
+    color: rgba(255,255,255,0.84) !important;
+}
+#chatPage.bubble-preset-frosted .msg-meta {
+    display: none !important;
+}
+#chatPage.bubble-preset-frosted .msg-content {
+    gap: 6px;
+    max-width: min(82vw, 340px);
+}
+#chatPage.bubble-preset-frosted .msg-row {
+    margin-bottom: 14px;
+}
+#chatPage.bubble-preset-frosted .msg-row.user .msg-content {
+    align-items: flex-end;
+}
+#chatPage.bubble-preset-frosted .msg-row.ai .msg-content {
+    align-items: flex-start;
+}
+#chatPage.bubble-preset-frosted .msg-time-read,
+#chatPage.bubble-preset-frosted .msg-name {
+    display: none !important;
+}
+#chatPage.bubble-preset-frosted .chat-date-divider span {
+    background: rgba(255,255,255,0.14) !important;
+    border: 1px solid rgba(255,255,255,0.22) !important;
+    color: rgba(255,255,255,0.78) !important;
+    box-shadow: var(--frosted-shadow-soft), inset 0 1px 0 rgba(255,255,255,0.18) !important;
+    backdrop-filter: var(--frosted-blur) !important;
+    -webkit-backdrop-filter: var(--frosted-blur) !important;
+}
+#chatPage.bubble-preset-frosted .bubble-ai,
+#chatPage.bubble-preset-frosted .bubble-user,
+.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-ai,
+.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-user,
+.gc-page.bubble-preset-frosted .bubble-ai,
+.gc-page.bubble-preset-frosted .bubble-user {
+    background: linear-gradient(180deg, rgba(255,255,255,0.24), rgba(255,255,255,0.12)) !important;
+    color: var(--frosted-text) !important;
+    border: 1px solid var(--frosted-border) !important;
+    border-radius: 22px !important;
+    box-shadow: var(--frosted-shadow-soft), inset 0 1px 0 rgba(255,255,255,0.26) !important;
+    backdrop-filter: var(--frosted-bubble-blur) !important;
+    -webkit-backdrop-filter: var(--frosted-bubble-blur) !important;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.12);
+    padding: 10px 16px !important;
+    line-height: 1.55 !important;
+    letter-spacing: 0.01em !important;
+    overflow: hidden;
+}
+#chatPage.bubble-preset-frosted .bubble-ai,
+.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-ai,
+.gc-page.bubble-preset-frosted .bubble-ai {
+    background: linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0.10)) !important;
+    border-bottom-left-radius: 22px !important;
+}
+#chatPage.bubble-preset-frosted .bubble-user,
+.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-user,
+.gc-page.bubble-preset-frosted .bubble-user {
+    background: linear-gradient(180deg, rgba(190,214,219,0.20), rgba(164,190,198,0.12)) !important;
+    border-bottom-right-radius: 22px !important;
+}
+#chatPage.bubble-preset-frosted .bubble-ai::before,
+#chatPage.bubble-preset-frosted .bubble-ai::after,
+#chatPage.bubble-preset-frosted .bubble-user::before,
+#chatPage.bubble-preset-frosted .bubble-user::after,
+.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-ai::before,
+.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-ai::after,
+.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-user::before,
+.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-user::after,
+.gc-page.bubble-preset-frosted .bubble-ai::before,
+.gc-page.bubble-preset-frosted .bubble-ai::after,
+.gc-page.bubble-preset-frosted .bubble-user::before,
+.gc-page.bubble-preset-frosted .bubble-user::after {
+    display: none !important;
+}
+#chatPage.bubble-preset-frosted .bubble-sticker {
+    border-radius: 26px;
+    border: 1px solid var(--frosted-border);
+    box-shadow: var(--frosted-shadow);
+    overflow: hidden;
+}
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-sticker {
+    border-radius: 26px;
+    border: 1px solid var(--theme-frosted-border, rgba(255,255,255,0.28));
+    box-shadow: var(--theme-frosted-shadow, 0 10px 28px rgba(10,20,28,0.16));
+    overflow: hidden;
+}
+#chatPage.bubble-preset-frosted .bubble-voice {
+    min-width: 138px;
+}
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-voice {
+    min-width: 138px;
+}
+#chatPage.bubble-preset-frosted .voice-type-badge.simulated {
+    background: rgba(255,255,255,0.16);
+    color: rgba(255,255,255,0.8);
+}
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .voice-type-badge.simulated {
+    background: rgba(255,255,255,0.16);
+    color: rgba(255,255,255,0.8);
+}
+#chatPage.bubble-preset-frosted .voice-type-badge.real {
+    background: rgba(130, 255, 208, 0.12);
+    color: rgba(205,255,237,0.96);
+}
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .voice-type-badge.real {
+    background: rgba(130, 255, 208, 0.12);
+    color: rgba(205,255,237,0.96);
+}
+#chatPage.bubble-preset-frosted .voice-play-btn {
+    background: rgba(255,255,255,0.16);
+    border-color: rgba(255,255,255,0.28);
+    color: #fff;
+}
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .voice-play-btn {
+    background: rgba(255,255,255,0.16);
+    border-color: rgba(255,255,255,0.28);
+    color: #fff;
+}
+#chatPage.bubble-preset-frosted .bubble-user .voice-play-btn:hover,
+#chatPage.bubble-preset-frosted .voice-play-btn:hover {
+    background: rgba(255,255,255,0.28);
+    border-color: rgba(255,255,255,0.42);
+}
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-user .voice-play-btn:hover,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .voice-play-btn:hover {
+    background: rgba(255,255,255,0.28);
+    border-color: rgba(255,255,255,0.42);
+}
+#chatPage.bubble-preset-frosted .msg-translation,
+#chatPage.bubble-preset-frosted .voice-transcript,
+.gc-page.bubble-preset-frosted .msg-translation,
+.gc-page.bubble-preset-frosted .voice-transcript {
+    color: rgba(255,255,255,0.76) !important;
+    border-top-color: rgba(255,255,255,0.16) !important;
+}
+/* 玻璃聊天室主题 + 默认气泡：完全继承玻璃主题输入框式材质 */
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-ai,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-user,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-voice,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-call {
+    background: rgba(255,255,255,0.16) !important;
+    color: #fff !important;
+    border: 1px solid var(--theme-frosted-border-soft) !important;
+    border-radius: 22px !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.20), 0 6px 18px rgba(12,25,31,0.08) !important;
+    backdrop-filter: blur(18px) !important;
+    -webkit-backdrop-filter: blur(18px) !important;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.12);
+    line-height: 1.55 !important;
+    letter-spacing: 0.01em !important;
+}
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-ai,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-user {
+    padding: 10px 16px !important;
+    overflow: hidden !important;
+}
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-ai {
+    border-bottom-left-radius: 22px !important;
+}
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-user {
+    border-bottom-right-radius: 22px !important;
+}
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-call {
+    gap: 10px;
+}
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-call .call-duration,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-call .call-view-hint {
+    color: rgba(255,255,255,0.72) !important;
+}
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .quote-block {
+    color: rgba(255,255,255,0.84) !important;
+    background: rgba(255,255,255,0.12) !important;
+    border-left-color: rgba(255,255,255,0.44) !important;
+}
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-voice-duration,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .bubble-voice-icon,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .voice-wave {
+    color: #fff !important;
+}
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .voice-type-badge.simulated {
+    background: rgba(255,255,255,0.16) !important;
+    color: rgba(255,255,255,0.76) !important;
+}
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .voice-type-badge.real {
+    background: rgba(255,255,255,0.16) !important;
+    color: rgba(220,255,240,0.96) !important;
+}
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .voice-transcript,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .msg-translation {
+    color: rgba(255,255,255,0.72) !important;
+    border-top-color: rgba(255,255,255,0.18) !important;
+}
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) .msg-translation-label {
+    color: rgba(255,255,255,0.48) !important;
+}
+#chatPage.bubble-preset-frosted .bubble-image {
+    border-radius: 28px !important;
+    border: 1px solid var(--frosted-border) !important;
+    box-shadow: var(--frosted-shadow-soft) !important;
+    overflow: hidden !important;
+    background: rgba(255,255,255,0.12) !important;
+}
+#chatPage.bubble-preset-frosted .bubble-image-caption {
+    margin-top: 6px;
+    padding: 8px 12px;
+    border-radius: 18px;
+    background: rgba(255,255,255,0.10);
+    color: rgba(255,255,255,0.88);
+    border: 1px solid rgba(255,255,255,0.16);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+#chatPage.bubble-preset-frosted .dot,
+.gc-page.bubble-preset-frosted .dot {
+    background: rgba(255,255,255,0.92);
+}
+#chatPage.bubble-preset-frosted #quotePreview,
+#chatPage.bubble-preset-frosted #multiDeleteBar {
+    margin: 0 12px 8px;
+    border: 1px solid var(--frosted-border);
+    border-left: 1px solid var(--frosted-border) !important;
+    border-radius: 18px;
+    background: rgba(255,255,255,0.16) !important;
+    color: var(--frosted-text) !important;
+    backdrop-filter: var(--frosted-blur);
+    -webkit-backdrop-filter: var(--frosted-blur);
+    box-shadow: var(--frosted-shadow-soft);
+}
+#chatPage.bubble-preset-frosted #quoteCancelBtn,
+#chatPage.bubble-preset-frosted #multiDeleteCount {
+    color: rgba(255,255,255,0.82) !important;
+}
+#chatPage.bubble-preset-frosted #multiDeleteCancel,
+#chatPage.bubble-preset-frosted #multiDeleteConfirm {
+    border: 1px solid rgba(255,255,255,0.18);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+#chatPage.bubble-preset-frosted #multiDeleteCancel {
+    background: rgba(255,255,255,0.18);
+    color: #fff;
+}
+#chatPage.bubble-preset-frosted #multiDeleteConfirm {
+    background: rgba(255,115,115,0.42);
+}
+#chatPage.bubble-preset-frosted .chat-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 4;
+    padding: 6px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+    border-top: none !important;
+    background: transparent !important;
+    width: 100%;
+    box-sizing: border-box;
+}
+#chatPage.bubble-preset-frosted #inputBar {
+    display: grid !important;
+    grid-template-columns: auto minmax(0,1fr) auto auto !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 0 !important;
+    border: none !important;
+    border-bottom: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: none;
+    overflow: visible !important;
+}
+#chatPage.bubble-preset-frosted .chat-input-textarea {
+    height: 44px;
+    padding: 0 18px !important;
+    border-radius: 999px;
+    border: 1px solid var(--frosted-border-soft);
+    background: rgba(255,255,255,0.16) !important;
+    color: rgba(255,255,255,0.96) !important;
+    font-style: normal !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 8px 20px rgba(12,25,31,0.08);
+    backdrop-filter: var(--frosted-blur);
+    -webkit-backdrop-filter: var(--frosted-blur);
+}
+#chatPage.bubble-preset-frosted .chat-input-textarea::placeholder {
+    color: rgba(255,255,255,0.68) !important;
+}
+#chatPage.bubble-preset-frosted .chat-plus-btn {
+    order: 4;
+}
+#chatPage.bubble-preset-frosted .chat-voice-record-btn {
+    order: 1;
+}
+#chatPage.bubble-preset-frosted .chat-input-textarea {
+    order: 2;
+}
+#chatPage.bubble-preset-frosted .chat-send-btn {
+    order: 3;
+}
+#chatPage.bubble-preset-frosted .chat-auto-reply-btn {
+    order: 3;
+}
+#chatPage.bubble-preset-frosted .chat-plus-btn,
+#chatPage.bubble-preset-frosted .chat-voice-record-btn,
+#chatPage.bubble-preset-frosted .chat-auto-reply-btn,
+#chatPage.bubble-preset-frosted .chat-send-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.24) !important;
+    background: rgba(255,255,255,0.14) !important;
+    color: #fff !important;
+    backdrop-filter: var(--frosted-blur);
+    -webkit-backdrop-filter: var(--frosted-blur);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 6px 18px rgba(12,25,31,0.08);
+}
+#chatPage.bubble-preset-frosted .chat-plus-btn.active {
+    transform: rotate(45deg);
+    background: rgba(255,255,255,0.28) !important;
+}
+#chatPage.bubble-preset-frosted .chat-auto-reply-btn,
+#chatPage.bubble-preset-frosted .chat-send-btn {
+    padding: 0 !important;
+    min-width: 42px;
+    font-size: 0 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+#chatPage.bubble-preset-frosted .chat-auto-reply-btn i,
+#chatPage.bubble-preset-frosted .chat-send-btn i {
+    font-size: calc(15px * var(--fs, 1));
+}
+#chatPage.bubble-preset-frosted .chat-auto-reply-btn span,
+#chatPage.bubble-preset-frosted .chat-send-btn span {
+    display: none;
+}
+#chatPage.bubble-preset-frosted .chat-send-btn {
+    display: none;
+}
+#chatPage.bubble-preset-frosted.frosted-has-text .chat-send-btn {
+    display: flex;
+}
+#chatPage.bubble-preset-frosted.frosted-has-text .chat-auto-reply-btn {
+    display: none;
+}
+#chatPage.bubble-preset-frosted #voiceRecordOverlay,
+#chatPage.bubble-preset-frosted .plus-panel {
+    border: 1px solid var(--frosted-border);
+    background: rgba(255,255,255,0.16) !important;
+    backdrop-filter: blur(24px) saturate(1.18);
+    -webkit-backdrop-filter: blur(24px) saturate(1.18);
+    box-shadow: 0 -12px 32px rgba(10,20,28,0.16);
+}
+#chatPage.bubble-preset-frosted .plus-panel {
+    border-bottom: none;
+}
+#chatPage.bubble-preset-frosted .plus-panel-btn {
+    border: 1px solid rgba(255,255,255,0.18);
+    background: rgba(255,255,255,0.14);
+    color: #fff;
+}
+#chatPage.bubble-preset-frosted .plus-panel-btn:hover {
+    background: rgba(255,255,255,0.26);
+    color: #fff;
+    border-color: rgba(255,255,255,0.28);
+}
+/* ══════════════════════════════════════════════
+   CHAT THEME: Frosted Glass 独立聊天室主题
+   ══════════════════════════════════════════════ */
+#chatPage.chat-theme-frosted {
+    --theme-frosted-text: rgba(255,255,255,0.96);
+    --theme-frosted-subtext: rgba(255,255,255,0.74);
+    --theme-frosted-border: rgba(255,255,255,0.28);
+    --theme-frosted-border-soft: rgba(255,255,255,0.18);
+    --theme-frosted-glass: rgba(255,255,255,0.16);
+    --theme-frosted-glass-strong: rgba(255,255,255,0.22);
+    --theme-frosted-shadow: 0 10px 28px rgba(10,20,28,0.16);
+    --theme-frosted-name-color: #ffffff;
+    position: relative;
+    isolation: isolate;
+    display: grid !important;
+    grid-template-rows: auto auto minmax(0,1fr) auto auto auto auto;
+    align-items: stretch;
+    height: var(--mono-chat-page-h, 100%) !important;
+    max-height: var(--mono-chat-page-h, 100%) !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    box-sizing: border-box;
+    background: linear-gradient(180deg, rgba(168,197,205,0.74) 0%, rgba(152,180,190,0.62) 100%) !important;
+}
+#chatPage.chat-theme-frosted::before,
+#chatPage.chat-theme-frosted::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+#chatPage.chat-theme-frosted::before {
+    background-image: var(--mono-chat-bg-image, none);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    z-index: 0;
+}
+#chatPage.chat-theme-frosted::after {
+    background: linear-gradient(180deg, rgba(20,34,42,0.18) 0%, rgba(20,34,42,0.06) 20%, rgba(20,34,42,0.10) 55%, rgba(20,34,42,0.18) 100%);
+    z-index: 0;
+}
+#chatPage.chat-theme-frosted > * {
+    position: relative;
+    z-index: 1;
+}
+body.chat-theme-frosted-active .menu-btn,
+body.chat-theme-frosted-active #chatPage .app-back-bar {
+    display: none !important;
+}
+body.chat-page-active.chat-theme-frosted-active .phone-header {
+    display: none !important;
+}
+body.chat-page-active.chat-theme-frosted-active #chatPage.page {
+    top: 0 !important;
+}
+body.chat-page-active.chat-theme-frosted-active #contactsDrawer {
+    top: 0 !important;
+    height: 100% !important;
+}
+body.ios-fullscreen.chat-page-active.chat-theme-frosted-active #chatPage.page {
+    top: 0 !important;
+    bottom: 0 !important;
+}
+body.ios-fullscreen.chat-page-active.chat-theme-frosted-active #contactsDrawer {
+    top: 0 !important;
+    height: calc(100% - env(safe-area-inset-bottom, 0px)) !important;
+}
+#contactsDrawer.chat-theme-frosted {
+    background: rgba(110,132,139,0.30);
+    border-right: 1px solid rgba(255,255,255,0.22);
+    backdrop-filter: blur(26px) saturate(1.16);
+    -webkit-backdrop-filter: blur(26px) saturate(1.16);
+    color: #fff;
+}
+#contactsDrawer.chat-theme-frosted .border-b,
+#contactsDrawer.chat-theme-frosted .border-t {
+    border-color: rgba(255,255,255,0.16) !important;
+}
+#contactsDrawer.chat-theme-frosted h1,
+#contactsDrawer.chat-theme-frosted p,
+#contactsDrawer.chat-theme-frosted .contact-name,
+#contactsDrawer.chat-theme-frosted .contact-sub,
+#contactsDrawer.chat-theme-frosted button,
+#contactsDrawer.chat-theme-frosted i {
+    color: #fff !important;
+}
+#contactsDrawer.chat-theme-frosted .contact-item {
+    border-bottom-color: rgba(255,255,255,0.12);
+    background: transparent;
+}
+#contactsDrawer.chat-theme-frosted .contact-item:hover,
+#contactsDrawer.chat-theme-frosted .contact-item.active {
+    background: rgba(255,255,255,0.12);
+}
+#contactsDrawer.chat-theme-frosted #bulkSelectToggleBtn,
+#contactsDrawer.chat-theme-frosted #drawerNormalActions button {
+    border-color: rgba(255,255,255,0.20) !important;
+    background: rgba(255,255,255,0.12) !important;
+    color: #fff !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+}
+#chatPage.chat-theme-frosted #truthDareGameHost,
+#chatPage.chat-theme-frosted #typingArea {
+    background: transparent !important;
+}
+#chatPage.chat-theme-frosted .chat-header {
+    grid-row: 1;
+    min-height: 96px;
+    height: auto;
+    padding: calc(env(safe-area-inset-top, 0px) + 12px) 18px 10px;
+    box-sizing: border-box;
+    margin-top: 0;
+    border-bottom: none !important;
+    background: transparent !important;
+    overflow: visible;
+}
+#chatPage.chat-theme-frosted .chat-header-back-btn {
+    display: flex;
+    position: absolute;
+    left: 18px;
+    top: calc(env(safe-area-inset-top, 0px) + 12px);
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: 1px solid var(--theme-frosted-border);
+    background: var(--theme-frosted-glass-strong);
+    color: #fff;
+    box-shadow: var(--theme-frosted-shadow);
+    backdrop-filter: blur(20px) saturate(1.18);
+    -webkit-backdrop-filter: blur(20px) saturate(1.18);
+}
+#chatPage.chat-theme-frosted .chat-header-identity {
+    position: absolute;
+    left: 50%;
+    top: calc(env(safe-area-inset-top, 0px) + 4px);
+    transform: translateX(-50%);
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    text-align: center;
+    min-width: 0;
+    width: min(220px, calc(100% - 188px));
+}
+#chatPage.chat-theme-frosted #headAvatar {
+    display: block !important;
+    width: 56px !important;
+    height: 56px !important;
+    border: 2px solid rgba(255,255,255,0.62) !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.16);
+}
+#chatPage.chat-theme-frosted #headName {
+    margin: 0;
+    max-width: 100%;
+    color: var(--theme-frosted-name-color, #fff);
+    text-shadow: 0 1px 8px rgba(0,0,0,0.22);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+#chatPage.chat-theme-frosted #modeStatus,
+#chatPage.chat-theme-frosted #headHeartVoiceInner .hv-tag,
+#chatPage.chat-theme-frosted #headHeartVoiceInner .hv-dot {
+    color: var(--theme-frosted-subtext) !important;
+}
+#chatPage.chat-theme-frosted #headHeartVoiceInner .hv-val,
+#chatPage.chat-theme-frosted #headHeartVoiceInner .hv-thought,
+#chatPage.chat-theme-frosted #headHeartVoiceInner .hv-heart,
+#chatPage.chat-theme-frosted #headHeartVoiceInner .hv-emotion-badge {
+    color: #fff !important;
+}
+#chatPage.chat-theme-frosted .chat-header-actions {
+    position: absolute;
+    top: calc(env(safe-area-inset-top, 0px) + 12px);
+    right: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px !important;
+    padding: 0;
+    background: none !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+#chatPage.chat-theme-frosted #chatContactsBtn,
+#chatPage.chat-theme-frosted #offlineModeBtn,
+#chatPage.chat-theme-frosted .call-header-btn {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: 1px solid var(--theme-frosted-border) !important;
+    background: var(--theme-frosted-glass-strong) !important;
+    color: #fff !important;
+    box-shadow: var(--theme-frosted-shadow);
+    backdrop-filter: blur(20px) saturate(1.18);
+    -webkit-backdrop-filter: blur(20px) saturate(1.18);
+}
+#chatPage.chat-theme-frosted #wechatBtn {
+    border: 1px solid var(--theme-frosted-border) !important;
+    background: var(--theme-frosted-glass-strong) !important;
+    color: #fff !important;
+    box-shadow: var(--theme-frosted-shadow);
+    backdrop-filter: blur(20px) saturate(1.18);
+    -webkit-backdrop-filter: blur(20px) saturate(1.18);
+}
+#chatPage.chat-theme-frosted #chatContactsBtn,
+#chatPage.chat-theme-frosted .call-header-btn {
+    width: 42px;
+    height: 42px;
+    padding: 0 !important;
+    border-radius: 50%;
+}
+#chatPage.chat-theme-frosted #offlineModeBtn,
+#chatPage.chat-theme-frosted #wechatBtn {
+    height: 42px;
+    padding: 0 14px !important;
+    border-radius: 999px !important;
+    font-family: inherit !important;
+    font-size: calc(10px * var(--fs, 1)) !important;
+    font-weight: 700;
+    letter-spacing: 0.5px !important;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+#chatPage.chat-theme-frosted #truthDareGameHost { grid-row: 2; }
+#chatPage.chat-theme-frosted #chatBox {
+    grid-row: 3;
+    display: block;
+    width: 100%;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 8px 18px 20px !important;
+    background: transparent !important;
+    background-image: none !important;
+    -webkit-overflow-scrolling: touch;
+}
+#chatPage.chat-theme-frosted #typingArea { grid-row: 4; padding: 0 18px 8px !important; }
+#chatPage.chat-theme-frosted #quotePreview,
+#chatPage.chat-theme-frosted #multiDeleteBar {
+    margin: 0 12px 8px;
+    border: 1px solid var(--theme-frosted-border);
+    border-radius: 18px;
+    background: rgba(255,255,255,0.16) !important;
+    color: #fff !important;
+    box-shadow: var(--theme-frosted-shadow);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+}
+#chatPage.chat-theme-frosted #quotePreview { grid-row: 5; }
+#chatPage.chat-theme-frosted #multiDeleteBar { grid-row: 6; }
+#chatPage.chat-theme-frosted .chat-footer {
+    grid-row: 7;
+    padding: 8px 14px calc(12px + env(safe-area-inset-bottom, 0px) + var(--mono-keyboard-offset, 0px));
+    border-top: none !important;
+    background: transparent !important;
+    width: 100%;
+    box-sizing: border-box;
+}
+#chatPage.chat-theme-frosted #inputBar {
+    display: grid !important;
+    grid-template-columns: auto auto minmax(0,1fr) auto auto !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    overflow: visible !important;
+}
+#chatPage.chat-theme-frosted .chat-plus-btn,
+#chatPage.chat-theme-frosted .chat-voice-record-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: 1px solid var(--theme-frosted-border) !important;
+    background: var(--theme-frosted-glass-strong) !important;
+    color: #fff !important;
+    box-shadow: var(--theme-frosted-shadow);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+}
+#chatPage.chat-theme-frosted .chat-input-textarea {
+    height: 42px;
+    min-width: 0;
+    padding: 0 16px !important;
+    border-radius: 999px;
+    border: 1px solid var(--theme-frosted-border-soft);
+    background: rgba(255,255,255,0.16) !important;
+    color: #fff !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.20), 0 6px 18px rgba(12,25,31,0.08);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    font-style: normal !important;
+}
+#chatPage.chat-theme-frosted .chat-input-textarea::placeholder {
+    color: rgba(255,255,255,0.72) !important;
+}
+#chatPage.chat-theme-frosted .chat-auto-reply-btn,
+#chatPage.chat-theme-frosted .chat-send-btn {
+    min-width: 74px;
+    height: 42px;
+    padding: 0 14px !important;
+    border-radius: 999px !important;
+    border: 1px solid var(--theme-frosted-border) !important;
+    background: var(--theme-frosted-glass-strong) !important;
+    color: #fff !important;
+    box-shadow: var(--theme-frosted-shadow);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: calc(11px * var(--fs, 1)) !important;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+}
+#chatPage.chat-theme-frosted .chat-auto-reply-btn span,
+#chatPage.chat-theme-frosted .chat-send-btn span {
+    display: inline !important;
+}
+#chatPage.chat-theme-frosted .chat-header i,
+#chatPage.chat-theme-frosted .chat-footer i,
+#chatPage.chat-theme-frosted #quotePreview i,
+#chatPage.chat-theme-frosted #multiDeleteBar i,
+#chatPage.chat-theme-frosted .plus-panel i,
+#chatPage.chat-theme-frosted #voiceRecordOverlay i,
+#contactsDrawer.chat-theme-frosted i {
+    color: #fff !important;
+}
+#chatPage.chat-theme-frosted .plus-panel,
+#chatPage.chat-theme-frosted #voiceRecordOverlay {
+    border: 1px solid var(--theme-frosted-border);
+    background: rgba(255,255,255,0.16) !important;
+    box-shadow: 0 -12px 32px rgba(10,20,28,0.16);
+    backdrop-filter: blur(24px) saturate(1.16);
+    -webkit-backdrop-filter: blur(24px) saturate(1.16);
+}
+#chatPage.chat-theme-frosted .plus-panel-btn {
+    border: 1px solid rgba(255,255,255,0.18);
+    background: rgba(255,255,255,0.14);
+    color: #fff;
+}
+#chatPage.chat-theme-frosted .empty-state,
+#chatPage.chat-theme-frosted .empty-state i,
+#chatPage.chat-theme-frosted .empty-state p {
+    color: rgba(255,255,255,0.84) !important;
+}
+#groupChatPage.bubble-preset-frosted {
+    --frosted-text: rgba(255,255,255,0.96);
+    --frosted-subtext: rgba(255,255,255,0.76);
+    --frosted-glass: rgba(255,255,255,0.16);
+    --frosted-glass-strong: rgba(255,255,255,0.22);
+    --frosted-border: rgba(255,255,255,0.28);
+    --frosted-blur: blur(16px) saturate(1.18);
+    background: linear-gradient(180deg, rgba(148,169,177,0.88) 0%, rgba(121,142,150,0.82) 100%) !important;
+}
+#groupChatPage.bubble-preset-frosted .gc-header,
+#groupChatPage.bubble-preset-frosted > div[style*='border-top:1px solid #eee'] {
+    background: rgba(255,255,255,0.12) !important;
+    backdrop-filter: var(--frosted-blur);
+    -webkit-backdrop-filter: var(--frosted-blur);
+    border-color: rgba(255,255,255,0.18) !important;
+}
+#groupChatPage.bubble-preset-frosted .gc-header-name,
+#groupChatPage.bubble-preset-frosted .gc-header-members,
+#groupChatPage.bubble-preset-frosted .gc-header-back,
+#groupChatPage.bubble-preset-frosted .gc-header-settings {
+    color: #fff !important;
+}
+#groupChatPage.bubble-preset-frosted .gc-messages,
+#groupChatPage.bubble-preset-frosted #gcTypingArea {
+    background-color: transparent !important;
+}
 
 /* ════════════════════════════════════
    角色间聊天室样式 CC = CharChat
@@ -3742,6 +4721,12 @@ body {
   box-sizing: border-box;
   margin-top: 0;
 }
+.chat-header-back-btn { display: none; border: none; background: transparent; padding: 0; }
+.chat-header-identity { min-width: 0; }
+.chat-header-actions { min-width: 0; }
+.chat-auto-reply-btn,
+.chat-send-btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
+.chat-send-btn i { font-size: calc(11px * var(--fs, 1)); }
 @keyframes hvMarquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 #headHeartVoice { line-height: 16px; }
 #headHeartVoiceInner { animation: hvMarquee 32s linear infinite; }
@@ -4404,7 +5389,7 @@ body {
 .browser-time { font-size: calc(9px * var(--fs, 1)); color: #bbb; flex-shrink: 0; }
 /* iOS 全萤幕 */
 body.ios-fullscreen { background: #000; padding: 0; margin: 0; align-items: stretch; justify-content: stretch; }
-body.ios-fullscreen .phone-container { max-width: 100%; width: 100%; height: 100vh; max-height: 100vh; margin: 0; border: none; border-radius: 0; box-shadow: none; aspect-ratio: unset; }
+body.ios-fullscreen .phone-container { max-width: 100%; width: 100%; height: calc(var(--mono-app-vh, 1vh) * 100); max-height: calc(var(--mono-app-vh, 1vh) * 100); margin: 0; border: none; border-radius: 0; box-shadow: none; aspect-ratio: unset; }
 body.ios-fullscreen .phone-header { border-radius: 0; height: env(safe-area-inset-top, 44px); min-height: 44px; }
 body.ios-fullscreen .phone-notch { display: none; }
 body.ios-fullscreen .page { top: env(safe-area-inset-top, 44px); bottom: calc(60px + env(safe-area-inset-bottom, 0px)); }
@@ -18289,6 +19274,500 @@ body.editor-modal-open #chatPage .app-back-bar {
 .dw-answer { animation: dw-answer-appear 0.46s ease both !important; }
 .dw-placeholder { animation: dw-placeholder-appear 0.5s ease both !important; }
 </style>
+
+
+<!-- === 2026-05-12 CLEAN GLASS CHAT FIX: header/order/color/input/keyboard === -->
+<style id="monoCleanGlassChatFix">
+/* Use one color variable for all frosted title/header/composer UI text/icons. */
+#chatPage.chat-theme-frosted,
+#chatPage.bubble-preset-frosted {
+  --mono-frosted-ui-color: var(--theme-frosted-name-color, var(--frosted-text, #ffffff));
+}
+#chatPage.chat-theme-frosted #headName,
+#chatPage.chat-theme-frosted #headHeartVoice,
+#chatPage.chat-theme-frosted #headHeartVoiceInner,
+#chatPage.chat-theme-frosted #headHeartVoiceInner *,
+#chatPage.chat-theme-frosted .chat-header button,
+#chatPage.chat-theme-frosted .chat-header button *,
+#chatPage.chat-theme-frosted .chat-footer button,
+#chatPage.chat-theme-frosted .chat-footer button *,
+#chatPage.chat-theme-frosted .chat-footer i,
+#chatPage.chat-theme-frosted .chat-plus-btn,
+#chatPage.chat-theme-frosted .chat-voice-record-btn,
+#chatPage.chat-theme-frosted .plus-panel-btn,
+#chatPage.chat-theme-frosted .plus-panel-btn *,
+#chatPage.chat-theme-frosted #quotePreview,
+#chatPage.chat-theme-frosted #quotePreview *,
+#chatPage.chat-theme-frosted #multiDeleteBar,
+#chatPage.chat-theme-frosted #multiDeleteBar *,
+#chatPage.bubble-preset-frosted #headName,
+#chatPage.bubble-preset-frosted #headHeartVoice,
+#chatPage.bubble-preset-frosted #headHeartVoiceInner,
+#chatPage.bubble-preset-frosted #headHeartVoiceInner *,
+#chatPage.bubble-preset-frosted .chat-header button,
+#chatPage.bubble-preset-frosted .chat-header button *,
+#chatPage.bubble-preset-frosted .chat-footer button,
+#chatPage.bubble-preset-frosted .chat-footer button *,
+#chatPage.bubble-preset-frosted .chat-footer i,
+#chatPage.bubble-preset-frosted .chat-plus-btn,
+#chatPage.bubble-preset-frosted .chat-voice-record-btn,
+#chatPage.bubble-preset-frosted .plus-panel-btn,
+#chatPage.bubble-preset-frosted .plus-panel-btn *,
+#chatPage.bubble-preset-frosted #quotePreview,
+#chatPage.bubble-preset-frosted #quotePreview *,
+#chatPage.bubble-preset-frosted #multiDeleteBar,
+#chatPage.bubble-preset-frosted #multiDeleteBar * {
+  color: var(--mono-frosted-ui-color) !important;
+}
+
+/* Top area: move controls/avatar/name/heart-voice down so it is not crowded. */
+#chatPage.chat-theme-frosted .chat-header,
+#chatPage.bubble-preset-frosted .chat-header {
+  min-height: 124px !important;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 26px) !important;
+  overflow: visible !important;
+  z-index: 20 !important;
+}
+#chatPage.chat-theme-frosted .chat-header-back-btn,
+#chatPage.bubble-preset-frosted .chat-header-back-btn {
+  top: calc(env(safe-area-inset-top, 0px) + 28px) !important;
+  left: 18px !important;
+  z-index: 30 !important;
+}
+#chatPage.chat-theme-frosted #chatContactsBtn,
+#chatPage.bubble-preset-frosted #chatContactsBtn {
+  position: absolute !important;
+  top: calc(env(safe-area-inset-top, 0px) + 28px) !important;
+  left: 68px !important;
+  right: auto !important;
+  width: 42px !important;
+  height: 42px !important;
+  min-width: 42px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 31 !important;
+}
+#chatPage.chat-theme-frosted .chat-header-actions,
+#chatPage.bubble-preset-frosted .chat-header-actions {
+  top: calc(env(safe-area-inset-top, 0px) + 28px) !important;
+  z-index: 30 !important;
+}
+#chatPage.chat-theme-frosted .chat-header-identity,
+#chatPage.bubble-preset-frosted .chat-header-identity {
+  top: calc(env(safe-area-inset-top, 0px) + 20px) !important;
+  width: min(210px, calc(100% - 190px)) !important;
+  z-index: 28 !important;
+}
+#chatPage.chat-theme-frosted #headHeartVoice,
+#chatPage.bubble-preset-frosted #headHeartVoice {
+  display: block;
+  position: relative !important;
+  z-index: 40 !important;
+  max-width: 190px !important;
+  height: 18px !important;
+  line-height: 18px !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}
+#chatPage.chat-theme-frosted #headHeartVoiceInner,
+#chatPage.bubble-preset-frosted #headHeartVoiceInner {
+  position: relative !important;
+  z-index: 41 !important;
+}
+#chatPage.chat-theme-frosted #chatBox,
+#chatPage.bubble-preset-frosted #chatBox {
+  z-index: 1 !important;
+}
+
+/* Composer: default-theme-like flow. No safe-area and no keyboard padding/transform. */
+#chatPage.chat-theme-frosted,
+#chatPage.bubble-preset-frosted {
+  overflow: hidden !important;
+  min-height: 0 !important;
+}
+#chatPage.chat-theme-frosted #chatBox,
+#chatPage.bubble-preset-frosted #chatBox,
+#chatPage.chat-theme-frosted .chat-messages,
+#chatPage.bubble-preset-frosted .chat-messages {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  background: transparent !important;
+  padding-bottom: 18px !important;
+}
+#chatPage.chat-theme-frosted .chat-footer,
+#chatPage.bubble-preset-frosted .chat-footer,
+body.ios-fullscreen #chatPage.chat-theme-frosted .chat-footer,
+body.ios-fullscreen #chatPage.bubble-preset-frosted .chat-footer {
+  position: relative !important;
+  bottom: auto !important;
+  left: auto !important;
+  right: auto !important;
+  z-index: 35 !important;
+  flex: 0 0 auto !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  padding: 8px 14px 10px !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-top: 0 !important;
+  border-bottom: 0 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+  -webkit-transform: none !important;
+  will-change: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: block !important;
+}
+#chatPage.chat-theme-frosted #inputBar,
+#chatPage.bubble-preset-frosted #inputBar,
+#chatPage.chat-theme-frosted .input-row,
+#chatPage.bubble-preset-frosted .input-row {
+  display: grid !important;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto !important;
+  align-items: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+  min-height: 44px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-bottom: 0 !important;
+  border-color: transparent !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+#chatPage.bubble-preset-frosted #inputBar,
+#chatPage.bubble-preset-frosted .input-row {
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto !important;
+}
+#chatPage.chat-theme-frosted #userInput,
+#chatPage.bubble-preset-frosted #userInput,
+#chatPage.chat-theme-frosted .chat-input-textarea,
+#chatPage.bubble-preset-frosted .chat-input-textarea {
+  display: block !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  height: 42px !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  font-size: max(16px, calc(13px * var(--fs, 1))) !important;
+  line-height: 42px !important;
+  padding: 0 16px !important;
+  margin: 0 !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(255,255,255,0.24) !important;
+  background: rgba(255,255,255,0.16) !important;
+  color: var(--mono-frosted-ui-color) !important;
+  outline: none !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.20), 0 6px 18px rgba(12,25,31,0.08) !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+#chatPage.chat-theme-frosted #userInput::placeholder,
+#chatPage.bubble-preset-frosted #userInput::placeholder {
+  color: color-mix(in srgb, var(--mono-frosted-ui-color) 62%, transparent) !important;
+}
+
+/* Reply/send buttons: round icon-only buttons. */
+#chatPage.chat-theme-frosted .chat-auto-reply-btn,
+#chatPage.chat-theme-frosted .chat-send-btn,
+#chatPage.bubble-preset-frosted .chat-auto-reply-btn,
+#chatPage.bubble-preset-frosted .chat-send-btn {
+  width: 42px !important;
+  min-width: 42px !important;
+  max-width: 42px !important;
+  height: 42px !important;
+  min-height: 42px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0 !important;
+  font-size: 0 !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+}
+#chatPage.chat-theme-frosted .chat-auto-reply-btn span,
+#chatPage.chat-theme-frosted .chat-send-btn span,
+#chatPage.bubble-preset-frosted .chat-auto-reply-btn span,
+#chatPage.bubble-preset-frosted .chat-send-btn span {
+  display: none !important;
+}
+#chatPage.chat-theme-frosted .chat-auto-reply-btn i,
+#chatPage.chat-theme-frosted .chat-send-btn i,
+#chatPage.bubble-preset-frosted .chat-auto-reply-btn i,
+#chatPage.bubble-preset-frosted .chat-send-btn i {
+  font-size: calc(15px * var(--fs, 1)) !important;
+  margin: 0 !important;
+}
+
+/* Do not add a white safe-area strip in glass chat. */
+body.chat-page-active.chat-theme-frosted-active,
+body.chat-page-active.chat-preset-frosted-active,
+body.chat-page-active.chat-theme-frosted-active .phone-container,
+body.chat-page-active.chat-preset-frosted-active .phone-container,
+body.chat-page-active.chat-theme-frosted-active .phone-screen,
+body.chat-page-active.chat-preset-frosted-active .phone-screen {
+  background-color: #000 !important;
+}
+#chatPage.chat-theme-frosted #inputBar.border-b,
+#chatPage.bubble-preset-frosted #inputBar.border-b,
+#chatPage.chat-theme-frosted .border-b,
+#chatPage.bubble-preset-frosted .border-b {
+  border-bottom-width: 0 !important;
+  border-color: transparent !important;
+}
+</style>
+<script id="monoCleanGlassChatFixScript">
+(function(){
+  function isGlassChat(){
+    var page = document.getElementById('chatPage');
+    return !!(page && (page.classList.contains('chat-theme-frosted') || page.classList.contains('bubble-preset-frosted')));
+  }
+  function syncGlassTitleColor(){
+    try {
+      var page = document.getElementById('chatPage');
+      if (!page) return;
+      var p = (typeof personas !== 'undefined' && typeof currentId !== 'undefined') ? personas.find(function(x){ return x.id == currentId; }) : null;
+      var c = (p && p.frostedTitleColor) ? p.frostedTitleColor : (page.style.getPropertyValue('--theme-frosted-name-color') || '#ffffff');
+      page.style.setProperty('--theme-frosted-name-color', c);
+      page.style.setProperty('--mono-frosted-ui-color', c);
+    } catch(e) {}
+  }
+  function syncGlassHeaderContactsButton(){
+    try {
+      var page = document.getElementById('chatPage');
+      var btn = document.getElementById('chatContactsBtn');
+      var header = page && page.querySelector('.chat-header');
+      var back = page && page.querySelector('.chat-header-back-btn');
+      var actions = page && page.querySelector('.chat-header-actions');
+      if (!page || !btn || !header || !back || !actions) return;
+      var glass = page.classList.contains('chat-theme-frosted') || page.classList.contains('bubble-preset-frosted');
+      if (glass) {
+        if (btn.parentElement !== header) header.insertBefore(btn, back.nextSibling);
+      } else {
+        if (btn.parentElement !== actions) actions.insertBefore(btn, actions.firstChild);
+      }
+    } catch(e) {}
+  }
+  function syncGlassKeyboardClean(){
+    try {
+      var root = document.documentElement;
+      if (isGlassChat()) {
+        // Glass theme should behave like the default theme: viewport resizes normally;
+        // no extra footer padding/transform from keyboard variables.
+        root.style.setProperty('--mono-keyboard-offset', '0px');
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+      }
+      syncGlassHeaderContactsButton();
+      syncGlassTitleColor();
+    } catch(e) {}
+  }
+  window.monoSyncCleanGlassChatFix = syncGlassKeyboardClean;
+  var oldApply = window.applyBubbleStyles;
+  if (typeof oldApply === 'function' && !oldApply.__monoCleanGlassWrapped) {
+    var wrapped = function(p){
+      var r = oldApply.apply(this, arguments);
+      setTimeout(syncGlassKeyboardClean, 0);
+      setTimeout(syncGlassKeyboardClean, 80);
+      return r;
+    };
+    wrapped.__monoCleanGlassWrapped = true;
+    window.applyBubbleStyles = wrapped;
+  }
+  ['resize','orientationchange'].forEach(function(ev){
+    window.addEventListener(ev, function(){ setTimeout(syncGlassKeyboardClean, 30); setTimeout(syncGlassKeyboardClean, 180); }, {passive:true});
+  });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', function(){ setTimeout(syncGlassKeyboardClean, 20); }, {passive:true});
+    window.visualViewport.addEventListener('scroll', function(){ setTimeout(syncGlassKeyboardClean, 20); }, {passive:true});
+  }
+  document.addEventListener('focusin', function(e){
+    if (e.target && e.target.id === 'userInput') {
+      syncGlassKeyboardClean();
+      setTimeout(syncGlassKeyboardClean, 80);
+      setTimeout(syncGlassKeyboardClean, 260);
+    }
+  }, true);
+  document.addEventListener('focusout', function(e){
+    if (e.target && e.target.id === 'userInput') setTimeout(syncGlassKeyboardClean, 100);
+  }, true);
+  document.addEventListener('DOMContentLoaded', function(){
+    syncGlassKeyboardClean();
+    var page = document.getElementById('chatPage');
+    if (page && window.MutationObserver) {
+      new MutationObserver(syncGlassKeyboardClean).observe(page, {attributes:true, attributeFilter:['class','style']});
+    }
+    if (document.body && window.MutationObserver) {
+      new MutationObserver(syncGlassKeyboardClean).observe(document.body, {attributes:true, attributeFilter:['class']});
+    }
+    setInterval(syncGlassKeyboardClean, 700);
+  });
+})();
+</script>
+
+
+
+<!-- === 2026-05-12 DEFAULT + GLASS CHAT INPUT/KEYBOARD UNIFIED FIX === -->
+<style id="monoDefaultAndGlassKeyboardUnifiedFix">
+/* Make the normal/default chat use the same stable composer behavior as the cleaned glass chat. */
+body.chat-page-active,
+body.chat-page-active .phone-container,
+body.chat-page-active .phone-screen {
+  background-color: #000 !important;
+}
+
+body.chat-page-active #chatPage.page {
+  bottom: 0 !important;
+  overflow: hidden !important;
+  min-height: 0 !important;
+  display: flex;
+  flex-direction: column;
+}
+
+body.ios-fullscreen.chat-page-active #chatPage.page {
+  bottom: 0 !important;
+  height: auto !important;
+}
+
+/* Do not let the global iOS safe-area rule create a white strip under the normal chat composer. */
+body.chat-page-active #chatPage .chat-footer,
+body.ios-fullscreen.chat-page-active #chatPage .chat-footer {
+  flex: 0 0 auto !important;
+  position: relative !important;
+  bottom: auto !important;
+  left: auto !important;
+  right: auto !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  padding-bottom: 10px !important;
+  margin-bottom: 0 !important;
+  border-bottom: 0 !important;
+  transform: none !important;
+  -webkit-transform: none !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 35 !important;
+}
+
+body.chat-page-active #chatPage #chatBox,
+body.chat-page-active #chatPage .chat-messages {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  padding-bottom: 18px !important;
+}
+
+body.chat-page-active #chatPage #inputBar,
+body.chat-page-active #chatPage .input-row {
+  min-height: 44px !important;
+  box-sizing: border-box !important;
+  margin-bottom: 0 !important;
+  border-bottom: 0 !important;
+  overflow: visible !important;
+}
+
+body.chat-page-active #chatPage #userInput,
+body.chat-page-active #chatPage .chat-input-textarea {
+  min-width: 0 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  font-size: max(16px, calc(13px * var(--fs, 1))) !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+
+/* Hide any accidental bottom strip source only while the user is inside a chat. */
+body.chat-page-active .phone-nav {
+  display: none !important;
+}
+
+/* The bottom strip should never come from safe-area padding in chat mode. */
+body.chat-page-active #chatPage,
+body.chat-page-active #chatPage .chat-footer,
+body.chat-page-active #chatPage #inputBar {
+  --mono-keyboard-offset: 0px !important;
+}
+</style>
+<script id="monoDefaultAndGlassKeyboardUnifiedFixScript">
+(function(){
+  function isChatActive(){
+    var page = document.getElementById('chatPage');
+    return !!(page && document.body && document.body.classList.contains('chat-page-active') && page.style.display !== 'none');
+  }
+  function keepChatViewportClean(){
+    try {
+      if (!isChatActive()) return;
+      var root = document.documentElement;
+      /* Default and glass both use normal visualViewport resize. Do not add extra keyboard padding. */
+      root.style.setProperty('--mono-keyboard-offset', '0px');
+      document.body.style.overscrollBehaviorY = 'none';
+      var page = document.getElementById('chatPage');
+      var input = document.getElementById('userInput');
+      if (page) {
+        page.style.overflow = 'hidden';
+        page.style.minHeight = '0';
+      }
+      if (input && document.activeElement === input) {
+        /* Keep the page itself pinned instead of letting iOS scroll the whole app to a black area. */
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+        setTimeout(function(){
+          try {
+            var box = document.getElementById('chatBox');
+            if (box) box.scrollTop = box.scrollHeight;
+          } catch(e) {}
+        }, 50);
+      }
+    } catch(e) {}
+  }
+  window.monoKeepDefaultAndGlassChatViewportClean = keepChatViewportClean;
+  ['resize','orientationchange'].forEach(function(ev){
+    window.addEventListener(ev, function(){
+      setTimeout(keepChatViewportClean, 20);
+      setTimeout(keepChatViewportClean, 180);
+    }, {passive:true});
+  });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', function(){ setTimeout(keepChatViewportClean, 20); }, {passive:true});
+    window.visualViewport.addEventListener('scroll', function(){ setTimeout(keepChatViewportClean, 20); }, {passive:true});
+  }
+  document.addEventListener('focusin', function(e){
+    if (e.target && e.target.id === 'userInput') {
+      keepChatViewportClean();
+      setTimeout(keepChatViewportClean, 80);
+      setTimeout(keepChatViewportClean, 260);
+    }
+  }, true);
+  document.addEventListener('focusout', function(e){
+    if (e.target && e.target.id === 'userInput') setTimeout(keepChatViewportClean, 100);
+  }, true);
+  document.addEventListener('DOMContentLoaded', function(){
+    keepChatViewportClean();
+    if (document.body && window.MutationObserver) {
+      new MutationObserver(keepChatViewportClean).observe(document.body, {attributes:true, attributeFilter:['class']});
+    }
+    var page = document.getElementById('chatPage');
+    if (page && window.MutationObserver) {
+      new MutationObserver(keepChatViewportClean).observe(page, {attributes:true, attributeFilter:['style','class']});
+    }
+  });
+})();
+</script>
 </head>
 <body>
 <!-- In-App Notification Toast -->
@@ -18668,9 +20147,6 @@ body.editor-modal-open #chatPage .app-back-bar {
         <button class="loc-rel-btn" onclick="openLocSettingsModal()" style="font-size:9px;">
           <i class="fas fa-cog" style="margin-right:2px;"></i>地区
         </button>
-        <button class="loc-rel-btn" id="locAutoUpdateToggleBtn" onclick="openLocAutoUpdateModal()" style="font-size:9px;">
-          <i class="fas fa-magic" style="margin-right:2px;"></i>自动
-        </button>
         <button class="loc-rel-btn" onclick="openLocBindModal()" style="font-size:9px;">
           <i class="fas fa-link" style="margin-right:2px;"></i>绑定
         </button>
@@ -18775,24 +20251,6 @@ body.editor-modal-open #chatPage .app-back-bar {
           <!-- Per-character region rows injected by JS -->
         </div>
         <div style="font-size:9px;color:#bbb;padding:2px 0 4px;text-align:center;">保存后地图將自动更新</div>
-      </div>
-    </div>
-    <!-- Auto-update modal -->
-    <div class="loc-modal-overlay" id="locAutoUpdateModal">
-      <div class="loc-modal-box">
-        <div class="loc-modal-title">
-          自动更新行踪
-          <span class="loc-modal-close" onclick="closeLocAutoUpdateModal()"><i class="fas fa-times"></i></span>
-        </div>
-        <div style="font-size:10px;color:#888;margin-bottom:12px;line-height:1.6;">
-          选择角色后，系统将在你<b>上线时自动补全离线期间</b>的行踪，并<b>每30分钟</b>自动更新最新行踪。
-        </div>
-        <div id="locAutoUpdatePersonaList">
-          <div class="loc-empty-msg">请先绑定角色</div>
-        </div>
-        <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end;">
-          <button class="loc-rel-btn" onclick="saveLocAutoUpdateSettings()" style="font-size:10px;padding:6px 14px;background:#1a1a1a;color:#fff;border-radius:8px;">保存</button>
-        </div>
       </div>
     </div>
     <!-- Bind relation modal -->
@@ -19093,14 +20551,15 @@ body.editor-modal-open #chatPage .app-back-bar {
       <button onclick="toggleApiSettings()" class="text-xs font-bold uppercase tracking-widest hover:line-through block w-full text-center mt-2">API 连接</button>
     </div>
   </div>
-  <div class="menu-btn" id="menuBtn" onclick="toggleContactsDrawer()">
+  <div class="menu-btn" id="menuBtn" onclick="toggleContactsDrawer(event)">
     <span class="menu-btn-label">联络人列表</span>
   </div>
   <!-- 聊天页面 -->
   <div id="chatPage" class="page wechat-style" style="padding:0; display:none; flex-direction:column;">
     <div class="app-back-bar"><button class="app-back-btn" onclick="goHome()"><i class="fas fa-chevron-left"></i> 主屏幕</button><span class="app-back-title">聊天</span></div>
     <div class="chat-header" style="margin-top:0px;">
-      <div class="flex items-center gap-3">
+      <button class="chat-header-back-btn" onclick="goHome()" aria-label="返回聊天列表"><i class="fas fa-chevron-left"></i></button>
+      <div class="chat-header-identity flex items-center gap-3">
         <img id="headAvatar" onclick="showAvatarEditPopup()" style="cursor:pointer;" src="" class="w-10 h-10 rounded-full border border-black object-cover hidden">
         <div>
           <h2 id="headName" class="font-bold tracking-tight text-base" onclick="showAvatarEditPopup()" style="cursor:pointer;">选择联络人</h2>
@@ -19110,7 +20569,10 @@ body.editor-modal-open #chatPage .app-back-bar {
           <span id="modeStatus" class="text-[9px] uppercase tracking-widest text-gray-400" style="display:none;">微信模式</span>
         </div>
       </div>
-      <div class="flex items-center gap-2">
+      <div class="chat-header-actions flex items-center gap-2">
+        <button id="chatContactsBtn" onclick="toggleContactsDrawer(event)" style="display:none;" title="联络人列表">
+          <i class="fas fa-list"></i>
+        </button>
         <button id="offlineModeBtn" onclick="openOfflineMode()" style="display:none;background:none;border:1px solid #2a2a2a;border-radius:20px;color:#888;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:5px 12px;cursor:pointer;font-family:'DM Mono',monospace;white-space:nowrap;" title="线下模式">线下</button>
         <button class="call-header-btn" id="chatCallBtn" onclick="startCall('chat')" style="display:none;" title="语音通话">
           <i class="fas fa-phone"></i>
@@ -19389,10 +20851,10 @@ body.editor-modal-open #chatPage .app-back-bar {
           <i class="fas fa-microphone" id="chatVoiceBtnIcon"></i>
         </div>
         <input type="text" id="userInput" placeholder="输入消息..." class="chat-input-textarea flex-1 bg-transparent outline-none text-sm font-light tracking-wide italic" style="min-width:0;">
-        <button onclick="triggerAutoReply()" class="text-[10px] font-bold border border-gray-400 px-2 py-1 rounded-full hover:bg-black hover:text-white transition" title="让角色自动回覆" style="white-space:nowrap;flex-shrink:0;">
-          <i class="fas fa-robot"></i> 回覆
+        <button onclick="triggerAutoReply()" class="chat-auto-reply-btn text-[10px] font-bold border border-gray-400 px-2 py-1 rounded-full hover:bg-black hover:text-white transition" title="让角色自动回覆" style="white-space:nowrap;flex-shrink:0;">
+          <i class="fas fa-robot"></i><span>回覆</span>
         </button>
-        <button onclick="sendMessage()" class="uppercase text-xs font-bold tracking-normal hover:line-through" style="flex-shrink:0;white-space:nowrap;">Send</button>
+        <button onclick="sendMessage()" class="chat-send-btn uppercase text-xs font-bold tracking-normal hover:line-through" style="flex-shrink:0;white-space:nowrap;"><i class="fas fa-paper-plane"></i><span>Send</span></button>
       </div>
     </div>
     <!-- Sticker Modal -->
@@ -22329,6 +23791,41 @@ body.editor-modal-open #chatPage .app-back-bar {
       </div>
       <p style="font-size:10px;color:#999;margin-top:2px;">这里除了自动时间，也控制这个角色生成朋友圈动态时是否会把已开启记忆的线下剧情一起纳入内容理解。</p>
     </div>
+    <!-- Chat Theme -->
+    <div class="custom-section" style="margin-top:18px;">
+      <div class="custom-section-title"><i class="fas fa-mobile-screen-button" style="margin-right:6px;"></i>聊天室主题 Chat Theme</div>
+      <p style="font-size:10px;color:#999;margin-bottom:12px;">这里控制整个聊天室页面外观。它和气泡预设是分开的，所以可以同时使用玻璃聊天室主题，再另外选择气泡或自定义气泡。</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="chat-theme-option" id="ctOpt-default" onclick="selectChatTheme('default')"
+          style="flex:1;min-width:120px;border:2px solid #1a1a1a;border-radius:12px;padding:10px;cursor:pointer;background:#fafafa;">
+          <div style="font-size:10px;font-weight:800;color:#1a1a1a;letter-spacing:0.6px;margin-bottom:8px;">默认聊天室</div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <div style="height:10px;border-radius:999px;background:#fff;border:1px solid #ddd;"></div>
+            <div style="height:38px;border-radius:12px;background:#fff;border:1px solid #e8e8e8;"></div>
+            <div style="height:12px;border-radius:999px;background:#1a1a1a;opacity:0.85;"></div>
+          </div>
+        </div>
+        <div class="chat-theme-option" id="ctOpt-frosted" onclick="selectChatTheme('frosted')"
+          style="flex:1;min-width:120px;border:2px solid #ddd;border-radius:12px;padding:10px;cursor:pointer;background:linear-gradient(180deg,#b9d2d8 0%,#90aab2 100%);position:relative;overflow:hidden;">
+          <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,0.26),rgba(255,255,255,0.05));pointer-events:none;"></div>
+          <div style="position:relative;font-size:10px;font-weight:800;color:#fff;letter-spacing:0.6px;margin-bottom:8px;text-shadow:0 1px 3px rgba(0,0,0,0.18);">玻璃聊天室</div>
+          <div style="position:relative;display:flex;flex-direction:column;gap:6px;">
+            <div style="height:10px;border-radius:999px;background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.24);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);"></div>
+            <div style="height:38px;border-radius:12px;background:rgba(255,255,255,0.16);border:1px solid rgba(255,255,255,0.24);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);"></div>
+            <div style="height:12px;border-radius:999px;background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.24);"></div>
+          </div>
+        </div>
+      </div>
+      <input type="hidden" id="pChatTheme" value="default">
+      <div id="frostedTitleColorWrap" style="display:none;margin-top:12px;padding:12px;border:1px solid #ececec;border-radius:12px;background:#fafafa;">
+        <div style="font-size:10px;font-weight:800;letter-spacing:0.7px;text-transform:uppercase;color:#666;margin-bottom:6px;">玻璃主题标题字色 Frosted Title Color</div>
+        <p style="font-size:10px;color:#8f8f8f;line-height:1.6;margin:0 0 10px;">只影响玻璃聊天室主题里，顶部头像下方的角色名字颜色。</p>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <input type="color" id="pFrostedTitleColor" value="#ffffff" oninput="livePreviewBubble()" style="width:38px;height:32px;border:1px solid #ddd;border-radius:8px;padding:2px;background:#fff;cursor:pointer;">
+          <div id="pFrostedTitleColorPreview" style="flex:1;padding:8px 12px;border-radius:999px;background:linear-gradient(180deg,#a8c5cd 0%,#8ea8b0 100%);color:#ffffff;font-size:12px;font-weight:700;text-align:center;text-shadow:0 1px 6px rgba(0,0,0,0.18);">角色名字预览</div>
+        </div>
+      </div>
+    </div>
     <!-- Custom Bubble CSS -->
     <div class="custom-section">
       <div class="custom-section-title"><i class="fas fa-palette" style="margin-right:6px;"></i>自定义气泡框样式 Bubble Style</div>
@@ -22371,11 +23868,12 @@ body.editor-modal-open #chatPage .app-back-bar {
       <!-- ── Bubble Preset Selector ── -->
       <div style="margin-bottom:16px;">
         <label style="font-size:9px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:8px;">内置气泡框预设风格 Preset Style:</label>
+        <p style="font-size:10px;color:#8a8a8a;line-height:1.6;margin:0 0 10px;">这里只控制“消息气泡”的样式，不会影响上方的聊天室主题外观。</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <!-- Default -->
           <div class="bubble-preset-option" id="bpOpt-none" onclick="selectBubblePreset('none')"
             style="flex:1;min-width:80px;border:2px solid #1a1a1a;border-radius:10px;padding:8px;cursor:pointer;text-align:center;background:#1a1a1a;">
-            <div style="font-size:9px;font-weight:700;color:#fff;letter-spacing:1px;margin-bottom:6px;">DEFAULT</div>
+            <div style="font-size:9px;font-weight:700;color:#fff;letter-spacing:0.5px;margin-bottom:6px;">当前默认</div>
             <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start;">
               <div style="background:#fff;color:#1a1a1a;border-radius:10px 10px 10px 2px;padding:3px 7px;font-size:9px;max-width:70%;">你好</div>
               <div style="background:#2a2a2a;color:#fff;border-radius:10px 10px 2px 10px;padding:3px 7px;font-size:9px;max-width:70%;align-self:flex-end;">嗯</div>
@@ -25821,7 +27319,11 @@ function switchPage(pageId, navEl, evt) {
 }
 document.addEventListener('DOMContentLoaded', () => { /* Home screen shown by default — initCustomFont is called inside afterDB instead */ });
 // ===================== 联络人抽屉 =====================
-function toggleContactsDrawer() {
+function toggleContactsDrawer(evt) {
+  if (evt) {
+    if (typeof evt.preventDefault === 'function') evt.preventDefault();
+    if (typeof evt.stopPropagation === 'function') evt.stopPropagation();
+  }
   var drawer = document.getElementById('contactsDrawer');
   var willClose = drawer.classList.contains('open');
   drawer.classList.toggle('open');
@@ -26345,6 +27847,9 @@ function selectPersona(id) {
   _resetChatRenderWindow(id);
   const p = personas.find(x => x.id == id);
   if (!p) return;
+  if (migrateLegacyFrostedThemeIfNeeded(p)) {
+    try { saveData(); } catch(e) {}
+  }
   // 确保 history 已加载（防止 saveData 存储后变成 __hist_ref__ 未还原）
   if (!Array.isArray(p.history)) {
     try {
@@ -28127,6 +29632,8 @@ function saveCurrentPersona() {
     bubbleUserCss: p.bubbleUserCss || '',
     bubbleAiFontColor: p.bubbleAiFontColor || '',
     bubbleUserFontColor: p.bubbleUserFontColor || '',
+    chatTheme: getEffectiveChatTheme(p),
+    frostedTitleColor: p.frostedTitleColor || '#ffffff',
     chatBgImage: p.chatBgImage || ''
   };
   const blob = new Blob([JSON.stringify(exportData, null, 2)], {type: 'application/json'});
@@ -28222,6 +29729,8 @@ function openEditor(isEdit=false) {
     document.getElementById('pBubbleAiCss').value = '';
     document.getElementById('pBubbleUserCss').value = '';
     if (document.getElementById('pRoomCustomCss')) document.getElementById('pRoomCustomCss').value = '';
+    loadChatThemeUI('default');
+    applyChatThemeClass('default');
     loadBubblePresetUI('none');
     applyBubblePresetClass('none');
     document.getElementById('pBubbleAiFontColorEnabled').checked = false;
@@ -28242,12 +29751,15 @@ function openEditor(isEdit=false) {
     if (document.getElementById('pMetaNameColor'))   document.getElementById('pMetaNameColor').value   = '#999999';
     if (document.getElementById('pMetaReadColor'))   document.getElementById('pMetaReadColor').value   = '#aaaaaa';
     if (document.getElementById('pMetaUnreadColor')) document.getElementById('pMetaUnreadColor').value = '#cccccc';
+    if (document.getElementById('pFrostedTitleColor')) document.getElementById('pFrostedTitleColor').value = '#ffffff';
+    if (document.getElementById('pFrostedTitleColorPreview')) document.getElementById('pFrostedTitleColorPreview').style.color = '#ffffff';
     document.getElementById('pChatBgImg').style.display = 'none';
     document.getElementById('pChatBgPlaceholder').style.display = '';
     document.getElementById('pChatBgImg').src = '';
     document.getElementById('delBtn').classList.add('hidden');
   } else {
     const p = personas.find(x=>x.id==currentId); if(!p)return;
+    if (migrateLegacyFrostedThemeIfNeeded(p)) { try { saveData(); } catch(e) {} }
     document.getElementById('pName').value=p.name; document.getElementById('pNick').value=p.nickname;
     if (document.getElementById('pUserMaskId')) document.getElementById('pUserMaskId').value = p.userMaskId || '';
     document.getElementById('pPersona').value=p.persona;
@@ -28326,6 +29838,8 @@ function openEditor(isEdit=false) {
     document.getElementById('pBubbleAiCss').value = p.bubbleAiCss || '';
     document.getElementById('pBubbleUserCss').value = p.bubbleUserCss || '';
     if (document.getElementById('pRoomCustomCss')) document.getElementById('pRoomCustomCss').value = p.chatRoomCustomCss || '';
+    loadChatThemeUI(getEffectiveChatTheme(p));
+    applyChatThemeClass(getEffectiveChatTheme(p));
     loadBubblePresetUI(p.bubblePreset || 'none');
     applyBubblePresetClass(p.bubblePreset || 'none');
     const _aiHasColor = !!(p.bubbleAiFontColor);
@@ -28349,6 +29863,8 @@ function openEditor(isEdit=false) {
     if (document.getElementById('pMetaNameColor'))   document.getElementById('pMetaNameColor').value   = p.metaNameColor   || '#999999';
     if (document.getElementById('pMetaReadColor'))   document.getElementById('pMetaReadColor').value   = p.metaReadColor   || '#aaaaaa';
     if (document.getElementById('pMetaUnreadColor')) document.getElementById('pMetaUnreadColor').value = p.metaUnreadColor || '#cccccc';
+    if (document.getElementById('pFrostedTitleColor')) document.getElementById('pFrostedTitleColor').value = p.frostedTitleColor || '#ffffff';
+    if (document.getElementById('pFrostedTitleColorPreview')) document.getElementById('pFrostedTitleColorPreview').style.color = p.frostedTitleColor || '#ffffff';
     const _bgForEditor = p.chatBgImage === '__ref__'
       ? (localStorage.getItem('mono_bg_' + p.id) || '')
       : (p.chatBgImage || '');
@@ -28371,6 +29887,15 @@ function openEditor(isEdit=false) {
 function closeEditor() {
   try { document.body.classList.remove('editor-modal-open'); } catch(e) {}
   document.getElementById('editorModal').classList.add('hidden');
+  try {
+    var p = personas.find(function(x){ return x.id == currentId; });
+    if (p) applyBubbleStyles(p);
+    else {
+      removeBubbleStyles();
+      applyBubblePresetClass('none');
+      applyChatThemeClass('default');
+    }
+  } catch (e) {}
 }
 function savePersona() {
   const name = document.getElementById('pName').value.trim();
@@ -28397,6 +29922,8 @@ function savePersona() {
   const selectedUserMaskId = (document.getElementById('pUserMaskId') || {}).value || '';
   const parsedAutoMsgMin = Math.max(0, parseInt((document.getElementById('pAutoMsgMinInterval') || {}).value, 10) || 0);
   const parsedAutoMsgMax = Math.max(parsedAutoMsgMin, parseInt((document.getElementById('pAutoMsgMaxInterval') || {}).value, 10) || parsedAutoMsgMin);
+  const selectedChatTheme = normalizeChatTheme((document.getElementById('pChatTheme') || {}).value || 'default');
+  const selectedFrostedTitleColor = (document.getElementById('pFrostedTitleColor') || {}).value || '#ffffff';
   const _saveOshiBlue = (document.getElementById('pOshiGlowBlue') || {}).value || '#cfd3d8';
   const _saveOshiPink = (document.getElementById('pOshiGlowPink') || {}).value || '#e5e5e5';
   const _saveOshiShowHeart = !document.getElementById('pOshiGlowShowHeart') || document.getElementById('pOshiGlowShowHeart').checked;
@@ -28407,11 +29934,11 @@ function savePersona() {
     const p = personas.find(x=>x.id==currentId);
     const _saveAiColor = document.getElementById('pBubbleAiFontColorEnabled').checked ? (document.getElementById('pBubbleAiFontColor').value||'') : '';
     const _saveUserColor = document.getElementById('pBubbleUserFontColorEnabled').checked ? (document.getElementById('pBubbleUserFontColor').value||'') : '';
-    if(p){ p.name=name; p.nickname=document.getElementById('pNick').value.trim(); p.userMaskId=selectedUserMaskId; p.persona=document.getElementById('pPersona').value.trim()||'一个简单的角色设定'; p.avatar=avatar; p.minReplyCount=minReply; p.maxReplyCount=maxReply; p.temperature=temperature; p.timeAwareness=timeAwareness; p.allowSticker=allowSticker; p.stickerLibraryIds=stickerLibraryIds; p.allowVoice=allowVoice; p.voiceId=voiceId; p.voiceSpeed=voiceSpeed; p.voiceLang=voiceLang; p.outputLang=outputLang; p.enableTranslation=enableTranslation; p.translateLang=translateLang; p.voiceFreq=voiceFreq; p.memoryCount=parseInt(document.getElementById('pMemoryCount').value)||100; p.autoMsg=document.getElementById('pAutoMsg').checked; p.autoMsgMinInterval=parsedAutoMsgMin; p.autoMsgMaxInterval=parsedAutoMsgMax; p.autoDiary=document.getElementById('pAutoDiary').checked; p.autoDiaryTime=document.getElementById('pAutoDiaryTime').value||'21:00'; p.diaryIncludeOfflineMemory=!document.getElementById('monoDiaryOfflineSetting') || document.getElementById('monoDiaryOfflineSetting').checked; p.autoMoments=document.getElementById('pAutoMoments').checked; p.autoMomentsTime=document.getElementById('pAutoMomentsTime').value||'20:00'; p.momentsIncludeOfflineMemory=!document.getElementById('monoMomentsOfflineSetting') || document.getElementById('monoMomentsOfflineSetting').checked; p.autoSummary=document.getElementById('pAutoSummary').checked; p.autoSummaryInterval=parseInt(document.getElementById('pAutoSummaryInterval').value)||20; p.bubbleAiCss=document.getElementById('pBubbleAiCss').value.trim(); p.bubbleUserCss=document.getElementById('pBubbleUserCss').value.trim(); p.chatRoomCustomCss=(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(); p.bubbleAiFontColor=_saveAiColor; p.bubbleUserFontColor=_saveUserColor; p.bubblePreset=(document.getElementById('pBubblePreset')||{}).value||'none'; p.oshiGlowBlue=_saveOshiBlue; p.oshiGlowPink=_saveOshiPink; p.oshiGlowShowHeart=_saveOshiShowHeart; p.hideTimestamp=document.getElementById('pHideTimestamp')?document.getElementById('pHideTimestamp').checked:false; p.metaTimeColor=(document.getElementById('pMetaTimeColor')||{}).value||''; p.metaNameColor=(document.getElementById('pMetaNameColor')||{}).value||''; p.metaReadColor=(document.getElementById('pMetaReadColor')||{}).value||''; p.metaUnreadColor=(document.getElementById('pMetaUnreadColor')||{}).value||''; if(document.getElementById('pChatBgImg').src && document.getElementById('pChatBgImg').style.display!=='none') p.chatBgImage=document.getElementById('pChatBgImg').src; else p.chatBgImage=''; p.replyMode=_getSelectedReplyMode(); var _spd=document.querySelector('input[name="pReplySpeed"]:checked'); p.replySpeed=_spd?_spd.value:'fast'; p.replySpeedCustomMin=parseInt(document.getElementById('pReplySpeedCustomMin').value)||0; p.replySpeedCustomMax=parseInt(document.getElementById('pReplySpeedCustomMax').value)||10; p.heartVoiceGenerateEnabled=heartVoiceGenerateEnabled; p.showHeartVoiceInHeader=heartVoiceEnabled; p.heartVoiceEnabled=heartVoiceEnabled; p.heartVoiceMode=heartVoiceMode; p.allowCallTts=document.getElementById('pAllowCallTts').checked; if (p.momentsNickname == null || !String(p.momentsNickname).trim()) p.momentsNickname = name; if (p.momentsSignature == null) p.momentsSignature = ''; if (p.momentsBanner == null) p.momentsBanner = ''; }
+    if(p){ p.name=name; p.nickname=document.getElementById('pNick').value.trim(); p.userMaskId=selectedUserMaskId; p.persona=document.getElementById('pPersona').value.trim()||'一个简单的角色设定'; p.avatar=avatar; p.minReplyCount=minReply; p.maxReplyCount=maxReply; p.temperature=temperature; p.timeAwareness=timeAwareness; p.allowSticker=allowSticker; p.stickerLibraryIds=stickerLibraryIds; p.allowVoice=allowVoice; p.voiceId=voiceId; p.voiceSpeed=voiceSpeed; p.voiceLang=voiceLang; p.outputLang=outputLang; p.enableTranslation=enableTranslation; p.translateLang=translateLang; p.voiceFreq=voiceFreq; p.memoryCount=parseInt(document.getElementById('pMemoryCount').value)||100; p.autoMsg=document.getElementById('pAutoMsg').checked; p.autoMsgMinInterval=parsedAutoMsgMin; p.autoMsgMaxInterval=parsedAutoMsgMax; p.autoDiary=document.getElementById('pAutoDiary').checked; p.autoDiaryTime=document.getElementById('pAutoDiaryTime').value||'21:00'; p.diaryIncludeOfflineMemory=!document.getElementById('monoDiaryOfflineSetting') || document.getElementById('monoDiaryOfflineSetting').checked; p.autoMoments=document.getElementById('pAutoMoments').checked; p.autoMomentsTime=document.getElementById('pAutoMomentsTime').value||'20:00'; p.momentsIncludeOfflineMemory=!document.getElementById('monoMomentsOfflineSetting') || document.getElementById('monoMomentsOfflineSetting').checked; p.autoSummary=document.getElementById('pAutoSummary').checked; p.autoSummaryInterval=parseInt(document.getElementById('pAutoSummaryInterval').value)||20; p.bubbleAiCss=document.getElementById('pBubbleAiCss').value.trim(); p.bubbleUserCss=document.getElementById('pBubbleUserCss').value.trim(); p.chatRoomCustomCss=(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(); p.bubbleAiFontColor=_saveAiColor; p.bubbleUserFontColor=_saveUserColor; p.bubblePreset=(document.getElementById('pBubblePreset')||{}).value||'none'; p.chatTheme=selectedChatTheme; p.frostedTitleColor=selectedFrostedTitleColor; p.oshiGlowBlue=_saveOshiBlue; p.oshiGlowPink=_saveOshiPink; p.oshiGlowShowHeart=_saveOshiShowHeart; p.hideTimestamp=document.getElementById('pHideTimestamp')?document.getElementById('pHideTimestamp').checked:false; p.metaTimeColor=(document.getElementById('pMetaTimeColor')||{}).value||''; p.metaNameColor=(document.getElementById('pMetaNameColor')||{}).value||''; p.metaReadColor=(document.getElementById('pMetaReadColor')||{}).value||''; p.metaUnreadColor=(document.getElementById('pMetaUnreadColor')||{}).value||''; if(document.getElementById('pChatBgImg').src && document.getElementById('pChatBgImg').style.display!=='none') p.chatBgImage=document.getElementById('pChatBgImg').src; else p.chatBgImage=''; p.replyMode=_getSelectedReplyMode(); var _spd=document.querySelector('input[name="pReplySpeed"]:checked'); p.replySpeed=_spd?_spd.value:'fast'; p.replySpeedCustomMin=parseInt(document.getElementById('pReplySpeedCustomMin').value)||0; p.replySpeedCustomMax=parseInt(document.getElementById('pReplySpeedCustomMax').value)||10; p.heartVoiceGenerateEnabled=heartVoiceGenerateEnabled; p.showHeartVoiceInHeader=heartVoiceEnabled; p.heartVoiceEnabled=heartVoiceEnabled; p.heartVoiceMode=heartVoiceMode; p.allowCallTts=document.getElementById('pAllowCallTts').checked; if (p.momentsNickname == null || !String(p.momentsNickname).trim()) p.momentsNickname = name; if (p.momentsSignature == null) p.momentsSignature = ''; if (p.momentsBanner == null) p.momentsBanner = ''; }
   } else {
     const _saveAiColor = document.getElementById('pBubbleAiFontColorEnabled').checked ? (document.getElementById('pBubbleAiFontColor').value||'') : '';
     const _saveUserColor = document.getElementById('pBubbleUserFontColorEnabled').checked ? (document.getElementById('pBubbleUserFontColor').value||'') : '';
-    const newP = { id:Date.now(), name, nickname:document.getElementById('pNick').value.trim()||name, userMaskId:selectedUserMaskId, momentsNickname:name, momentsSignature:'', momentsBanner:'', persona:document.getElementById('pPersona').value.trim()||'一个简单的角色设定', avatar, history:[], memoryCore:[], lastHeartVoice:null, autoSummary:document.getElementById('pAutoSummary').checked, autoSummaryInterval:parseInt(document.getElementById('pAutoSummaryInterval').value)||20, minReplyCount:minReply, maxReplyCount:maxReply, temperature:temperature, timeAwareness:timeAwareness, allowSticker:allowSticker, stickerLibraryIds:stickerLibraryIds, allowVoice:allowVoice, voiceId:voiceId, voiceSpeed:voiceSpeed, voiceLang:voiceLang, outputLang:outputLang, enableTranslation:enableTranslation, translateLang:translateLang, voiceFreq:voiceFreq, memoryCount:parseInt(document.getElementById('pMemoryCount').value)||100, autoMsg:document.getElementById('pAutoMsg').checked, autoMsgMinInterval:parsedAutoMsgMin, autoMsgMaxInterval:parsedAutoMsgMax, autoDiary:document.getElementById('pAutoDiary').checked, autoDiaryTime:document.getElementById('pAutoDiaryTime').value||'21:00', diaryIncludeOfflineMemory:!document.getElementById('monoDiaryOfflineSetting') || document.getElementById('monoDiaryOfflineSetting').checked, autoMoments:document.getElementById('pAutoMoments').checked, autoMomentsTime:document.getElementById('pAutoMomentsTime').value||'20:00', momentsIncludeOfflineMemory:!document.getElementById('monoMomentsOfflineSetting') || document.getElementById('monoMomentsOfflineSetting').checked, bubbleAiCss:document.getElementById('pBubbleAiCss').value.trim(), bubbleUserCss:document.getElementById('pBubbleUserCss').value.trim(), chatRoomCustomCss:(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(), bubbleAiFontColor:_saveAiColor, bubbleUserFontColor:_saveUserColor, bubblePreset:(document.getElementById('pBubblePreset')||{}).value||'none', oshiGlowBlue:_saveOshiBlue, oshiGlowPink:_saveOshiPink, oshiGlowShowHeart:_saveOshiShowHeart, hideTimestamp:document.getElementById('pHideTimestamp')?document.getElementById('pHideTimestamp').checked:false, metaTimeColor:(document.getElementById('pMetaTimeColor')||{}).value||'', metaNameColor:(document.getElementById('pMetaNameColor')||{}).value||'', metaReadColor:(document.getElementById('pMetaReadColor')||{}).value||'', metaUnreadColor:(document.getElementById('pMetaUnreadColor')||{}).value||'', chatBgImage:(document.getElementById('pChatBgImg').style.display!=='none'?document.getElementById('pChatBgImg').src:''), replyMode:_getSelectedReplyMode(), replySpeed:(document.querySelector('input[name="pReplySpeed"]:checked')||{}).value||'fast', replySpeedCustomMin:parseInt(document.getElementById('pReplySpeedCustomMin').value)||0, replySpeedCustomMax:parseInt(document.getElementById('pReplySpeedCustomMax').value)||10, heartVoiceGenerateEnabled:heartVoiceGenerateEnabled, showHeartVoiceInHeader:heartVoiceEnabled, heartVoiceEnabled:heartVoiceEnabled, heartVoiceMode:heartVoiceMode, allowCallTts:document.getElementById('pAllowCallTts').checked };
+    const newP = { id:Date.now(), name, nickname:document.getElementById('pNick').value.trim()||name, userMaskId:selectedUserMaskId, momentsNickname:name, momentsSignature:'', momentsBanner:'', persona:document.getElementById('pPersona').value.trim()||'一个简单的角色设定', avatar, history:[], memoryCore:[], lastHeartVoice:null, autoSummary:document.getElementById('pAutoSummary').checked, autoSummaryInterval:parseInt(document.getElementById('pAutoSummaryInterval').value)||20, minReplyCount:minReply, maxReplyCount:maxReply, temperature:temperature, timeAwareness:timeAwareness, allowSticker:allowSticker, stickerLibraryIds:stickerLibraryIds, allowVoice:allowVoice, voiceId:voiceId, voiceSpeed:voiceSpeed, voiceLang:voiceLang, outputLang:outputLang, enableTranslation:enableTranslation, translateLang:translateLang, voiceFreq:voiceFreq, memoryCount:parseInt(document.getElementById('pMemoryCount').value)||100, autoMsg:document.getElementById('pAutoMsg').checked, autoMsgMinInterval:parsedAutoMsgMin, autoMsgMaxInterval:parsedAutoMsgMax, autoDiary:document.getElementById('pAutoDiary').checked, autoDiaryTime:document.getElementById('pAutoDiaryTime').value||'21:00', diaryIncludeOfflineMemory:!document.getElementById('monoDiaryOfflineSetting') || document.getElementById('monoDiaryOfflineSetting').checked, autoMoments:document.getElementById('pAutoMoments').checked, autoMomentsTime:document.getElementById('pAutoMomentsTime').value||'20:00', momentsIncludeOfflineMemory:!document.getElementById('monoMomentsOfflineSetting') || document.getElementById('monoMomentsOfflineSetting').checked, bubbleAiCss:document.getElementById('pBubbleAiCss').value.trim(), bubbleUserCss:document.getElementById('pBubbleUserCss').value.trim(), chatRoomCustomCss:(document.getElementById('pRoomCustomCss')||{value:''}).value.trim(), bubbleAiFontColor:_saveAiColor, bubbleUserFontColor:_saveUserColor, bubblePreset:(document.getElementById('pBubblePreset')||{}).value||'none', chatTheme:selectedChatTheme, frostedTitleColor:selectedFrostedTitleColor, oshiGlowBlue:_saveOshiBlue, oshiGlowPink:_saveOshiPink, oshiGlowShowHeart:_saveOshiShowHeart, hideTimestamp:document.getElementById('pHideTimestamp')?document.getElementById('pHideTimestamp').checked:false, metaTimeColor:(document.getElementById('pMetaTimeColor')||{}).value||'', metaNameColor:(document.getElementById('pMetaNameColor')||{}).value||'', metaReadColor:(document.getElementById('pMetaReadColor')||{}).value||'', metaUnreadColor:(document.getElementById('pMetaUnreadColor')||{}).value||'', chatBgImage:(document.getElementById('pChatBgImg').style.display!=='none'?document.getElementById('pChatBgImg').src:''), replyMode:_getSelectedReplyMode(), replySpeed:(document.querySelector('input[name="pReplySpeed"]:checked')||{}).value||'fast', replySpeedCustomMin:parseInt(document.getElementById('pReplySpeedCustomMin').value)||0, replySpeedCustomMax:parseInt(document.getElementById('pReplySpeedCustomMax').value)||10, heartVoiceGenerateEnabled:heartVoiceGenerateEnabled, showHeartVoiceInHeader:heartVoiceEnabled, heartVoiceEnabled:heartVoiceEnabled, heartVoiceMode:heartVoiceMode, allowCallTts:document.getElementById('pAllowCallTts').checked };
     personas.push(newP); currentId=newP.id;
   }
   saveData(); renderContactList(); if(currentId) selectPersona(currentId); closeEditor(); renderDiaryTabs();
@@ -36593,6 +38120,12 @@ function resetBubbleFontColor(who) {
 function applyBubbleStyles(p) {
   removeBubbleStyles();
   if (!p) return;
+  applyChatThemeClass(getEffectiveChatTheme(p));
+  try {
+    var chatPage = document.getElementById('chatPage');
+    var frostedTitleColor = (p && p.frostedTitleColor) ? p.frostedTitleColor : '#ffffff';
+    if (chatPage) chatPage.style.setProperty('--theme-frosted-name-color', frostedTitleColor);
+  } catch (e) {}
   // Apply preset class
   applyBubblePresetClass(p.bubblePreset || 'none');
   let css = '';
@@ -36630,10 +38163,11 @@ function livePreviewBubble() {
   const tmpAiColor   = aiEnabled   ? ((document.getElementById('pBubbleAiFontColor')   || {}).value || '') : '';
   const tmpUserColor = userEnabled ? ((document.getElementById('pBubbleUserFontColor') || {}).value || '') : '';
   const tmpPreset = (document.getElementById('pBubblePreset') || {}).value || 'none';
+  const tmpFrostedTitleColor = (document.getElementById('pFrostedTitleColor') || {}).value || '#ffffff';
   const tmpOshiBlue = (document.getElementById('pOshiGlowBlue') || {}).value || '#cfd3d8';
   const tmpOshiPink = (document.getElementById('pOshiGlowPink') || {}).value || '#e5e5e5';
   const tmpOshiShowHeart = !document.getElementById('pOshiGlowShowHeart') || document.getElementById('pOshiGlowShowHeart').checked;
-  applyBubbleStyles({ bubbleAiCss: tmpAi.trim(), bubbleUserCss: tmpUser.trim(), bubbleAiFontColor: tmpAiColor, bubbleUserFontColor: tmpUserColor, bubblePreset: tmpPreset, oshiGlowBlue: tmpOshiBlue, oshiGlowPink: tmpOshiPink, oshiGlowShowHeart: tmpOshiShowHeart });
+  applyBubbleStyles({ bubbleAiCss: tmpAi.trim(), bubbleUserCss: tmpUser.trim(), bubbleAiFontColor: tmpAiColor, bubbleUserFontColor: tmpUserColor, bubblePreset: tmpPreset, chatTheme: normalizeChatTheme((document.getElementById('pChatTheme') || {}).value || 'default'), frostedTitleColor: tmpFrostedTitleColor, oshiGlowBlue: tmpOshiBlue, oshiGlowPink: tmpOshiPink, oshiGlowShowHeart: tmpOshiShowHeart });
   const previewPersona = personas.find(x => x.id == currentId);
   if (previewPersona && (typeof normalizeBubblePreset === 'function' ? normalizeBubblePreset(previewPersona.bubblePreset) : previewPersona.bubblePreset) === 'oshiglow' && previewPersona.oshiGlowShowHeart !== tmpOshiShowHeart) {
     previewPersona.oshiGlowShowHeart = tmpOshiShowHeart;
@@ -36644,6 +38178,8 @@ function livePreviewBubble() {
   if (aiPreview) aiPreview.style.color = tmpAiColor || '#1a1a1a';
   const userPreview = document.getElementById('pBubbleUserFontColorPreview');
   if (userPreview) userPreview.style.color = tmpUserColor || '#ffffff';
+  const frostedTitlePreview = document.getElementById('pFrostedTitleColorPreview');
+  if (frostedTitlePreview) frostedTitlePreview.style.color = tmpFrostedTitleColor || '#ffffff';
 }
 function removeBubbleStyles() {
   const e = document.getElementById('customBubbleStyle'); if (e) e.remove();
@@ -36799,9 +38335,156 @@ function resetGcRoomCss() {
 // BUBBLE PRESET SYSTEM
 // ══════════════════════════════════════════
 var _BUBBLE_PRESET_CLASSES = ['bubble-preset-wechat', 'bubble-preset-imessage', 'bubble-preset-line', 'bubble-preset-retro', 'bubble-preset-oshiglow', 'bubble-preset-journal'];
+var _CHAT_THEME_CLASSES = ['chat-theme-frosted'];
 function normalizeBubblePreset(preset) {
   preset = preset || 'none';
   return _BUBBLE_PRESET_CLASSES.indexOf('bubble-preset-' + preset) === -1 ? 'none' : preset;
+}
+function normalizeChatTheme(theme) {
+  return theme === 'frosted' ? 'frosted' : 'default';
+}
+function toggleFrostedTitleColorControl(theme) {
+  theme = normalizeChatTheme(theme);
+  var wrap = document.getElementById('frostedTitleColorWrap');
+  if (wrap) wrap.style.display = theme === 'frosted' ? 'block' : 'none';
+}
+function migrateLegacyFrostedThemeIfNeeded(p) {
+  try {
+    if (p && !p.chatTheme && p.bubblePreset === 'frosted') {
+      p.chatTheme = 'frosted';
+      p.bubblePreset = 'none';
+      return true;
+    }
+  } catch (e) {}
+  return false;
+}
+function getEffectiveChatTheme(p) {
+  if (!p) return 'default';
+  if (p.chatTheme) return normalizeChatTheme(p.chatTheme);
+  return p.bubblePreset === 'frosted' ? 'frosted' : 'default';
+}
+function syncFrostedComposerState() {
+  try {
+    var chatPage = document.getElementById('chatPage');
+    var input = document.getElementById('userInput');
+    if (!chatPage || !input) return;
+    chatPage.classList.toggle('frosted-has-text', !!String(input.value || '').trim());
+  } catch (e) {}
+}
+function bindFrostedComposerState() {
+  try {
+    var input = document.getElementById('userInput');
+    if (!input || input.dataset.frostedStateBound === '1') {
+      syncFrostedComposerState();
+      return;
+    }
+    input.addEventListener('input', syncFrostedComposerState);
+    input.addEventListener('change', syncFrostedComposerState);
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') setTimeout(syncFrostedComposerState, 0);
+    });
+    document.addEventListener('click', function(e) {
+      if (e.target && e.target.closest && e.target.closest('.chat-send-btn')) {
+        setTimeout(syncFrostedComposerState, 80);
+      }
+    }, true);
+    input.dataset.frostedStateBound = '1';
+    syncFrostedComposerState();
+  } catch (e) {}
+}
+function applyChatThemeClass(theme) {
+  try {
+    theme = normalizeChatTheme(theme);
+    var chatPage = document.getElementById('chatPage');
+    var drawer = document.getElementById('contactsDrawer');
+    var menuBtn = document.getElementById('menuBtn');
+    [chatPage, drawer, menuBtn].forEach(function(el) {
+      if (!el) return;
+      _CHAT_THEME_CLASSES.forEach(function(cls) { el.classList.remove(cls); });
+      if (theme === 'frosted') el.classList.add('chat-theme-frosted');
+    });
+    document.body.classList.toggle('chat-theme-frosted-active', theme === 'frosted');
+    if (typeof updateMonoViewportMetrics === 'function') updateMonoViewportMetrics();
+    syncFrostedComposerState();
+  } catch (e) {}
+}
+function selectChatTheme(theme) {
+  theme = normalizeChatTheme(theme);
+  document.querySelectorAll('.chat-theme-option').forEach(function(el) {
+    el.style.borderColor = '#ddd';
+    el.style.boxShadow = 'none';
+  });
+  var opt = document.getElementById('ctOpt-' + theme);
+  if (opt) {
+    opt.style.borderColor = '#1a1a1a';
+    opt.style.boxShadow = '0 0 0 1px #1a1a1a';
+  }
+  var hi = document.getElementById('pChatTheme');
+  if (hi) hi.value = theme;
+  toggleFrostedTitleColorControl(theme);
+  applyChatThemeClass(theme);
+  livePreviewBubble();
+  var p = personas.find(function(x){ return x.id == currentId; });
+  if (p) {
+    p.chatTheme = theme;
+    if (p.bubblePreset === 'frosted') p.bubblePreset = 'none';
+    saveData();
+  }
+}
+function loadChatThemeUI(theme) {
+  theme = normalizeChatTheme(theme);
+  document.querySelectorAll('.chat-theme-option').forEach(function(el) {
+    el.style.borderColor = '#ddd';
+    el.style.boxShadow = 'none';
+  });
+  var opt = document.getElementById('ctOpt-' + theme);
+  if (opt) {
+    opt.style.borderColor = '#1a1a1a';
+    opt.style.boxShadow = '0 0 0 1px #1a1a1a';
+  }
+  var hi = document.getElementById('pChatTheme');
+  if (hi) hi.value = theme;
+  toggleFrostedTitleColorControl(theme);
+}
+function updateMonoViewportMetrics() {
+  try {
+    var root = document.documentElement;
+    var vv = window.visualViewport;
+    var viewportHeight = vv && vv.height ? vv.height : window.innerHeight;
+    if (viewportHeight > 0) {
+      root.style.setProperty('--mono-app-vh', (viewportHeight * 0.01) + 'px');
+    }
+    var keyboardOffset = 0;
+    if (vv && window.innerHeight) {
+      keyboardOffset = Math.max(0, window.innerHeight - vv.height - (vv.offsetTop || 0));
+    }
+    root.style.setProperty('--mono-keyboard-offset', keyboardOffset + 'px');
+    var chatPage = document.getElementById('chatPage');
+    if (chatPage && chatPage.parentElement) {
+      var hostHeight = chatPage.parentElement.clientHeight || 0;
+      var chatTop = chatPage.offsetTop || 0;
+      var chatHeight = Math.max(0, hostHeight - chatTop);
+      if (chatHeight > 0) root.style.setProperty('--mono-chat-page-h', chatHeight + 'px');
+    }
+  } catch (e) {}
+}
+function bindMonoViewportMetrics() {
+  try {
+    if (window.__monoViewportMetricsBound) {
+      updateMonoViewportMetrics();
+      return;
+    }
+    window.__monoViewportMetricsBound = true;
+    updateMonoViewportMetrics();
+    window.addEventListener('resize', updateMonoViewportMetrics, { passive: true });
+    window.addEventListener('orientationchange', function() {
+      setTimeout(updateMonoViewportMetrics, 120);
+    }, { passive: true });
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', updateMonoViewportMetrics, { passive: true });
+      window.visualViewport.addEventListener('scroll', updateMonoViewportMetrics, { passive: true });
+    }
+  } catch (e) {}
 }
 function applyBubblePresetClass(preset) {
   preset = normalizeBubblePreset(preset);
@@ -36810,6 +38493,8 @@ function applyBubblePresetClass(preset) {
     _BUBBLE_PRESET_CLASSES.forEach(function(cls) { el.classList.remove(cls); });
     if (preset && preset !== 'none') { el.classList.add('bubble-preset-' + preset); }
   });
+  try { document.body.classList.toggle('chat-preset-frosted-active', preset === 'frosted'); } catch (e) {}
+  syncFrostedComposerState();
 }
 function selectBubblePreset(preset) {
   preset = normalizeBubblePreset(preset);
@@ -36846,6 +38531,20 @@ function loadBubblePresetUI(preset) {
   var hi = document.getElementById('pBubblePreset');
   if (hi) hi.value = preset;
 }
+(function initFrostedComposerStateBinding() {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bindFrostedComposerState, { once: true });
+  } else {
+    bindFrostedComposerState();
+  }
+})();
+(function initMonoViewportMetricsBinding() {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bindMonoViewportMetrics, { once: true });
+  } else {
+    bindMonoViewportMetrics();
+  }
+})();
 // ===================== NEW: Custom Chat Background =====================
 function openChatBgEditor() {
   if (!currentId) return;
@@ -36879,11 +38578,16 @@ function resetChatBg() {
 }
 function applyChatBackground(p) {
   const chatBox = document.getElementById('chatBox');
+  const chatPage = document.getElementById('chatPage');
   if (!chatBox) return;
   // chatBgImage may be stored separately (as '__ref__') or inline
   const bg = p && (p.chatBgImage === '__ref__'
     ? localStorage.getItem('mono_bg_' + p.id) || ''
     : (p.chatBgImage || ''));
+  if (chatPage) {
+    if (bg) chatPage.style.setProperty('--mono-chat-bg-image', 'url("' + bg + '")');
+    else chatPage.style.removeProperty('--mono-chat-bg-image');
+  }
   if (bg) {
     chatBox.style.backgroundImage = 'url(' + bg + ')';
     chatBox.style.backgroundSize = 'cover';
@@ -41305,7 +43009,12 @@ setTimeout(_setupTypingDetection, 1000);
 document.addEventListener('click', function(e) {
   const drawer = document.getElementById('contactsDrawer');
   const menuBtn = document.getElementById('menuBtn');
-  if (!drawer.contains(e.target) && menuBtn && !menuBtn.contains(e.target) && drawer.classList.contains('open')) drawer.classList.remove('open');
+  const chatContactsBtn = document.getElementById('chatContactsBtn');
+  if (!drawer || !drawer.classList.contains('open')) return;
+  if (drawer.contains(e.target)) return;
+  if (menuBtn && menuBtn.contains(e.target)) return;
+  if (chatContactsBtn && chatContactsBtn.contains(e.target)) return;
+  drawer.classList.remove('open');
 });
 window.addEventListener('load', () => {
   /* Home screen shown by default */
@@ -93786,7 +95495,7 @@ function _monoPersonaExportBase(p) {
       autoMsg: !!p.autoMsg, autoMsgMinInterval: Math.max(0, parseInt(p.autoMsgMinInterval, 10) || 0), autoMsgMaxInterval: Math.max(Math.max(0, parseInt(p.autoMsgMinInterval, 10) || 0), parseInt(p.autoMsgMaxInterval, 10) || 0),
       autoDiary: !!p.autoDiary, autoDiaryTime: p.autoDiaryTime || '21:00', autoMoments: !!p.autoMoments, autoMomentsTime: p.autoMomentsTime || '20:00',
       diaryIncludeOfflineMemory: p.diaryIncludeOfflineMemory !== false, momentsIncludeOfflineMemory: p.momentsIncludeOfflineMemory !== false, bubbleAiCss: p.bubbleAiCss || '', bubbleUserCss: p.bubbleUserCss || '',
-      bubbleAiFontColor: p.bubbleAiFontColor || '', bubbleUserFontColor: p.bubbleUserFontColor || '', bubblePreset: p.bubblePreset || 'none',
+      bubbleAiFontColor: p.bubbleAiFontColor || '', bubbleUserFontColor: p.bubbleUserFontColor || '', bubblePreset: p.bubblePreset || 'none', chatTheme: getEffectiveChatTheme(p), frostedTitleColor: p.frostedTitleColor || '#ffffff',
       chatRoomCustomCss: p.chatRoomCustomCss || '', chatBgImage: p.chatBgImage || '', replyMode: p.replyMode || 'normal', replySpeed: p.replySpeed || 'fast',
       replySpeedCustomMin: p.replySpeedCustomMin || 0, replySpeedCustomMax: p.replySpeedCustomMax || 10, allowCallTts: !!p.allowCallTts,
       oshiGlowBlue: p.oshiGlowBlue || '', oshiGlowPink: p.oshiGlowPink || '', oshiGlowShowHeart: !!p.oshiGlowShowHeart,
@@ -93852,9 +95561,13 @@ function monoImportPersonaPackage(event) {
         diaryIncludeOfflineMemory: settings.diaryIncludeOfflineMemory !== false,
         momentsIncludeOfflineMemory: settings.momentsIncludeOfflineMemory !== false,
         lastHeartVoice: settings.lastHeartVoice || null,
-        heartVoiceGenerateEnabled: settings.heartVoiceGenerateEnabled !== false
+        heartVoiceGenerateEnabled: settings.heartVoiceGenerateEnabled !== false,
+        chatTheme: normalizeChatTheme(settings.chatTheme || 'default'),
+        frostedTitleColor: settings.frostedTitleColor || '#ffffff'
       }, settings);
       newPersona.id = newId;
+      newPersona.chatTheme = normalizeChatTheme(newPersona.chatTheme || 'default');
+      newPersona.frostedTitleColor = newPersona.frostedTitleColor || '#ffffff';
       if (!Array.isArray(newPersona.history)) newPersona.history = [];
       personas.push(newPersona);
       if (Array.isArray(data.offlineSessions) && data.offlineSessions.length) {
@@ -94355,6 +96068,8 @@ if (document.readyState === 'loading') {
         bubbleAiFontColor: persona.bubbleAiFontColor || '',
         bubbleUserFontColor: persona.bubbleUserFontColor || '',
         bubblePreset: persona.bubblePreset || 'none',
+        chatTheme: getEffectiveChatTheme(persona),
+        frostedTitleColor: persona.frostedTitleColor || '#ffffff',
         chatRoomCustomCss: persona.chatRoomCustomCss || '',
         chatBgImage: persona.chatBgImage || '',
         replyMode: persona.replyMode || 'normal',
@@ -94453,6 +96168,8 @@ if (document.readyState === 'loading') {
       bubbleAiFontColor: settings.bubbleAiFontColor || '',
       bubbleUserFontColor: settings.bubbleUserFontColor || '',
       bubblePreset: settings.bubblePreset || 'none',
+      chatTheme: normalizeChatTheme(settings.chatTheme || 'default'),
+      frostedTitleColor: settings.frostedTitleColor || '#ffffff',
       chatRoomCustomCss: settings.chatRoomCustomCss || '',
       chatBgImage: settings.chatBgImage || '',
       replyMode: settings.replyMode || 'normal',
@@ -102017,232 +103734,6 @@ console.log('[ChatScreenshot] 聊天截图功能已加载：多张截图/记忆/
 })();
 </script>
 <!-- ==================== 聊天截图功能 END ==================== -->
-
-<!-- ==================== 情侶定位自动更新功能 START ==================== -->
-<script>
-(function() {
-'use strict';
-
-// ─── Storage key ───────────────────────────────────────────────────────────
-var AUTO_KEY = 'mono_loc_auto_update_ids'; // stores JSON array of personaId strings
-
-// ─── State ─────────────────────────────────────────────────────────────────
-var _autoUpdateIds = [];      // personaIds that have auto-update enabled
-var _autoTimer = null;        // setInterval handle
-var _autoRunning = false;     // prevent concurrent runs
-
-// ─── Load / Save ───────────────────────────────────────────────────────────
-function _loadAutoIds() {
-  try { _autoUpdateIds = JSON.parse(localStorage.getItem(AUTO_KEY) || '[]'); } catch(e) { _autoUpdateIds = []; }
-}
-function _saveAutoIds() {
-  localStorage.setItem(AUTO_KEY, JSON.stringify(_autoUpdateIds));
-}
-
-// ─── Header button styling helper ──────────────────────────────────────────
-function _refreshAutoBtn() {
-  var btn = document.getElementById('locAutoUpdateToggleBtn');
-  if (!btn) return;
-  if (_autoUpdateIds.length > 0) {
-    btn.style.background = '#1a1a1a';
-    btn.style.color = '#fff';
-  } else {
-    btn.style.background = '';
-    btn.style.color = '';
-  }
-}
-
-// ─── Modal open / close ────────────────────────────────────────────────────
-window.openLocAutoUpdateModal = function() {
-  _loadAutoIds();
-  var list = document.getElementById('locAutoUpdatePersonaList');
-  var rels = (typeof locRelations !== 'undefined') ? locRelations : [];
-  var ps   = (typeof personas   !== 'undefined') ? personas   : [];
-
-  if (!rels || !rels.length) {
-    list.innerHTML = '<div class="loc-empty-msg">请先绑定角色</div>';
-  } else {
-    list.innerHTML = rels.map(function(rel) {
-      var p = ps.find(function(x) { return x.id == rel.personaId; });
-      if (!p) return '';
-      var checked = _autoUpdateIds.indexOf(String(rel.personaId)) !== -1;
-      var avatarHtml = p.avatar
-        ? '<img src="' + p.avatar + '" onerror="this.style.display=\'none\'" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:1px solid #eee;flex-shrink:0;">'
-        : '<div style="width:34px;height:34px;border-radius:50%;background:#ddd;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">' + (p.name||'?')[0] + '</div>';
-      return '<label style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f0f0f0;cursor:pointer;">'
-        + avatarHtml
-        + '<div style="flex:1;min-width:0;">'
-        +   '<div style="font-size:12px;font-weight:700;color:#1a1a1a;">' + p.name + '</div>'
-        +   '<div style="font-size:10px;color:#aaa;">' + (rel.type==='couple'?'💑 情侶':'👥 朋友') + '</div>'
-        + '</div>'
-        + '<input type="checkbox" data-pid="' + rel.personaId + '" '
-        +   (checked ? 'checked' : '')
-        +   ' style="width:18px;height:18px;accent-color:#1a1a1a;cursor:pointer;flex-shrink:0;">'
-        + '</label>';
-    }).join('');
-  }
-  document.getElementById('locAutoUpdateModal').classList.add('open');
-};
-
-window.closeLocAutoUpdateModal = function() {
-  document.getElementById('locAutoUpdateModal').classList.remove('open');
-};
-
-window.saveLocAutoUpdateSettings = function() {
-  var boxes = document.querySelectorAll('#locAutoUpdatePersonaList input[type="checkbox"]');
-  _autoUpdateIds = [];
-  boxes.forEach(function(cb) { if (cb.checked) _autoUpdateIds.push(String(cb.dataset.pid)); });
-  _saveAutoIds();
-  _refreshAutoBtn();
-  closeLocAutoUpdateModal();
-  // Immediately run auto-update for newly enabled characters
-  _runAutoUpdate(true);
-  // Ensure timer is running
-  _startAutoTimer();
-};
-
-// ─── Core auto-update logic ─────────────────────────────────────────────────
-// Parse HH:MM to minutes-since-midnight
-function _timeToMin(str) {
-  if (!str) return 0;
-  var parts = String(str).split(':');
-  return parseInt(parts[0]||0)*60 + parseInt(parts[1]||0);
-}
-
-// Current time as HH:MM string
-function _nowHHMM() {
-  var d = new Date();
-  return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
-}
-
-// Round current time DOWN to nearest 30-min slot, return as HH:MM
-function _currentSlot() {
-  var d = new Date();
-  var m = d.getHours()*60 + Math.floor(d.getMinutes()/30)*30;
-  return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0');
-}
-
-// Main auto-update runner
-// catchUp=true → also fill offline gap; catchUp=false → only fill up to now if last slot is stale
-async function _runAutoUpdate(catchUp) {
-  if (_autoRunning) return;
-  _autoRunning = true;
-  try {
-    _loadAutoIds();
-    if (!_autoUpdateIds.length) return;
-
-    var rels = (typeof locRelations !== 'undefined') ? locRelations : [];
-    var ps   = (typeof personas    !== 'undefined') ? personas    : [];
-    if (!rels || !rels.length) return;
-
-    // Ensure today's date check
-    if (typeof _checkMidnightReset === 'function') _checkMidnightReset();
-
-    var nowSlot = _currentSlot(); // e.g. "14:30"
-    var changed = false;
-
-    for (var i = 0; i < _autoUpdateIds.length; i++) {
-      var pid = _autoUpdateIds[i];
-      var rel = rels.find(function(r) { return String(r.personaId) === pid; });
-      if (!rel) continue;
-      var p = ps.find(function(x) { return String(x.id) === pid; });
-      if (!p) continue;
-
-      var region = (typeof locCharRegions !== 'undefined' && locCharRegions[p.id])
-                    || (typeof locUserRegionName !== 'undefined' ? locUserRegionName : '') || '未知地区';
-      var existing = (typeof locDailyTraces !== 'undefined' && locDailyTraces[p.id]) ? locDailyTraces[p.id] : [];
-
-      var needsUpdate = false;
-      if (existing.length === 0) {
-        needsUpdate = true; // no traces at all
-      } else {
-        var lastTime = existing[existing.length-1].time || '00:00';
-        // needs update if last slot is at least 30 min before current slot
-        needsUpdate = (_timeToMin(nowSlot) - _timeToMin(lastTime)) >= 30;
-      }
-
-      if (!needsUpdate) continue;
-
-      var newTraces = [];
-      try {
-        if (existing.length === 0) {
-          if (typeof generateFullDayTrace === 'function') {
-            newTraces = await generateFullDayTrace(p, region);
-          }
-        } else {
-          var lastTime2 = existing[existing.length-1].time || '00:00';
-          if (typeof generateIncrementalTrace === 'function') {
-            newTraces = await generateIncrementalTrace(p, region, lastTime2);
-          }
-        }
-      } catch(e) { newTraces = []; }
-
-      if (newTraces && newTraces.length > 0) {
-        if (typeof locDailyTraces !== 'undefined') {
-          locDailyTraces[p.id] = existing.concat(newTraces);
-        }
-        var last = newTraces[newTraces.length-1];
-        if (typeof locCharLocations !== 'undefined') {
-          if (!locCharLocations[p.id]) locCharLocations[p.id] = [];
-          locCharLocations[p.id].push({ address: last.place, time: new Date().toISOString() });
-          if (locCharLocations[p.id].length > 48) locCharLocations[p.id] = locCharLocations[p.id].slice(-48);
-        }
-        changed = true;
-      }
-    }
-
-    if (changed) {
-      if (typeof saveLocData === 'function') saveLocData();
-      if (typeof renderLocTrace === 'function') renderLocTrace();
-      if (typeof locCurrentTab !== 'undefined' && locCurrentTab === 'map' && typeof _renderBotMap === 'function') _renderBotMap();
-      if (typeof renderLocRelation === 'function') renderLocRelation();
-    }
-  } catch(e) {
-    console.warn('[LocAutoUpdate] error:', e);
-  } finally {
-    _autoRunning = false;
-  }
-}
-
-// ─── 30-minute interval timer ───────────────────────────────────────────────
-function _startAutoTimer() {
-  if (_autoTimer) clearInterval(_autoTimer);
-  _autoTimer = setInterval(function() {
-    if (_autoUpdateIds.length > 0) {
-      _runAutoUpdate(false);
-    }
-  }, 30 * 60 * 1000); // every 30 minutes
-}
-
-// ─── Hook into openLocationApp for offline catch-up ────────────────────────
-(function() {
-  var _origOpen = typeof openLocationApp === 'function' ? openLocationApp : null;
-  window.openLocationApp = function() {
-    if (_origOpen) _origOpen.apply(this, arguments);
-    // After normal open, run offline catch-up asynchronously
-    _loadAutoIds();
-    _refreshAutoBtn();
-    if (_autoUpdateIds.length > 0) {
-      setTimeout(function() { _runAutoUpdate(true); }, 400);
-    }
-  };
-})();
-
-// ─── Init on page load ──────────────────────────────────────────────────────
-(function _initAutoUpdate() {
-  _loadAutoIds();
-  _refreshAutoBtn();
-  _startAutoTimer();
-  // Run catch-up after a short delay to ensure all globals are ready
-  if (_autoUpdateIds.length > 0) {
-    setTimeout(function() { _runAutoUpdate(true); }, 2000);
-  }
-})();
-
-console.log('[LocAutoUpdate] 情侣定位自动更新功能已加载 ✓');
-})();
-</script>
-<!-- ==================== 情侶定位自动更新功能 END ==================== -->
 
 </body>
 </html>

@@ -34,6 +34,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head><base href="https://d16ilfvy4mv02r.cloudfront.net/workspaces/sh0bDVYUIEw8H1dpwjAJvINuiJ6ETxg0/6c9a375e-adcc-44e2-9ec5-2d1ce63bc50b/files/">
@@ -24382,10 +24383,10 @@ body:not(.ios-fullscreen).chat-page-active.chat-preset-frosted-active #chatPage.
           <div id="frostedBubbleBlurControl" style="margin-top:12px;padding:10px;border:1px solid #eee;border-radius:10px;background:#fafafa;">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;">
               <span style="font-size:10px;font-weight:800;color:#666;letter-spacing:.5px;">信息气泡模糊度 Bubble Blur</span>
-              <span id="pFrostedBubbleBlurValue" style="font-size:10px;color:#888;font-weight:700;min-width:42px;text-align:right;">9px</span>
+              <span id="pFrostedBubbleBlurValue" style="font-size:10px;color:#888;font-weight:700;min-width:42px;text-align:right;">8px</span>
             </div>
-            <input type="range" id="pFrostedBubbleBlur" min="0" max="30" step="3" value="9" oninput="livePreviewBubble()" style="width:100%;accent-color:#1a1a1a;">
-            <p style="font-size:10px;color:#999;line-height:1.55;margin:6px 0 0;">每一格为 3px，调节差距更明显；数值越高，气泡越有玻璃模糊感。</p>
+            <input type="range" id="pFrostedBubbleBlur" min="0" max="24" step="1" value="8" oninput="livePreviewBubble()" style="width:100%;accent-color:#1a1a1a;">
+            <p style="font-size:10px;color:#999;line-height:1.55;margin:6px 0 0;">每一格为 2px，变化更自然；0 为完全透明无模糊，数值越高，气泡越有玻璃模糊感。</p>
           </div>
         </div>
         <label style="display:flex;align-items:flex-start;gap:8px;margin-top:12px;padding:10px 12px;border:1px solid rgba(0,0,0,0.06);border-radius:10px;background:#fff;cursor:pointer;font-size:11px;color:#555;line-height:1.55;">
@@ -30442,8 +30443,8 @@ function openEditor(isEdit=false) {
     if (document.getElementById('pFrostedAiBubbleColor')) document.getElementById('pFrostedAiBubbleColor').value = p.frostedAiBubbleColor || '#ffffff';
     if (document.getElementById('pFrostedUserTextColor')) document.getElementById('pFrostedUserTextColor').value = p.frostedUserTextColor || '#ffffff';
     if (document.getElementById('pFrostedUserBubbleColor')) document.getElementById('pFrostedUserBubbleColor').value = p.frostedUserBubbleColor || '#bed6db';
-    if (document.getElementById('pFrostedBubbleBlur')) document.getElementById('pFrostedBubbleBlur').value = (p.frostedBubbleBlur != null ? p.frostedBubbleBlur : 9);
-    if (document.getElementById('pFrostedBubbleBlurValue')) document.getElementById('pFrostedBubbleBlurValue').textContent = (p.frostedBubbleBlur != null ? p.frostedBubbleBlur : 9) + 'px';
+    if (document.getElementById('pFrostedBubbleBlur')) document.getElementById('pFrostedBubbleBlur').value = (p.frostedBubbleBlur != null ? p.frostedBubbleBlur : 8);
+    if (document.getElementById('pFrostedBubbleBlurValue')) document.getElementById('pFrostedBubbleBlurValue').textContent = (p.frostedBubbleBlur != null ? p.frostedBubbleBlur : 8) + 'px';
     if (typeof monoUpdateFrostedMessageColorPreview === 'function') monoUpdateFrostedMessageColorPreview();
     const _bgForEditor = p.chatBgImage === '__ref__'
       ? (localStorage.getItem('mono_bg_' + p.id) || '')
@@ -30509,7 +30510,7 @@ function savePersona() {
   const selectedFrostedAiBubbleColor = (document.getElementById('pFrostedAiBubbleColor') || {}).value || '#ffffff';
   const selectedFrostedUserTextColor = (document.getElementById('pFrostedUserTextColor') || {}).value || '#ffffff';
   const selectedFrostedUserBubbleColor = (document.getElementById('pFrostedUserBubbleColor') || {}).value || '#bed6db';
-  const selectedFrostedBubbleBlur = Math.max(0, Math.min(30, parseInt((document.getElementById('pFrostedBubbleBlur') || {}).value, 10) || 0));
+  const selectedFrostedBubbleBlur = Math.max(0, Math.min(24, parseInt((document.getElementById('pFrostedBubbleBlur') || {}).value, 10) || 0));
   const _saveOshiBlue = (document.getElementById('pOshiGlowBlue') || {}).value || '#cfd3d8';
   const _saveOshiPink = (document.getElementById('pOshiGlowPink') || {}).value || '#e5e5e5';
   const _saveOshiShowHeart = !document.getElementById('pOshiGlowShowHeart') || document.getElementById('pOshiGlowShowHeart').checked;
@@ -38716,7 +38717,7 @@ function applyBubbleStyles(p) {
       chatPage.style.setProperty('--frosted-ai-bubble-color', (p && p.frostedAiBubbleColor) ? p.frostedAiBubbleColor : '#ffffff');
       chatPage.style.setProperty('--frosted-user-text-color', (p && p.frostedUserTextColor) ? p.frostedUserTextColor : '#ffffff');
       chatPage.style.setProperty('--frosted-user-bubble-color', (p && p.frostedUserBubbleColor) ? p.frostedUserBubbleColor : '#bed6db');
-      chatPage.style.setProperty('--frosted-bubble-blur', ((p && p.frostedBubbleBlur != null) ? p.frostedBubbleBlur : 9) + 'px');
+      chatPage.style.setProperty('--frosted-bubble-blur', ((p && p.frostedBubbleBlur != null) ? p.frostedBubbleBlur : 8) + 'px');
     }
   } catch (e) {}
   applyFrostedMessageMetaVisibility(p);
@@ -38763,7 +38764,7 @@ function livePreviewBubble() {
   const tmpFrostedAiBubbleColor = (document.getElementById('pFrostedAiBubbleColor') || {}).value || '#ffffff';
   const tmpFrostedUserTextColor = (document.getElementById('pFrostedUserTextColor') || {}).value || '#ffffff';
   const tmpFrostedUserBubbleColor = (document.getElementById('pFrostedUserBubbleColor') || {}).value || '#bed6db';
-  const tmpFrostedBubbleBlur = Math.max(0, Math.min(30, parseInt((document.getElementById('pFrostedBubbleBlur') || {}).value, 10) || 0));
+  const tmpFrostedBubbleBlur = Math.max(0, Math.min(24, parseInt((document.getElementById('pFrostedBubbleBlur') || {}).value, 10) || 0));
   const tmpFrostedBubbleBlurValue = document.getElementById('pFrostedBubbleBlurValue');
   if (tmpFrostedBubbleBlurValue) tmpFrostedBubbleBlurValue.textContent = tmpFrostedBubbleBlur + 'px';
   const tmpOshiBlue = (document.getElementById('pOshiGlowBlue') || {}).value || '#cfd3d8';
@@ -104897,7 +104898,7 @@ body.chat-page-active #chatPage #chatBox .empty-state {
     try {
       var aiText=val('pFrostedAiTextColor','#ffffff'), aiBubble=val('pFrostedAiBubbleColor','#ffffff');
       var uText=val('pFrostedUserTextColor','#ffffff'), uBubble=val('pFrostedUserBubbleColor','#bed6db');
-      var blur=Math.max(0, Math.min(30, parseInt(val('pFrostedBubbleBlur','9'),10) || 0));
+      var blur=Math.max(0, Math.min(24, parseInt(val('pFrostedBubbleBlur','8'),10) || 0));
       var bv=document.getElementById('pFrostedBubbleBlurValue'); if (bv) bv.textContent=blur+'px';
       var ap=document.getElementById('pFrostedAiBubblePreview');
       var up=document.getElementById('pFrostedUserBubblePreview');
@@ -104914,7 +104915,7 @@ body.chat-page-active #chatPage #chatBox .empty-state {
       page.style.setProperty('--frosted-ai-bubble-color', p.frostedAiBubbleColor || '#ffffff');
       page.style.setProperty('--frosted-user-text-color', p.frostedUserTextColor || '#ffffff');
       page.style.setProperty('--frosted-user-bubble-color', p.frostedUserBubbleColor || '#bed6db');
-      page.style.setProperty('--frosted-bubble-blur', ((p.frostedBubbleBlur != null) ? p.frostedBubbleBlur : 9) + 'px');
+      page.style.setProperty('--frosted-bubble-blur', ((p.frostedBubbleBlur != null) ? p.frostedBubbleBlur : 8) + 'px');
     } catch(e) {}
   }
   window.monoApplyFrostedMessageColors = applyFrostedMessageColors;
@@ -104936,7 +104937,7 @@ body.chat-page-active #chatPage #chatBox .empty-state {
         frostedAiBubbleColor: val('pFrostedAiBubbleColor','#ffffff'),
         frostedUserTextColor: val('pFrostedUserTextColor','#ffffff'),
         frostedUserBubbleColor: val('pFrostedUserBubbleColor','#bed6db'),
-        frostedBubbleBlur: Math.max(0, Math.min(30, parseInt(val('pFrostedBubbleBlur','9'),10) || 0))
+        frostedBubbleBlur: Math.max(0, Math.min(24, parseInt(val('pFrostedBubbleBlur','8'),10) || 0))
       });
     }
   }, true);
@@ -105049,5 +105050,336 @@ body.chat-page-active #chatPage #chatBox .empty-state {
 })();
 </script>
 
+
+<script id="glass-blur-balanced-step-fix">
+(function(){
+  function fixFrostedBubbleBlurSlider(){
+    var el=document.getElementById('pFrostedBubbleBlur');
+    if(!el) return;
+    el.min='0'; el.max='24'; el.step='2';
+    if(!el.value) el.value='8';
+    var v=Math.max(0, Math.min(24, parseInt(el.value,10)||0));
+    el.value=String(v);
+    var label=document.getElementById('pFrostedBubbleBlurValue');
+    if(label) label.textContent=v+'px';
+  }
+  document.addEventListener('DOMContentLoaded', fixFrostedBubbleBlurSlider);
+  document.addEventListener('input', function(e){
+    if(e && e.target && e.target.id==='pFrostedBubbleBlur') fixFrostedBubbleBlurSlider();
+  }, true);
+  document.addEventListener('click', function(){ setTimeout(fixFrostedBubbleBlurSlider, 60); }, true);
+})();
+</script>
+
+
+<!-- === 2026-05-12 FIX: RESTORE BOTTOM SAFE INSET FOR APP PAGES + CHAT FOOTER CLEARANCE === -->
+<style id="monoBottomSafeInsetRestoreFix">
+:root {
+  --mono-app-bottom-safe-gap: 14px;
+  --mono-chat-bottom-stack: 0px;
+}
+
+/* Other app pages still need a small white bottom safe area after the old nav gap was removed. */
+body:not(.chat-page-active) .page.active:not(#chatPage) {
+  bottom: calc(var(--mono-app-bottom-safe-gap) + env(safe-area-inset-bottom, 0px)) !important;
+  box-sizing: border-box !important;
+}
+
+/* Dream / Decrypt are full-bleed dark pages: do not lift them and expose the white phone shell. */
+body:not(.chat-page-active) #dreamPage.page.active,
+body:not(.chat-page-active) #decryptPage.page.active {
+  bottom: 0 !important;
+  background: #000000 !important;
+}
+
+body:not(.chat-page-active) #dreamPage.page.active .dream-content,
+body:not(.chat-page-active) #decryptPage.page.active .decrypt-body,
+body:not(.chat-page-active) #decryptPage.page.active .decrypt-shell {
+  padding-bottom: max(18px, env(safe-area-inset-bottom, 0px)) !important;
+  box-sizing: border-box !important;
+}
+
+body:not(.chat-page-active) .phone-container:has(#dreamPage.page.active),
+body:not(.chat-page-active) .phone-container:has(#decryptPage.page.active) {
+  background: #000000 !important;
+}
+
+/* Chat keeps the no-white-strip layout, but the message list must reserve the real footer stack height. */
+body.chat-page-active #chatPage #chatBox,
+body.chat-page-active #chatPage .chat-messages {
+  padding-bottom: calc(18px + var(--mono-chat-bottom-stack, 0px)) !important;
+  scroll-padding-bottom: calc(18px + var(--mono-chat-bottom-stack, 0px)) !important;
+}
+</style>
+<script id="monoBottomSafeInsetRestoreFixScript">
+(function(){
+  function visibleHeight(el){
+    if(!el) return 0;
+    var cs = window.getComputedStyle(el);
+    if(cs.display === 'none' || cs.visibility === 'hidden') return 0;
+    return Math.ceil(el.getBoundingClientRect().height || 0);
+  }
+  function updateAppBottomGap(){
+    try {
+      var gap = (document.body && document.body.classList.contains('ios-fullscreen')) ? 10 : 14;
+      document.documentElement.style.setProperty('--mono-app-bottom-safe-gap', gap + 'px');
+    } catch(e) {}
+  }
+  function updateChatBottomStack(){
+    try {
+      var page = document.getElementById('chatPage');
+      if(!page) return;
+      var total = 0;
+      ['typingArea','quotePreview','multiDeleteBar'].forEach(function(id){
+        total += visibleHeight(document.getElementById(id));
+      });
+      total += visibleHeight(page.querySelector('.chat-footer'));
+      page.style.setProperty('--mono-chat-bottom-stack', Math.max(0, total) + 'px');
+    } catch(e) {}
+  }
+  var _scheduled = false;
+  function scheduleRun(){
+    if(_scheduled) return;
+    _scheduled = true;
+    requestAnimationFrame(function(){
+      _scheduled = false;
+      run();
+    });
+  }
+  function run(){
+    updateAppBottomGap();
+    updateChatBottomStack();
+  }
+  window.monoBottomSafeInsetRestoreFix = run;
+  window.monoScheduleBottomSafeInsetRestoreFix = scheduleRun;
+  ['DOMContentLoaded','load','resize','orientationchange'].forEach(function(ev){
+    window.addEventListener(ev, function(){
+      scheduleRun();
+      setTimeout(scheduleRun, 120);
+    }, {passive:true});
+  });
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize', function(){ setTimeout(scheduleRun, 40); }, {passive:true});
+  }
+  document.addEventListener('input', function(){ setTimeout(scheduleRun, 40); }, true);
+  document.addEventListener('click', function(){ setTimeout(scheduleRun, 40); setTimeout(scheduleRun, 220); }, true);
+  document.addEventListener('DOMContentLoaded', function(){
+    if(window.ResizeObserver){
+      var ro = new ResizeObserver(scheduleRun);
+      ['typingArea','quotePreview','multiDeleteBar','chatBox'].forEach(function(id){
+        var el = document.getElementById(id);
+        if(el) ro.observe(el);
+      });
+      var footer = document.querySelector('#chatPage .chat-footer');
+      if(footer) ro.observe(footer);
+    }
+    scheduleRun();
+  });
+})();
+</script>
+
+
+
+<!-- === 2026-05-12 FIX V2: NON-CHAT PAGE BOTTOM MASK TO BLOCK CHAT BLEED === -->
+<style id="monoNonChatBottomMaskFix">
+:root {
+  --mono-nonchat-bottom-cover: calc(18px + env(safe-area-inset-bottom, 0px));
+}
+
+body:not(.chat-page-active) .page.active:not(#chatPage) {
+  position: absolute !important;
+  isolation: isolate !important;
+}
+
+body:not(.chat-page-active) .page.active:not(#chatPage)::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--mono-nonchat-bottom-cover);
+  background: var(--mono-active-page-bottom-bg, #ffffff);
+  pointer-events: none;
+  z-index: 214;
+}
+
+body:not(.chat-page-active) #dreamPage.page.active::after,
+body:not(.chat-page-active) #decryptPage.page.active::after {
+  background: #000000 !important;
+}
+</style>
+<script id="monoNonChatBottomMaskFixScript">
+(function(){
+  function firstOpaqueColor(root){
+    if(!root) return '';
+    var list = [root].concat(Array.prototype.slice.call(root.querySelectorAll('*')).slice(0, 80));
+    for(var i=0;i<list.length;i++){
+      var el = list[i];
+      var cs = window.getComputedStyle(el);
+      if(!cs) continue;
+      if(cs.display === 'none' || cs.visibility === 'hidden') continue;
+      var bg = cs.backgroundColor || '';
+      if(bg && bg !== 'transparent' && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'rgba(0,0,0,0)') return bg;
+    }
+    return '#ffffff';
+  }
+  function applyMask(){
+    try {
+      document.querySelectorAll('.page').forEach(function(page){
+        if(page.id === 'chatPage') {
+          if(page.style.getPropertyValue('--mono-active-page-bottom-bg')) page.style.removeProperty('--mono-active-page-bottom-bg');
+          return;
+        }
+        if(!page.classList.contains('active') || page.style.display === 'none') {
+          if(page.style.getPropertyValue('--mono-active-page-bottom-bg')) page.style.removeProperty('--mono-active-page-bottom-bg');
+          return;
+        }
+        var forceBlack = page.id === 'dreamPage' || page.id === 'decryptPage';
+        var color = forceBlack ? '#000000' : firstOpaqueColor(page);
+        if(page.style.getPropertyValue('--mono-active-page-bottom-bg') !== String(color || '#ffffff')) {
+          page.style.setProperty('--mono-active-page-bottom-bg', color || '#ffffff');
+        }
+      });
+    } catch(e) {}
+  }
+  var _maskScheduled = false;
+  function scheduleMask(){
+    if(_maskScheduled) return;
+    _maskScheduled = true;
+    requestAnimationFrame(function(){
+      _maskScheduled = false;
+      applyMask();
+    });
+  }
+  window.monoNonChatBottomMaskFix = applyMask;
+  window.monoScheduleNonChatBottomMaskFix = scheduleMask;
+  ['DOMContentLoaded','load','resize','orientationchange'].forEach(function(ev){
+    window.addEventListener(ev, function(){
+      scheduleMask();
+      setTimeout(scheduleMask, 120);
+    }, {passive:true});
+  });
+  document.addEventListener('click', function(){ setTimeout(scheduleMask, 40); setTimeout(scheduleMask, 220); }, true);
+  document.addEventListener('input', function(){ setTimeout(scheduleMask, 40); }, true);
+  document.addEventListener('DOMContentLoaded', function(){
+    scheduleMask();
+  });
+})();
+</script>
+
+
+
+<!-- === 2026-05-12 FIX V3: HARD HIDE ALL CHAT SURFACES OUTSIDE CHAT MODE === -->
+<style id="monoHardHideChatSurfacesFix">
+body.mono-hide-chat-surfaces #chatPage,
+body.mono-hide-chat-surfaces #contactsDrawer,
+body.mono-hide-chat-surfaces #truthDareGameHost,
+body.mono-hide-chat-surfaces #typingArea,
+body.mono-hide-chat-surfaces #quotePreview,
+body.mono-hide-chat-surfaces #multiDeleteBar,
+body.mono-hide-chat-surfaces #groupChatPage:not(.active),
+body.mono-hide-chat-surfaces #datingChatPage:not(.active) {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transform: translate3d(0, 120%, 0) !important;
+  -webkit-transform: translate3d(0, 120%, 0) !important;
+  clip-path: inset(100%) !important;
+  z-index: -999 !important;
+}
+
+body.mono-hide-chat-surfaces .page.active:not(#chatPage),
+body.mono-hide-chat-surfaces #groupChatPage.active,
+body.mono-hide-chat-surfaces #datingChatPage.active {
+  z-index: 600 !important;
+}
+</style>
+<script id="monoHardHideChatSurfacesFixScript">
+(function(){
+  function hasActiveClass(id){
+    var el = document.getElementById(id);
+    return !!(el && el.classList.contains('active'));
+  }
+  function isOneToOneChatActive(){
+    return !!(document.body && document.body.classList.contains('chat-page-active') && hasActiveClass('chatPage'));
+  }
+  function isGroupChatActive(){
+    return hasActiveClass('groupChatPage');
+  }
+  function isDatingChatActive(){
+    return hasActiveClass('datingChatPage');
+  }
+  var _guardScheduled = false;
+  function scheduleGuard(){
+    if(_guardScheduled) return;
+    _guardScheduled = true;
+    requestAnimationFrame(function(){
+      _guardScheduled = false;
+      syncChatSurfaceGuard();
+    });
+  }
+  function syncChatSurfaceGuard(){
+    try {
+      var shouldHide = !(isOneToOneChatActive() || isGroupChatActive() || isDatingChatActive());
+      if(document.body.classList.contains('mono-hide-chat-surfaces') !== shouldHide) {
+        document.body.classList.toggle('mono-hide-chat-surfaces', shouldHide);
+      }
+    } catch(e) {}
+  }
+  window.monoHardHideChatSurfacesFix = syncChatSurfaceGuard;
+  window.monoScheduleHardHideChatSurfacesFix = scheduleGuard;
+  ['DOMContentLoaded','load','resize','orientationchange'].forEach(function(ev){
+    window.addEventListener(ev, function(){
+      scheduleGuard();
+      setTimeout(scheduleGuard, 100);
+      setTimeout(scheduleGuard, 260);
+    }, {passive:true});
+  });
+  document.addEventListener('click', function(){ setTimeout(scheduleGuard, 20); setTimeout(scheduleGuard, 180); }, true);
+  document.addEventListener('input', function(){ setTimeout(scheduleGuard, 20); }, true);
+  document.addEventListener('focusin', function(){ setTimeout(scheduleGuard, 20); }, true);
+  document.addEventListener('DOMContentLoaded', function(){
+    scheduleGuard();
+  });
+})();
+</script>
+
+
+
+<script id="monoFixRefreshHooks">
+(function(){
+  function scheduleAll(){
+    try { if (typeof window.monoScheduleBottomSafeInsetRestoreFix === 'function') window.monoScheduleBottomSafeInsetRestoreFix(); } catch(e) {}
+    try { if (typeof window.monoScheduleNonChatBottomMaskFix === 'function') window.monoScheduleNonChatBottomMaskFix(); } catch(e) {}
+    try { if (typeof window.monoScheduleHardHideChatSurfacesFix === 'function') window.monoScheduleHardHideChatSurfacesFix(); } catch(e) {}
+  }
+  function afterNav(){
+    setTimeout(scheduleAll, 0);
+    setTimeout(scheduleAll, 80);
+    setTimeout(scheduleAll, 220);
+  }
+  function wrap(name){
+    var fn = window[name];
+    if(typeof fn !== 'function' || fn.__monoFixWrapped) return;
+    var wrapped = function(){
+      var result = fn.apply(this, arguments);
+      afterNav();
+      return result;
+    };
+    wrapped.__monoFixWrapped = true;
+    window[name] = wrapped;
+  }
+  function install(){
+    ['openApp','_showAppPage','goHome','openGroupChat','closeGroupChat','openDatingApp','closeDatingApp','openDatingChatRoom','closeDatingChatRoom'].forEach(wrap);
+    afterNav();
+  }
+  window.monoInstallFixRefreshHooks = install;
+  document.addEventListener('DOMContentLoaded', install);
+  window.addEventListener('load', install, {passive:true});
+})();
+</script>
+
 </body>
 </html>
+

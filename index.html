@@ -4882,6 +4882,10 @@ body.ios-fullscreen.chat-page-active.chat-theme-frosted-active #contactsDrawer {
 .novel-tags-toggle { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; cursor: pointer; border-bottom: 1px solid #eee; margin-bottom: 10px; font-size: calc(13px * var(--fs, 1)); font-weight: 600; user-select: none; }
 .novel-tags-panel { display: none; }
 .novel-tags-panel.open { display: block; }
+.novel-main-cat-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.novel-main-cat-tab { padding: 6px 12px; border: 1px solid #ccc; border-radius: 999px; background: #fff; font-size: calc(11px * var(--fs, 1)); font-weight: 700; cursor: pointer; transition: all 0.2s; }
+.novel-main-cat-tab.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+.novel-tag-summary { font-size: calc(10px * var(--fs, 1)); color: #777; margin-bottom: 10px; line-height: 1.6; }
 .novel-tag-group { margin-bottom: 12px; }
 .novel-tag-group-title { font-size: calc(11px * var(--fs, 1)); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #999; margin-bottom: 8px; }
 .novel-tag-options { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -21936,7 +21940,7 @@ body:not(.ios-fullscreen).chat-page-active.chat-preset-frosted-active #chatPage.
     <div class="app-back-bar"><button class="app-back-btn" onclick="goHome()"><i class="fas fa-chevron-left"></i> 主屏幕</button><span class="app-back-title">小说</span></div>
     <div class="novel-page-inner no-scrollbar" style="flex:1;overflow-y:auto;padding:16px;">
       <div class="novel-search-bar">
-        <input type="text" id="novelSearchInput" class="novel-search-input" placeholder="搜索言情小说...">
+        <input type="text" id="novelSearchInput" class="novel-search-input" placeholder="搜索小说、题材或关系线...">
         <button class="novel-search-btn" onclick="novelSearch()">搜索</button>
       </div>
       <div class="novel-tags-section">
@@ -21945,50 +21949,9 @@ body:not(.ios-fullscreen).chat-page-active.chat-preset-frosted-active #chatPage.
           <i class="fas fa-chevron-down" id="novelTagsChevron"></i>
         </div>
         <div class="novel-tags-panel" id="novelTagsPanel">
-          <div class="novel-tag-group">
-            <div class="novel-tag-group-title">题材</div>
-            <div class="novel-tag-options">
-              <div class="novel-tag-opt" onclick="toggleNovelTag(this)">现代言情</div>
-              <div class="novel-tag-opt" onclick="toggleNovelTag(this)">古代言情</div>
-              <div class="novel-tag-opt" onclick="toggleNovelTag(this)">都市言情</div>
-              <div class="novel-tag-opt" onclick="toggleNovelTag(this)">校园言情</div>
-              <div class="novel-tag-opt" onclick="toggleNovelTag(this)">豪门世家</div>
-              <div class="novel-tag-opt" onclick="toggleNovelTag(this)">娱乐圈文</div>
-              <div class="novel-tag-opt" onclick="toggleNovelTag(this)">重生文</div>
-              <div class="novel-tag-opt" onclick="toggleNovelTag(this)">穿越文</div>
-              <div class="novel-tag-opt" onclick="toggleNovelTag(this)">仙侠言情</div>
-              <div class="novel-tag-opt" onclick="toggleNovelTag(this)">职场言情</div>
-              <div class="novel-tag-opt" onclick="toggleNovelTag(this)">治愈言情</div>
-            </div>
-          </div>
-          <div class="novel-tag-group">
-            <div class="novel-tag-group-title">人设</div>
-            <div class="novel-tag-options">
-              <div class="novel-tag-opt" onclick="toggleNovelTag(this)">霸总男主</div>
-              <div class="novel-tag-opt" onclick="toggleNovelTag(this)">清冷男主</div>
-              <div class="novel-tag-opt" onclick="toggleNovelTag(this)">腹黑男主</div>
-              <div class="novel-tag-opt" onclick="toggleNovelTag(this)">忠犬男主</div>
-              <div class="novel-tag-opt" onclick="toggleNovelTag(this)">禁欲系</div>
-              <div class="novel-tag-opt" onclick="toggleNovelTag(this)">偏执男主</div>
-              <div class="novel-tag-opt" onclick="toggleNovelTag(this)">女强女主</div>
-              <div class="novel-tag-opt" onclick="toggleNovelTag(this)">清醒女主</div>
-              <div class="novel-tag-opt" onclick="toggleNovelTag(this)">御姐女主</div>
-            </div>
-          </div>
-          <div class="novel-tag-group">
-            <div class="novel-tag-group-title">剧情</div>
-            <div class="novel-tag-options">
-              <div class="novel-tag-opt" onclick="toggleNovelTag(this)">先婚后爱</div>
-              <div class="novel-tag-opt" onclick="toggleNovelTag(this)">契约婚姻</div>
-              <div class="novel-tag-opt" onclick="toggleNovelTag(this)">追妻火葬场</div>
-              <div class="novel-tag-opt" onclick="toggleNovelTag(this)">双向奔赴</div>
-              <div class="novel-tag-opt" onclick="toggleNovelTag(this)">暗恋成真</div>
-              <div class="novel-tag-opt" onclick="toggleNovelTag(this)">假戏真做</div>
-              <div class="novel-tag-opt" onclick="toggleNovelTag(this)">青梅竹马</div>
-              <div class="novel-tag-opt" onclick="toggleNovelTag(this)">先虐后甜</div>
-              <div class="novel-tag-opt" onclick="toggleNovelTag(this)">先甜后虐</div>
-            </div>
-          </div>
+          <div class="novel-main-cat-tabs" id="novelMainCategoryTabs"></div>
+          <div class="novel-tag-summary" id="novelTagSummary"></div>
+          <div id="novelTagGroups"></div>
           <button class="novel-search-btn w-full mt-2" style="width:100%;border-radius:6px;" onclick="novelSearch()">按标签搜索</button>
         </div>
       </div>
@@ -26720,6 +26683,8 @@ const mockUsers = [
 ];
 let currentNovel = null;
 let novelSelectedTags = [];
+let currentNovelMainCategory = '言情';
+let novelCategorySelections = { '言情': [], '百合': [], '耽美': [], '无CP': [] };
 let novelBookshelf = _safeParse('mono_novel_shelf', []);
 let spyDataCache = {};
 // ===== 购物系统数据 =====
@@ -26805,7 +26770,7 @@ window.onload = () => {
     document.getElementById('apiUrl').value = apiConfig.url;
     document.getElementById('apiKey').value = apiConfig.key;
     renderMoments(); renderDiaryTabs(); renderDiary(); renderForumSections(); renderForum();
-    loadProfilePage(); renderNovelBookshelf(); renderWorldBookList();
+    loadProfilePage(); renderNovelBookshelf(); renderNovelTagLibrary(); renderWorldBookList();
     if (apiConfig.url && apiConfig.key && apiConfig.model) refreshNovelRecommend();
     updateSpyClock();
     setInterval(updateSpyClock, 60000);
@@ -37458,9 +37423,262 @@ function toggleNovelTags() {
   p.classList.toggle('open');
   c.style.transform = p.classList.contains('open') ? 'rotate(180deg)' : '';
 }
+function _novelAddUnique(list, value) {
+  const text = String(value || '').trim();
+  if (!text || list.indexOf(text) !== -1) return;
+  list.push(text);
+}
+function _novelCombinePairs(left, right, formatter) {
+  const out = [];
+  (left || []).forEach(function(a) {
+    (right || []).forEach(function(b) {
+      const text = formatter ? formatter(a, b) : (String(a || '') + String(b || ''));
+      _novelAddUnique(out, text);
+    });
+  });
+  return out;
+}
+function _novelFinalizeTags(list, fallbackPrefix) {
+  const out = [];
+  (list || []).forEach(function(item) { _novelAddUnique(out, item); });
+  let idx = 1;
+  while (out.length < 100) {
+    _novelAddUnique(out, fallbackPrefix + idx);
+    idx += 1;
+  }
+  return out.slice(0, 100);
+}
+function _buildYanqingLibrary() {
+  const genres = _novelFinalizeTags([
+    '现代','都市','豪门','总裁','校园','青春','娱乐圈','职场','电竞','网红',
+    '古言','宫廷','宅斗','种田','王府','仙侠','修仙','玄幻','神界','魔界',
+    '末世','末日','异能','基建','生存','星际','机甲','外星','星际校园','星际战争',
+    '穿书','快穿','系统','重生','穿越','民国','军阀','乱世','谍战','民国情缘',
+    '悬疑','刑侦','破案','灵异','鬼怪','救赎','治愈','甜宠','虐恋','现实',
+    '高干','婚恋','婚后','养娃','青梅','年下','姐弟恋','年龄差','大叔恋','禁欲',
+    '腹黑','偏执','疯批','沙雕','搞笑','轻松','短篇','长篇','中篇','校园救赎',
+    '逆袭','打脸','嫡女','庶女','侯门','将军','权臣','仙尊','灵宠','神话',
+    '丧尸','基地','位面','攻略','反攻略','隐婚','契约','替身','破镜','追妻',
+    '豪门恩怨','市井','江湖','武侠','师徒','网恋','异地恋','合租','邻居','双向奔赴'
+  ], '言情类型');
+  const roles = _novelFinalizeTags([
+    '霸总女主','大佬少女','上司下属','明星素人','网红大佬','医生护士','律师白领','电竞大神','助理艺人','职场搭档',
+    '青梅竹马','邻里兄妹','校草乖乖女','年下姐弟','大叔少女','异地情侣','网恋情侣','初恋重逢','帝王妃嫔','王爷闺秀',
+    '权臣小姐','将军佳人','嫡女世子','公主侠客','王妃王爷','仙尊徒弟','魔尊神女','上神凡人','妖媚书生','神祇少女',
+    '末世强者','异能搭档','丧尸领主','基建搭档','基地队友','星际元帅','机甲师','外星恋人','星际学霸','星际海盗',
+    '穿书炮灰','女配反派','任务者男主','系统宿主','民国军阀','乱世佳人','特工恋人','戏子军阀','留洋少爷','书香闺秀',
+    '刑侦法医','悬疑作家','灵异道长','玄学普通人','学霸学渣','社团学长妹','艺术理工','体育文静','偏执白月光','病娇乖巧',
+    '清冷小太阳','社恐外向','咸鱼卷王','千金穷小子','豪门平民','傲娇忠犬','治愈缺爱','双向暗恋','破镜前任','替身转正',
+    '欢喜冤家','双向奔赴','单向守护','默默暗恋','竹马天降','婚后夫妻','养娃父母','重组家庭','师徒相恋','上下级恋',
+    '网红 CP','校园情侣','合租恋人','邻居恋人','禁忌之恋','温柔男主','清冷女主','甜妹逆袭','世家联姻','协议恋人',
+    '地下恋情','白月光朱砂痣','校园闺蜜','职场对手','市井情侣','江湖侠侣','宗门师徒','修仙搭档','古风知己','现代知己'
+  ], '言情角色');
+  const plots = _novelFinalizeTags([
+    '双向暗恋','一见钟情','日久生情','欢喜冤家','先婚后爱','契约恋爱','隐婚日常','地下恋情','豪门联姻','破镜重圆',
+    '追妻火葬场','白月光归来','替身逆袭','前任后悔','女主逆袭','打脸反派','手撕绿茶','职场逆袭','重生逆袭','穿越求生',
+    '穿书改命','快穿任务','系统开挂','宅斗纷争','宫廷权谋','后宫争宠','宗门争斗','仙魔大战','身世之谜','血脉觉醒',
+    '灵宠奇遇','秘境探险','师徒纠葛','人仙虐恋','丧尸围城','异能升级','基地争斗','物资争夺','末世建城','星际战争',
+    '机甲对战','种族联姻','外星接触','学院成长','娱乐圈逆袭','选秀出道','综艺恋综','拍戏生情','乱世逃亡','家国情怀',
+    '谍战潜伏','豪门恩怨','连环破案','密室解谜','灵异缠身','玄学捉鬼','梦境轮回','校园青春','高考奋斗','宿舍日常',
+    '双向救赎','原生家庭','温柔治愈','慢生活','佛系躺平','沙雕搞笑','高甜无虐','微虐 HE','虐恋 BE','年龄差守护',
+    '年下追求','大叔宠溺','傲娇反差','疯批偏爱','腹黑追妻','清冷沦陷','禁欲动心','忠犬守护','合租同居','邻居相处',
+    '网恋奔现','异地坚守','初恋圆满','婚后生活','养娃日常','家庭相处','婆媳关系','平凡恋爱','修仙渡劫','江湖恩怨',
+    '朝堂争斗','市井生活','逆袭打脸','弥补遗憾','重生改写','穿越异世','位面穿梭','剧情自救','人设反差','宿命情缘'
+  ], '言情剧情');
+  return { genres: genres, roles: roles, plots: plots };
+}
+function _buildBaiheLibrary() {
+  const genres = _novelFinalizeTags([
+    '现代','都市','职场','总裁','娱乐圈','校园','青春','青梅','合租','年上',
+    '年下','姐弟恋','年龄差','医生','律师','警察','电竞','作家','古言','宫廷',
+    '女帝','将军','江湖','仙侠','玄幻','妖界','修仙','末世','异能','生存',
+    '星际','机甲','外星','穿书','快穿','系统','民国','谍战','悬疑','刑侦',
+    '灵异','玄学','救赎','治愈','甜宠','破镜','先婚后爱','契约','替身','虐恋',
+    '沙雕','轻松','豪门','高干','婚后','养娃','现实','逆袭','重生','穿越',
+    '江湖门派','师徒','市井','短篇','长篇','中篇','网红','偶像','经纪人','艺术生',
+    '体育生','学霸','佛系','疯批','病娇','偏执','双向奔赴','BE 美学','隐恋','地下恋',
+    '娱乐圈隐恋','校园救赎','古风重生','现代重生','手撕女配','豪门联姻','协议恋人','欢喜冤家','日久生情','一见钟情',
+    '双向暗恋','末世基地','星际学院','位面攻略','任务者','民国才女','乱世情缘','江湖女侠','宗门双姝','修仙双强'
+  ], '百合类型');
+  const roles = _novelFinalizeTags([
+    '总裁小职员','御姐下属','明星素人','偶像经纪人','网红大佬','学姐学妹','校霸乖乖女','青梅闺蜜','合租室友','邻家姐妹',
+    '年上御姐','年下少女','高冷小太阳','傲娇忠犬','医生护士','律师搭档','刑警法医','电竞搭档','作家编辑','女帝女将',
+    '郡主小姐','女侠圣女','师尊徒弟','嫡女庶女','公主侍卫','花魁小姐','仙尊仙子','狐妖凡人','修仙搭档','末世强者',
+    '异能少女','基地首领','星际元帅','机甲师少女','外星公主','穿书女配女主','任务者位面女','民国小姐才女','特工恋人','戏子佳人',
+    '悬疑作家刑警','灵异少女道姑','玄学普通人','疯批白月光','社恐外向','咸鱼卷御姐','千金平民','欢喜冤家','破镜前任','替身转正',
+    '契约夫妻','协议恋人','地下恋人','豪门联姻','双向暗恋','职场对手','师徒相恋','邻居恋人','网友奔现','重组姐妹',
+    '养娃搭档','异地恋人','校园初恋','艺术理工','体育文静','治愈缺爱','双向救赎','高冷平凡','江湖宿敌','宫廷女官',
+    '仙魔恋人','宗门知己','娱乐圈 CP','恋综嘉宾','选秀闺蜜','独居合租','温柔御姐','清冷女神','市井知己','古风知己',
+    '现代闺蜜','社团恋人','转学相逢','重生恋人','手撕情敌','闺蜜越界','禁忌之恋','平凡追女神','双向守护','默默暗恋',
+    '年下直球','御姐宠溺','傲娇反差','腹黑追妻','禁欲动情','忠犬守护','同居恋人','宿命恋人','世家双姝','江湖侠侣'
+  ], '百合角色');
+  const plots = _novelFinalizeTags([
+    '双向暗恋','一见钟情','日久生情','欢喜冤家','先婚后爱','协议恋爱','隐秘隐恋','豪门联姻','破镜重圆','追妻火葬场',
+    '白月光归来','替身逆袭','前任后悔','女主逆袭','手撕心机','职场逆袭','重生改命','穿书改剧情','快穿任务','系统开挂',
+    '古言宅斗','宫廷权谋','江湖恩怨','修仙渡劫','宗门内斗','仙魔大战','身世之谜','末世求生','异能觉醒','基地争斗',
+    '物资争夺','末世建城','星际纷争','机甲竞技','星际联姻','外星情缘','娱乐圈逆袭','选秀成团','恋综成真','拍戏生情',
+    '乱世逃亡','家国情怀','谍战潜伏','悬疑破案','密室解谜','灵异宿命','玄学结缘','双向救赎','原生家庭','温柔治愈',
+    '佛系日常','沙雕搞笑','高甜无虐','微虐 HE','虐恋 BE','年龄差守护','年下追求','御姐宠溺','傲娇反差','疯批偏爱',
+    '腹黑追妻','清冷沦陷','禁欲动心','合租同居','邻居生情','网恋奔现','异地坚守','初恋圆满','婚后日常','养娃治愈',
+    '平凡烟火','现实写实','校园遗憾','高考同行','宿舍变恋','社团邂逅','转学缘分','重生逆袭','弥补遗憾','手撕情敌',
+    '闺蜜越界','禁忌相守','人设反差','宿命情缘','宗门并肩','江湖相守','朝堂知己','市井恋爱','修仙结缘','秘境探险',
+    '师徒纠葛','血脉觉醒','灵宠相伴','位面游历','剧情自救','低调相守','温柔相守','岁岁年年','独行遇爱','双向奔赴'
+  ], '百合剧情');
+  return { genres: genres, roles: roles, plots: plots };
+}
+function _buildDanmeiLibrary() {
+  const genres = _novelFinalizeTags([
+    '现代','都市','总裁','职场','娱乐圈','校园','青春','竹马','合租','年上',
+    '年下','兄弟恋','年龄差','医生','律师','警察','电竞','作家','古言','宫廷',
+    '帝王','将军','江湖','仙侠','玄幻','魔尊','修仙','末世','异能','生存',
+    '星际','机甲','外星','穿书','快穿','系统','民国','谍战','悬疑','刑侦',
+    '灵异','玄学','救赎','治愈','甜宠','破镜','先婚后爱','契约','替身','虐恋',
+    '沙雕','轻松','豪门','高干','婚后','养娃','现实','逆袭','重生','穿越',
+    '江湖门派','师徒','市井','短篇','长篇','中篇','网红','偶像','经纪人','艺术生',
+    '体育生','学霸','佛系','疯批','病娇','偏执','强强','双向奔赴','BE 美学','隐恋',
+    '地下恋','校园救赎','古风重生','现代重生','手撕反派','豪门联姻','协议恋人','欢喜冤家','日久生情','一见钟情',
+    '双向暗恋','末世基地','星际学院','位面攻略','任务者','民国才子','乱世情缘','江湖侠客','宗门双骄','修仙双强'
+  ], '耽美类型');
+  const roles = _novelFinalizeTags([
+    '总裁下属','大佬少年','影帝新人','偶像经纪人','网红素人','校草学弟','校霸学霸','竹马兄弟','合租室友','邻家兄弟',
+    '年上大佬','年下狼狗','高冷小太阳','傲娇忠犬','医生搭档','律师搭档','刑侦法医','电竞大神','作家编辑','帝王权臣',
+    '太子公子','王爷世子','盟主教主','师尊徒弟','世家公子','皇子侍卫','戏子少爷','仙尊徒弟','魔尊神君','修仙搭档',
+    '末世大佬','异能少年','基地队友','星际元帅','机甲少年','外星王子','穿书反派男主','任务者位面男','民国军阀才子','特工搭档',
+    '悬疑作家刑警','灵异少年道长','玄学普通人','疯批白月光','社恐外向','咸鱼卷王','豪门平民','欢喜冤家','破镜前任','替身转正',
+    '契约夫夫','协议恋人','地下恋人','豪门联姻','双向暗恋','职场对手','师徒相恋','邻居恋人','网友奔现','重组兄弟',
+    '养娃奶爸','异地恋人','校园初恋','艺术理工','体育学霸','治愈缺爱','双向救赎','高冷平凡','江湖宿敌','帝王权臣',
+    '仙魔恋人','宗门知己','娱乐圈 CP','恋综嘉宾','选秀兄弟','独居合租','温柔学长','高冷男神','市井知己','古风知己',
+    '现代挚友','社团恋人','转学相逢','重生恋人','手撕情敌','兄弟越界','禁忌之恋','平凡追男神','双向守护','默默暗恋',
+    '年下直球','年上宠溺','傲娇反差','腹黑追妻','禁欲动情','忠犬守护','同居恋人','宿命恋人','世家双公子','江湖侠侣'
+  ], '耽美角色');
+  const plots = _novelFinalizeTags([
+    '双向暗恋','一见钟情','日久生情','欢喜冤家','先婚后爱','协议恋爱','隐秘隐恋','豪门联姻','破镜重圆','追妻火葬场',
+    '白月光归来','替身逆袭','前任后悔','男主逆袭','手撕心机','职场逆袭','重生改命','穿书改剧情','快穿任务','系统开挂',
+    '朝堂权谋','世家恩怨','江湖纷争','修仙渡劫','宗门内斗','仙魔大战','身世之谜','末世求生','异能觉醒','基地争斗',
+    '物资争夺','末世开荒','星际纷争','机甲竞技','星际联姻','外星情缘','娱乐圈逆袭','选秀成团','恋综成真','拍戏生情',
+    '乱世逃亡','家国情怀','谍战潜伏','悬疑破案','密室解谜','灵异宿命','玄学结缘','双向救赎','原生家庭','温柔治愈',
+    '佛系日常','沙雕搞笑','高甜无虐','微虐 HE','虐恋 BE','年龄差守护','年下追爱','年上宠溺','傲娇反差','疯批偏爱',
+    '腹黑攻心','清冷沦陷','禁欲动心','合租同居','邻居生情','网恋奔现','异地坚守','初恋圆满','婚后日常','养娃治愈',
+    '平凡烟火','现实写实','校园遗憾','高考同行','宿舍变恋','社团邂逅','转学缘分','重生逆袭','弥补遗憾','手撕情敌',
+    '兄弟越界','禁忌相守','人设反差','宿命情缘','宗门并肩','江湖相守','朝堂知己','市井恋爱','修仙结缘','秘境探险',
+    '师徒纠葛','血脉觉醒','灵宠相伴','位面游历','剧情自救','低调相守','温柔相守','强强联合','独行遇爱','双向奔赴'
+  ], '耽美剧情');
+  return { genres: genres, roles: roles, plots: plots };
+}
+function _buildNoCpLibrary() {
+  const genres = _novelFinalizeTags([
+    '现代','都市','事业','搞钱','职场','独行','佛系','校园','学霸','群像',
+    '友情','古言','权谋','帝王','将军','江湖','武侠','仙侠','修仙','飞升',
+    '末世','求生','基建','异能','基地','星际','探险','机甲','文明','开拓',
+    '穿书','快穿','系统','重生','穿越','民国','家国','救国','文人','乱世',
+    '悬疑','刑侦','探案','密室','冒险','灵异','玄学','捉鬼','道士','镇魂',
+    '种田','乡村','开荒','田园','养殖','基建','建城','部落','文明崛起','游戏',
+    '电竞','网游','副本','闯关','逆袭','复仇','自救','仕途','官场','家族',
+    '沙雕','搞笑','轻松','荒野求生','秘境寻宝','匠人','书生','武将','隐士','团队',
+    '师徒情','兄弟情','闺蜜情','无恋爱','事业线','短篇','长篇','中篇','市井','玄幻',
+    '奇幻','末日基建','异世创业','异世修炼','异世建势力','佛系修仙','躺平日常','卷王事业','江湖独行','朝堂独行'
+  ], '无CP类型');
+  const roles = _novelFinalizeTags([
+    '独行大佬','事业狂人','职场精英','学霸少年','佛系青年','高冷校霸','天才少年','宿舍好友','同窗伙伴','邻里亲友',
+    '孤高帝王','铁血将军','权谋权臣','世家子弟','江湖侠客','门派掌门','绝世剑客','神医圣手','文人墨客','江湖浪子',
+    '清冷仙尊','散仙修士','道门弟子','妖族大佬','上古神祇','末世强者','基地首领','异能守护者','荒野求生者','医者仁心',
+    '星际元帅','机甲战士','星际商人','星球开拓者','星际学者','穿书主角','炮灰自救','反派事业流','路人逆袭','配角立业',
+    '快穿任务者','系统独行客','位面行者','轮回闯关者','时空旅人','民国志士','文人学者','乱世商人','爱国特工','江湖义士',
+    '刑侦警官','悬疑作家','玄学道长','通灵人士','探险博主','种田能手','乡村创业者','农家子弟','田园隐士','养殖大户',
+    '基建大佬','部落首领','文明先驱','工匠大师','规划智者','电竞选手','网游大神','游戏主播','职业队友','游戏天才',
+    '重生复仇客','重生创业者','重生学霸','重生谋士','重生普通人','异世穿越者','异世谋士','异世武者','异世商人','异世首领',
+    '沙雕主角','搞笑团体','佛系修士','躺平青年','卷王事业家','仕途官员','官场智者','家族族长','荒野探险家','极限求生者',
+    '独行医者','匠人传人','寒窗书生','沙场武将','世外隐士','纯团队群像','纯师徒情谊','纯兄弟义气','纯闺蜜相伴','全员事业线'
+  ], '无CP角色');
+  const plots = _novelFinalizeTags([
+    '专心搞事业','独行天下','事业逆袭','搞钱致富','佛系躺平','校园成长','友情至上','宿舍日常','同窗互助','专注自我',
+    '朝堂权谋','帝王治国','将军报国','世家振兴','不靠情爱','江湖冒险','武林争霸','门派壮大','浪迹天涯','了结恩怨',
+    '修仙突破','斩妖除魔','宗门崛起','飞升超脱','探寻天道','末世求生','基地建设','异能变强','物资囤积','重建文明',
+    '星际探索','机甲征战','星球开发','星际经商','文明融合','穿书逆袭','炮灰自救','碾压反派','独善其身','独自封神',
+    '快穿通关','位面游历','系统事业流','轮回历练','时空历险','民国救国','实业兴邦','文人觉醒','乱世坚守','风骨自持',
+    '单人破案','刑侦追凶','密室推理','秘境揭秘','纪实探案','玄学捉鬼','道士降妖','灵异探险','风水布局','通灵渡厄',
+    '种田致富','乡村创业','田园悠闲','种植养殖','农家逆袭','从零建城','开荒拓土','部落融合','城建规划','族群强盛',
+    '电竞夺冠','网游单刷','职业拼搏','主播登顶','服务器闯荡','重生立业','重生复仇','重生弥补','重生经商','重生修仙',
+    '异世自立','异世布局','异世经商','异世修炼','伙伴情谊','沙雕独行','无爱日常','全员友情','冒险结伴','随缘度日',
+    '仕途高升','官场自保','为民造福','家族团结','荒野挑战','寻宝历险','匠人传承','金榜题名','沙场建功','人生独行'
+  ], '无CP剧情');
+  return { genres: genres, roles: roles, plots: plots };
+}
+const NOVEL_TAG_LIBRARY = {
+  '言情': _buildYanqingLibrary(),
+  '百合': _buildBaiheLibrary(),
+  '耽美': _buildDanmeiLibrary(),
+  '无CP': _buildNoCpLibrary()
+};
+function _getNovelCurrentSelections() {
+  if (!novelCategorySelections[currentNovelMainCategory]) novelCategorySelections[currentNovelMainCategory] = [];
+  return novelCategorySelections[currentNovelMainCategory];
+}
+function updateNovelSearchPlaceholder() {
+  const input = document.getElementById('novelSearchInput');
+  if (input) input.placeholder = '搜索' + currentNovelMainCategory + '小说、题材或关系线...';
+}
+function renderNovelTagSummary() {
+  const summary = document.getElementById('novelTagSummary');
+  if (!summary) return;
+  const selected = _getNovelCurrentSelections();
+  summary.innerHTML = '当前大类：<strong>' + currentNovelMainCategory + '</strong> · 已选 <strong>' + selected.length + '</strong> 个标签'
+    + '<br>每个大类包含：<strong>100</strong> 个小说类型标签、<strong>100</strong> 个角色 / 关系标签、<strong>100</strong> 个剧情标签。';
+}
+function renderNovelTagLibrary() {
+  const tabs = document.getElementById('novelMainCategoryTabs');
+  const groups = document.getElementById('novelTagGroups');
+  const lib = NOVEL_TAG_LIBRARY[currentNovelMainCategory];
+  novelSelectedTags = _getNovelCurrentSelections().slice();
+  if (tabs) {
+    tabs.innerHTML = ['言情', '百合', '耽美', '无CP'].map(function(cat) {
+      return '<button type="button" class="novel-main-cat-tab' + (cat === currentNovelMainCategory ? ' active' : '') + '" onclick="switchNovelMainCategory(\'' + cat + '\')">' + cat + '</button>';
+    }).join('');
+  }
+  if (groups && lib) {
+    groups.innerHTML = [
+      { key: 'genres', title: '小说类型', items: lib.genres },
+      { key: 'roles', title: '角色 / 关系', items: lib.roles },
+      { key: 'plots', title: '剧情', items: lib.plots }
+    ].map(function(group) {
+      return '<div class="novel-tag-group">'
+        + '<div class="novel-tag-group-title">' + group.title + ' · 100个</div>'
+        + '<div class="novel-tag-options">'
+        + group.items.map(function(tag) {
+            const active = novelSelectedTags.indexOf(tag) !== -1 ? ' selected' : '';
+            return '<div class="novel-tag-opt' + active + '" data-tag="' + tag.replace(/"/g, '&quot;') + '" onclick="toggleNovelTag(this)">' + tag + '</div>';
+          }).join('')
+        + '</div></div>';
+    }).join('');
+  }
+  updateNovelSearchPlaceholder();
+  renderNovelTagSummary();
+}
+function switchNovelMainCategory(category) {
+  if (!NOVEL_TAG_LIBRARY[category]) return;
+  currentNovelMainCategory = category;
+  novelSelectedTags = _getNovelCurrentSelections().slice();
+  renderNovelTagLibrary();
+  const cards = document.getElementById('novelRecommendCards');
+  const loader = document.getElementById('novelRecommendLoader');
+  if (cards && loader && !loader.classList.contains('active')) {
+    cards.innerHTML = '<div style="font-size:12px;color:#777;padding:10px 2px;">已切换到「' + category + '」标签库，点上方“刷新”生成这一类推荐。</div>';
+  }
+}
 function toggleNovelTag(el) {
-  el.classList.toggle('selected');
-  novelSelectedTags = Array.from(document.querySelectorAll('.novel-tag-opt.selected')).map(e => e.textContent.trim());
+  const tag = String((el && (el.getAttribute('data-tag') || el.textContent)) || '').trim();
+  if (!tag) return;
+  const selected = _getNovelCurrentSelections();
+  const idx = selected.indexOf(tag);
+  if (idx === -1) {
+    selected.push(tag);
+    if (el) el.classList.add('selected');
+  } else {
+    selected.splice(idx, 1);
+    if (el) el.classList.remove('selected');
+  }
+  novelSelectedTags = selected.slice();
+  renderNovelTagSummary();
 }
 async function novelApiCall(prompt, maxTokens=2000) {
   if (!apiConfig.url || !apiConfig.key || !apiConfig.model) { alert('请先在API Config配置并保存API信息！'); return null; }
@@ -37490,15 +37708,170 @@ function cleanTextContent(text) {
     .replace(/\s+/g, ' ')
     .trim();
 }
+function _novelSourceText(keyword, tags, novel, mainCategory) {
+  const parts = [];
+  if (mainCategory) parts.push(String(mainCategory));
+  if (keyword) parts.push(String(keyword));
+  if (Array.isArray(tags) && tags.length) parts.push(tags.join('、'));
+  if (novel) {
+    if (novel.title) parts.push(String(novel.title));
+    if (novel.description) parts.push(String(novel.description));
+    if (Array.isArray(novel.tags) && novel.tags.length) parts.push(novel.tags.join('、'));
+  }
+  return parts.join(' ').toLowerCase();
+}
+const NOVEL_MAIN_CATEGORY_MARKERS = {
+  '言情': '言情/BG',
+  '百合': '百合/GL',
+  '耽美': '耽美/BL',
+  '无CP': '无CP'
+};
+function _novelResolveMainCategory(novel) {
+  if (novel && novel.mainCategory && NOVEL_TAG_LIBRARY[novel.mainCategory]) return novel.mainCategory;
+  if (novel && novel.generatedCategory && NOVEL_TAG_LIBRARY[novel.generatedCategory]) return novel.generatedCategory;
+  const text = _novelSourceText('', novel && novel.tags, novel, '');
+  if (text.indexOf('百合/gl') !== -1 || text.indexOf('百合') !== -1 || text.indexOf('双女主') !== -1 || text.indexOf('女同') !== -1) return '百合';
+  if (text.indexOf('耽美/bl') !== -1 || text.indexOf('耽美') !== -1 || text.indexOf('双男主') !== -1 || text.indexOf('男同') !== -1) return '耽美';
+  if (text.indexOf('无cp') !== -1 || text.indexOf('无恋爱') !== -1 || text.indexOf('事业线') !== -1) return '无CP';
+  if (text.indexOf('言情/bg') !== -1 || text.indexOf('言情') !== -1) return '言情';
+  return currentNovelMainCategory;
+}
+function _novelEnsureCategoryTag(tags, category) {
+  const out = [];
+  (Array.isArray(tags) ? tags : []).forEach(function(tag) {
+    const text = String(tag || '').trim();
+    if (text && out.indexOf(text) === -1) out.push(text);
+  });
+  const marker = NOVEL_MAIN_CATEGORY_MARKERS[category];
+  if (marker && out.indexOf(marker) === -1) out.unshift(marker);
+  return out.slice(0, 4);
+}
+function _novelNormalizeGeneratedNovel(novel, category) {
+  const item = Object.assign({}, novel || {});
+  item.title = cleanTextContent(item.title || '').slice(0, 40) || '未命名小说';
+  item.author = cleanTextContent(item.author || '').slice(0, 20) || '匿名作者';
+  item.description = cleanTextContent(item.description || '').slice(0, 120);
+  item.tags = _novelEnsureCategoryTag(item.tags || [], category);
+  item.mainCategory = category;
+  item.generatedCategory = category;
+  return item;
+}
+function _novelCategoryForbiddenTokens(category) {
+  if (category === '言情') return ['百合', 'gl', '女同', '双女主', '女女', '耽美', 'bl', '男同', '双男主', '无cp', '无恋爱', '纯友情'];
+  if (category === '百合') return ['耽美', 'bl', '男同', '双男主', '无cp', '无恋爱', '纯友情', '官配男主', '男主上位'];
+  if (category === '耽美') return ['百合', 'gl', '女同', '双女主', '无cp', '无恋爱', '纯友情', '官配女主', '女主上位'];
+  if (category === '无CP') return ['百合', 'gl', '女同', '耽美', 'bl', '男同', '言情', '恋爱主线', '官配', 'cp向'];
+  return [];
+}
+function _novelNoCpRomanceTokens() {
+  return ['恋爱', '喜欢上', '心动', '暧昧', '告白', '表白', '亲吻', '接吻', '拥吻', '男朋友', '女朋友', '老公', '老婆', '官配', '相爱'];
+}
+function _novelMetaMatchesCategory(novel, category) {
+  const text = _novelSourceText('', novel && novel.tags, novel, category);
+  const forbidden = _novelCategoryForbiddenTokens(category);
+  if (forbidden.some(function(token) { return text.indexOf(String(token).toLowerCase()) !== -1; })) return false;
+  if (category === '无CP') {
+    const romance = _novelNoCpRomanceTokens();
+    if (romance.some(function(token) { return text.indexOf(String(token).toLowerCase()) !== -1; })) return false;
+  }
+  return true;
+}
+function _novelChapterMatchesCategory(text, category) {
+  const lower = String(text || '').toLowerCase();
+  const forbidden = _novelCategoryForbiddenTokens(category);
+  if (forbidden.some(function(token) { return lower.indexOf(String(token).toLowerCase()) !== -1; })) return false;
+  if (category === '无CP') {
+    const romance = _novelNoCpRomanceTokens();
+    if (romance.some(function(token) { return lower.indexOf(String(token).toLowerCase()) !== -1; })) return false;
+  }
+  return true;
+}
+async function _novelGenerateListWithCategory(prompt, maxTokens, category, desiredCount) {
+  let lastError = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const extra = attempt === 0 ? '' : `\n上一次结果混入了其他大类，请重写。硬性要求：所有作品必须严格属于「${category}」，且每本 tags 必须显式包含「${NOVEL_MAIN_CATEGORY_MARKERS[category]}」这个标签。`;
+    try {
+      const content = await novelApiCall(prompt + extra, maxTokens);
+      if (!content) return null;
+      let novels = safeParseJSON(content);
+      if (!Array.isArray(novels)) throw new Error('返回格式不是数组');
+      novels = novels.map(function(novel) {
+        return _novelNormalizeGeneratedNovel(novel, category);
+      }).filter(function(novel) {
+        return _novelMetaMatchesCategory(novel, category);
+      });
+      if (novels.length >= desiredCount) return novels.slice(0, desiredCount);
+      lastError = new Error('生成结果未通过分类校验');
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  throw lastError || new Error('生成结果未通过分类校验');
+}
+async function _novelGenerateChapterWithCategory(prompt, maxTokens, category) {
+  let lastError = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const extra = attempt === 0 ? '' : `\n上一次正文有跑类风险，请彻底重写，并严格锁定在「${category}」大类，不允许混入其他大类设定。`;
+    try {
+      const content = await novelApiCall(prompt + extra, maxTokens);
+      if (!content) return null;
+      if (_novelChapterMatchesCategory(cleanTextContent(content), category)) return content;
+      lastError = new Error('章节内容未通过分类校验');
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  throw lastError || new Error('章节内容未通过分类校验');
+}
+function _novelRelationshipRules(keyword, tags, novel, mainCategory) {
+  const text = _novelSourceText(keyword, tags, novel, mainCategory);
+  const has = function(list) {
+    return list.some(function(token) { return text.indexOf(String(token).toLowerCase()) !== -1; });
+  };
+  const rules = ['绝对不要偷换小说大类。'];
+  let locked = false;
+  if (String(mainCategory || '') === '言情') {
+    locked = true;
+    rules.push('这是言情向作品：主感情线应围绕一位女性主角与一位男性主角展开，所有心动、暧昧、告白、亲密推进都必须落在这一对上，禁止跑偏成百合、耽美或无CP群像。');
+  }
+  if (String(mainCategory || '') === '百合') {
+    locked = true;
+    rules.push('这是百合 / GL 向作品：主感情线必须是女性之间，所有心动、暧昧、告白、亲密推进都只能发生在女性角色之间，禁止出现抢主线的官配男主。');
+  }
+  if (String(mainCategory || '') === '耽美') {
+    locked = true;
+    rules.push('这是耽美 / BL 向作品：主感情线必须是男性之间，所有心动、暧昧、告白、亲密推进都只能发生在男性角色之间，禁止出现抢主线的官配女主。');
+  }
+  if (String(mainCategory || '') === '无CP') {
+    locked = true;
+    rules.push('这是无CP向作品：禁止强行加入恋爱主线、暧昧对象、告白、亲吻或官配，核心应是事业线、成长线、群像线或冒险线。');
+  }
+  if (has(['百合', 'gl', '女同', '双女主', '女女'])) {
+    locked = true;
+    rules.push('这是百合 / GL 向作品：主感情线必须是女性之间，禁止出现抢主线的官配男主。');
+  }
+  if (has(['耽美', 'bl', '男同', '双男主'])) {
+    locked = true;
+    rules.push('这是耽美 / BL 向作品：主感情线必须是男性之间，禁止出现抢主线的官配女主。');
+  }
+  if (has(['无cp', '无配对', '无恋爱', '群像', '群像文', '群像成长', '事业向', '无cp主角'])) {
+    locked = true;
+    rules.push('这是无 CP / 群像 / 事业向作品：禁止强行加入恋爱主线、暧昧对象或官配。');
+  }
+  if (!locked) {
+    rules.push('关系模式必须与标签、简介和前文保持一致，不能默认套回男主言情模板。');
+  }
+  return rules.join('\n');
+}
 async function refreshNovelRecommend() {
   const loader = document.getElementById('novelRecommendLoader');
   const cards = document.getElementById('novelRecommendCards');
   loader.classList.add('active'); cards.innerHTML = '';
   try {
-    const prompt = `${LANG_SYSTEM_PREFIX}生成6本不同的言情小说信息，全部使用简体中文，要求：\n1. 每本包含：书名、作者名、2-4个标签、60字左右的简介\n2. 风格多样\n3. 严格返回JSON数组，不要说明文字：\n[{"title":"书名","author":"作者","tags":["标签"],"description":"简介"}]`;
-    const content = await novelApiCall(prompt, 1500);
-    if (!content) { loader.classList.remove('active'); return; }
-    const novels = safeParseJSON(content);
+    const lib = NOVEL_TAG_LIBRARY[currentNovelMainCategory];
+    const prompt = `${LANG_SYSTEM_PREFIX}当前小说大类：${currentNovelMainCategory}。\n请生成6本都属于这个大类的中文小说信息，全部使用简体中文，要求：\n1. 每本包含：书名、作者名、2-4个标签、60字左右的简介\n2. 标签和简介必须符合这个大类，不要混入其他三类\n3. 每本 tags 必须显式包含「${NOVEL_MAIN_CATEGORY_MARKERS[currentNovelMainCategory]}」这个标签\n4. 可参考该大类标签：小说类型示例 ${lib.genres.slice(0, 10).join('、')}；角色/关系示例 ${lib.roles.slice(0, 8).join('、')}；剧情示例 ${lib.plots.slice(0, 8).join('、')}\n5. ${_novelRelationshipRules('', [], null, currentNovelMainCategory)}\n6. 严格返回JSON数组，不要说明文字：\n[{"title":"书名","author":"作者","tags":["标签"],"description":"简介"}]`;
+    const novels = await _novelGenerateListWithCategory(prompt, 1500, currentNovelMainCategory, 6);
+    if (!novels) { loader.classList.remove('active'); return; }
     cards.innerHTML = novels.slice(0, 6).map(novel => {
       const color = makeCoverColor(novel.title);
       return `<div class="novel-card-h" onclick="openNovelReader(${JSON.stringify(novel).replace(/"/g,'&quot;')})">
@@ -37513,19 +37886,17 @@ async function refreshNovelRecommend() {
 }
 async function novelSearch() {
   const keyword = document.getElementById('novelSearchInput').value.trim();
-  if (!keyword && novelSelectedTags.length === 0) { alert('请输入搜寻关键词或选择标签！'); return; }
   const sr = document.getElementById('novelSearchResult');
   const loader = document.getElementById('novelSearchLoader');
   const grid = document.getElementById('novelSearchGrid');
   const rs = document.getElementById('novelRecommendSection');
   sr.style.display = 'block'; rs.style.display = 'none'; loader.classList.add('active'); grid.innerHTML = '';
   try {
-    let prompt = `${LANG_SYSTEM_PREFIX}生成6本符合条件的言情小说信息，全部使用简体中文：\n每本包含：书名、作者名、2-4个标签、60字简介。严格返回JSON数组：\n[{"title":"书名","author":"作者","tags":["标签"],"description":"简介"}]`;
+    let prompt = `${LANG_SYSTEM_PREFIX}当前小说大类：${currentNovelMainCategory}。\n请生成6本符合条件的中文小说信息，全部使用简体中文：\n每本包含：书名、作者名、2-4个标签、60字简介。\n每本 tags 必须显式包含「${NOVEL_MAIN_CATEGORY_MARKERS[currentNovelMainCategory]}」这个标签。\n${_novelRelationshipRules(keyword, novelSelectedTags, null, currentNovelMainCategory)}\n严格返回JSON数组：\n[{"title":"书名","author":"作者","tags":["标签"],"description":"简介"}]`;
     if (keyword) prompt += `\n关键词：${keyword}`;
     if (novelSelectedTags.length > 0) prompt += `\n必须包含标签：${novelSelectedTags.join('、')}`;
-    const content = await novelApiCall(prompt, 1500);
-    if (!content) { loader.classList.remove('active'); return; }
-    const novels = safeParseJSON(content);
+    const novels = await _novelGenerateListWithCategory(prompt, 1500, currentNovelMainCategory, 6);
+    if (!novels) { loader.classList.remove('active'); return; }
     grid.innerHTML = novels.map(novel => {
       const color = makeCoverColor(novel.title);
       return `<div class="novel-card-v" onclick="openNovelReader(${JSON.stringify(novel).replace(/"/g,'&quot;')})">
@@ -37542,6 +37913,24 @@ async function novelSearch() {
 function closeNovelSearch() { document.getElementById('novelSearchResult').style.display = 'none'; document.getElementById('novelRecommendSection').style.display = 'block'; }
 async function openNovelReader(novel) {
   if (typeof novel === 'string') novel = JSON.parse(novel);
+  const novelCategory = _novelResolveMainCategory(novel);
+  novel = _novelNormalizeGeneratedNovel(novel, novelCategory);
+  try {
+    if (typeof _showAppPage === 'function') _showAppPage('novelPage');
+    else if (typeof openApp === 'function') openApp('novelPage');
+    else {
+      var novelPage = document.getElementById('novelPage');
+      if (novelPage) {
+        document.querySelectorAll('.page').forEach(function(p) {
+          p.classList.remove('active');
+          p.style.display = 'none';
+        });
+        novelPage.classList.add('active');
+        novelPage.style.display = 'flex';
+      }
+      try { document.body.classList.remove('chat-page-active'); } catch(_) {}
+    }
+  } catch(_) {}
   currentNovel = novel;
   document.getElementById('nrTitle').textContent = novel.title;
   document.getElementById('nrMeta').textContent = `作者：${novel.author}  ·  ${(novel.tags||[]).join(' / ')}`;
@@ -37557,8 +37946,8 @@ async function openNovelReader(novel) {
     document.getElementById('nrChapterLabel').textContent = `第 ${saved.currentIndex + 1} 章`;
   } else {
     try {
-      const prompt = `${LANG_SYSTEM_PREFIX}为小说《${novel.title}》（作者：${novel.author}，标签：${(novel.tags||[]).join('、')}，简介：${novel.description||''}）生成第一章内容，全部使用简体中文，要求：\n1. 有代入感，符合言情小说风格，语言流畅自然\n2. 字数800-1000字\n3. 明确建立主角人物关系和故事背景\n4. 直接返回章节正文，不需要标题`;
-      chapterText = await novelApiCall(prompt, 2000);
+      const prompt = `${LANG_SYSTEM_PREFIX}当前小说大类：${novelCategory}。\n为小说《${novel.title}》（作者：${novel.author}，标签：${(novel.tags||[]).join('、')}，简介：${novel.description||''}）生成第一章内容，全部使用简体中文，要求：\n1. 有代入感，语言流畅自然，风格严格服从标签、简介与关系线设定\n2. 字数800-1000字\n3. 明确建立主角人物关系和故事背景\n4. ${_novelRelationshipRules('', novel.tags || [], novel, novelCategory)}\n5. 绝对不能偷换成其他三大类设定\n6. 直接返回章节正文，不需要标题`;
+      chapterText = await _novelGenerateChapterWithCategory(prompt, 2000, novelCategory);
       if (!chapterText) { document.getElementById('nrLoader').classList.remove('active'); return; }
       saveNovelChapters(novel.title, [chapterText], 0);
       document.getElementById('nrChapterLabel').textContent = '第 1 章';
@@ -37587,11 +37976,12 @@ async function generateNovelComments(novelTitle) {
 }
 async function generateNextChapterNovel() {
   if (!currentNovel) return;
+  const novelCategory = _novelResolveMainCategory(currentNovel);
   const saved = getNovelChapters(currentNovel.title);
   document.getElementById('nrContent').innerHTML = ''; document.getElementById('nrLoader').classList.add('active'); document.getElementById('nrBody').scrollTop = 0;
   try {
-    const prompt = `${LANG_SYSTEM_PREFIX}为小说《${currentNovel.title}》生成下一章，全部使用简体中文：\n前文参考：\n${saved.chapters.join('\n\n').slice(-3000)}\n字数800-1000字，直接返回正文，不需标题。`;
-    const content = await novelApiCall(prompt, 2000);
+    const prompt = `${LANG_SYSTEM_PREFIX}当前小说大类：${novelCategory}。\n为小说《${currentNovel.title}》生成下一章，全部使用简体中文：\n标签：${(currentNovel.tags||[]).join('、')}\n简介：${currentNovel.description||''}\n${_novelRelationshipRules('', currentNovel.tags || [], currentNovel, novelCategory)}\n前文参考：\n${saved.chapters.join('\n\n').slice(-3000)}\n字数800-1000字，绝对不能跑去其他三大类，直接返回正文，不需标题。`;
+    const content = await _novelGenerateChapterWithCategory(prompt, 2000, novelCategory);
     if (!content) { document.getElementById('nrLoader').classList.remove('active'); return; }
     saved.chapters.push(content); saved.currentIndex = saved.chapters.length - 1;
     saveNovelChapters(currentNovel.title, saved.chapters, saved.currentIndex);
@@ -37605,11 +37995,12 @@ async function generateNextChapterNovel() {
 }
 async function generateFinalChapterNovel() {
   if (!currentNovel) return;
+  const novelCategory = _novelResolveMainCategory(currentNovel);
   const saved = getNovelChapters(currentNovel.title);
   document.getElementById('nrContent').innerHTML = ''; document.getElementById('nrLoader').classList.add('active'); document.getElementById('nrBody').scrollTop = 0;
   try {
-    const prompt = `${LANG_SYSTEM_PREFIX}为小说《${currentNovel.title}》生成最终章，完美收尾，全部使用简体中文：\n前文参考：\n${saved.chapters.join('\n\n').slice(-3000)}\n字数800-1000字，直接返回正文，不需标题。`;
-    const content = await novelApiCall(prompt, 2000);
+    const prompt = `${LANG_SYSTEM_PREFIX}当前小说大类：${novelCategory}。\n为小说《${currentNovel.title}》生成最终章，完美收尾，全部使用简体中文：\n标签：${(currentNovel.tags||[]).join('、')}\n简介：${currentNovel.description||''}\n${_novelRelationshipRules('', currentNovel.tags || [], currentNovel, novelCategory)}\n前文参考：\n${saved.chapters.join('\n\n').slice(-3000)}\n字数800-1000字，绝对不能跑去其他三大类，直接返回正文，不需标题。`;
+    const content = await _novelGenerateChapterWithCategory(prompt, 2000, novelCategory);
     if (!content) { document.getElementById('nrLoader').classList.remove('active'); return; }
     saved.chapters.push(content); saved.currentIndex = saved.chapters.length - 1;
     saveNovelChapters(currentNovel.title, saved.chapters, saved.currentIndex);
@@ -105514,8 +105905,16 @@ body.mono-hide-chat-surfaces #datingChatPage.active {
   z-index: 12050 !important;
 }
 
+#secApiFormOverlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 12060 !important;
+}
+
 #txtReaderLayer,
 #txtChaptersPanel,
+#novelReaderLayer,
+#chaptersPanel,
 #editBookModal,
 #txtSettingsModal,
 #shopDetailLayer,
@@ -105534,6 +105933,8 @@ body.mono-hide-chat-surfaces #datingChatPage.active {
 
 #txtReaderLayer,
 #txtChaptersPanel,
+#novelReaderLayer,
+#chaptersPanel,
 #shopDetailLayer,
 #shopCartLayer,
 #shopCheckoutModal,
@@ -105559,6 +105960,8 @@ body.mono-hide-chat-surfaces #datingChatPage.active {
 
 #txtReaderLayer,
 #txtChaptersPanel,
+#novelReaderLayer,
+#chaptersPanel,
 #editBookModal,
 #txtSettingsModal,
 #shopDetailLayer,
@@ -105575,6 +105978,8 @@ body.mono-hide-chat-surfaces #datingChatPage.active {
 
 body.ios-fullscreen #txtReaderLayer,
 body.ios-fullscreen #txtChaptersPanel,
+body.ios-fullscreen #novelReaderLayer,
+body.ios-fullscreen #chaptersPanel,
 body.ios-fullscreen #shopDetailLayer,
 body.ios-fullscreen #shopCartLayer,
 body.ios-fullscreen #shopCheckoutModal,
@@ -105616,6 +106021,5 @@ body.ios-fullscreen #personaForumModalOverlay {
   window.addEventListener('load', install, {passive:true});
 })();
 </script>
-
 </body>
 </html>

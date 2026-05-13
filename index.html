@@ -19604,8 +19604,6 @@ body.chat-page-active.chat-preset-frosted-active .phone-screen {
     try {
       var root = document.documentElement;
       if (isGlassChat()) {
-        // Glass theme should behave like the default theme: viewport resizes normally;
-        // no extra footer padding/transform from keyboard variables.
         root.style.setProperty('--mono-keyboard-offset', '0px');
         window.scrollTo(0, 0);
         document.documentElement.scrollTop = 0;
@@ -19615,45 +19613,47 @@ body.chat-page-active.chat-preset-frosted-active .phone-screen {
       syncGlassTitleColor();
     } catch(e) {}
   }
+  var _glassCleanQueued = false;
+  function scheduleGlassKeyboardClean(){
+    if (_glassCleanQueued) return;
+    _glassCleanQueued = true;
+    requestAnimationFrame(function(){
+      _glassCleanQueued = false;
+      syncGlassKeyboardClean();
+    });
+  }
   window.monoSyncCleanGlassChatFix = syncGlassKeyboardClean;
+  window.monoScheduleCleanGlassChatFix = scheduleGlassKeyboardClean;
   var oldApply = window.applyBubbleStyles;
   if (typeof oldApply === 'function' && !oldApply.__monoCleanGlassWrapped) {
     var wrapped = function(p){
       var r = oldApply.apply(this, arguments);
-      setTimeout(syncGlassKeyboardClean, 0);
-      setTimeout(syncGlassKeyboardClean, 80);
+      setTimeout(scheduleGlassKeyboardClean, 0);
+      setTimeout(scheduleGlassKeyboardClean, 80);
       return r;
     };
     wrapped.__monoCleanGlassWrapped = true;
     window.applyBubbleStyles = wrapped;
   }
   ['resize','orientationchange'].forEach(function(ev){
-    window.addEventListener(ev, function(){ setTimeout(syncGlassKeyboardClean, 30); setTimeout(syncGlassKeyboardClean, 180); }, {passive:true});
+    window.addEventListener(ev, function(){ setTimeout(scheduleGlassKeyboardClean, 30); setTimeout(scheduleGlassKeyboardClean, 180); }, {passive:true});
   });
   if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', function(){ setTimeout(syncGlassKeyboardClean, 20); }, {passive:true});
-    window.visualViewport.addEventListener('scroll', function(){ setTimeout(syncGlassKeyboardClean, 20); }, {passive:true});
+    window.visualViewport.addEventListener('resize', function(){ setTimeout(scheduleGlassKeyboardClean, 20); }, {passive:true});
+    window.visualViewport.addEventListener('scroll', function(){ setTimeout(scheduleGlassKeyboardClean, 20); }, {passive:true});
   }
   document.addEventListener('focusin', function(e){
     if (e.target && e.target.id === 'userInput') {
-      syncGlassKeyboardClean();
-      setTimeout(syncGlassKeyboardClean, 80);
-      setTimeout(syncGlassKeyboardClean, 260);
+      scheduleGlassKeyboardClean();
+      setTimeout(scheduleGlassKeyboardClean, 80);
+      setTimeout(scheduleGlassKeyboardClean, 260);
     }
   }, true);
   document.addEventListener('focusout', function(e){
-    if (e.target && e.target.id === 'userInput') setTimeout(syncGlassKeyboardClean, 100);
+    if (e.target && e.target.id === 'userInput') setTimeout(scheduleGlassKeyboardClean, 100);
   }, true);
   document.addEventListener('DOMContentLoaded', function(){
-    syncGlassKeyboardClean();
-    var page = document.getElementById('chatPage');
-    if (page && window.MutationObserver) {
-      new MutationObserver(syncGlassKeyboardClean).observe(page, {attributes:true, attributeFilter:['class','style']});
-    }
-    if (document.body && window.MutationObserver) {
-      new MutationObserver(syncGlassKeyboardClean).observe(document.body, {attributes:true, attributeFilter:['class']});
-    }
-    setInterval(syncGlassKeyboardClean, 700);
+    scheduleGlassKeyboardClean();
   });
 })();
 </script>
@@ -19751,7 +19751,6 @@ body.chat-page-active #chatPage #inputBar {
     try {
       if (!isChatActive()) return;
       var root = document.documentElement;
-      /* Default and glass both use normal visualViewport resize. Do not add extra keyboard padding. */
       root.style.setProperty('--mono-keyboard-offset', '0px');
       document.body.style.overscrollBehaviorY = 'none';
       var page = document.getElementById('chatPage');
@@ -19761,7 +19760,6 @@ body.chat-page-active #chatPage #inputBar {
         page.style.minHeight = '0';
       }
       if (input && document.activeElement === input) {
-        /* Keep the page itself pinned instead of letting iOS scroll the whole app to a black area. */
         window.scrollTo(0, 0);
         document.documentElement.scrollTop = 0;
         document.body.scrollTop = 0;
@@ -19774,36 +19772,39 @@ body.chat-page-active #chatPage #inputBar {
       }
     } catch(e) {}
   }
+  var _viewportCleanQueued = false;
+  function scheduleKeepChatViewportClean(){
+    if (_viewportCleanQueued) return;
+    _viewportCleanQueued = true;
+    requestAnimationFrame(function(){
+      _viewportCleanQueued = false;
+      keepChatViewportClean();
+    });
+  }
   window.monoKeepDefaultAndGlassChatViewportClean = keepChatViewportClean;
+  window.monoScheduleKeepDefaultAndGlassChatViewportClean = scheduleKeepChatViewportClean;
   ['resize','orientationchange'].forEach(function(ev){
     window.addEventListener(ev, function(){
-      setTimeout(keepChatViewportClean, 20);
-      setTimeout(keepChatViewportClean, 180);
+      setTimeout(scheduleKeepChatViewportClean, 20);
+      setTimeout(scheduleKeepChatViewportClean, 180);
     }, {passive:true});
   });
   if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', function(){ setTimeout(keepChatViewportClean, 20); }, {passive:true});
-    window.visualViewport.addEventListener('scroll', function(){ setTimeout(keepChatViewportClean, 20); }, {passive:true});
+    window.visualViewport.addEventListener('resize', function(){ setTimeout(scheduleKeepChatViewportClean, 20); }, {passive:true});
+    window.visualViewport.addEventListener('scroll', function(){ setTimeout(scheduleKeepChatViewportClean, 20); }, {passive:true});
   }
   document.addEventListener('focusin', function(e){
     if (e.target && e.target.id === 'userInput') {
-      keepChatViewportClean();
-      setTimeout(keepChatViewportClean, 80);
-      setTimeout(keepChatViewportClean, 260);
+      scheduleKeepChatViewportClean();
+      setTimeout(scheduleKeepChatViewportClean, 80);
+      setTimeout(scheduleKeepChatViewportClean, 260);
     }
   }, true);
   document.addEventListener('focusout', function(e){
-    if (e.target && e.target.id === 'userInput') setTimeout(keepChatViewportClean, 100);
+    if (e.target && e.target.id === 'userInput') setTimeout(scheduleKeepChatViewportClean, 100);
   }, true);
   document.addEventListener('DOMContentLoaded', function(){
-    keepChatViewportClean();
-    if (document.body && window.MutationObserver) {
-      new MutationObserver(keepChatViewportClean).observe(document.body, {attributes:true, attributeFilter:['class']});
-    }
-    var page = document.getElementById('chatPage');
-    if (page && window.MutationObserver) {
-      new MutationObserver(keepChatViewportClean).observe(page, {attributes:true, attributeFilter:['style','class']});
-    }
+    scheduleKeepChatViewportClean();
   });
 })();
 </script>
@@ -104797,30 +104798,34 @@ body.chat-page-active #chatPage #chatBox .empty-state {
   }
   function runFix(){
     var page = document.getElementById('chatPage');
+    if (!page) return;
     applyGlassColorOnlyWhenGlass(page);
     keepComposerAtBottom();
   }
-  window.monoThemeScopedColorAndEmptyInputFix = runFix;
-
-  ['DOMContentLoaded','load','resize','orientationchange'].forEach(function(ev){
-    window.addEventListener(ev, function(){ setTimeout(runFix, 0); setTimeout(runFix, 120); }, {passive:true});
-  });
-  document.addEventListener('click', function(){ setTimeout(runFix, 0); setTimeout(runFix, 120); }, true);
-  document.addEventListener('input', function(e){
-    if (e && e.target && e.target.id === 'pFrostedTitleColor') setTimeout(runFix, 0);
-  }, true);
-  if (window.MutationObserver) {
-    document.addEventListener('DOMContentLoaded', function(){
-      var page = document.getElementById('chatPage');
-      if (page) new MutationObserver(function(){ setTimeout(runFix, 0); }).observe(page, {childList:true, subtree:true, attributes:true, attributeFilter:['class','style']});
-      if (document.body) new MutationObserver(function(){ setTimeout(runFix, 0); }).observe(document.body, {attributes:true, attributeFilter:['class']});
+  var _runFixQueued = false;
+  function scheduleRunFix(){
+    if (_runFixQueued) return;
+    _runFixQueued = true;
+    requestAnimationFrame(function(){
+      _runFixQueued = false;
+      runFix();
     });
   }
+  window.monoThemeScopedColorAndEmptyInputFix = runFix;
+  window.monoThemeScopedColorAndEmptyInputFixSchedule = scheduleRunFix;
+
+  ['DOMContentLoaded','load','resize','orientationchange'].forEach(function(ev){
+    window.addEventListener(ev, function(){ scheduleRunFix(); setTimeout(scheduleRunFix, 120); }, {passive:true});
+  });
+  document.addEventListener('click', function(){ setTimeout(scheduleRunFix, 0); setTimeout(scheduleRunFix, 120); }, true);
+  document.addEventListener('input', function(e){
+    if (e && e.target && e.target.id === 'pFrostedTitleColor') setTimeout(scheduleRunFix, 0);
+  }, true);
   var oldApplyBubbleStyles = window.applyBubbleStyles;
   if (typeof oldApplyBubbleStyles === 'function' && !oldApplyBubbleStyles.__themeScopedColorEmptyInputFix) {
     var patchedApply = function(){
       var r = oldApplyBubbleStyles.apply(this, arguments);
-      setTimeout(runFix, 0); setTimeout(runFix, 120);
+      setTimeout(scheduleRunFix, 0); setTimeout(scheduleRunFix, 120);
       return r;
     };
     patchedApply.__themeScopedColorEmptyInputFix = true;
@@ -104830,13 +104835,13 @@ body.chat-page-active #chatPage #chatBox .empty-state {
   if (typeof oldRenderChat === 'function' && !oldRenderChat.__themeScopedColorEmptyInputFix) {
     var patchedRender = function(){
       var r = oldRenderChat.apply(this, arguments);
-      setTimeout(runFix, 0); setTimeout(runFix, 120);
+      setTimeout(scheduleRunFix, 0); setTimeout(scheduleRunFix, 120);
       return r;
     };
     patchedRender.__themeScopedColorEmptyInputFix = true;
     window.renderChat = patchedRender;
   }
-  setInterval(runFix, 700);
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden) scheduleRunFix(); });
 })();
 </script>
 

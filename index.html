@@ -28469,6 +28469,14 @@ function selectPersona(id) {
   }
   try { renderContactList(); } catch(e) { console.error('[chat] renderContactList failed:', e); }
   try { tdRenderGamePanel(); } catch(e) { console.warn('[chat] tdRenderGamePanel failed:', e); }
+  try {
+    if (typeof window.monoScheduleCleanGlassChatFix === 'function') {
+      window.monoScheduleCleanGlassChatFix();
+      setTimeout(window.monoScheduleCleanGlassChatFix, 0);
+      setTimeout(window.monoScheduleCleanGlassChatFix, 80);
+      setTimeout(window.monoScheduleCleanGlassChatFix, 220);
+    }
+  } catch(e) {}
   // Auto-scroll to latest messages
   setTimeout(function() {
     var chatBox = document.getElementById('chatBox');
@@ -105382,5 +105390,6 @@ body.mono-hide-chat-surfaces #datingChatPage.active {
   window.addEventListener('load', install, {passive:true});
 })();
 </script>
+
 </body>
 </html>

@@ -1,40 +1,4 @@
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head><base href="https://d16ilfvy4mv02r.cloudfront.net/workspaces/sh0bDVYUIEw8H1dpwjAJvINuiJ6ETxg0/6c9a375e-adcc-44e2-9ec5-2d1ce63bc50b/files/">
@@ -105355,6 +105319,9 @@ body.mono-hide-chat-surfaces #datingChatPage.active {
 <script id="monoFixRefreshHooks">
 (function(){
   function scheduleAll(){
+    try { if (typeof window.monoThemeScopedColorAndEmptyInputFixSchedule === 'function') window.monoThemeScopedColorAndEmptyInputFixSchedule(); } catch(e) {}
+    try { if (typeof window.monoScheduleCleanGlassChatFix === 'function') window.monoScheduleCleanGlassChatFix(); } catch(e) {}
+    try { if (typeof window.monoScheduleKeepDefaultAndGlassChatViewportClean === 'function') window.monoScheduleKeepDefaultAndGlassChatViewportClean(); } catch(e) {}
     try { if (typeof window.monoScheduleBottomSafeInsetRestoreFix === 'function') window.monoScheduleBottomSafeInsetRestoreFix(); } catch(e) {}
     try { if (typeof window.monoScheduleNonChatBottomMaskFix === 'function') window.monoScheduleNonChatBottomMaskFix(); } catch(e) {}
     try { if (typeof window.monoScheduleHardHideChatSurfacesFix === 'function') window.monoScheduleHardHideChatSurfacesFix(); } catch(e) {}

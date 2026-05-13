@@ -76382,6 +76382,27 @@ function _callCompanionApi(persona, chContent, hist, callback) {
   will-change: left, top;
   animation: none !important;
 }
+/* ── Alignment guides while dragging ── */
+#iph-align-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999997;
+  pointer-events: none;
+  display: none;
+}
+#iph-align-overlay .iph-align-line {
+  position: absolute;
+  display: none;
+  background: rgba(26,26,26,0.9);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.22), 0 0 10px rgba(26,26,26,0.16);
+  border-radius: 999px;
+}
+#iph-align-overlay .iph-align-line.v {
+  width: 2px;
+}
+#iph-align-overlay .iph-align-line.h {
+  height: 2px;
+}
 /* ── Done button (top-right, iPhone-style) ── */
 #iph-edit-done {
   position: absolute;
@@ -78918,6 +78939,10 @@ let lpMoved    = false;
 let lpStartX   = 0;
 let lpStartY   = 0;
 let positions  = {};            // { id: {x,y,parentId} }
+let alignOverlay = null;
+let alignLineV = null;
+let alignLineH = null;
+const ALIGN_SNAP_PX = 8;
 function syncHomeContainerMeta(id, parentId, x, y, w, h) {
   if (!id) return;
   try {
@@ -78941,11 +78966,117 @@ function syncHomeContainerMeta(id, parentId, x, y, w, h) {
     }
   } catch(e2) {}
 }
+function initAlignmentGuides() {
+  if (alignOverlay && alignLineV && alignLineH) return;
+  alignOverlay = document.getElementById('iph-align-overlay');
+  if (!alignOverlay) {
+    alignOverlay = document.createElement('div');
+    alignOverlay.id = 'iph-align-overlay';
+    alignLineV = document.createElement('div');
+    alignLineV.className = 'iph-align-line v';
+    alignLineH = document.createElement('div');
+    alignLineH.className = 'iph-align-line h';
+    alignOverlay.appendChild(alignLineV);
+    alignOverlay.appendChild(alignLineH);
+    document.body.appendChild(alignOverlay);
+  } else {
+    alignLineV = alignOverlay.querySelector('.iph-align-line.v');
+    alignLineH = alignOverlay.querySelector('.iph-align-line.h');
+  }
+}
+function hideAlignmentGuides() {
+  if (!alignOverlay) return;
+  alignOverlay.style.display = 'none';
+  if (alignLineV) alignLineV.style.display = 'none';
+  if (alignLineH) alignLineH.style.display = 'none';
+}
+function showAlignmentGuides(guideX, guideY, bounds) {
+  if (!alignOverlay || !bounds) return;
+  alignOverlay.style.display = 'block';
+  if (guideX != null && alignLineV) {
+    alignLineV.style.display = 'block';
+    alignLineV.style.left = guideX + 'px';
+    alignLineV.style.top = bounds.top + 'px';
+    alignLineV.style.height = bounds.height + 'px';
+  } else if (alignLineV) {
+    alignLineV.style.display = 'none';
+  }
+  if (guideY != null && alignLineH) {
+    alignLineH.style.display = 'block';
+    alignLineH.style.top = guideY + 'px';
+    alignLineH.style.left = bounds.left + 'px';
+    alignLineH.style.width = bounds.width + 'px';
+  } else if (alignLineH) {
+    alignLineH.style.display = 'none';
+  }
+}
+function getActiveDragContainer(centerX, centerY) {
+  const dock = document.getElementById('homeSharedDock');
+  const dockRect = dock ? dock.getBoundingClientRect() : null;
+  const overSharedDock = dockRect &&
+    centerX >= dockRect.left && centerX <= dockRect.right &&
+    centerY >= dockRect.top  && centerY <= dockRect.bottom;
+  if (overSharedDock) return dock;
+  const curPageIdx = window._iphCurrentPage || 0;
+  const pageContainers = [
+    document.getElementById('homePage1'),
+    document.getElementById('homePage2'),
+    document.getElementById('homePage3'),
+    ...(window._extraPageIds || []).filter(function(id) { return id !== 'homePage3'; }).map(function(id) {
+      return document.getElementById(id);
+    })
+  ];
+  return pageContainers[curPageIdx] || (dragEl && dragEl.parentElement) || null;
+}
+function getSnapResult(gx, gy) {
+  const dragW = elW || 0;
+  const dragH = elH || 0;
+  const centerX = gx + dragW / 2;
+  const centerY = gy + dragH / 2;
+  const container = getActiveDragContainer(centerX, centerY);
+  if (!container) return { gx: gx, gy: gy, guideX: null, guideY: null, bounds: null };
+  const cRect = container.getBoundingClientRect();
+  let bestX = null;
+  let bestY = null;
+  function considerX(diff, snappedLeft, lineX) {
+    if (diff > ALIGN_SNAP_PX) return;
+    if (!bestX || diff < bestX.diff) bestX = { diff: diff, snappedLeft: snappedLeft, lineX: lineX };
+  }
+  function considerY(diff, snappedTop, lineY) {
+    if (diff > ALIGN_SNAP_PX) return;
+    if (!bestY || diff < bestY.diff) bestY = { diff: diff, snappedTop: snappedTop, lineY: lineY };
+  }
+  considerX(Math.abs(centerX - (cRect.left + cRect.width / 2)), cRect.left + cRect.width / 2 - dragW / 2, cRect.left + cRect.width / 2);
+  considerY(Math.abs(centerY - (cRect.top + cRect.height / 2)), cRect.top + cRect.height / 2 - dragH / 2, cRect.top + cRect.height / 2);
+  Array.prototype.forEach.call(
+    container.querySelectorAll('[data-drag-id]:not(.is-dragging-source)'),
+    function(peer) {
+      if (!peer || peer === dragEl || peer.closest('#iph-drag-ghost')) return;
+      if (!peer.offsetParent) return;
+      const r = peer.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+      considerX(Math.abs(gx - r.left), r.left, r.left);
+      considerX(Math.abs(centerX - (r.left + r.width / 2)), r.left + r.width / 2 - dragW / 2, r.left + r.width / 2);
+      considerX(Math.abs((gx + dragW) - r.right), r.right - dragW, r.right);
+      considerY(Math.abs(gy - r.top), r.top, r.top);
+      considerY(Math.abs(centerY - (r.top + r.height / 2)), r.top + r.height / 2 - dragH / 2, r.top + r.height / 2);
+      considerY(Math.abs((gy + dragH) - r.bottom), r.bottom - dragH, r.bottom);
+    }
+  );
+  return {
+    gx: bestX ? bestX.snappedLeft : gx,
+    gy: bestY ? bestY.snappedTop : gy,
+    guideX: bestX ? bestX.lineX : null,
+    guideY: bestY ? bestY.lineY : null,
+    bounds: cRect
+  };
+}
 /* ════════════════════════════════
    BOOT
    ════════════════════════════════ */
 function boot() {
   ghost = document.getElementById('iph-drag-ghost');
+  initAlignmentGuides();
   window._iphCurrentPage = 0;
   loadPositions();
   // Delay applyPositions so DOM layout (fonts, images) is stable before reading offsetWidth etc.
@@ -79151,6 +79282,7 @@ window.iphEditDone = function() {
   const btn = document.getElementById('iph-edit-done');
   if (btn) btn.style.display = 'none';
   if (ghost) ghost.style.display = 'none';
+  hideAlignmentGuides();
   unbindDrag();
   enableClicks();
   savePositions();
@@ -79478,6 +79610,7 @@ function startDrag(el, cx, cy) {
   el.classList.add('is-dragging-source');
   const hs = document.getElementById('homeScreen');
   if (hs) hs.classList.add('iph-dragging');
+  hideAlignmentGuides();
 }
 /* ── edge-switch state ── */
 let edgeTimer    = null;   // setTimeout for page switch
@@ -79494,8 +79627,13 @@ function moveDrag(cx, cy) {
   let gy = cy - offY;
   gx = Math.max(hsR.left,  Math.min(gx, hsR.right  - elW));
   gy = Math.max(hsR.top,   Math.min(gy, hsR.bottom - elH));
+  const snap = getSnapResult(gx, gy);
+  gx = Math.max(hsR.left,  Math.min(snap.gx, hsR.right  - elW));
+  gy = Math.max(hsR.top,   Math.min(snap.gy, hsR.bottom - elH));
   ghost.style.left = gx + 'px';
   ghost.style.top  = gy + 'px';
+  if (snap.guideX != null || snap.guideY != null) showAlignmentGuides(snap.guideX, snap.guideY, snap.bounds);
+  else hideAlignmentGuides();
   // ── 1b. Folder-merge hover preview (only for non-folder sources) ──
   if (dragEl && !dragEl.classList.contains('iph-folder-icon')) {
     const gcx2 = gx + elW / 2;
@@ -79552,6 +79690,7 @@ function moveDrag(cx, cy) {
 function endDrag() {
   if (!dragEl) return;
   dragging = false;
+  hideAlignmentGuides();
   // Clear folder hover previews
   document.querySelectorAll('[data-folder-drop-hover]').forEach(function(e){ e.removeAttribute('data-folder-drop-hover'); });
   // Cancel any pending edge switch

@@ -19609,9 +19609,7 @@ body.chat-page-active.chat-preset-frosted-active .phone-screen {
       var root = document.documentElement;
       if (isGlassChat()) {
         root.style.setProperty('--mono-keyboard-offset', '0px');
-        window.scrollTo(0, 0);
-        document.documentElement.scrollTop = 0;
-        document.body.scrollTop = 0;
+        /* old keyboard mode: do not force page back to top while an input is focused */
       }
       syncGlassHeaderContactsButton();
       syncGlassTitleColor();
@@ -19642,10 +19640,6 @@ body.chat-page-active.chat-preset-frosted-active .phone-screen {
   ['resize','orientationchange'].forEach(function(ev){
     window.addEventListener(ev, function(){ setTimeout(scheduleGlassKeyboardClean, 30); setTimeout(scheduleGlassKeyboardClean, 180); }, {passive:true});
   });
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', function(){ setTimeout(scheduleGlassKeyboardClean, 20); }, {passive:true});
-    window.visualViewport.addEventListener('scroll', function(){ setTimeout(scheduleGlassKeyboardClean, 20); }, {passive:true});
-  }
   document.addEventListener('focusin', function(e){
     if (e.target && e.target.id === 'userInput') {
       scheduleGlassKeyboardClean();
@@ -19764,9 +19758,7 @@ body.chat-page-active #chatPage #inputBar {
         page.style.minHeight = '0';
       }
       if (input && document.activeElement === input) {
-        window.scrollTo(0, 0);
-        document.documentElement.scrollTop = 0;
-        document.body.scrollTop = 0;
+        /* old keyboard mode: do not force page back to top while an input is focused */
         setTimeout(function(){
           try {
             var box = document.getElementById('chatBox');
@@ -19793,10 +19785,6 @@ body.chat-page-active #chatPage #inputBar {
       setTimeout(scheduleKeepChatViewportClean, 180);
     }, {passive:true});
   });
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', function(){ setTimeout(scheduleKeepChatViewportClean, 20); }, {passive:true});
-    window.visualViewport.addEventListener('scroll', function(){ setTimeout(scheduleKeepChatViewportClean, 20); }, {passive:true});
-  }
   document.addEventListener('focusin', function(e){
     if (e.target && e.target.id === 'userInput') {
       scheduleKeepChatViewportClean();
@@ -39463,16 +39451,10 @@ function loadChatThemeUI(theme) {
 function updateMonoViewportMetrics() {
   try {
     var root = document.documentElement;
-    var vv = window.visualViewport;
-    var viewportHeight = vv && vv.height ? vv.height : window.innerHeight;
-    if (viewportHeight > 0) {
-      root.style.setProperty('--mono-app-vh', (viewportHeight * 0.01) + 'px');
-    }
-    var keyboardOffset = 0;
-    if (vv && window.innerHeight) {
-      keyboardOffset = Math.max(0, window.innerHeight - vv.height - (vv.offsetTop || 0));
-    }
-    root.style.setProperty('--mono-keyboard-offset', keyboardOffset + 'px');
+    /* Restored old-version keyboard behavior:
+       do NOT use visualViewport.height to shrink the whole app when the keyboard opens. */
+    root.style.setProperty('--mono-app-vh', '1vh');
+    root.style.setProperty('--mono-keyboard-offset', '0px');
     var chatPage = document.getElementById('chatPage');
     if (chatPage && chatPage.parentElement) {
       var hostHeight = chatPage.parentElement.clientHeight || 0;
@@ -39494,10 +39476,6 @@ function bindMonoViewportMetrics() {
     window.addEventListener('orientationchange', function() {
       setTimeout(updateMonoViewportMetrics, 120);
     }, { passive: true });
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', updateMonoViewportMetrics, { passive: true });
-      window.visualViewport.addEventListener('scroll', updateMonoViewportMetrics, { passive: true });
-    }
   } catch (e) {}
 }
 function applyBubblePresetClass(preset) {
@@ -106025,6 +106003,138 @@ body.ios-fullscreen #personaForumModalOverlay {
   window.monoInstallFixRefreshHooks = install;
   document.addEventListener('DOMContentLoaded', install);
   window.addEventListener('load', install, {passive:true});
+})();
+</script>
+
+
+
+<!-- === 2026-05-13 DIRECT SOURCE PATCH: restore old keyboard mode for every input, plus keep chat composer visible === -->
+<style id="monoDirectOldKeyboardAllInputsPatch">
+:root{
+  --mono-app-vh: 1vh !important;
+  --mono-keyboard-offset: 0px !important;
+  --mono-chat-input-lift: 0px;
+}
+body,
+.phone-container{
+  height: calc(100vh - 40px) !important;
+}
+body{
+  min-height: 100vh !important;
+}
+body.ios-fullscreen .phone-container{
+  height: 100vh !important;
+  max-height: 100vh !important;
+}
+.phone-container,
+.phone-screen,
+.page{
+  overscroll-behavior: contain;
+}
+/* Never let the whole app be compressed by keyboard metrics. */
+html.mono-input-focused,
+html.mono-input-focused body,
+html.mono-input-focused .phone-container{
+  min-height: 100% !important;
+}
+/* Chat page still scrolls inside the message list. */
+body.chat-page-active #chatPage #chatBox,
+body.chat-page-active #chatPage .chat-messages{
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  min-height: 0 !important;
+  scroll-padding-bottom: calc(24px + var(--mono-chat-input-lift, 0px)) !important;
+}
+/* Only the chat composer is lifted above the keyboard. The whole app is not resized. */
+body.chat-page-active.mono-chat-composer-focused #chatPage .chat-footer{
+  transform: translate3d(0, calc(-1 * var(--mono-chat-input-lift, 0px)), 0) !important;
+  -webkit-transform: translate3d(0, calc(-1 * var(--mono-chat-input-lift, 0px)), 0) !important;
+  transition: transform .16s ease;
+  z-index: 200 !important;
+}
+body.chat-page-active.mono-chat-composer-focused #chatPage #inputBar{
+  z-index: 201 !important;
+}
+body.chat-page-active.mono-chat-composer-focused #chatPage #chatBox{
+  padding-bottom: calc(26px + var(--mono-chat-input-lift, 0px)) !important;
+}
+/* Inputs in all mini apps/pages stay usable and scrollable instead of trapping the screen. */
+input, textarea, select{
+  font-size: max(16px, 1em);
+  -webkit-user-select: text;
+  user-select: text;
+  touch-action: manipulation;
+}
+</style>
+<script id="monoDirectOldKeyboardAllInputsPatchScript">
+(function(){
+  function setOldViewportVars(){
+    try{
+      var root = document.documentElement;
+      root.style.setProperty('--mono-app-vh', '1vh');
+      root.style.setProperty('--mono-keyboard-offset', '0px');
+    }catch(e){}
+  }
+  function isEditable(el){
+    return !!(el && el.matches && el.matches('input, textarea, select, [contenteditable="true"]'));
+  }
+  function getKeyboardLift(){
+    try{
+      if(!window.visualViewport) return 0;
+      var vv = window.visualViewport;
+      var raw = Math.max(0, window.innerHeight - vv.height - (vv.offsetTop || 0));
+      /* Do not lift for tiny browser toolbar changes. */
+      return raw > 80 ? raw : 0;
+    }catch(e){ return 0; }
+  }
+  function updateChatComposerLift(){
+    try{
+      setOldViewportVars();
+      var active = document.activeElement;
+      var isChatInput = !!(active && active.id === 'userInput');
+      var lift = isChatInput ? getKeyboardLift() : 0;
+      document.documentElement.style.setProperty('--mono-chat-input-lift', lift + 'px');
+      document.body.classList.toggle('mono-chat-composer-focused', !!(isChatInput && lift > 0));
+      if(isChatInput){
+        var box = document.getElementById('chatBox');
+        setTimeout(function(){ try{ if(box) box.scrollTop = box.scrollHeight; }catch(e){} }, 80);
+      }
+    }catch(e){}
+  }
+  function scrollFocusedInputIntoView(el){
+    try{
+      if(!isEditable(el)) return;
+      setOldViewportVars();
+      /* Chat composer is handled by local lifting, not whole-page resizing. */
+      if(el.id === 'userInput') { updateChatComposerLift(); return; }
+      setTimeout(function(){
+        try{ el.scrollIntoView({block:'center', inline:'nearest', behavior:'smooth'}); }catch(e){ try{ el.scrollIntoView(false); }catch(_){} }
+      }, 260);
+    }catch(e){}
+  }
+  window.updateMonoViewportMetrics = function(){ setOldViewportVars(); updateChatComposerLift(); };
+  window.monoRestoreOldKeyboardModeAllInputs = function(){ setOldViewportVars(); updateChatComposerLift(); };
+  ['DOMContentLoaded','load','resize','orientationchange'].forEach(function(ev){
+    window.addEventListener(ev, function(){ setOldViewportVars(); setTimeout(updateChatComposerLift, 80); }, {passive:true});
+  });
+  document.addEventListener('focusin', function(e){
+    document.documentElement.classList.add('mono-input-focused');
+    scrollFocusedInputIntoView(e.target);
+    setTimeout(function(){ scrollFocusedInputIntoView(e.target); updateChatComposerLift(); }, 420);
+  }, true);
+  document.addEventListener('focusout', function(){
+    setTimeout(function(){
+      if(!isEditable(document.activeElement)) document.documentElement.classList.remove('mono-input-focused');
+      document.body.classList.remove('mono-chat-composer-focused');
+      document.documentElement.style.setProperty('--mono-chat-input-lift','0px');
+      setOldViewportVars();
+    }, 120);
+  }, true);
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize', function(){ setOldViewportVars(); setTimeout(updateChatComposerLift, 20); }, {passive:true});
+    window.visualViewport.addEventListener('scroll', function(){ setOldViewportVars(); setTimeout(updateChatComposerLift, 20); }, {passive:true});
+  }
+  setOldViewportVars();
 })();
 </script>
 

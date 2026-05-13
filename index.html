@@ -45438,10 +45438,16 @@ function importAllData(input) {
       if (data.profile && data.profile.userProfile && data.profile.userProfile.name) {
         preview += '<div>👤 用戶名: ' + data.profile.userProfile.name + '</div>';
       }
+      if (data.profile && Array.isArray(data.profile.userMasks) && data.profile.userMasks.length > 0) {
+        preview += '<div>🎭 用户面具: ' + data.profile.userMasks.length + ' 个</div>';
+      }
       if (data.homeScreen) {
         let iconCount = Object.keys(data.homeScreen.customIcons || {}).length;
         if (data.homeScreen.homeBg) preview += '<div>🏠 主屏幕背景: 有</div>';
         if (iconCount > 0) preview += '<div>🏠 自定义图示: ' + iconCount + ' 个</div>';
+      }
+      if (data.settings && data.settings.iosFullscreen != null) {
+        preview += '<div>📱 全屏模式: ' + (String(data.settings.iosFullscreen) === 'true' ? '开启' : '关闭') + '</div>';
       }
       if (data.forum) {
         let forumPostCount = 0;
@@ -45711,6 +45717,8 @@ async function confirmImport() {
     if (data.profile && Array.isArray(data.profile.userMasks)) {
       userMasks = data.profile.userMasks.map(monoNormalizeUserMask);
       monoSaveUserMasks(userMasks);
+      await monoSyncUserMaskAvatarsToIdb(userMasks);
+      monoRestoreUserMaskAvatarsFromIdb();
     } else {
       userMasks = monoLoadUserMasks();
     }
@@ -105358,7 +105366,86 @@ body.mono-hide-chat-surfaces #datingChatPage.active {
 })();
 </script>
 
+<style id="monoAppOverlayElevationFix">
+/* Later non-chat fixes raise the active page to z-index:600.
+   These app overlays must sit above that page instead of rendering underneath it. */
+#apiModal {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 12050 !important;
+}
 
+#txtReaderLayer,
+#txtChaptersPanel,
+#editBookModal,
+#txtSettingsModal,
+#shopDetailLayer,
+#shopCartLayer,
+#shopCheckoutModal,
+#momentsComposeModal,
+#forumComposeModal,
+#personaForumModalOverlay,
+#forumCommentSheetOverlay,
+#forumCommentSheet,
+.section-modal {
+  position: fixed !important;
+  left: 0 !important;
+  right: 0 !important;
+}
+
+#txtReaderLayer,
+#txtChaptersPanel,
+#shopDetailLayer,
+#shopCartLayer,
+#shopCheckoutModal,
+#momentsComposeModal,
+#forumComposeModal,
+#personaForumModalOverlay {
+  top: 44px !important;
+  bottom: 0 !important;
+}
+
+#editBookModal,
+#txtSettingsModal,
+#forumCommentSheetOverlay,
+.section-modal {
+  top: 0 !important;
+  bottom: 0 !important;
+}
+
+#forumCommentSheet {
+  top: auto !important;
+  bottom: 0 !important;
+}
+
+#txtReaderLayer,
+#txtChaptersPanel,
+#editBookModal,
+#txtSettingsModal,
+#shopDetailLayer,
+#shopCartLayer,
+#shopCheckoutModal,
+#momentsComposeModal,
+#forumComposeModal,
+#personaForumModalOverlay,
+#forumCommentSheetOverlay,
+#forumCommentSheet,
+.section-modal {
+  z-index: 12040 !important;
+}
+
+body.ios-fullscreen #txtReaderLayer,
+body.ios-fullscreen #txtChaptersPanel,
+body.ios-fullscreen #shopDetailLayer,
+body.ios-fullscreen #shopCartLayer,
+body.ios-fullscreen #shopCheckoutModal,
+body.ios-fullscreen #momentsComposeModal,
+body.ios-fullscreen #forumComposeModal,
+body.ios-fullscreen #personaForumModalOverlay {
+  top: env(safe-area-inset-top, 44px) !important;
+  bottom: env(safe-area-inset-bottom, 0px) !important;
+}
+</style>
 
 <script id="monoFixRefreshHooks">
 (function(){

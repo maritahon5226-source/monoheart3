@@ -34796,7 +34796,7 @@ function _buildMomentsCard(item, compact) {
         <button class="moments-soft-btn ${userLiked ? 'heart-on' : ''}" onclick="toggleMomentsLike(${item.id})"><i class="fas fa-heart"></i>${likes.length > 0 ? likes.length : '喜欢'}</button>
         <button class="moments-soft-btn" id="cmtToggleBtn_${item.id}" onclick="toggleMomentsComments(${item.id})"><i class="fas fa-comment"></i>${commentCount > 0 ? commentCount : '留言'}</button>
         <button class="moments-soft-btn" id="autoCommentBtn_${item.id}" onclick="autoGenerateMomentsComments(${item.id})"><i class="fas fa-magic"></i>自动留言</button>
-        <button class="moments-soft-btn moments-forward-btn" data-moment-id="${item.id}" onclick="openFwdPersonaModalById('moments', this.dataset.momentId); return false;"><i class="fas fa-share"></i>转发</button>
+        <button class="moments-soft-btn" onclick='openFwdPersonaModal(${JSON.stringify({source:"moments",id:item.id,author:item.author,avatar:item.avatar,content:item.content,time:item.time,comments:(item.comments||[])}).replace(/'/g,"&#39;")})'><i class="fas fa-share"></i>转发</button>
       </div>
       <div class="moments-comments" id="momentsComments_${item.id}">
         ${commentsHtml}
@@ -36575,7 +36575,7 @@ function renderForum() {
         </div>
         <div style="display:flex;gap:6px;align-items:center;margin-left:auto;flex-shrink:0;">
           ${deleteBtn}
-          <div class="moments-like-btn forum-forward-btn" data-forum-id="${post.id}" style="background:#fafafa;color:#666;" onclick="openFwdPersonaModalById('forum', this.dataset.forumId); return false;">
+          <div class="moments-like-btn" style="background:#fafafa;color:#666;" onclick='openFwdPersonaModal(${JSON.stringify({source:"forum",id:post.id,title:post.title,author:post.author,avatar:post.avatar,content:post.content,time:post.time,comments:(post.comments||[]),authorType:post.authorType||"",personaId:post.personaId||null,realAuthor:post.realAuthor||""}).replace(/'/g,"&#39;")})'>
             <i class="fas fa-share" style="font-size:9px;"></i>转发
           </div>
         </div>
@@ -107181,177 +107181,503 @@ body.chat-page-active #chatPage.bubble-preset-frosted #chatBox .empty-state {
 
 
 
-<!-- === FIX v7: 朋友圈/论坛转发弹窗点击无反应修复 === -->
-<style id="momentsForwardFixedV7Style">
-  /* 转发角色选择弹窗必须脱离朋友圈页面内部裁切，尤其是 iOS / 玻璃主题 / 动态滚动容器 */
-  #fwdPersonaOverlay.fwd-persona-overlay,
-  body > #fwdPersonaOverlay.fwd-persona-overlay {
-    position: fixed !important;
-    inset: 0 !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    height: 100dvh !important;
-    z-index: 2147483000 !important;
-    background: rgba(0,0,0,.52) !important;
-    display: none !important;
-    align-items: flex-end !important;
-    justify-content: center !important;
-    padding: 0 env(safe-area-inset-right) max(0px, env(safe-area-inset-bottom)) env(safe-area-inset-left) !important;
-    box-sizing: border-box !important;
-    -webkit-backdrop-filter: blur(6px) !important;
-    backdrop-filter: blur(6px) !important;
-    touch-action: none !important;
-  }
-  #fwdPersonaOverlay.fwd-persona-overlay.open,
-  body > #fwdPersonaOverlay.fwd-persona-overlay.open {
-    display: flex !important;
-  }
-  #fwdPersonaOverlay .fwd-persona-box {
-    width: min(100%, 520px) !important;
-    max-height: min(76vh, 620px) !important;
-    max-height: min(76dvh, 620px) !important;
-    border-radius: 24px 24px 0 0 !important;
-    box-shadow: 0 -18px 45px rgba(0,0,0,.18) !important;
-    overflow: hidden !important;
-  }
-  #fwdPersonaOverlay .fwd-persona-list {
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-    min-height: 90px !important;
-  }
-  body.mono-fwd-modal-open { overflow: hidden !important; }
+<!-- MONO HOTFIX v7: Moments forward modal should appear immediately inside current visible page -->
+<style id="mono-moments-forward-modal-v7-style">
+/* 朋友圈/论坛转发弹窗：不再被朋友圈页面、滚动容器、玻璃主题或 phone-container 层级裁切 */
+#fwdPersonaOverlay.mono-fwd-fixed-overlay,
+.fwd-persona-overlay.mono-fwd-fixed-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  z-index: 2147483600 !important;
+  display: none !important;
+  align-items: flex-end !important;
+  justify-content: center !important;
+  padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom)) !important;
+  box-sizing: border-box !important;
+  background: rgba(0,0,0,.48) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  pointer-events: auto !important;
+  overflow: hidden !important;
+}
+#fwdPersonaOverlay.mono-fwd-fixed-overlay.open,
+#fwdPersonaOverlay.mono-fwd-fixed-overlay.mono-force-open,
+.fwd-persona-overlay.mono-fwd-fixed-overlay.open,
+.fwd-persona-overlay.mono-fwd-fixed-overlay.mono-force-open {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+#fwdPersonaOverlay.mono-fwd-fixed-overlay .fwd-persona-box {
+  width: min(420px, 100%) !important;
+  max-width: min(420px, calc(100vw - 24px)) !important;
+  max-height: min(76dvh, 620px) !important;
+  border-radius: 22px !important;
+  padding: 18px 16px max(18px, env(safe-area-inset-bottom)) !important;
+  box-sizing: border-box !important;
+  background: rgba(255,255,255,.98) !important;
+  box-shadow: 0 24px 70px rgba(0,0,0,.28) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  transform: translateZ(0) !important;
+}
+#fwdPersonaOverlay.mono-fwd-fixed-overlay .fwd-persona-list {
+  flex: 1 1 auto !important;
+  min-height: 80px !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  padding-right: 2px !important;
+}
+#fwdPersonaOverlay.mono-fwd-fixed-overlay .fwd-persona-cancel {
+  flex-shrink: 0 !important;
+}
+body.mono-fwd-modal-open {
+  overflow: hidden !important;
+  touch-action: none !important;
+}
 </style>
-<script id="momentsForwardFixedV7Script">
+<script id="mono-moments-forward-modal-v7-script">
 (function(){
   'use strict';
-  function escHtml(v){
-    return String(v == null ? '' : v).replace(/[&<>"']/g, function(ch){
-      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[ch];
+  function ensureForwardOverlayOnBody(){
+    var overlay = document.getElementById('fwdPersonaOverlay');
+    if (!overlay) return null;
+    overlay.classList.add('mono-fwd-fixed-overlay');
+    /* 关键：从 phone-container / momentsPage 内提升到 body，避免当前页面层级挡住弹窗，导致退出朋友圈才看见 */
+    if (overlay.parentElement !== document.body) {
+      try { document.body.appendChild(overlay); } catch(e) {}
+    }
+    return overlay;
+  }
+  function safeText(v){ return (v == null ? '' : String(v)); }
+  function safeHtml(v){
+    return safeText(v).replace(/[&<>'"]/g, function(ch){
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'})[ch];
     });
   }
-  function arr(name){
-    try { return Array.isArray(window[name]) ? window[name] : []; } catch(e) { return []; }
+  function openOverlay(){
+    var overlay = ensureForwardOverlayOnBody();
+    if (!overlay) return;
+    overlay.classList.add('open','mono-force-open');
+    overlay.style.display = 'flex';
+    overlay.style.visibility = 'visible';
+    overlay.style.opacity = '1';
+    document.body.classList.add('mono-fwd-modal-open');
   }
-  function getMomentById(id){
-    return arr('momentsData').find(function(x){ return String(x && x.id) === String(id); });
+  function closeOverlay(){
+    var overlay = document.getElementById('fwdPersonaOverlay');
+    if (!overlay) return;
+    overlay.classList.remove('open','mono-force-open');
+    overlay.style.display = 'none';
+    document.body.classList.remove('mono-fwd-modal-open');
   }
-  function getForumById(id){
-    return arr('forumPosts').find(function(x){ return String(x && x.id) === String(id); });
-  }
-  window.openFwdPersonaModalById = function(source, id){
-    var item = source === 'forum' ? getForumById(id) : getMomentById(id);
-    if (!item) {
-      console.warn('[forward] item not found', source, id);
-      if (typeof showToast === 'function') showToast('找不到这条内容，请刷新朋友圈后再试');
-      else alert('找不到这条内容，请刷新朋友圈后再试');
-      return false;
-    }
-    var payload;
-    if (source === 'forum') {
-      payload = {
-        source: 'forum',
-        id: item.id,
-        title: item.title || '',
-        author: item.author || '',
-        avatar: item.avatar || '',
-        content: item.content || '',
-        time: item.time || Date.now(),
-        comments: Array.isArray(item.comments) ? item.comments : [],
-        authorType: item.authorType || '',
-        personaId: item.personaId || null,
-        realAuthor: item.realAuthor || ''
-      };
-    } else {
-      payload = {
-        source: 'moments',
-        id: item.id,
-        author: item.author || '',
-        avatar: item.avatar || '',
-        content: item.content || '',
-        time: item.time || Date.now(),
-        comments: Array.isArray(item.comments) ? item.comments : [],
-        images: Array.isArray(item.images) ? item.images : [],
-        authorType: item.authorType || '',
-        personaId: item.personaId || null,
-        authorProfileName: item.authorProfileName || ''
-      };
-    }
-    return window.openFwdPersonaModal(payload), false;
-  };
-
-  var oldOpen = window.openFwdPersonaModal;
   window.openFwdPersonaModal = function(postData){
     try {
-      var ps = arr('personas');
-      if (!ps.length) { alert('请先创建一个角色后再转发！'); return false; }
+      if (!window.personas || !personas.length) { alert('请先创建一个角色后再转发！'); return; }
       window._fwdPayload = postData || null;
-      /* 同步 let 作用域变量：原 doForwardToPersona 用的是 let _fwdPayload。直接调用原函数前也要设置。 */
-      try { eval('_fwdPayload = window._fwdPayload'); } catch(e) {}
-
-      var overlay = document.getElementById('fwdPersonaOverlay');
       var list = document.getElementById('fwdPersonaList');
-      if (!overlay || !list) {
-        if (typeof oldOpen === 'function') return oldOpen(postData);
-        alert('转发弹窗不存在，请刷新页面后重试');
-        return false;
-      }
-      if (overlay.parentNode !== document.body) document.body.appendChild(overlay);
-      list.innerHTML = ps.map(function(p){
-        var avatar = p.avatar || (typeof makeAvatar === 'function' ? makeAvatar((p.name || '?').charAt(0), '#ddd', '#333') : '');
-        return '<div class="fwd-persona-item" data-fwd-persona-id="' + escHtml(p.id) + '">' +
-          '<img src="' + escHtml(avatar) + '" alt="' + escHtml(p.name || '') + '">' +
-          '<div><div class="fwd-persona-item-name">' + escHtml(p.name || '未命名角色') + '</div>' +
-          '<div class="fwd-persona-item-sub">' + escHtml(((p.persona || '').slice(0, 22)) + ((p.persona || '').length > 22 ? '…' : '')) + '</div></div>' +
-        '</div>';
+      if (!list) return;
+      list.innerHTML = personas.map(function(p){
+        var avatar = safeHtml(p.avatar || '');
+        var name = safeHtml(p.name || '未命名角色');
+        var subRaw = safeText(p.persona || '');
+        var sub = safeHtml(subRaw.slice(0, 22) + (subRaw.length > 22 ? '…' : ''));
+        return '<div class="fwd-persona-item" onclick="doForwardToPersona('+ Number(p.id) +')">'
+          + '<img src="'+ avatar +'" alt="'+ name +'" onerror="this.style.opacity=.25">'
+          + '<div><div class="fwd-persona-item-name">'+ name +'</div>'
+          + '<div class="fwd-persona-item-sub">'+ sub +'</div></div></div>';
       }).join('');
-      overlay.classList.add('open');
-      document.body.classList.add('mono-fwd-modal-open');
-      return false;
+      openOverlay();
+      setTimeout(openOverlay, 0);
+      setTimeout(openOverlay, 80);
     } catch(err) {
-      console.error('[forward] open failed', err);
-      alert('转发页面打开失败：' + (err && err.message ? err.message : err));
-      return false;
+      console.warn('openFwdPersonaModal v7 failed:', err);
+      alert('打开转发页面失败：' + (err && err.message ? err.message : err));
     }
   };
+  window.closeFwdPersonaModal = function(e){
+    var overlay = document.getElementById('fwdPersonaOverlay');
+    if (e && overlay && e.target !== overlay) return;
+    closeOverlay();
+    window._fwdPayload = null;
+  };
+  /* 防止旧函数直接移除 open 后留下 body 锁定 */
+  document.addEventListener('click', function(e){
+    var cancel = e.target && e.target.closest && e.target.closest('.fwd-persona-cancel');
+    if (cancel && document.getElementById('fwdPersonaOverlay')) {
+      closeOverlay();
+      window._fwdPayload = null;
+    }
+  }, true);
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape') {
+      var overlay = document.getElementById('fwdPersonaOverlay');
+      if (overlay && overlay.classList.contains('open')) {
+        closeOverlay();
+        window._fwdPayload = null;
+      }
+    }
+  });
+  document.addEventListener('DOMContentLoaded', ensureForwardOverlayOnBody);
+  setTimeout(ensureForwardOverlayOnBody, 500);
+})();
+</script>
+
+
+
+<!-- MONO HOTFIX v8: Fix moments/forum forward role source after modal moved to body -->
+<style id="mono-moments-forward-role-source-v8-style">
+#fwdPersonaOverlay.mono-fwd-fixed-overlay .fwd-persona-empty {
+  padding: 18px 10px 20px !important;
+  text-align: center !important;
+  color: #999 !important;
+  font-size: 12px !important;
+  line-height: 1.7 !important;
+}
+</style>
+<script id="mono-moments-forward-role-source-v8-script">
+(function(){
+  'use strict';
+  function getForwardPersonas(){
+    /* 关键修复：原角色数组是顶层 let personas，不会挂到 window.personas。
+       v7 用 window.personas 判断，所以会误判为空并提示“需要创建角色”。 */
+    try {
+      if (typeof personas !== 'undefined' && Array.isArray(personas)) return personas;
+    } catch(e) {}
+    try {
+      if (Array.isArray(window.personas)) return window.personas;
+    } catch(e) {}
+    try {
+      var raw = localStorage.getItem('mono_personas');
+      var parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch(e) {}
+    return [];
+  }
+  function setForwardPayload(data){
+    try { if (typeof _fwdPayload !== 'undefined') { _fwdPayload = data || null; return; } } catch(e) {}
+    try { window._fwdPayload = data || null; } catch(e) {}
+  }
+  function getForwardPayload(){
+    try { if (typeof _fwdPayload !== 'undefined') return _fwdPayload; } catch(e) {}
+    return window._fwdPayload || null;
+  }
+  function clearForwardPayload(){ setForwardPayload(null); }
+  function ensureForwardOverlayOnBody(){
+    var overlay = document.getElementById('fwdPersonaOverlay');
+    if (!overlay) return null;
+    overlay.classList.add('mono-fwd-fixed-overlay');
+    if (overlay.parentElement !== document.body) {
+      try { document.body.appendChild(overlay); } catch(e) {}
+    }
+    return overlay;
+  }
+  function safeText(v){ return (v == null ? '' : String(v)); }
+  function safeHtml(v){
+    return safeText(v).replace(/[&<>'"]/g, function(ch){
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'})[ch];
+    });
+  }
+  function openOverlay(){
+    var overlay = ensureForwardOverlayOnBody();
+    if (!overlay) return;
+    overlay.classList.add('open','mono-force-open');
+    overlay.style.display = 'flex';
+    overlay.style.visibility = 'visible';
+    overlay.style.opacity = '1';
+    document.body.classList.add('mono-fwd-modal-open');
+  }
+  function closeOverlay(){
+    var overlay = document.getElementById('fwdPersonaOverlay');
+    if (!overlay) return;
+    overlay.classList.remove('open','mono-force-open');
+    overlay.style.display = 'none';
+    document.body.classList.remove('mono-fwd-modal-open');
+  }
+
+  window.openFwdPersonaModal = function(postData){
+    try {
+      var ps = getForwardPersonas().filter(function(p){ return p && p.id != null; });
+      var list = document.getElementById('fwdPersonaList');
+      if (!list) return alert('打开转发页面失败：找不到角色列表容器。');
+      setForwardPayload(postData || null);
+      if (!ps.length) {
+        list.innerHTML = '<div class="fwd-persona-empty">当前没有可转发的角色。<br>如果你已经创建过角色，请先返回聊天页让角色数据加载完成后再试。</div>';
+        openOverlay();
+        return;
+      }
+      list.innerHTML = ps.map(function(p){
+        var avatar = safeHtml(p.avatar || '');
+        var name = safeHtml(p.name || '未命名角色');
+        var subRaw = safeText(p.persona || '');
+        var sub = safeHtml(subRaw.slice(0, 22) + (subRaw.length > 22 ? '…' : ''));
+        var id = String(p.id).replace(/[^\w.-]/g, '');
+        return '<div class="fwd-persona-item" data-fwd-pid="'+ safeHtml(id) +'">'
+          + '<img src="'+ avatar +'" alt="'+ name +'" onerror="this.style.opacity=.25">'
+          + '<div><div class="fwd-persona-item-name">'+ name +'</div>'
+          + '<div class="fwd-persona-item-sub">'+ sub +'</div></div></div>';
+      }).join('');
+      openOverlay();
+      setTimeout(openOverlay, 0);
+      setTimeout(openOverlay, 80);
+    } catch(err) {
+      console.warn('openFwdPersonaModal v8 failed:', err);
+      alert('打开转发页面失败：' + (err && err.message ? err.message : err));
+    }
+  };
+
+  /* 用事件代理转发，避免 innerHTML onclick 在某些 id 格式下失效 */
+  document.addEventListener('click', function(e){
+    var item = e.target && e.target.closest && e.target.closest('#fwdPersonaList .fwd-persona-item[data-fwd-pid]');
+    if (!item) return;
+    var pid = item.getAttribute('data-fwd-pid');
+    if (!pid) return;
+    try { window.doForwardToPersona(pid); } catch(err) { alert('转发失败：' + (err && err.message ? err.message : err)); }
+  }, true);
 
   var oldClose = window.closeFwdPersonaModal;
   window.closeFwdPersonaModal = function(e){
     var overlay = document.getElementById('fwdPersonaOverlay');
-    if (e && overlay && e.target !== overlay) return false;
-    if (overlay) overlay.classList.remove('open');
-    document.body.classList.remove('mono-fwd-modal-open');
-    window._fwdPayload = null;
-    try { eval('_fwdPayload = null'); } catch(err) {}
-    return false;
+    if (e && overlay && e.target !== overlay) return;
+    closeOverlay();
+    clearForwardPayload();
   };
 
+  /* 包一层原转发函数：确保它读到的是顶层 let _fwdPayload，不是 window._fwdPayload。 */
+  var oldDoForward = window.doForwardToPersona;
+  window.doForwardToPersona = function(personaId){
+    var payload = getForwardPayload();
+    if (!payload) return alert('转发失败：没有找到要转发的内容。');
+    setForwardPayload(payload);
+    if (typeof oldDoForward === 'function') return oldDoForward(personaId);
+    alert('转发失败：找不到原转发函数。');
+  };
+
+  document.addEventListener('DOMContentLoaded', ensureForwardOverlayOnBody);
+  setTimeout(ensureForwardOverlayOnBody, 300);
+})();
+</script>
+
+
+<!-- MONO HOTFIX v9: Prevent false "missing forward content" alert and make Moments forward modal update immediately -->
+<style id="mono-moments-forward-v9-style">
+#fwdPersonaOverlay.mono-fwd-fixed-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147483600 !important;
+  display: none;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(0,0,0,.28) !important;
+  padding: max(14px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom)) !important;
+  box-sizing: border-box !important;
+}
+#fwdPersonaOverlay.mono-fwd-fixed-overlay.open,
+#fwdPersonaOverlay.mono-fwd-fixed-overlay.mono-force-open {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+#fwdPersonaOverlay.mono-fwd-fixed-overlay .fwd-persona-modal {
+  max-height: min(76dvh, 680px) !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+#fwdPersonaOverlay.mono-fwd-fixed-overlay #fwdPersonaList {
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+</style>
+<script id="mono-moments-forward-v9-script">
+(function(){
+  'use strict';
+
+  function safeText(v){ return v == null ? '' : String(v); }
+  function safeHtml(v){
+    return safeText(v).replace(/[&<>'"]/g, function(ch){
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'})[ch];
+    });
+  }
+  function getPersonasSafe(){
+    try { if (typeof personas !== 'undefined' && Array.isArray(personas)) return personas; } catch(e) {}
+    try { if (Array.isArray(window.personas)) return window.personas; } catch(e) {}
+    try {
+      var raw = localStorage.getItem('mono_personas');
+      var parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch(e) {}
+    return [];
+  }
+  function setPayloadSafe(data){
+    var payload = data || null;
+    try { if (typeof _fwdPayload !== 'undefined') _fwdPayload = payload; } catch(e) {}
+    try { window._fwdPayload = payload; } catch(e) {}
+    try { window.__monoLastForwardPayload = payload; } catch(e) {}
+    try {
+      if (payload) sessionStorage.setItem('__monoLastForwardPayload', JSON.stringify(payload));
+      else sessionStorage.removeItem('__monoLastForwardPayload');
+    } catch(e) {}
+  }
+  function getPayloadSafe(){
+    try { if (typeof _fwdPayload !== 'undefined' && _fwdPayload) return _fwdPayload; } catch(e) {}
+    try { if (window._fwdPayload) return window._fwdPayload; } catch(e) {}
+    try { if (window.__monoLastForwardPayload) return window.__monoLastForwardPayload; } catch(e) {}
+    try {
+      var raw = sessionStorage.getItem('__monoLastForwardPayload');
+      if (raw) return JSON.parse(raw);
+    } catch(e) {}
+    return null;
+  }
+  function ensureOverlay(){
+    var overlay = document.getElementById('fwdPersonaOverlay');
+    if (!overlay) return null;
+    overlay.classList.add('mono-fwd-fixed-overlay');
+    if (overlay.parentElement !== document.body) {
+      try { document.body.appendChild(overlay); } catch(e) {}
+    }
+    return overlay;
+  }
+  function openOverlay(){
+    var overlay = ensureOverlay();
+    if (!overlay) return;
+    overlay.classList.add('open','mono-force-open');
+    overlay.style.display = 'flex';
+    overlay.style.visibility = 'visible';
+    overlay.style.opacity = '1';
+    document.body.classList.add('mono-fwd-modal-open');
+  }
+  function closeOverlay(clear){
+    var overlay = document.getElementById('fwdPersonaOverlay');
+    if (overlay) {
+      overlay.classList.remove('open','mono-force-open');
+      overlay.style.display = 'none';
+    }
+    document.body.classList.remove('mono-fwd-modal-open');
+    if (clear !== false) setPayloadSafe(null);
+  }
+
+  var nativeDoForward = null;
+  try {
+    nativeDoForward = window.doForwardToPersona;
+    while (nativeDoForward && nativeDoForward.__monoWrappedForward && nativeDoForward.__monoOriginalForward) {
+      nativeDoForward = nativeDoForward.__monoOriginalForward;
+    }
+  } catch(e) {}
+
+  window.openFwdPersonaModal = function(postData){
+    try {
+      setPayloadSafe(postData || null);
+      var list = document.getElementById('fwdPersonaList');
+      if (!list) return alert('打开转发页面失败：找不到角色列表容器。');
+      var ps = getPersonasSafe().filter(function(p){ return p && p.id != null; });
+      if (!ps.length) {
+        list.innerHTML = '<div class="fwd-persona-empty">当前没有可转发的角色。<br>如果已经创建过角色，请先返回聊天页让角色数据加载完成后再试。</div>';
+      } else {
+        list.innerHTML = ps.map(function(p){
+          var id = safeHtml(p.id);
+          var avatar = safeHtml(p.avatar || '');
+          var name = safeHtml(p.name || '未命名角色');
+          var subRaw = safeText(p.persona || '');
+          var sub = safeHtml(subRaw.slice(0, 22) + (subRaw.length > 22 ? '…' : ''));
+          return '<div class="fwd-persona-item" data-fwd-pid="'+ id +'">'
+            + '<img src="'+ avatar +'" alt="'+ name +'" onerror="this.style.opacity=.25">'
+            + '<div><div class="fwd-persona-item-name">'+ name +'</div>'
+            + '<div class="fwd-persona-item-sub">'+ sub +'</div></div></div>';
+        }).join('');
+      }
+      openOverlay();
+      setTimeout(openOverlay, 0);
+      setTimeout(openOverlay, 80);
+    } catch(err) {
+      console.warn('openFwdPersonaModal v9 failed:', err);
+      alert('打开转发页面失败：' + (err && err.message ? err.message : err));
+    }
+  };
+
+  window.closeFwdPersonaModal = function(e){
+    var overlay = document.getElementById('fwdPersonaOverlay');
+    if (e && overlay && e.target !== overlay) return;
+    closeOverlay(true);
+  };
+
+  function forwardDirect(personaId){
+    var payload = getPayloadSafe();
+    if (!payload) {
+      /* 之前这里弹“没有找到转发内容”，但旧 onclick 还会继续执行，造成“报错但其实转发成功”。
+         v9 不再误报；只在真的没有 payload 且无法转发时安静返回。 */
+      console.warn('MONO forward skipped: payload missing before click.');
+      return false;
+    }
+    setPayloadSafe(payload);
+    if (typeof nativeDoForward === 'function') {
+      nativeDoForward(personaId);
+    } else {
+      var ps = getPersonasSafe();
+      var p = ps.find(function(x){ return String(x.id) === String(personaId); });
+      if (!p) return alert('转发失败：找不到选择的角色。');
+      if (!p.history) p.history = [];
+      p.history.push({
+        role: 'user',
+        msgType: 'forwarded_post',
+        fwdData: payload,
+        content: '[转发了一篇' + (payload.source === 'forum' ? '论坛帖子' : '朋友圈动态') + ']',
+        time: Date.now()
+      });
+      try { if (typeof saveData === 'function') saveData(); } catch(e) {}
+      try { if (typeof openApp === 'function') openApp('chatPage'); } catch(e) {}
+      try { if (typeof selectPersona === 'function') selectPersona(personaId); } catch(e) {}
+    }
+    closeOverlay(true);
+    setTimeout(function(){
+      try {
+        if (typeof openApp === 'function') openApp('chatPage');
+        if (typeof selectPersona === 'function') selectPersona(personaId);
+        document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
+        var navChat = document.getElementById('nav-chat');
+        if (navChat) navChat.classList.add('active');
+        var box = document.getElementById('chatBox');
+        if (box) box.scrollTop = box.scrollHeight;
+      } catch(e) {}
+    }, 80);
+    return true;
+  }
+
+  window.doForwardToPersona = function(personaId){ return forwardDirect(personaId); };
+  window.doForwardToPersona.__monoWrappedForward = true;
+  window.doForwardToPersona.__monoOriginalForward = nativeDoForward;
+
   document.addEventListener('click', function(e){
-    var item = e.target && e.target.closest ? e.target.closest('.fwd-persona-item[data-fwd-persona-id]') : null;
+    var item = e.target && e.target.closest && e.target.closest('#fwdPersonaList .fwd-persona-item[data-fwd-pid]');
     if (!item) return;
     e.preventDefault();
     e.stopPropagation();
-    var pid = item.getAttribute('data-fwd-persona-id');
-    if (typeof window.doForwardToPersona === 'function') {
-      try { eval('_fwdPayload = window._fwdPayload'); } catch(err) {}
-      window.doForwardToPersona(pid);
-      document.body.classList.remove('mono-fwd-modal-open');
+    if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+    var pid = item.getAttribute('data-fwd-pid');
+    if (pid) forwardDirect(pid);
+  }, true);
+
+  document.addEventListener('click', function(e){
+    var cancel = e.target && e.target.closest && e.target.closest('.fwd-persona-cancel');
+    if (cancel) {
+      e.preventDefault();
+      closeOverlay(true);
     }
   }, true);
 
-  /* 兜底：如果旧的 inline onclick 因为内容引号/换行导致失效，点击按钮时从 DOM 的 data-id 重新打开。 */
-  document.addEventListener('click', function(e){
-    var btn = e.target && e.target.closest ? e.target.closest('.moments-forward-btn[data-moment-id], .forum-forward-btn[data-forum-id]') : null;
-    if (!btn) return;
-    e.preventDefault();
-    e.stopPropagation();
-    if (btn.classList.contains('forum-forward-btn')) window.openFwdPersonaModalById('forum', btn.getAttribute('data-forum-id'));
-    else window.openFwdPersonaModalById('moments', btn.getAttribute('data-moment-id'));
-  }, true);
+  document.addEventListener('DOMContentLoaded', ensureOverlay);
+  setTimeout(ensureOverlay, 300);
 })();
 </script>
+
 </body>
 </html>

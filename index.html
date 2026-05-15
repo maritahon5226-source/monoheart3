@@ -48433,6 +48433,116 @@ function scriptUpdateSelectedCount() {
   const el = document.getElementById('scriptSelectedCount');
   if (el) el.textContent = '已选: ' + scriptSelectedTags.length + ' 个标签';
 }
+
+// ===================== Script API Compatibility Layer =====================
+// 剧本体验统一使用聊天软件当前保存/生效的 API 配置，并复用同一套兼容请求与 JSON 解析逻辑。
+function scriptGetActiveApiConfig() {
+  var cfg = null;
+  try { if (typeof _getCurrentActiveApiConfig === 'function') cfg = _getCurrentActiveApiConfig(); } catch(e) {}
+  if ((!cfg || !cfg.url || !cfg.key || !cfg.model) && typeof apiConfig !== 'undefined') cfg = apiConfig;
+  try { if (typeof _normalizeApiConfigObject === 'function') cfg = _normalizeApiConfigObject(cfg || {}); } catch(e) {}
+  return cfg || { url: '', key: '', model: '' };
+}
+function scriptHasUsableApiConfig() {
+  var cfg = scriptGetActiveApiConfig();
+  if (typeof _hasUsableApiConfig === 'function') return _hasUsableApiConfig(cfg);
+  return !!(cfg && cfg.url && cfg.key && cfg.model);
+}
+async function scriptCallChatApi(messages, options) {
+  var cfg = scriptGetActiveApiConfig();
+  if (!scriptHasUsableApiConfig()) throw new Error('请先在聊天软件的 API Config 中连接并保存 API。');
+  var payload = {
+    messages: messages,
+    temperature: options && options.temperature != null ? options.temperature : 0.85,
+    max_tokens: options && options.max_tokens ? options.max_tokens : 2048,
+    stream: false
+  };
+  if (typeof _applyApiModel === 'function') payload = _applyApiModel(payload, cfg.model);
+  else payload.model = cfg.model;
+  var resp;
+  if (typeof _compatibleChatCompletion === 'function') {
+    resp = await _compatibleChatCompletion(cfg.url, cfg.key, payload, {});
+  } else {
+    var endpoint = (typeof _buildApiChatCandidates === 'function' ? _buildApiChatCandidates(cfg.url)[0] : cfg.url.replace(/\/+$/, '') + '/chat/completions');
+    resp = await fetch(endpoint, { method: 'POST', headers: { 'Authorization': 'Bearer ' + cfg.key, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+  }
+  if (!resp || !resp.ok) {
+    var status = resp ? resp.status : 'network';
+    var detail = '';
+    try { detail = await resp.text(); } catch(e) {}
+    throw new Error('API 请求失败：' + status + (detail ? ' ' + detail.slice(0, 120) : ''));
+  }
+  var data = await resp.json();
+  var text = typeof _extractAssistantMessageContent === 'function'
+    ? _extractAssistantMessageContent(data)
+    : (data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
+  text = String(text || '').trim();
+  if (!text) throw new Error('API 返回内容为空');
+  return text;
+}
+function scriptParseJsonFromAi(text, fallback, preferredShape) {
+  if (typeof _parseJsonFromText === 'function') return _parseJsonFromText(text, fallback, preferredShape || 'object');
+  var s = String(text || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+  try { return JSON.parse(s); } catch(e) {}
+  var m = s.match(/\{[\s\S]*\}/);
+  if (m) { try { return JSON.parse(m[0]); } catch(e) {} }
+  if (preferredShape === 'array') {
+    var a = s.match(/\[[\s\S]*\]/);
+    if (a) { try { return JSON.parse(a[0]); } catch(e) {} }
+  }
+  return fallback;
+}
+function scriptNormalizeCard(card) {
+  card = card && typeof card === 'object' ? card : {};
+  card.title = cleanTextContent(card.title || '未命名剧本');
+  card.tags = Array.isArray(card.tags) ? card.tags.map(cleanTextContent).filter(Boolean) : [];
+  card.world = cleanTextContent(card.world || '一个等待展开的世界。');
+  card.worldDetail = cleanTextContent(card.worldDetail || '');
+  card.conflict = cleanTextContent(card.conflict || '人物之间存在尚未解开的矛盾与牵引。');
+  card.characters = Array.isArray(card.characters) ? card.characters : [];
+  card.characters = card.characters.map(function(c, i) {
+    c = c && typeof c === 'object' ? c : {};
+    return {
+      name: cleanTextContent(c.name || ('角色' + (i + 1))),
+      role: cleanTextContent(c.role || '重要人物'),
+      age: cleanTextContent(c.age || ''),
+      appearance: cleanTextContent(c.appearance || ''),
+      personality: cleanTextContent(c.personality || ''),
+      background: cleanTextContent(c.background || ''),
+      speechStyle: cleanTextContent(c.speechStyle || ''),
+      goal: cleanTextContent(c.goal || ''),
+      fear: cleanTextContent(c.fear || ''),
+      relationships: cleanTextContent(c.relationships || ''),
+      quirk: cleanTextContent(c.quirk || ''),
+      secret: cleanTextContent(c.secret || '')
+    };
+  }).filter(function(c) { return c.name; });
+  if (card.characters.length < 2) throw new Error('API 返回的角色数量不足，至少需要2个角色');
+  card.characters = card.characters.slice(0, 6);
+  card.opening = cleanTextContent(card.opening || '故事开始了。');
+  card.directions = Array.isArray(card.directions) ? card.directions.map(cleanTextContent).filter(Boolean).slice(0, 3) : [];
+  card.chapters = Number(card.chapters) || 20;
+  card.chapterGoals = Array.isArray(card.chapterGoals) ? card.chapterGoals.map(cleanTextContent).filter(Boolean) : [];
+  card.ending = cleanTextContent(card.ending || '开放结局');
+  return card;
+}
+function scriptNormalizeStoryJson(json) {
+  json = json && typeof json === 'object' ? json : {};
+  json.narrator = cleanTextContent(json.narrator || '');
+  json.dialogues = Array.isArray(json.dialogues) ? json.dialogues : [];
+  json.dialogues = json.dialogues.map(function(d) {
+    d = d && typeof d === 'object' ? d : {};
+    return {
+      character: cleanTextContent(d.character || d.name || ''),
+      action: cleanTextContent(d.action || ''),
+      text: cleanTextContent(d.text || d.dialogue || d.content || ''),
+      innerThought: cleanTextContent(d.innerThought || '')
+    };
+  }).filter(function(d) { return d.character && d.text; }).slice(0, 3);
+  json.options = Array.isArray(json.options) ? json.options.map(cleanTextContent).filter(Boolean).slice(0, 3) : [];
+  if (!json.narrator && json.dialogues.length === 0) throw new Error('API 返回内容不符合剧情 JSON 格式');
+  return json;
+}
 // ===================== Custom Input =====================
 function scriptShowCustom() {
   scriptShowView('scriptCustomView');
@@ -48464,8 +48574,8 @@ async function scriptGenerate(userPrompt) {
   scriptShowView('scriptCardView');
   const content = document.getElementById('scriptCardContent');
   content.innerHTML = '<div class="script-loading"><div class="script-loading-dots"><span></span><span></span><span></span></div>AI 正在构思剧本...</div>';
-  if (!apiConfig.url || !apiConfig.key || !apiConfig.model) {
-    content.innerHTML = '<div style="padding:30px;text-align:center;color:#999;font-size:12px;">请先在设置中配置API</div>';
+  if (!scriptHasUsableApiConfig()) {
+    content.innerHTML = '<div style="padding:30px;text-align:center;color:#999;font-size:12px;">请先在聊天软件的 API Config 中连接并保存 API</div>';
     scriptIsGenerating = false;
     return;
   }
@@ -48513,22 +48623,13 @@ async function scriptGenerate(userPrompt) {
 7. 章节数建议20-25章
 8. 每个角色的说话风格要独特且有辨识度`;
   try {
-    const response = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${apiConfig.key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: apiConfig.model,
-        messages: [{ role: 'system', content: sysPrompt }, { role: 'user', content: userPrompt }],
-        temperature: 0.9
-      })
-    });
-    if (!response.ok) throw new Error('API请求失败');
-    const result = await response.json();
-    const text = result.choices[0].message.content;
-    // Parse JSON from response
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('解析失败');
-    scriptCurrentCard = JSON.parse(jsonMatch[0]);
+    const text = await scriptCallChatApi([
+      { role: 'system', content: sysPrompt },
+      { role: 'user', content: userPrompt }
+    ], { temperature: 0.9, max_tokens: 5000 });
+    const parsed = scriptParseJsonFromAi(text, null, 'object');
+    if (!parsed) throw new Error('API 返回内容不符合剧本 JSON 格式');
+    scriptCurrentCard = scriptNormalizeCard(parsed);
     scriptRenderCard();
   } catch (e) {
     console.warn('Script generation failed:', e);
@@ -49076,40 +49177,36 @@ function scriptChooseEnding(type) {
   }, 3000);
 }
 function scriptTriggerDecision() {
-  if (!apiConfig.url || !apiConfig.key || !apiConfig.model) return;
+  if (!scriptHasUsableApiConfig()) return;
   const card = scriptCurrentCard;
   const myChar = card.characters[scriptMyRole];
   const recentMsgs = scriptStoryMessages.slice(-8).map(m => {
     if (m.type === 'narrator') return '[旁白] ' + m.text;
     return (m.charName || myChar.name) + ': ' + m.text;
   }).join('\n');
-  fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${apiConfig.key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: apiConfig.model,
-      messages: [{
-        role: 'system',
-        content: `你是剧本节点生成器。根据当前剧情，生成一个关键抉择点。格式如下（JSON）：
+  scriptCallChatApi([{
+    role: 'system',
+    content: `你是剧本节点生成器。根据当前剧情，生成一个关键抉择点。严格只返回JSON：
 {"description": "抉择描述", "options": ["选项1", "选项2", "选项3"]}
 不要使用emoji。用中文。`
-      }, {
-        role: 'user',
-        content: `剧本: ${card.title}\n当前章节: 第${scriptCurrentChapter}章\n近期剧情:\n${recentMsgs}\n\n请生成一个关键抉择点。`
-      }],
-      temperature: 0.85
-    })
-  }).then(r => r.json()).then(result => {
-    const text = result.choices[0].message.content;
-    const json = JSON.parse(text.match(/\{[\s\S]*\}/)[0]);
+  }, {
+    role: 'user',
+    content: `剧本: ${card.title}\n当前章节: 第${scriptCurrentChapter}章\n近期剧情:\n${recentMsgs}\n\n请生成一个关键抉择点。`
+  }], { temperature: 0.85, max_tokens: 1000 }).then(text => {
+    const json = scriptParseJsonFromAi(text, null, 'object');
+    if (!json || !json.description || !Array.isArray(json.options)) throw new Error('关键抉择点JSON格式错误');
     const overlay = document.getElementById('scriptDecisionOverlay');
     overlay.style.display = 'flex';
-    document.getElementById('scriptDecisionDesc').textContent = json.description;
-    document.getElementById('scriptDecisionOptions').innerHTML = json.options.map((opt, i) =>
+    document.getElementById('scriptDecisionDesc').textContent = cleanTextContent(json.description);
+    const options = json.options.map(cleanTextContent).filter(Boolean).slice(0, 3);
+    document.getElementById('scriptDecisionOptions').innerHTML = options.map((opt, i) =>
       `<button class="script-option-btn" onclick="scriptMakeDecision(${i}, '${opt.replace(/'/g, "\\'")}')" style="margin-bottom:6px;">${opt}</button>`
     ).join('');
-    scriptDecisionPoints.push({ chapter: scriptCurrentChapter, description: json.description, options: json.options, msgIndex: scriptStoryMessages.length });
-  }).catch(e => console.warn('Decision generation failed:', e));
+    scriptDecisionPoints.push({ chapter: scriptCurrentChapter, description: json.description, options: options, msgIndex: scriptStoryMessages.length });
+  }).catch(e => {
+    console.warn('Decision generation failed:', e);
+    _showApiErrorToast('关键抉择生成失败', e);
+  });
 }
 function scriptMakeDecision(idx, text) {
   document.getElementById('scriptDecisionOverlay').style.display = 'none';
@@ -49118,7 +49215,7 @@ function scriptMakeDecision(idx, text) {
   scriptGenerateAIResponse('decision');
 }
 async function scriptGenerateAIResponse(trigger) {
-  if (!apiConfig.url || !apiConfig.key || !apiConfig.model) return;
+  if (!scriptHasUsableApiConfig()) return;
   const card = scriptCurrentCard;
   const myChar = card.characters[scriptMyRole];
   const otherChars = card.characters.filter((c, i) => i !== scriptMyRole);
@@ -49193,22 +49290,11 @@ ${triggerNote}
 8. 角色不会主动透露自己的秘密，除非剧情发展到那一步
 9. 【动作描写】每条对话都必须包含action字段，描写角色说话时的肢体语言、表情变化、小动作等，用*星号*包裹，增加沉浸感和画面感${isTurningPoint ? '\n10. 【心声】这是重要的转折时刻，请为至少一个角色添加innerThought字段，展现其内心独白' : ''}`;
   try {
-    const response = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${apiConfig.key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: apiConfig.model,
-        messages: [
-          { role: 'system', content: sysPrompt },
-          { role: 'user', content: recentMsgs || '请开始故事。' }
-        ],
-        temperature: 0.85
-      })
-    });
-    if (!response.ok) throw new Error('API Error');
-    const result = await response.json();
-    const text = result.choices[0].message.content;
-    const json = JSON.parse(text.match(/\{[\s\S]*\}/)[0]);
+    const text = await scriptCallChatApi([
+      { role: 'system', content: sysPrompt },
+      { role: 'user', content: recentMsgs || '请开始故事。' }
+    ], { temperature: 0.85, max_tokens: 3500 });
+    const json = scriptNormalizeStoryJson(scriptParseJsonFromAi(text, null, 'object'));
     // Add narrator
     if (json.narrator) {
       document.getElementById('scriptNarrator').textContent = json.narrator;
@@ -49235,7 +49321,7 @@ ${triggerNote}
   }
 }
 async function scriptGenerateOptions() {
-  if (!apiConfig.url || !apiConfig.key || !apiConfig.model) {
+  if (!scriptHasUsableApiConfig()) {
     const list = document.getElementById('scriptOptionsList');
     if (list) list.innerHTML = '<div style="font-size:11px;color:#999;padding:10px;text-align:center;">请配置API以生成选项</div>';
     return;
@@ -49248,24 +49334,13 @@ async function scriptGenerateOptions() {
     return (m.charName || '角色') + ': ' + m.text;
   }).join('\n');
   try {
-    const response = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${apiConfig.key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: apiConfig.model,
-        messages: [{
-          role: 'system',
-          content: `根据当前剧情为玩家生成3个行动选项。格式：每行一个选项，用|||分隔。不要使用emoji。`
-        }, {
-          role: 'user',
-          content: `角色: ${myChar.name}\n近期剧情:\n${recentMsgs}\n\n请生成3个行动选项。`
-        }],
-        temperature: 0.8
-      })
-    });
-    if (!response.ok) throw new Error('API Error');
-    const result = await response.json();
-    const text = result.choices[0].message.content;
+    const text = await scriptCallChatApi([{
+      role: 'system',
+      content: `根据当前剧情为玩家生成3个行动选项。格式：每行一个选项，用|||分隔。不要使用emoji。`
+    }, {
+      role: 'user',
+      content: `角色: ${myChar.name}\n近期剧情:\n${recentMsgs}\n\n请生成3个行动选项。`
+    }], { temperature: 0.8, max_tokens: 800 });
     const options = text.split('|||').map(s => s.trim()).filter(s => s);
     const finalOptions = options.length >= 3 ? options.slice(0, 3) : text.split('\n').map(s => s.replace(/^\d+[\.\)、]\s*/, '').trim()).filter(s => s).slice(0, 3);
     const list = document.getElementById('scriptOptionsList');

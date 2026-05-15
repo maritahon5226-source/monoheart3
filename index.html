@@ -48458,6 +48458,70 @@ async function scriptRegenerate() {
     : '根据以下描述生成剧本大纲：' + scriptLastGenerateInput;
   await scriptGenerate(prompt);
 }
+function _scriptCleanAndParseJson(raw) {
+  if (!raw) throw new Error('响应内容为空');
+
+  // Step 1: strip markdown code fences (handles ```json ... ``` and ``` ... ```)
+  var text = raw.trim();
+  text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+
+  // Step 2: extract outermost { ... } block
+  var start = text.indexOf('{');
+  var end = text.lastIndexOf('}');
+  if (start === -1 || end === -1 || end <= start) throw new Error('未找到有效JSON对象');
+  text = text.slice(start, end + 1);
+
+  // Step 3: try direct parse first (fast path)
+  try { return JSON.parse(text); } catch(e1) {}
+
+  // Step 4: comprehensive repair - iterate char by char to fix unescaped
+  // control chars (newline, tab, etc.) that appear inside JSON string literals
+  var out = '';
+  var inStr = false;
+  var escape = false;
+  for (var i = 0; i < text.length; i++) {
+    var ch = text[i];
+    var code = text.charCodeAt(i);
+    if (escape) {
+      out += ch;
+      escape = false;
+      continue;
+    }
+    if (ch === '\\' && inStr) {
+      out += ch;
+      escape = true;
+      continue;
+    }
+    if (ch === '"') {
+      inStr = !inStr;
+      out += ch;
+      continue;
+    }
+    if (inStr) {
+      // Inside a string: escape any bare control characters
+      if (code === 0x0A) { out += '\\n'; continue; }
+      if (code === 0x0D) { out += '\\r'; continue; }
+      if (code === 0x09) { out += '\\t'; continue; }
+      if (code < 0x20) { out += '\\u' + ('000' + code.toString(16)).slice(-4); continue; }
+    }
+    out += ch;
+  }
+
+  // Step 5: try parsing the repaired string
+  try { return JSON.parse(out); } catch(e2) {}
+
+  // Step 6: last resort - remove any trailing incomplete property and close braces
+  var attempt = out.replace(/,\s*"[^"]*"\s*:\s*[^,}\]]*$/, '');
+  // Re-balance braces
+  var opens = (attempt.match(/\{/g) || []).length;
+  var closes = (attempt.match(/\}/g) || []).length;
+  while (closes < opens) { attempt += '}'; closes++; }
+  try { return JSON.parse(attempt); } catch(e3) {}
+
+  // Step 7: expose what we got for easier debugging
+  var preview = out.slice(0, 300);
+  throw new Error('JSON解析失败，请重试。（原始内容预览：' + preview + '）');
+}
 async function scriptGenerate(userPrompt) {
   if (scriptIsGenerating) return;
   scriptIsGenerating = true;
@@ -48470,20 +48534,23 @@ async function scriptGenerate(userPrompt) {
     return;
   }
   const sysPrompt = `你是一个专业的互动剧本生成器。用户会提供标签或描述，你需要生成一份完整的剧本大纲。
-请严格按以下JSON格式输出（不要输出其他内容）：
+【重要】只输出一个合法的JSON对象，不要有任何前缀文字、后缀文字、Markdown代码块标记（不要输出\`\`\`json或\`\`\`）。
+【重要】JSON中所有字符串值内，禁止使用未转义的换行符，若需换行请使用\\n。
+【重要】characters数组必须包含2到6个角色，不能少于2个，这是强制要求。
+JSON格式如下：
 {
   "title": "剧本标题",
-  "tags": ["标签1", "标签2", ...],
+  "tags": ["标签1", "标签2"],
   "world": "详细的世界背景描述（时代、地点、社会环境、氛围，4-6句话）",
   "worldDetail": "更深层的背景设定（权力结构、社会规则、关键事件、文化特色等，3-5句话）",
   "conflict": "核心矛盾描述（2-3句话，要具体）",
   "characters": [
     {
       "name": "角色全名",
-      "role": "剧中身份（职业/社会角色）",
+      "role": "剧中身份（职业或社会角色）",
       "age": "年龄",
       "appearance": "外貌特征描述（3-4个关键词或1-2句话）",
-      "personality": "性格特点（至少3个关键词）",
+      "personality": "性格特点（至少3个关键词，用逗号分隔）",
       "background": "详细背景故事（3-5句话，包含成长经历、家庭背景、重要转折）",
       "speechStyle": "说话风格（例如：温柔低语、冷淡疏离、热情洋溢、毒舌但关心人、口头禅等）",
       "goal": "角色的核心目标和动机",
@@ -48499,19 +48566,20 @@ async function scriptGenerate(userPrompt) {
     "故事线分支2描述",
     "故事线分支3描述"
   ],
-  "chapters": 8,
-  "chapterGoals": ["第一章目标", "第二章目标", ...],
-  "ending": "HE/BE/开放结局"
+  "chapters": 20,
+  "chapterGoals": ["第一章目标", "第二章目标", "第三章目标"],
+  "ending": "HE"
 }
 要求：
-1. 角色至少2个，最多6个
+1. characters数组必须包含至少2个、最多6个角色（强制）
 2. 每个角色的人设要立体丰满，有血有肉，像真实的人
 3. 角色之间的关系要复杂有张力
 4. 故事要有层次感，有起承转合
 5. 不要使用任何emoji
 6. 所有内容用中文
 7. 章节数建议20-25章
-8. 每个角色的说话风格要独特且有辨识度`;
+8. 每个角色的说话风格要独特且有辨识度
+9. 所有字段值都必须是合法JSON字符串，禁止在字符串内直接换行`;
   try {
     const response = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, {
       method: 'POST',
@@ -48519,20 +48587,24 @@ async function scriptGenerate(userPrompt) {
       body: JSON.stringify({
         model: apiConfig.model,
         messages: [{ role: 'system', content: sysPrompt }, { role: 'user', content: userPrompt }],
-        temperature: 0.9
+        temperature: 0.85
       })
     });
-    if (!response.ok) throw new Error('API请求失败');
+    if (!response.ok) throw new Error('API请求失败 (HTTP ' + response.status + ')');
     const result = await response.json();
-    const text = result.choices[0].message.content;
-    // Parse JSON from response
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('解析失败');
-    scriptCurrentCard = JSON.parse(jsonMatch[0]);
+    const text = result.choices && result.choices[0] && result.choices[0].message && result.choices[0].message.content;
+    if (!text) throw new Error('API返回内容为空');
+    const parsed = _scriptCleanAndParseJson(text);
+    // Validate characters
+    if (!parsed.characters || !Array.isArray(parsed.characters) || parsed.characters.length < 2) {
+      throw new Error('角色数量不足（需至少2个），请重试');
+    }
+    scriptCurrentCard = parsed;
     scriptRenderCard();
   } catch (e) {
     console.warn('Script generation failed:', e);
-    content.innerHTML = `<div style="padding:30px;text-align:center;color:#999;font-size:12px;">生成失败: ${e.message}<br><br><button class="script-generate-btn" style="width:auto;display:inline-block;padding:10px 20px;" onclick="scriptRegenerate()">重试</button></div>`;
+    var _rawPreview = (typeof text === 'string') ? text.slice(0, 200) : '(无原始内容)';
+    content.innerHTML = `<div style="padding:20px;color:#999;font-size:12px;"><div style="text-align:center;margin-bottom:12px;">生成失败: ${e.message}</div><div style="background:#f5f5f5;border-radius:6px;padding:8px;font-size:10px;color:#aaa;word-break:break-all;margin-bottom:12px;text-align:left;">模型原始输出（前200字）：<br>${_rawPreview.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div><div style="text-align:center;"><button class="script-generate-btn" style="width:auto;display:inline-block;padding:10px 20px;" onclick="scriptRegenerate()">重试</button></div></div>`;
   }
   scriptIsGenerating = false;
 }
@@ -49101,7 +49173,7 @@ function scriptTriggerDecision() {
     })
   }).then(r => r.json()).then(result => {
     const text = result.choices[0].message.content;
-    const json = JSON.parse(text.match(/\{[\s\S]*\}/)[0]);
+    const json = _scriptCleanAndParseJson(text);
     const overlay = document.getElementById('scriptDecisionOverlay');
     overlay.style.display = 'flex';
     document.getElementById('scriptDecisionDesc').textContent = json.description;
@@ -49208,7 +49280,7 @@ ${triggerNote}
     if (!response.ok) throw new Error('API Error');
     const result = await response.json();
     const text = result.choices[0].message.content;
-    const json = JSON.parse(text.match(/\{[\s\S]*\}/)[0]);
+    const json = _scriptCleanAndParseJson(text);
     // Add narrator
     if (json.narrator) {
       document.getElementById('scriptNarrator').textContent = json.narrator;

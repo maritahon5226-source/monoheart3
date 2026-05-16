@@ -107679,5 +107679,194 @@ body.mono-fwd-modal-open {
 })();
 </script>
 
+
+
+<!-- MONO HOTFIX v10: memory interval, shared user masks across worlds, compact chat bottom gap -->
+<style id="mono-memory-mask-chatgap-v10-style">
+/* 玻璃主题：最后一条消息下面不再空一大段，只保留舒服的呼吸距离 */
+#chatPage.chat-theme-frosted #chatBox,
+#chatPage.bubble-preset-frosted #chatBox,
+#chatPage.chat-theme-frosted .chat-messages,
+#chatPage.bubble-preset-frosted .chat-messages {
+  padding-bottom: 8px !important;
+  scroll-padding-bottom: 8px !important;
+}
+#chatPage.chat-theme-frosted #chatBox > .msg-row:last-child,
+#chatPage.bubble-preset-frosted #chatBox > .msg-row:last-child,
+#chatPage.chat-theme-frosted .chat-messages > .msg-row:last-child,
+#chatPage.bubble-preset-frosted .chat-messages > .msg-row:last-child {
+  margin-bottom: 4px !important;
+}
+#chatPage.chat-theme-frosted .chat-footer,
+#chatPage.bubble-preset-frosted .chat-footer {
+  padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px)) !important;
+}
+/* 默认主题也轻微收紧，避免最后一条消息和输入栏之间显得断层 */
+#chatBox > .msg-row:last-child { margin-bottom: 6px !important; }
+</style>
+<script id="mono-memory-mask-chatgap-v10-script">
+(function(){
+  'use strict';
+
+  function getUserMsgCount(p){
+    try { return (Array.isArray(p && p.history) ? p.history : []).filter(function(m){ return m && m.role === 'user'; }).length; }
+    catch(e){ return 0; }
+  }
+  function userCountUntilHistoryIndex(p, endIndex){
+    var hist = Array.isArray(p && p.history) ? p.history : [];
+    var end = parseInt(endIndex, 10);
+    if (!Number.isFinite(end)) return null;
+    end = Math.max(-1, Math.min(end, hist.length - 1));
+    var n = 0;
+    for (var i = 0; i <= end; i++) if (hist[i] && hist[i].role === 'user') n++;
+    return n;
+  }
+  function ensureAutoSummaryAnchor(p){
+    if (!p || !Array.isArray(p.memoryCore)) return 0;
+    var currentUserCount = getUserMsgCount(p);
+    for (var i = p.memoryCore.length - 1; i >= 0; i--) {
+      var item = p.memoryCore[i];
+      if (!item || typeof item !== 'object' || !item.auto) continue;
+      var parsed = parseInt(item._userMsgCountEnd, 10);
+      if (Number.isFinite(parsed)) return Math.max(0, parsed);
+      var inferred = userCountUntilHistoryIndex(p, item._historyEndIndex);
+      if (Number.isFinite(inferred)) {
+        item._userMsgCountEnd = inferred;
+        item._monoV10Repaired = true;
+        try { if (typeof saveData === 'function') saveData(); } catch(e) {}
+        return Math.max(0, inferred);
+      }
+      /* 旧版本自动总结没有写 _userMsgCountEnd，会导致每轮都以 0 为起点，
+         于是用户设置 100 轮也会变成“一轮一总结”。这里把最后一条旧自动总结锚定到当前轮数，
+         之后必须再新增 interval 轮才会触发。 */
+      item._userMsgCountEnd = currentUserCount;
+      item._historyEndIndex = Array.isArray(p.history) ? Math.max(0, p.history.length - 1) : 0;
+      item._monoV10LegacyAnchor = true;
+      try { if (typeof saveData === 'function') saveData(); } catch(e) {}
+      return currentUserCount;
+    }
+    return 0;
+  }
+  function normalizeInterval(p){
+    var n = parseInt(p && p.autoSummaryInterval, 10);
+    if (!Number.isFinite(n) || n <= 0) n = 20;
+    return Math.max(1, n);
+  }
+
+  function installAutoSummaryGuard(){
+    var original = null;
+    try { original = window.generateAutoSummary || (typeof generateAutoSummary !== 'undefined' ? generateAutoSummary : null); } catch(e) {}
+    if (typeof original !== 'function' || original.__monoV10Guarded) return false;
+    var guarded = async function(p, isManual, opts){
+      if (!isManual && p) {
+        var interval = normalizeInterval(p);
+        var currentUserCount = getUserMsgCount(p);
+        var lastEnd = ensureAutoSummaryAnchor(p);
+        if (currentUserCount - lastEnd < interval) {
+          console.log('[MONO v10] 自动总结未达到设定轮数，跳过：', currentUserCount - lastEnd, '/', interval);
+          return null;
+        }
+      }
+      var beforeLen = Array.isArray(p && p.memoryCore) ? p.memoryCore.length : 0;
+      var result = await original.apply(this, arguments);
+      if (!isManual && p && Array.isArray(p.memoryCore) && p.memoryCore.length > beforeLen) {
+        var latest = p.memoryCore[p.memoryCore.length - 1];
+        if (latest && latest.auto) {
+          if (!Number.isFinite(parseInt(latest._userMsgCountEnd, 10))) latest._userMsgCountEnd = getUserMsgCount(p);
+          if (!Number.isFinite(parseInt(latest._historyEndIndex, 10))) latest._historyEndIndex = Array.isArray(p.history) ? Math.max(0, p.history.length - 1) : 0;
+          latest._monoV10Stamped = true;
+          try { if (typeof saveData === 'function') saveData(); } catch(e) {}
+        }
+      }
+      return result;
+    };
+    guarded.__monoV10Guarded = true;
+    guarded.__monoOriginal = original;
+    try { window.generateAutoSummary = guarded; } catch(e) {}
+    try { generateAutoSummary = guarded; } catch(e) {}
+    return true;
+  }
+  installAutoSummaryGuard();
+  setTimeout(installAutoSummaryGuard, 300);
+  setTimeout(installAutoSummaryGuard, 1200);
+
+  /* 多世界切换前后：用户面具永远走共享存储，不跟世界前缀走，避免切换世界后“我的面具”看起来消失。 */
+  function rawLS(){ return window._monoRawLocalStorage || window.localStorage; }
+  function saveSharedMasksSnapshot(){
+    try {
+      var masks = [];
+      if (typeof userMasks !== 'undefined' && Array.isArray(userMasks)) masks = userMasks;
+      else if (typeof monoLoadUserMasks === 'function') masks = monoLoadUserMasks();
+      var storable = masks.map(function(mask){
+        var item = Object.assign({}, mask || {});
+        if (item.hasCustomAvatar && typeof item.avatar === 'string' && item.avatar.indexOf('data:image') === 0) item.avatar = '';
+        return item;
+      });
+      rawLS().setItem('mono_user_masks', JSON.stringify(storable));
+      try { localStorage.setItem('mono_user_masks', JSON.stringify(storable)); } catch(e) {}
+      if (typeof monoSyncUserMaskAvatarsToIdb === 'function') monoSyncUserMaskAvatarsToIdb(masks).catch(function(){});
+    } catch(e) { console.warn('[MONO v10] save masks snapshot failed:', e); }
+  }
+  function reloadSharedMasks(){
+    try {
+      var raw = rawLS().getItem('mono_user_masks') || localStorage.getItem('mono_user_masks') || '[]';
+      var parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        if (typeof monoNormalizeUserMask === 'function') parsed = parsed.map(monoNormalizeUserMask);
+        try { userMasks = parsed; } catch(e) { window.userMasks = parsed; }
+        try { if (typeof monoRestoreUserMaskAvatarsFromIdb === 'function') monoRestoreUserMaskAvatarsFromIdb(); } catch(e) {}
+        try { if (typeof monoRefreshUserIdentityUi === 'function') monoRefreshUserIdentityUi(); } catch(e) {}
+      }
+    } catch(e) { console.warn('[MONO v10] reload masks failed:', e); }
+  }
+  var originalSwitch = null;
+  function installWorldMaskGuard(){
+    try { originalSwitch = window.mwSwitchWorld || (typeof mwSwitchWorld !== 'undefined' ? mwSwitchWorld : null); } catch(e) {}
+    if (typeof originalSwitch !== 'function' || originalSwitch.__monoV10MaskGuarded) return false;
+    var wrapped = function(worldId){
+      saveSharedMasksSnapshot();
+      return originalSwitch.apply(this, arguments);
+    };
+    wrapped.__monoV10MaskGuarded = true;
+    wrapped.__monoOriginal = originalSwitch;
+    try { window.mwSwitchWorld = wrapped; } catch(e) {}
+    try { mwSwitchWorld = wrapped; } catch(e) {}
+    return true;
+  }
+  installWorldMaskGuard();
+  setTimeout(installWorldMaskGuard, 300);
+  setTimeout(installWorldMaskGuard, 1200);
+  document.addEventListener('click', function(e){
+    if (e.target && e.target.closest && e.target.closest('#mwSwitchConfirm')) saveSharedMasksSnapshot();
+  }, true);
+  document.addEventListener('DOMContentLoaded', reloadSharedMasks);
+  setTimeout(reloadSharedMasks, 500);
+
+  /* 渲染后把聊天区域滚到底部，配合上面的 padding 收紧，避免看起来底部空一截。 */
+  function installRenderCompactHook(){
+    var fn = null;
+    try { fn = window.renderMessages || (typeof renderMessages !== 'undefined' ? renderMessages : null); } catch(e) {}
+    if (typeof fn !== 'function' || fn.__monoV10CompactHook) return false;
+    var wrapped = function(){
+      var res = fn.apply(this, arguments);
+      setTimeout(function(){
+        try {
+          var box = document.getElementById('chatBox');
+          if (box && document.body.classList.contains('chat-page-active')) box.scrollTop = box.scrollHeight;
+        } catch(e) {}
+      }, 0);
+      return res;
+    };
+    wrapped.__monoV10CompactHook = true;
+    wrapped.__monoOriginal = fn;
+    try { window.renderMessages = wrapped; } catch(e) {}
+    try { renderMessages = wrapped; } catch(e) {}
+    return true;
+  }
+  installRenderCompactHook();
+  setTimeout(installRenderCompactHook, 300);
+})();
+</script>
+
 </body>
 </html>

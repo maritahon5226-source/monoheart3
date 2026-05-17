@@ -242,7 +242,7 @@ async function bgGenerateAndNotify() {
         const diffMin = Math.floor((Date.now() - anchorTime) / 60000);
         if (diffMin < 60) _timeSince = '距上次对话约' + diffMin + '分钟';
         else if (diffMin < 1440) _timeSince = '距上次对话约' + Math.floor(diffMin/60) + '小时';
-        else _timeSince = '距上次对话已过' + Math.floor(diffMin/1440) + '天';
+        else _timeSince = `距上次对话已过${Math.floor(diffMin/1440)}天`;
       }
       const minReply = p.minReplyCount || 1;
       const maxReply = p.maxReplyCount || 3;
@@ -87918,8 +87918,8 @@ function iccCheckAndMaybeTrigger(inspector, contact, summary, thoughtText) {
     summary.slice(0, 500) + '\n' +
     '你的内心想法是：' + (thoughtText || '') + '\n' +
     '请判断你是否会想要直接联系「' + contact.name + '」来对峙或了解情况。' +
-    '返回JSON：{"trigger":true/false,"intensity":0~10,"reason":"一句话理由（' + lang + '，20字内）","opening":"你主动发给对方的第一句话（' + lang + '，符合你性格，15~30字）"}\n' +
-    '只返回JSON。';
+    '返回JSON：{"trigger":true/false,"intensity":0~10,"reason":"一句话理由（' + lang + '，20字内）","opening":"你主动发给对方的第一句话（' + lang + '，符合你性格，15~30字）"}
+只返回JSON。';
   rpc2CallAI(assessPrompt, function(resp) {
     try {
       var obj = _parseJsonFromText(resp, {}, 'object');
@@ -88005,36 +88005,24 @@ function iccGenerateDialogue(inspector, target, evidence, opening) {
         }).join('；') + '）';
     }
   } catch(e) {}
-  var prompt =
-    '现在模拟两个角色之间的私聊对话。
-' +
-    inspectorCtx + inspMem + '
-' +
-    targetCtx    + targetMem + '
-' +
-    '【触发原因】
-' +
-    inspector.name + ' 在查对方（用户）的手机时，发现了用户与 ' + target.name + ' 的聊天内容：
-' +
-    evidence.slice(0, 600) + '
-' +
-    '【对话规则】
-' +
-    '- ' + inspector.name + ' 是发起方，主动联系 ' + target.name + '（可能对峙、试探、质问或借口联系）
-' +
-    '- 第一条消息由 ' + inspector.name + ' 发出：' + (opening || '（请自行生成开场白）') + '
-' +
-    '- 对话要自然、符合双方性格，情绪真实，不要过于戏剧化
-' +
-    '- 生成 8~12 条消息的完整对话
-' +
-    '- 使用【' + lang + '】
-' +
-    '返回JSON数组，每条消息：
-' +
-    '[{"speaker":"' + inspector.name + '或' + target.name + '","text":"消息内容","emotion":"当前情绪（4字内，如：紧张、冷漠、委屈等）"}]
-' +
-    '只返回JSON数组。';
+  var prompt = [
+    '现在模拟两个角色之间的私聊对话。',
+    inspectorCtx + inspMem,
+    targetCtx + targetMem,
+    '【触发原因】',
+    inspector.name + ' 在查对方（用户）的手机时，发现了用户与 ' + target.name + ' 的聊天内容：',
+    evidence.slice(0, 600),
+    '【对话规则】',
+    '- ' + inspector.name + ' 是发起方，主动联系 ' + target.name + '（可能对峙、试探、质问或借口联系）',
+    '- 第一条消息由 ' + inspector.name + ' 发出：' + (opening || '（请自行生成开场白）'),
+    '- 对话要自然、符合双方性格，情绪真实，不要过于戏剧化',
+    '- 生成 8~12 条消息的完整对话',
+    '- 使用【' + lang + '】',
+    '返回JSON数组，每条消息：',
+    '[{"speaker":"' + inspector.name + '或' + target.name + '","text":"消息内容","emotion":"当前情绪（4字内，如：紧张、冷漠、委屈等）"}]',
+    '只返回JSON数组。'
+  ].join('
+');
   rpc2CallAI(prompt, function(resp) {
     try {
       var msgs = _parseJsonFromText(resp, [], 'array');
@@ -108052,61 +108040,90 @@ body.mono-fwd-modal-open {
 
 
 <script>
-/* === MONO PATCH: safer multi-world switch === */
+/* === MONO MULTIWORLD RESTORE PATCH v2 ===
+   目的：恢复旧版“进入世界”行为，不再依赖容易被世界 key 转换层影响的 proxy localStorage。
+   修复：点击进入后白屏/没反应；activeWorld 写入 raw localStorage + IndexedDB，并清掉旧世界缓存后刷新。
+*/
 (function(){
+  'use strict';
+  if (window.__monoMultiWorldRestorePatchV2) return;
+  window.__monoMultiWorldRestorePatchV2 = true;
   function rawLS(){ return window._monoRawLocalStorage || window.localStorage; }
-  function getWorlds(){
-    try { return JSON.parse(rawLS().getItem('mono_multiworld_worlds') || window.localStorage.getItem('mono_multiworld_worlds') || '[]') || []; } catch(e){ return []; }
+  function getWorldsRaw(){
+    try { return JSON.parse(rawLS().getItem('mono_multiworld_worlds') || localStorage.getItem('mono_multiworld_worlds') || '[]') || []; }
+    catch(e){ return []; }
   }
-  function setActiveWorldRaw(worldId, done){
+  function writeActiveWorld(worldId, done){
+    try { rawLS().setItem('mono_multiworld_enabled', 'true'); } catch(e) {}
+    try { rawLS().setItem('mono_multiworld_active', worldId); } catch(e) {}
+    try { localStorage.setItem('mono_multiworld_enabled', 'true'); } catch(e) {}
+    try { localStorage.setItem('mono_multiworld_active', worldId); } catch(e) {}
+    try { if (window._monoRawLocalStorage) window._monoRawLocalStorage.setItem('mono_multiworld_active', worldId); } catch(e) {}
+    try { if (window.__monoRealLSSet) window.__monoRealLSSet('mono_multiworld_active', worldId); } catch(e) {}
     var finished = false;
-    function finish(){ if (finished) return; finished = true; try { location.reload(); } catch(e) { window.location.href = window.location.href; } }
-    try { rawLS().setItem('mono_multiworld_active', worldId); } catch(e){}
-    try { window.localStorage.setItem('mono_multiworld_active', worldId); } catch(e){}
+    function finish(){ if (finished) return; finished = true; done && done(); }
     try {
-      if (window._idb && window._idb.transaction) {
-        var tx = window._idb.transaction('kv','readwrite');
-        tx.objectStore('kv').put(worldId, 'mono_multiworld_active');
+      if (window._idb) {
+        var tx = window._idb.transaction('kv', 'readwrite');
+        var store = tx.objectStore('kv');
+        store.put('true', 'mono_multiworld_enabled');
+        store.put(worldId, 'mono_multiworld_active');
         tx.oncomplete = finish;
         tx.onerror = finish;
-        setTimeout(finish, 600);
-      } else finish();
-    } catch(e){ finish(); }
+        setTimeout(finish, 500);
+        return;
+      }
+    } catch(e) {}
+    finish();
   }
-  window.mwSwitchWorld = function(worldId){
-    var worlds = getWorlds();
-    var world = worlds.find(function(w){ return w && w.id === worldId; });
-    if (!world) { alert('找不到该世界，请重新打开“我的”。'); return; }
-    var old = document.getElementById('mwSwitchPatchOverlay');
-    if (old && old.parentNode) old.parentNode.removeChild(old);
-    var safeName = String(world.name || '未命名世界').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    var box = document.createElement('div');
-    box.id = 'mwSwitchPatchOverlay';
-    box.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999999;display:flex;align-items:center;justify-content:center;padding:20px;';
-    box.innerHTML='<div style="background:#fff;border-radius:16px;padding:24px;max-width:320px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.2);font-family:inherit;">'
-      + '<div style="font-size:15px;font-weight:700;margin-bottom:8px;">切换世界</div>'
-      + '<div style="font-size:13px;color:#333;margin-bottom:6px;">进入「<b>'+safeName+'</b>」？</div>'
-      + '<div style="font-size:11px;color:#999;margin-bottom:20px;line-height:1.6;">切换后页面会重新加载。</div>'
+  function hardSwitch(worldId){
+    var worlds = getWorldsRaw();
+    var ok = !worlds.length || worlds.some(function(w){ return w && String(w.id) === String(worldId); });
+    if (!ok) { alert('找不到该世界，请重新打开“我的”再试。'); return; }
+    writeActiveWorld(String(worldId), function(){
+      try { sessionStorage.setItem('mono_after_world_switch', String(worldId)); } catch(e) {}
+      location.reload();
+    });
+  }
+  function showConfirm(worldId){
+    var worlds = getWorldsRaw();
+    var world = worlds.find(function(w){ return w && String(w.id) === String(worldId); });
+    var name = world && world.name ? world.name : '该世界';
+    var old = document.getElementById('monoMwRestoreConfirm');
+    if (old) old.remove();
+    var div = document.createElement('div');
+    div.id = 'monoMwRestoreConfirm';
+    div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:20px;';
+    div.innerHTML = '<div style="width:min(320px,92vw);background:#fff;border-radius:18px;padding:22px;box-shadow:0 18px 60px rgba(0,0,0,.25);font-family:inherit;">'
+      + '<div style="font-weight:800;font-size:16px;margin-bottom:8px;">切换世界</div>'
+      + '<div style="font-size:13px;line-height:1.6;color:#333;margin-bottom:18px;">进入「<b></b>」？页面会重新载入到该世界。</div>'
       + '<div style="display:flex;gap:10px;">'
-      + '<button id="mwSwitchPatchCancel" style="flex:1;padding:10px;border-radius:10px;border:1px solid #ddd;background:#f5f5f5;font-size:13px;font-weight:600;">取消</button>'
-      + '<button id="mwSwitchPatchConfirm" style="flex:1;padding:10px;border-radius:10px;border:none;background:#1a1a1a;color:#fff;font-size:13px;font-weight:600;">进入</button>'
+      + '<button data-mw-cancel style="flex:1;padding:10px;border-radius:12px;border:1px solid #ddd;background:#f6f6f6;font-weight:700;font-family:inherit;">取消</button>'
+      + '<button data-mw-ok style="flex:1;padding:10px;border-radius:12px;border:0;background:#1a1a1a;color:#fff;font-weight:800;font-family:inherit;">进入</button>'
       + '</div></div>';
-    document.body.appendChild(box);
-    document.getElementById('mwSwitchPatchCancel').onclick=function(){ box.remove(); };
-    document.getElementById('mwSwitchPatchConfirm').onclick=function(){
-      box.remove();
-      window.__monoWorldSwitching = true;
-      setActiveWorldRaw(worldId);
-    };
-  };
+    document.body.appendChild(div);
+    var b = div.querySelector('b'); if (b) b.textContent = name;
+    div.querySelector('[data-mw-cancel]').onclick = function(){ div.remove(); };
+    div.querySelector('[data-mw-ok]').onclick = function(){ div.remove(); hardSwitch(worldId); };
+  }
+  function install(){
+    try { window.mwSwitchWorld = showConfirm; } catch(e) {}
+    try { mwSwitchWorld = showConfirm; } catch(e) {}
+  }
   document.addEventListener('click', function(e){
     var btn = e.target && e.target.closest && e.target.closest('[data-mw-switch]');
-    if (btn) {
-      e.preventDefault();
-      e.stopPropagation();
-      window.mwSwitchWorld(btn.getAttribute('data-mw-switch'));
-    }
+    if (!btn) return;
+    var id = btn.getAttribute('data-mw-switch');
+    if (!id) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+    showConfirm(id);
   }, true);
+  install();
+  document.addEventListener('DOMContentLoaded', install);
+  setTimeout(install, 300);
+  setTimeout(install, 1200);
 })();
 </script>
 

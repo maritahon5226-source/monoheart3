@@ -240,9 +240,9 @@ async function bgGenerateAndNotify() {
       let _timeSince = '';
       if (anchorTime) {
         const diffMin = Math.floor((Date.now() - anchorTime) / 60000);
-        if (diffMin < 60) _timeSince = `距上次对话约${diffMin}分钟`;
-        else if (diffMin < 1440) _timeSince = `距上次对话约${Math.floor(diffMin/60)}小时`;
-        else _timeSince = `距上次对话已过${Math.floor(diffMin/1440)}天`;
+        if (diffMin < 60) _timeSince = '距上次对话约' + diffMin + '分钟';
+        else if (diffMin < 1440) _timeSince = '距上次对话约' + Math.floor(diffMin/60) + '小时';
+        else _timeSince = '距上次对话已过' + Math.floor(diffMin/1440) + '天';
       }
       const minReply = p.minReplyCount || 1;
       const maxReply = p.maxReplyCount || 3;
@@ -87918,8 +87918,8 @@ function iccCheckAndMaybeTrigger(inspector, contact, summary, thoughtText) {
     summary.slice(0, 500) + '\n' +
     '你的内心想法是：' + (thoughtText || '') + '\n' +
     '请判断你是否会想要直接联系「' + contact.name + '」来对峙或了解情况。' +
-    '返回JSON：{"trigger":true/false,"intensity":0~10,"reason":"一句话理由（' + lang + '，20字内）","opening":"你主动发给对方的第一句话（' + lang + '，符合你性格，15~30字）"}
-只返回JSON。';
+    '返回JSON：{"trigger":true/false,"intensity":0~10,"reason":"一句话理由（' + lang + '，20字内）","opening":"你主动发给对方的第一句话（' + lang + '，符合你性格，15~30字）"}\n' +
+    '只返回JSON。';
   rpc2CallAI(assessPrompt, function(resp) {
     try {
       var obj = _parseJsonFromText(resp, {}, 'object');
@@ -107865,6 +107865,248 @@ body.mono-fwd-modal-open {
   }
   installRenderCompactHook();
   setTimeout(installRenderCompactHook, 300);
+})();
+
+
+/* === MONO v11 USER MASK PERSISTENCE FIX ===
+   修复：用户面具创建后刷新/退出重进丢失。
+   核心原因：多世界 + IndexedDB 缓存层可能在重进时用旧的 IDB 空值覆盖 raw localStorage 新值。
+   处理：面具保存同时写 proxy localStorage、raw localStorage、backup key、IDB；启动时按时间戳仲裁恢复。 */
+(function(){
+  if (window.__monoV11MaskPersistenceInstalled) return;
+  window.__monoV11MaskPersistenceInstalled = true;
+  var KEY = 'mono_user_masks';
+  var BAK = 'mono_user_masks_backup_v11';
+  var STAMP = 'mono_user_masks_saved_at_v11';
+  var STORE = 'kv';
+  function rawLS(){ return window._monoRawLocalStorage || window.localStorage; }
+  function parse(raw){
+    if (Array.isArray(raw)) return raw.filter(function(x){ return x && typeof x === 'object'; });
+    if (typeof raw !== 'string' || !raw.trim()) return [];
+    try { var v = JSON.parse(raw); return Array.isArray(v) ? v.filter(function(x){ return x && typeof x === 'object'; }) : []; } catch(e){ return []; }
+  }
+  function normList(list){
+    var arr = Array.isArray(list) ? list : [];
+    if (typeof monoNormalizeUserMask === 'function') return arr.map(function(x){ return monoNormalizeUserMask(x); });
+    return arr;
+  }
+  function stripAvatars(list){
+    return normList(list).map(function(mask){
+      var item = Object.assign({}, mask || {});
+      if (item.hasCustomAvatar && typeof item.avatar === 'string' && item.avatar.indexOf('data:image') === 0) item.avatar = '';
+      return item;
+    });
+  }
+  function idbSetRaw(key, value){
+    try {
+      var db = window._idb;
+      if (!db || !db.transaction) return;
+      var tx = db.transaction(STORE, 'readwrite');
+      tx.objectStore(STORE).put(value, key);
+    } catch(e) {}
+  }
+  function saveEverywhere(list){
+    var storable = stripAvatars(list);
+    var json = JSON.stringify(storable);
+    var now = String(Date.now());
+    try { window.localStorage.setItem(KEY, json); } catch(e) {}
+    try { window.localStorage.setItem(STAMP, now); } catch(e) {}
+    try { rawLS().setItem(KEY, json); } catch(e) {}
+    try { rawLS().setItem(BAK, json); } catch(e) {}
+    try { rawLS().setItem(STAMP, now); } catch(e) {}
+    idbSetRaw(KEY, json);
+    idbSetRaw(BAK, json);
+    idbSetRaw(STAMP, now);
+    try { if (typeof monoSyncUserMaskAvatarsToIdb === 'function') monoSyncUserMaskAvatarsToIdb(normList(list)).catch(function(){}); } catch(e) {}
+  }
+  function stampOf(sourceName, raw, explicitStamp){
+    var arr = parse(raw);
+    var newestMask = 0;
+    arr.forEach(function(m){ newestMask = Math.max(newestMask, Number(m && m.updatedAt) || Number(m && m.createdAt) || 0); });
+    return {
+      source: sourceName,
+      raw: raw,
+      list: arr,
+      stamp: Number(explicitStamp) || newestMask || 0,
+      count: arr.length
+    };
+  }
+  function bestCandidate(){
+    var r = rawLS();
+    var rawStamp = '';
+    try { rawStamp = r.getItem(STAMP) || ''; } catch(e) {}
+    var proxyStamp = '';
+    try { proxyStamp = window.localStorage.getItem(STAMP) || ''; } catch(e) {}
+    var candidates = [];
+    try { candidates.push(stampOf('raw-main', r.getItem(KEY), rawStamp)); } catch(e) {}
+    try { candidates.push(stampOf('raw-backup', r.getItem(BAK), rawStamp)); } catch(e) {}
+    try { candidates.push(stampOf('proxy-main', window.localStorage.getItem(KEY), proxyStamp)); } catch(e) {}
+    // 兼容 v10 或更旧版本误存到世界作用域的面具
+    try {
+      for (var i = 0; i < r.length; i++) {
+        var k = r.key(i);
+        if (k && /^mono_mw_.+_user_masks$/.test(k)) candidates.push(stampOf(k, r.getItem(k), 0));
+      }
+    } catch(e) {}
+    candidates = candidates.filter(function(c){ return c && (c.count > 0 || c.stamp > 0); });
+    if (!candidates.length) return null;
+    candidates.sort(function(a,b){
+      if (b.stamp !== a.stamp) return b.stamp - a.stamp;
+      if (b.count !== a.count) return b.count - a.count;
+      return 0;
+    });
+    return candidates[0];
+  }
+  function restoreBestMasks(reason){
+    try {
+      var best = bestCandidate();
+      if (!best) return false;
+      var masks = normList(best.list);
+      try { userMasks = masks; } catch(e) { window.userMasks = masks; }
+      saveEverywhere(masks); // 把最佳版本反写回 main / backup / IDB，防止下次又被旧缓存盖掉
+      try { if (typeof monoRestoreUserMaskAvatarsFromIdb === 'function') monoRestoreUserMaskAvatarsFromIdb(); } catch(e) {}
+      try { if (typeof monoRefreshUserIdentityUi === 'function') monoRefreshUserIdentityUi(); } catch(e) {}
+      console.log('[MONO v11] restored user masks from', best.source, reason || '', masks.length);
+      return true;
+    } catch(e) {
+      console.warn('[MONO v11] restore masks failed:', e);
+      return false;
+    }
+  }
+  function installSaveOverride(){
+    try {
+      var current = monoSaveUserMasks;
+      if (typeof current !== 'function' || current.__monoV11Persistence) return;
+      var wrapped = function(nextMasks){
+        var masks = normList(Array.isArray(nextMasks) ? nextMasks : []);
+        try { userMasks = masks; } catch(e) { window.userMasks = masks; }
+        saveEverywhere(masks);
+        try { if (typeof monoRefreshUserIdentityUi === 'function') monoRefreshUserIdentityUi(); } catch(e) {}
+        return masks;
+      };
+      wrapped.__monoV11Persistence = true;
+      wrapped.__monoOriginal = current;
+      monoSaveUserMasks = wrapped;
+      try { window.monoSaveUserMasks = wrapped; } catch(e) {}
+    } catch(e) {}
+  }
+  function installLoadOverride(){
+    try {
+      var current = monoLoadUserMasks;
+      if (typeof current !== 'function' || current.__monoV11Persistence) return;
+      var wrapped = function(){
+        var best = bestCandidate();
+        if (best) return normList(best.list);
+        return normList(parse(rawLS().getItem(KEY) || '[]'));
+      };
+      wrapped.__monoV11Persistence = true;
+      wrapped.__monoOriginal = current;
+      monoLoadUserMasks = wrapped;
+      try { window.monoLoadUserMasks = wrapped; } catch(e) {}
+    } catch(e) {}
+  }
+  function installCreateEditGuards(){
+    // 在创建/编辑/换头像后再强制保存一次，防止某些旧函数绕过 monoSaveUserMasks。
+    ['monoCreateUserMask','monoEditUserMask','monoHandleUserMaskAvatarInput','monoDeleteUserMask'].forEach(function(name){
+      try {
+        var fn = window[name] || eval('typeof '+name+'!=="undefined" ? '+name+' : null');
+        if (typeof fn !== 'function' || fn.__monoV11Guard) return;
+        var wrapped = function(){
+          var ret = fn.apply(this, arguments);
+          Promise.resolve(ret).finally(function(){
+            setTimeout(function(){
+              try {
+                var masks = (typeof userMasks !== 'undefined' && Array.isArray(userMasks)) ? userMasks : (window.userMasks || []);
+                saveEverywhere(masks);
+              } catch(e) {}
+            }, 80);
+          });
+          return ret;
+        };
+        wrapped.__monoV11Guard = true;
+        wrapped.__monoOriginal = fn;
+        try { eval(name + ' = wrapped'); } catch(e) {}
+        try { window[name] = wrapped; } catch(e) {}
+      } catch(e) {}
+    });
+  }
+  installLoadOverride();
+  installSaveOverride();
+  installCreateEditGuards();
+  restoreBestMasks('initial');
+  if (typeof afterDB === 'function') {
+    try { afterDB(function(){ installLoadOverride(); installSaveOverride(); installCreateEditGuards(); restoreBestMasks('afterDB'); }); } catch(e) {}
+  }
+  document.addEventListener('DOMContentLoaded', function(){ restoreBestMasks('DOMContentLoaded'); });
+  window.addEventListener('beforeunload', function(){
+    try {
+      var masks = (typeof userMasks !== 'undefined' && Array.isArray(userMasks)) ? userMasks : (window.userMasks || []);
+      saveEverywhere(masks);
+    } catch(e) {}
+  });
+  setTimeout(function(){ installLoadOverride(); installSaveOverride(); installCreateEditGuards(); restoreBestMasks('t300'); }, 300);
+  setTimeout(function(){ installLoadOverride(); installSaveOverride(); installCreateEditGuards(); restoreBestMasks('t1200'); }, 1200);
+})();
+/* === /MONO v11 USER MASK PERSISTENCE FIX === */
+</script>
+
+
+<script>
+/* === MONO PATCH: safer multi-world switch === */
+(function(){
+  function rawLS(){ return window._monoRawLocalStorage || window.localStorage; }
+  function getWorlds(){
+    try { return JSON.parse(rawLS().getItem('mono_multiworld_worlds') || window.localStorage.getItem('mono_multiworld_worlds') || '[]') || []; } catch(e){ return []; }
+  }
+  function setActiveWorldRaw(worldId, done){
+    var finished = false;
+    function finish(){ if (finished) return; finished = true; try { location.reload(); } catch(e) { window.location.href = window.location.href; } }
+    try { rawLS().setItem('mono_multiworld_active', worldId); } catch(e){}
+    try { window.localStorage.setItem('mono_multiworld_active', worldId); } catch(e){}
+    try {
+      if (window._idb && window._idb.transaction) {
+        var tx = window._idb.transaction('kv','readwrite');
+        tx.objectStore('kv').put(worldId, 'mono_multiworld_active');
+        tx.oncomplete = finish;
+        tx.onerror = finish;
+        setTimeout(finish, 600);
+      } else finish();
+    } catch(e){ finish(); }
+  }
+  window.mwSwitchWorld = function(worldId){
+    var worlds = getWorlds();
+    var world = worlds.find(function(w){ return w && w.id === worldId; });
+    if (!world) { alert('找不到该世界，请重新打开“我的”。'); return; }
+    var old = document.getElementById('mwSwitchPatchOverlay');
+    if (old && old.parentNode) old.parentNode.removeChild(old);
+    var safeName = String(world.name || '未命名世界').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    var box = document.createElement('div');
+    box.id = 'mwSwitchPatchOverlay';
+    box.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999999;display:flex;align-items:center;justify-content:center;padding:20px;';
+    box.innerHTML='<div style="background:#fff;border-radius:16px;padding:24px;max-width:320px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.2);font-family:inherit;">'
+      + '<div style="font-size:15px;font-weight:700;margin-bottom:8px;">切换世界</div>'
+      + '<div style="font-size:13px;color:#333;margin-bottom:6px;">进入「<b>'+safeName+'</b>」？</div>'
+      + '<div style="font-size:11px;color:#999;margin-bottom:20px;line-height:1.6;">切换后页面会重新加载。</div>'
+      + '<div style="display:flex;gap:10px;">'
+      + '<button id="mwSwitchPatchCancel" style="flex:1;padding:10px;border-radius:10px;border:1px solid #ddd;background:#f5f5f5;font-size:13px;font-weight:600;">取消</button>'
+      + '<button id="mwSwitchPatchConfirm" style="flex:1;padding:10px;border-radius:10px;border:none;background:#1a1a1a;color:#fff;font-size:13px;font-weight:600;">进入</button>'
+      + '</div></div>';
+    document.body.appendChild(box);
+    document.getElementById('mwSwitchPatchCancel').onclick=function(){ box.remove(); };
+    document.getElementById('mwSwitchPatchConfirm').onclick=function(){
+      box.remove();
+      window.__monoWorldSwitching = true;
+      setActiveWorldRaw(worldId);
+    };
+  };
+  document.addEventListener('click', function(e){
+    var btn = e.target && e.target.closest && e.target.closest('[data-mw-switch]');
+    if (btn) {
+      e.preventDefault();
+      e.stopPropagation();
+      window.mwSwitchWorld(btn.getAttribute('data-mw-switch'));
+    }
+  }, true);
 })();
 </script>
 

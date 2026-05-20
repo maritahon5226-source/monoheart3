@@ -35,6 +35,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head><base href="https://d16ilfvy4mv02r.cloudfront.net/workspaces/sh0bDVYUIEw8H1dpwjAJvINuiJ6ETxg0/6c9a375e-adcc-44e2-9ec5-2d1ce63bc50b/files/">
@@ -26105,17 +26106,72 @@ _persistEffectiveApiConfig(apiConfig);
 function getApiUrl() {
   return _buildApiChatCandidates(apiConfig.url)[0] || '';
 }
+const MONO_USER_AVATAR_BACKUP_KEY = 'mono_user_avatar_backup_v12';
+const MONO_USER_PROFILE_BACKUP_KEY = 'mono_user_profile_backup_v12';
+function monoReadUserAvatarBackup() {
+  const stores = [window.localStorage, window._monoRawLocalStorage].filter(Boolean);
+  for (let i = 0; i < stores.length; i += 1) {
+    try {
+      const value = stores[i].getItem(MONO_USER_AVATAR_BACKUP_KEY) || '';
+      if (value && value.length > 50) return value;
+    } catch(e) {}
+  }
+  return '';
+}
+function monoWriteUserAvatarBackup(avatar) {
+  const stores = [window.localStorage, window._monoRawLocalStorage].filter(Boolean);
+  stores.forEach(function(store) {
+    try {
+      if (avatar && avatar.length > 50) store.setItem(MONO_USER_AVATAR_BACKUP_KEY, avatar);
+      else store.removeItem(MONO_USER_AVATAR_BACKUP_KEY);
+    } catch(e) {}
+  });
+}
+function monoReadUserProfileBackup() {
+  const stores = [window.localStorage, window._monoRawLocalStorage].filter(Boolean);
+  for (let i = 0; i < stores.length; i += 1) {
+    try {
+      const raw = stores[i].getItem(MONO_USER_PROFILE_BACKUP_KEY) || '';
+      if (!raw) continue;
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') return parsed;
+    } catch(e) {}
+  }
+  return null;
+}
+function monoWriteUserProfileBackup(profile) {
+  const snapshot = profile && typeof profile === 'object' ? Object.assign({}, profile) : {};
+  const raw = JSON.stringify(snapshot);
+  [window.localStorage, window._monoRawLocalStorage].filter(Boolean).forEach(function(store) {
+    try { store.setItem(MONO_USER_PROFILE_BACKUP_KEY, raw); } catch(e) {}
+  });
+}
+function monoApplyUserAvatarToUi(avatar, opts) {
+  if (!avatar || avatar.length < 50) return;
+  opts = opts || {};
+  try { userProfile.avatar = avatar; } catch(e) {}
+  try { document.getElementById('profileAvatarPreview').src = avatar; } catch(e) {}
+  try { document.getElementById('profilePreviewAvatar').src = avatar; } catch(e) {}
+  monoWriteUserAvatarBackup(avatar);
+  if (opts.refreshViews === false) return;
+  try { if (typeof updateProfilePreview === 'function') updateProfilePreview(); } catch(e) {}
+  try { if (typeof renderMessages === 'function') renderMessages(); } catch(e) {}
+  try { if (typeof renderGroupMessages === 'function' && typeof currentGroupId !== 'undefined' && currentGroupId) {
+    const _g = (typeof groups !== 'undefined') ? groups.find(function(x){ return x.id === currentGroupId; }) : null;
+    if (_g) renderGroupMessages(_g);
+  }} catch(e) {}
+}
 // userProfile 初始化：从 localStorage 读文字字段，头像从 IDB blob 异步加载
 let userProfile = (() => {
   try {
-    const saved = JSON.parse(localStorage.getItem('mono_user_profile') || 'null');
+    const saved = JSON.parse(localStorage.getItem('mono_user_profile') || 'null') || monoReadUserProfileBackup();
     if (saved && saved.name) return Object.assign({ bio: '', gender: '', avatar: '', momentsNickname: '', momentsSignature: '', momentsBanner: '', momentsFollowersCustom: '', momentsFollowingCustom: '' }, saved);
   } catch(e) {}
-  return { name: '用户', bio: '', gender: '', avatar: '', momentsNickname: '', momentsSignature: '', momentsBanner: '', momentsFollowersCustom: '', momentsFollowingCustom: '' };
+  return Object.assign({ name: '用户', bio: '', gender: '', avatar: '', momentsNickname: '', momentsSignature: '', momentsBanner: '', momentsFollowersCustom: '', momentsFollowingCustom: '' }, monoReadUserProfileBackup() || {});
 })();
 // 若内存中没有头像（旧格式可能内嵌在 JSON 里），先用文字头像占位
 if (!userProfile.avatar || userProfile.avatar.length < 50) {
-  userProfile.avatar = makeUserAvatar(userProfile.name);
+  userProfile.avatar = monoReadUserAvatarBackup() || makeUserAvatar(userProfile.name);
 }
 // 启动后异步从 IDB 加载真实头像
 (function _loadUserAvatarFromIdb() {
@@ -26123,26 +26179,18 @@ if (!userProfile.avatar || userProfile.avatar.length < 50) {
     if (!window._monoIdbBlobGet) { setTimeout(_tryLoad, 200); return; }
     window._monoIdbBlobGet('user_avatar').then(function(av) {
       if (av && av.length > 50) {
-        userProfile.avatar = av;
-        // 更新所有用到头像的 UI 元素
-        try { document.getElementById('profileAvatarPreview').src = av; } catch(e) {}
-        try { document.getElementById('profilePreviewAvatar').src = av; } catch(e) {}
-        // 刷新聊天界面头像（如果当前在聊天页）
-        try { if (typeof renderMessages === 'function') renderMessages(); } catch(e) {}
-        try { if (typeof renderGroupMessages === 'function' && typeof currentGroupId !== 'undefined' && currentGroupId) {
-          const _g = (typeof groups !== 'undefined') ? groups.find(function(x){ return x.id === currentGroupId; }) : null;
-          if (_g) renderGroupMessages(_g);
-        }} catch(e) {}
+        monoApplyUserAvatarToUi(av);
       } else {
         // IDB 没有头像，尝试从旧格式 localStorage 读（兼容旧数据）
         try {
           const oldFull = JSON.parse(localStorage.getItem('mono_user_profile') || 'null');
           if (oldFull && oldFull.avatar && oldFull.avatar.length > 50) {
-            userProfile.avatar = oldFull.avatar;
             // 迁移到 IDB
             if (window._monoIdbBlobSet) window._monoIdbBlobSet('user_avatar', oldFull.avatar).catch(function(){});
-            try { document.getElementById('profileAvatarPreview').src = oldFull.avatar; } catch(e) {}
-            try { document.getElementById('profilePreviewAvatar').src = oldFull.avatar; } catch(e) {}
+            monoApplyUserAvatarToUi(oldFull.avatar);
+          } else {
+            const backupAvatar = monoReadUserAvatarBackup();
+            if (backupAvatar) monoApplyUserAvatarToUi(backupAvatar);
           }
         } catch(e) {}
       }
@@ -26252,11 +26300,12 @@ function monoHasDataImage(value) {
 }
 function monoNormalizeUserProfile(raw) {
   const src = raw && typeof raw === 'object' ? Object.assign({}, raw) : {};
+  const backupAvatar = monoReadUserAvatarBackup();
   const profile = {
     name: String(src.name || '用户'),
     bio: String(src.bio || ''),
     gender: String(src.gender || ''),
-    avatar: String(src.avatar || ''),
+    avatar: String(src.avatar || backupAvatar || ''),
     momentsNickname: String(src.momentsNickname || ''),
     momentsSignature: String(src.momentsSignature || ''),
     momentsBanner: String(src.momentsBanner || ''),
@@ -26433,7 +26482,8 @@ function monoRefreshUserIdentityUi() {
 }
 async function monoPersistUserProfile(profile, opts) {
   opts = opts || {};
-  const normalized = monoNormalizeUserProfile(profile || {});
+  const explicitAvatar = typeof opts.avatarData === 'string' && opts.avatarData.length > 50 ? opts.avatarData : '';
+  const normalized = monoNormalizeUserProfile(Object.assign({}, profile || {}, explicitAvatar ? { avatar: explicitAvatar } : {}));
   const avatarToSave = normalized.avatar || '';
   const profileWithoutAvatar = {
     name: normalized.name,
@@ -26447,13 +26497,16 @@ async function monoPersistUserProfile(profile, opts) {
   };
   userProfile = Object.assign({}, normalized);
   localStorage.setItem('mono_user_profile', JSON.stringify(profileWithoutAvatar));
+  monoWriteUserProfileBackup(profileWithoutAvatar);
   if (avatarToSave && window._monoIdbBlobSet) {
+    monoWriteUserAvatarBackup(avatarToSave);
     try { await window._monoIdbBlobSet('user_avatar', avatarToSave); } catch(e) {
       try {
         localStorage.setItem('mono_user_profile', JSON.stringify(Object.assign({}, profileWithoutAvatar, { avatar: avatarToSave })));
       } catch(err) {}
     }
   } else if (!avatarToSave && window._monoIdbBlobDel) {
+    monoWriteUserAvatarBackup('');
     try { await window._monoIdbBlobDel('user_avatar'); } catch(e) {}
   }
   if (opts.refresh !== false) monoRefreshUserIdentityUi();
@@ -30700,6 +30753,17 @@ function previewProfileAvatar(input) {
       document.getElementById('profileAvatarPreview').src = dataUrl;
       document.getElementById('profilePreviewAvatar').src = dataUrl;
       userProfile.avatar = dataUrl;
+      monoWriteUserAvatarBackup(dataUrl);
+      monoWriteUserProfileBackup({
+        name: userProfile.name || '用户',
+        bio: userProfile.bio || '',
+        gender: userProfile.gender || '',
+        momentsNickname: userProfile.momentsNickname || '',
+        momentsSignature: userProfile.momentsSignature || '',
+        momentsBanner: userProfile.momentsBanner || '',
+        momentsFollowersCustom: userProfile.momentsFollowersCustom == null ? '' : userProfile.momentsFollowersCustom,
+        momentsFollowingCustom: userProfile.momentsFollowingCustom == null ? '' : userProfile.momentsFollowingCustom
+      });
       // 立即写入 IDB，不等用户点保存（防止忘记保存导致头像丢失）
       if (window._monoIdbBlobSet) {
         window._monoIdbBlobSet('user_avatar', dataUrl).catch(function() {});
@@ -30711,6 +30775,10 @@ function previewProfileAvatar(input) {
 }
 function updateProfilePreview() {
   userProfile = monoNormalizeUserProfile(userProfile);
+  if ((!userProfile.avatar || userProfile.avatar.length < 50) && monoReadUserAvatarBackup()) {
+    userProfile.avatar = monoReadUserAvatarBackup();
+  }
+  document.getElementById('profileAvatarPreview').src=userProfile.avatar;
   document.getElementById('profilePreviewAvatar').src=userProfile.avatar;
   document.getElementById('profilePreviewName').innerText=userProfile.name||'未设定名称';
   document.getElementById('profilePreviewBio').innerText=userProfile.bio||'未设定简介';
@@ -30838,10 +30906,12 @@ function mwRenderWorldsList() {
   const activeId = mwGetActiveId();
   const list = document.getElementById('mwWorldsList');
   const relEntry = document.getElementById('mwRelMapEntry');
+  if (!list) return;
   list.innerHTML = worlds.map(w => {
     const isActive = w.id === activeId;
     const safeName = w.name.replace(/</g,'&lt;').replace(/>/g,'&gt;');
     const safeDesc = (w.desc||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const safeIdAttr = String(w.id).replace(/"/g, '&quot;');
     return `<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;border:${isActive ? '2px solid #1a1a1a' : '1px solid #e8e8e8'};background:${isActive ? '#f8f8f8' : '#fff'};transition:all 0.15s;">
       <div style="width:8px;height:8px;border-radius:50%;background:${isActive ? '#1a1a1a' : '#ddd'};flex-shrink:0;"></div>
       <div style="flex:1;min-width:0;">
@@ -30849,9 +30919,9 @@ function mwRenderWorldsList() {
         ${safeDesc ? `<div style="font-size:10px;color:#999;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${safeDesc}</div>` : ''}
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0;">
-        ${!isActive ? `<button data-mw-switch="${w.id}" style="font-size:10px;font-weight:700;padding:5px 11px;border-radius:16px;border:1.5px solid #1a1a1a;background:#1a1a1a;color:#fff;cursor:pointer;font-family:inherit;">进入</button>` : ''}
-        <button data-mw-settings="${w.id}" style="font-size:10px;font-weight:700;padding:5px 11px;border-radius:16px;border:1.5px solid #ddd;background:#fff;cursor:pointer;font-family:inherit;color:#666;">设定</button>
-        ${worlds.length > 1 ? `<button data-mw-delete="${w.id}" style="font-size:10px;font-weight:700;padding:5px 11px;border-radius:16px;border:1.5px solid #ffcccc;background:#fff8f8;cursor:pointer;font-family:inherit;color:#c00;">删除</button>` : ''}
+        ${!isActive ? `<button type="button" data-mw-switch="${safeIdAttr}" onclick="event.stopPropagation(); mwSwitchWorldNow('${String(w.id).replace(/'/g, "\\'")}'); return false;" style="font-size:10px;font-weight:700;padding:5px 11px;border-radius:16px;border:1.5px solid #1a1a1a;background:#1a1a1a;color:#fff;cursor:pointer;font-family:inherit;">进入</button>` : ''}
+        <button type="button" data-mw-settings="${safeIdAttr}" onclick="event.stopPropagation(); openMwWorldSettings('${String(w.id).replace(/'/g, "\\'")}'); return false;" style="font-size:10px;font-weight:700;padding:5px 11px;border-radius:16px;border:1.5px solid #ddd;background:#fff;cursor:pointer;font-family:inherit;color:#666;">设定</button>
+        ${worlds.length > 1 ? `<button type="button" data-mw-delete="${safeIdAttr}" onclick="event.stopPropagation(); mwDeleteWorld('${String(w.id).replace(/'/g, "\\'")}'); return false;" style="font-size:10px;font-weight:700;padding:5px 11px;border-radius:16px;border:1.5px solid #ffcccc;background:#fff8f8;cursor:pointer;font-family:inherit;color:#c00;">删除</button>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -30876,46 +30946,40 @@ function mwRenderWorldsList() {
     if (ccEntry) ccEntry.style.display = active.charChatEnabled ? 'block' : 'none';
   }
 }
+function mwSwitchWorldNow(worldId) {
+  if (!worldId) return;
+  try { if (window.__monoRealLSSet) window.__monoRealLSSet('mono_multiworld_active', worldId); } catch(e) {}
+  try { localStorage.setItem('mono_multiworld_active', worldId); } catch(e) {}
+  try {
+    if (window._idb) {
+      const tx = window._idb.transaction('kv', 'readwrite');
+      tx.objectStore('kv').put(worldId, 'mono_multiworld_active');
+      tx.oncomplete = function() { location.reload(); };
+      tx.onerror = function() { location.reload(); };
+      tx.onabort = function() { location.reload(); };
+      return;
+    }
+  } catch(e) {}
+  location.reload();
+}
 // ── 切换世界 ──
-function mwSwitchWorld(worldId) {
+async function mwSwitchWorld(worldId) {
   const worlds = mwGetWorlds();
   const world = worlds.find(w => w.id === worldId);
   if (!world) { alert('找不到该世界，请重新打开"我的"。'); return; }
-  // Use a custom confirmation dialog instead of native confirm (which can be blocked in some browsers)
-  const confirmDiv = document.createElement('div');
-  confirmDiv.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
-  confirmDiv.innerHTML = `<div style="background:#fff;border-radius:16px;padding:24px;max-width:320px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,0.2);">
-    <div style="font-size:15px;font-weight:700;margin-bottom:8px;">切换世界</div>
-    <div style="font-size:13px;color:#333;margin-bottom:6px;">进入「<b>${world.name}</b>」？</div>
-    <div style="font-size:11px;color:#999;margin-bottom:20px;line-height:1.6;">切换后页面将重新加载，当前世界数据已自动保存。</div>
-    <div style="display:flex;gap:10px;">
-      <button id="mwSwitchCancel" style="flex:1;padding:10px;border-radius:10px;border:1px solid #ddd;background:#f5f5f5;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">取消</button>
-      <button id="mwSwitchConfirm" style="flex:1;padding:10px;border-radius:10px;border:none;background:#1a1a1a;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">进入</button>
-    </div>
-  </div>`;
-  document.body.appendChild(confirmDiv);
-  document.getElementById('mwSwitchCancel').onclick = function() { document.body.removeChild(confirmDiv); };
-  document.getElementById('mwSwitchConfirm').onclick = function() {
-    document.body.removeChild(confirmDiv);
-    // Directly write to real localStorage AND cache to ensure it persists
-    try { window.__monoRealLSSet ? window.__monoRealLSSet('mono_multiworld_active', worldId) : null; } catch(e) {}
-    localStorage.setItem('mono_multiworld_active', worldId);
-    // Also write directly to underlying storage to be safe
-    try {
-      const _rl = Object.getOwnPropertyDescriptor ? Object.getOwnPropertyDescriptor(window, 'localStorage') : null;
-      // Use IDB if available
-      if (window._idb) {
-        const tx = window._idb.transaction('kv', 'readwrite');
-        tx.objectStore('kv').put(worldId, 'mono_multiworld_active');
-        tx.oncomplete = function() { location.reload(); };
-        tx.onerror = function() { location.reload(); };
-      } else {
-        location.reload();
-      }
-    } catch(e) {
-      location.reload();
-    }
-  };
+  let ok = false;
+  if (window.monoInAppConfirm) {
+    ok = await window.monoInAppConfirm({
+      title: '切换世界',
+      note: '进入「' + world.name + '」后页面会重新加载，当前世界数据会先自动保存。',
+      confirmText: '进入',
+      cancelText: '取消'
+    });
+  } else {
+    ok = window.confirm('进入「' + world.name + '」？\n\n切换后页面将重新加载，当前世界数据已自动保存。');
+  }
+  if (!ok) return;
+  mwSwitchWorldNow(worldId);
 }
 // ── 新建世界 ──
 function mwCreateWorld() {
@@ -41539,6 +41603,7 @@ function sendChatSimVoiceMessage() {
   const durRaw = String((document.getElementById('chatSimVoiceDurationInput') || {}).value || '').trim();
   const duration = durRaw || calcVoiceDuration(text);
   const ts = Date.now();
+  const resolvedUserIdentity = monoResolveUserIdentityProfile(p);
   p.history.push({
     role: 'user',
     msgType: 'voice',
@@ -41547,6 +41612,7 @@ function sendChatSimVoiceMessage() {
     duration: duration,
     hasTranscript: true,
     simulated: true,
+    userMaskId: resolvedUserIdentity.maskId || '',
     timestamp: ts
   });
   p._lastUserChatTs = ts;
@@ -43827,13 +43893,15 @@ async function sendVoiceAsVoice() {
   if (!p) return;
   const duration = fmtVoiceTime(_vrSeconds || 1);
   const contentForAI = transcript || '[语音消息]';
+  const resolvedUserIdentity = monoResolveUserIdentityProfile(p);
   p.history.push({
     role: 'user',
     msgType: 'voice',
     content: contentForAI,   // AI uses this to understand the message
     duration: duration,
     hasTranscript: !!transcript,
-    transcript: transcript || ''
+    transcript: transcript || '',
+    userMaskId: resolvedUserIdentity.maskId || ''
   });
   saveData();
   renderMessages();
@@ -60602,6 +60670,8 @@ var _callState = {
   personaName: '',
   personaAvatar: '',
   personaSnapshot: null,   // ← 通話開始時的角色快照，防止通話中角色錯亂
+  userIdentitySnapshot: null,
+  userMaskId: '',
   initiator: 'user',
   startTime: null,
   timerInterval: null,
@@ -60622,6 +60692,43 @@ function _getCallPersona() {
     return typeof _getPersonaById === 'function' ? (_getPersonaById(_callState.personaId) || {}) : {};
   }
 }
+function _resolveCallUserIdentityForSource(source, persona) {
+  if (source === 'dating') {
+    return {
+      name: datingPrefs.userName || '对方',
+      displayName: datingPrefs.userName || '对方',
+      avatar: (typeof userProfile !== 'undefined' && userProfile && userProfile.avatar) ? userProfile.avatar : makeUserAvatar((datingPrefs && datingPrefs.userName) || '对'),
+      maskId: '',
+      isMask: false,
+      bio: '',
+      personaSpec: '',
+      authorType: 'user'
+    };
+  }
+  if (typeof monoResolveUserIdentityProfile === 'function') return monoResolveUserIdentityProfile(persona || null);
+  return monoNormalizeUserProfile(typeof userProfile !== 'undefined' ? userProfile : {});
+}
+function _getCallUserIdentity(personaOverride) {
+  if (_callState.userIdentitySnapshot && typeof _callState.userIdentitySnapshot === 'object') {
+    return Object.assign({}, _callState.userIdentitySnapshot);
+  }
+  return _resolveCallUserIdentityForSource(_callState.source, personaOverride || _getCallPersona());
+}
+function _buildCallUserIdentityPrompt(identity) {
+  if (!identity || !identity.isMask) return '';
+  var lines = [
+    '对方当前是以用户面具「' + (identity.name || '未命名面具') + '」的身份在和你通话，这不是默认用户资料。'
+  ];
+  if (identity.bio) lines.push('该面具简介：' + identity.bio.slice(0, 120) + '。');
+  if (identity.personaSpec) lines.push('该面具设定：' + identity.personaSpec.slice(0, 220) + '。');
+  lines.push('你必须按照这个面具的身份、称呼和气质来理解并回应对方，不能退回默认用户名。');
+  return lines.join('');
+}
+function _resetCallIdentitySnapshot() {
+  _callState.personaSnapshot = null;
+  _callState.userIdentitySnapshot = null;
+  _callState.userMaskId = '';
+}
 async function startCall(source) {
   // 每次发起通话前，从 localStorage 重新同步 ttsConfig，防止过时的全局变量导致语音合成失败
   try { ttsConfig = JSON.parse(localStorage.getItem('mono_tts_config') || '{}'); } catch(e) {}
@@ -60636,9 +60743,12 @@ async function startCall(source) {
     pid = datingCurrentPid;
   }
   if (!persona) return;
+  var callUserIdentity = _resolveCallUserIdentityForSource(source, persona);
   _callState.source = source; _callState.personaId = pid;
   _callState.personaName = persona.name; _callState.personaAvatar = persona.avatar || '';
   _callState.personaSnapshot = Object.assign({}, persona); // ← 鎖定角色快照
+  _callState.userIdentitySnapshot = Object.assign({}, callUserIdentity);
+  _callState.userMaskId = callUserIdentity.maskId || '';
   _callState.initiator = 'user';
   _callState.messages = []; _callState.seconds = 0; _callState.isTyping = false;
   var avatarEl = document.getElementById('incomingCallAvatar');
@@ -60651,10 +60761,10 @@ async function startCall(source) {
   var api = _getCurrentActiveApiConfig();
   if (api.url && api.key) {
     try {
-      var uName = source === 'dating' ? (datingPrefs.userName || '对方') : userProfile.name;
+      var uName = callUserIdentity.name || userProfile.name || '用户';
       var _callUProfileDesc = source === 'dating' ? _buildDatingUserProfileDesc() : '';
       var _callIdentityNote = source === 'dating' ? '你是对方的相親对象，' : '';
-      var prompt = '你是' + persona.name + '，人设：' + (persona.persona||'').slice(0,120) + '。' + _buildPersonaIdentityPrompt(persona) + _callIdentityNote + (_callUProfileDesc ? '对方資料：' + _callUProfileDesc + '。' : '') + uName + '主动打电话给你。除非此刻有非常明确、强烈、合理的拒接原因（例如正在激烈争吵、明确拉黑、极度厌恶、现实危险场景），否则你通常都会接。回覆JSON：{"accept":true或false,"refuseLevel":0到100} 只返回JSON。';
+      var prompt = '你是' + persona.name + '，人设：' + (persona.persona||'').slice(0,120) + '。' + _buildPersonaIdentityPrompt(persona) + _callIdentityNote + (_callUProfileDesc ? '对方資料：' + _callUProfileDesc + '。' : '') + (source === 'dating' ? '' : _buildCallUserIdentityPrompt(callUserIdentity)) + uName + '主动打电话给你。除非此刻有非常明确、强烈、合理的拒接原因（例如正在激烈争吵、明确拉黑、极度厌恶、现实危险场景），否则你通常都会接。回覆JSON：{"accept":true或false,"refuseLevel":0到100} 只返回JSON。';
       var resp = await fetch(_datingApiEndpoint(api), {method:'POST', headers:_datingApiHeaders(api), body:JSON.stringify(_datingApiBody(api, prompt, 30))});
       var result = JSON.parse(_datingApiText(await resp.json()).replace(/```json|```/g,'').trim());
       var refuseLevel = Math.max(0, Math.min(100, Number(result && result.refuseLevel) || 0));
@@ -60677,11 +60787,13 @@ async function startCall(source) {
     await new Promise(function(r){ setTimeout(r, 1500); });
     document.getElementById('incomingCallScreen').classList.remove('active');
     _addCallBubble(false, 0);
+    _resetCallIdentitySnapshot();
   }
 }
 function declineCall() {
   document.getElementById('incomingCallScreen').classList.remove('active');
   _addCallBubble(false, 0);
+  _resetCallIdentitySnapshot();
 }
 function acceptCall() {
   document.getElementById('incomingCallScreen').classList.remove('active');
@@ -60779,11 +60891,12 @@ async function _callAIGreeting() {
   if (!_callState.active) return;
   _showCallTyping();
   var persona = _getCallPersona();
+  var callUserIdentity = _getCallUserIdentity(persona);
   var api = _getCurrentActiveApiConfig();
   var greeting = null;
   if (api.url && api.key) {
     try {
-      var uName = _callState.source === 'dating' ? (datingPrefs.userName || '对方') : userProfile.name;
+      var uName = callUserIdentity.name || userProfile.name || '用户';
       var _greetUProfileDesc = _callState.source === 'dating' ? _buildDatingUserProfileDesc() : '';
       var _greetIdentityNote = _callState.source === 'dating' ? '你是对方的相親对象，你们透过相親平台认识。' : '';
       var _greetLangCode = typeof _detectPersonaLang === 'function' ? _detectPersonaLang(persona) : '';
@@ -60792,7 +60905,7 @@ async function _callAIGreeting() {
       var _greetLangInstruction = _greetNeedsTranslation ? '用你的母语（' + _greetLangCode + '）口语化说一句接电话开场白' : '口语化简体中文说一句接电话开场白';
       var _greetTranslationNote = _greetNeedsTranslation ? '，并在下一行附上简体中文翻译，格式：「译文：[内容]」' : '';
       var _callDirection = _callState.initiator === 'persona' ? '你刚刚主动打电话给了' + uName : uName + '刚刚主动打电话给你';
-      var prompt = '你是「' + persona.name + '」，人设：' + (persona.persona||'').slice(0,150) + '。' + _buildPersonaIdentityPrompt(persona) + _greetIdentityNote + (_greetUProfileDesc ? '对方資料：' + _greetUProfileDesc + '。' : '') + _greetLangOv + _callDirection + '，现在电话已经接通，' + _greetLangInstruction + '，符合你的性格，1句话，不加标点。绝对不能提到自己是AI。' + _greetTranslationNote;
+      var prompt = '你是「' + persona.name + '」，人设：' + (persona.persona||'').slice(0,150) + '。' + _buildPersonaIdentityPrompt(persona) + _greetIdentityNote + (_greetUProfileDesc ? '对方資料：' + _greetUProfileDesc + '。' : '') + (_callState.source === 'dating' ? '' : _buildCallUserIdentityPrompt(callUserIdentity)) + _greetLangOv + _callDirection + '，现在电话已经接通，' + _greetLangInstruction + '，符合你的性格，1句话，不加标点。绝对不能提到自己是AI。' + _greetTranslationNote;
       var _gApiUrl = (api.url || '').replace(/\/$/, '');
       var _gIsAnt = typeof _isAnthropicApi === 'function' ? _isAnthropicApi(api) : _gApiUrl.includes('anthropic');
       var _gResp, _gData;
@@ -60830,7 +60943,7 @@ async function sendCallMessage() {
   var text = input.value.trim(); if (!text) return;
   input.value = '';
   _addCallMsg(text, true);
-  _callState.messages.push({role:'user', content:text});
+  _callState.messages.push({role:'user', content:text, userMaskId:_callState.userMaskId || ''});
   // If isTyping is stuck (e.g. from a previous error), reset it so the reply can proceed
   if (_callState.isTyping) {
     _callState.isTyping = false;
@@ -60845,11 +60958,12 @@ async function _callAIReply(userText) {
   if (_callContSttActive && _callContSttRecog) { try { _callContSttRecog.abort(); } catch(e){} _callContSttRecog = null; }
   if (_callContSttActive) _setCallSttStatus('⏳ 角色回复中…');
   var persona = _getCallPersona();
+  var callUserIdentity = _getCallUserIdentity(persona);
   var api = _getCurrentActiveApiConfig();
   var reply = null;
   try {
     if (api.url && api.key) {
-      var uName = _callState.source === 'dating' ? (datingPrefs.userName || '对方') : userProfile.name;
+      var uName = callUserIdentity.name || userProfile.name || '用户';
       var _replyUProfileDesc = _callState.source === 'dating' ? _buildDatingUserProfileDesc() : '';
       var _replyIdentityNote = _callState.source === 'dating'
         ? '你是对方的相親对象，你们透过相親平台认识。' + (_replyUProfileDesc ? '对方資料：' + _replyUProfileDesc + '。' : '') + '绝对不能承认自己是AI或虛構角色。'
@@ -60862,7 +60976,7 @@ async function _callAIReply(userText) {
         ? '用你的母语（' + _replyLangCode + '）口语化回应，每条回复末尾另起一行附简体中文翻译，格式：「译文：[内容]」。回复1-2句话。'
         : '用你的性格自然口语地回应，1-2句，不加动作描写。';
       var _initiatorLine = _callState.initiator === 'persona' ? '这通电话是你主动打给对方的。' : '这通电话是对方主动打给你的。';
-      var sys = '你是「' + persona.name + '」，人设：' + (persona.persona||'').slice(0,200) + '。' + _buildPersonaIdentityPrompt(persona) + _replyIdentityNote + _replyLangOv + '你正在和' + uName + '电话聊天。' + _initiatorLine + _replyLangNote;
+      var sys = '你是「' + persona.name + '」，人设：' + (persona.persona||'').slice(0,200) + '。' + _buildPersonaIdentityPrompt(persona) + _replyIdentityNote + (_callState.source === 'dating' ? '' : _buildCallUserIdentityPrompt(callUserIdentity)) + _replyLangOv + '你正在和' + uName + '电话聊天。' + _initiatorLine + _replyLangNote;
       // Use standard API endpoint directly (not dating wrapper) for faster response
       var _callApiUrl = (api.url || '').replace(/\/$/, '');
       var isAnt = typeof _isAnthropicApi === 'function' ? _isAnthropicApi(api) : _callApiUrl.includes('anthropic');
@@ -61025,10 +61139,10 @@ function endCall() {
   if (_contRow) _contRow.style.display = 'none';
   var duration = _callState.seconds;
   _callState.active = false; _callState.isTyping = false;
-  _callState.personaSnapshot = null; // ← 清除角色快照
   document.getElementById('voiceCallScreen').classList.remove('active');
   document.getElementById('incomingCallScreen').classList.remove('active');
   _addCallBubble(true, duration);
+  _resetCallIdentitySnapshot();
 }
 // ── STT for Call: Web Speech API mic button ──
 var _callSpeechRecog = null;
@@ -61267,10 +61381,11 @@ async function _maybeProactiveCall(pid, source) {
       recentHistory = sess ? (sess.history || []).slice(-10) : [];
     }
     var recentStr = recentHistory.map(function(m){ return (m.role==='user'?'用戶':'角色') + '：' + (m.content||''); }).join('\n');
-    var uName = source === 'dating' ? (datingPrefs.userName || '对方') : userProfile.name;
+    var proactiveUserIdentity = _resolveCallUserIdentityForSource(source, persona);
+    var uName = proactiveUserIdentity.name || userProfile.name || '用户';
     var _pcUProfileDesc = source === 'dating' ? _buildDatingUserProfileDesc() : '';
     var _pcIdentityNote = source === 'dating' ? '你是对方的相親对象，你们透过相親平台认识。' + (_pcUProfileDesc ? '对方資料：' + _pcUProfileDesc + '。' : '') : '';
-    var prompt = '你是' + persona.name + '，人设：' + (persona.persona||'').slice(0,120) + '。' + _pcIdentityNote + '\n最近的对话：\n' + (recentStr||'（暫無）') + '\n\n根据你的性格、心情和最近的对话，你现在想主动打电话给' + uName + '吗？只返回JSON：{"call":true或false,"reason":"一句话理由"}';
+    var prompt = '你是' + persona.name + '，人设：' + (persona.persona||'').slice(0,120) + '。' + _pcIdentityNote + (source === 'dating' ? '' : _buildCallUserIdentityPrompt(proactiveUserIdentity)) + '\n最近的对话：\n' + (recentStr||'（暫無）') + '\n\n根据你的性格、心情和最近的对话，你现在想主动打电话给' + uName + '吗？只返回JSON：{"call":true或false,"reason":"一句话理由"}';
     var resp = await fetch(_datingApiEndpoint(api), {method:'POST', headers:_datingApiHeaders(api), body:JSON.stringify(_datingApiBody(api, prompt, 60))});
     var result = JSON.parse(_datingApiText(await resp.json()).replace(/```json|```/g,'').trim());
     if (!result.call) return;
@@ -61305,6 +61420,8 @@ function userAcceptCharCall() {
   _callState.source = source; _callState.personaId = pid;
   _callState.personaName = screen._persona.name; _callState.personaAvatar = screen._persona.avatar || '';
   _callState.personaSnapshot = Object.assign({}, screen._persona); // ← 鎖定角色快照
+  _callState.userIdentitySnapshot = Object.assign({}, _resolveCallUserIdentityForSource(source, screen._persona));
+  _callState.userMaskId = (_callState.userIdentitySnapshot && _callState.userIdentitySnapshot.maskId) || '';
   _callState.initiator = 'persona';
   _callState.messages = []; _callState.seconds = 0; _callState.isTyping = false;
   acceptCall();
@@ -61316,6 +61433,9 @@ function _userDeclineCharCall(pid, source, persona) {
   // Record declined call in history from char's side
   _callState.source = source; _callState.personaId = pid;
   _callState.personaName = persona.name; _callState.personaAvatar = persona.avatar || '';
+  _callState.personaSnapshot = Object.assign({}, persona || {});
+  _callState.userIdentitySnapshot = Object.assign({}, _resolveCallUserIdentityForSource(source, persona));
+  _callState.userMaskId = (_callState.userIdentitySnapshot && _callState.userIdentitySnapshot.maskId) || '';
   _callState.initiator = 'persona';
   _callState.messages = [];
   // The declined bubble: role = 'assistant' (char called, user declined)
@@ -61329,6 +61449,7 @@ function _userDeclineCharCall(pid, source, persona) {
     var pd = typeof _getPersonaById==='function' ? _getPersonaById(pid) : null;
     if (sess && pd) { sess.history.push(msgObj); saveDatingSessions(); if (datingCurrentPid == pid) renderDatingMessages(pd, sess); }
   }
+  _resetCallIdentitySnapshot();
 }
 function userDeclineCharCall() {
   var screen = document.getElementById('charIncomingCallScreen');
@@ -61344,10 +61465,12 @@ function _addCallBubble(connected, seconds) {
   var savedMsgs = connected ? (_callState.messages || []).slice() : [];
   var msgObj = {role:_callState.initiator === 'persona' ? 'assistant' : 'user', msgType:'call', initiator:_callState.initiator || 'user', connected:connected, duration:seconds,
     callMsgs: savedMsgs,
+    userMaskId: _callState.userMaskId || '',
+    userNameSnapshot: ((_callState.userIdentitySnapshot && (_callState.userIdentitySnapshot.name || _callState.userIdentitySnapshot.displayName)) || ''),
     content: connected ? '[语音通话 '+dStr+']' : '[未接通的语音通话]'};
   if (_callState.source === 'chat') {
     var p = (typeof personas!=='undefined'?personas:[]).find(function(x){ return x.id==_callState.personaId; });
-    if (p) { p.history.push(msgObj); _persistCallMemorySummary(p, msgObj, userProfile && userProfile.name); if (typeof saveData==='function') saveData(); if (typeof renderMessages==='function') renderMessages(); }
+    if (p) { p.history.push(msgObj); _persistCallMemorySummary(p, msgObj, msgObj.userNameSnapshot || (userProfile && userProfile.name)); if (typeof saveData==='function') saveData(); if (typeof renderMessages==='function') renderMessages(); }
   } else {
     msgObj.ts = Date.now();
     var sess = typeof _getSession==='function' ? _getSession(_callState.personaId) : null;

@@ -24881,8 +24881,11 @@ const STYLE_INSTRUCTIONS = `
 3. 角色对用户的称呼、语气、态度要跟人设一致。
 ━━━ 六、文笔风格与禁用词 ━━━
 1. 文笔要细腻，有情绪层次和生活感，像真实的人在说话，而不是在念稿子。
-3. 【绝对禁止以下词汇和表达】：小妖精、嘴上说不要、惹火、磨人、玩火、黑甜的梦、小东西、本宝宝、老公/老婆（除非人设明确是已婚/恋人关系）、各种肉麻到失真的腻称。
-4. 禁止输出任何 Markdown 格式符号（**加粗**、# 标题、- 列表等），只输出纯文字对话。
+2. 语气可以更灵活、更有趣、更像真人。允许自然的幽默、打趣、偏个人的小习惯、临场的小反应，不要把每句话都写得像标准答案。
+3. 句式、词汇和表达范围要更宽。不要总是重复同一类短句、同一类安抚方式、同一类拉扯套路；可以根据人设自然切换轻松、调侃、懒散、认真、嘴硬、可爱、别扭、冷淡、温柔等不同说话状态。
+4. 减少默认霸总式、居高临下、带威胁感的台词。除非人设和当下情境都非常明确要求，否则不要轻易写成“你敢……我就……”“再这样你试试”“你只能……”“不许拒绝我”这种压人一头的句子。就算角色偏强势，也优先写得自然、有个人味，而不是像模板化霸总台词。
+5. 【绝对禁止以下词汇和表达】：小妖精、嘴上说不要、惹火、磨人、玩火、黑甜的梦、小东西、本宝宝、老公/老婆（除非人设明确是已婚/恋人关系）、各种肉麻到失真的腻称。
+6. 禁止输出任何 Markdown 格式符号（**加粗**、# 标题、- 列表等），只输出纯文字对话。
 `;
 // ═══════════════════════════════════════════════════════════════
 // 內置最高优先級世界书（所有聊天室强制執行，不可覆蓋）
@@ -24977,6 +24980,12 @@ const BUILTIN_WB = `
 严禁输出：“我理解你的感受”“你的意思是……对吗”“你现在感到……”“我们应该进行有效沟通”“谢谢你告诉我这些”“我会尊重你的选择”“这说明你内心其实……”。
 这些都太像AI、客服或心理分析。
 角色应该说得更像真人。
+
+【十三点五、说话方式要更活一点】
+角色的表达可以自然一点、有趣一点、有个人味一点，不要每次都像标准答案。
+允许轻微打趣、偏个人的小习惯、临场反应和不那么工整的口语。
+句式和词汇要有变化，不要总重复同一种安抚、一种拉扯方式或一种模板化温柔。
+除非角色人设和当前情境都明确需要，否则不要默认写成霸总式、威胁式、压人一头的说话方式。
 
 【十四、聊天内容不要只围绕恋爱或冲突】
 角色不应该只会暧昧、吃醋、吵架和哄人。
@@ -31459,7 +31468,6 @@ function mwRenderWorldsList() {
     const isActive = w.id === activeId;
     const safeName = w.name.replace(/</g,'&lt;').replace(/>/g,'&gt;');
     const safeDesc = (w.desc||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    const safeIdAttr = String(w.id).replace(/"/g, '&quot;');
     return `<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;border:${isActive ? '2px solid #1a1a1a' : '1px solid #e8e8e8'};background:${isActive ? '#f8f8f8' : '#fff'};transition:all 0.15s;">
       <div style="width:8px;height:8px;border-radius:50%;background:${isActive ? '#1a1a1a' : '#ddd'};flex-shrink:0;"></div>
       <div style="flex:1;min-width:0;">
@@ -31467,9 +31475,9 @@ function mwRenderWorldsList() {
         ${safeDesc ? `<div style="font-size:10px;color:#999;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${safeDesc}</div>` : ''}
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0;">
-        ${!isActive ? `<button type="button" data-mw-switch="${safeIdAttr}" onclick="event.stopPropagation(); mwSwitchWorldNow('${String(w.id).replace(/'/g, "\\'")}'); return false;" style="font-size:10px;font-weight:700;padding:5px 11px;border-radius:16px;border:1.5px solid #1a1a1a;background:#1a1a1a;color:#fff;cursor:pointer;font-family:inherit;">进入</button>` : ''}
-        <button type="button" data-mw-settings="${safeIdAttr}" onclick="event.stopPropagation(); openMwWorldSettings('${String(w.id).replace(/'/g, "\\'")}'); return false;" style="font-size:10px;font-weight:700;padding:5px 11px;border-radius:16px;border:1.5px solid #ddd;background:#fff;cursor:pointer;font-family:inherit;color:#666;">设定</button>
-        ${worlds.length > 1 ? `<button type="button" data-mw-delete="${safeIdAttr}" onclick="event.stopPropagation(); mwDeleteWorld('${String(w.id).replace(/'/g, "\\'")}'); return false;" style="font-size:10px;font-weight:700;padding:5px 11px;border-radius:16px;border:1.5px solid #ffcccc;background:#fff8f8;cursor:pointer;font-family:inherit;color:#c00;">删除</button>` : ''}
+        ${!isActive ? `<button type="button" data-mw-switch="${String(w.id).replace(/"/g, '&quot;')}" style="font-size:10px;font-weight:700;padding:5px 11px;border-radius:16px;border:1.5px solid #1a1a1a;background:#1a1a1a;color:#fff;cursor:pointer;font-family:inherit;">进入</button>` : ''}
+        <button type="button" data-mw-settings="${String(w.id).replace(/"/g, '&quot;')}" style="font-size:10px;font-weight:700;padding:5px 11px;border-radius:16px;border:1.5px solid #ddd;background:#fff;cursor:pointer;font-family:inherit;color:#666;">设定</button>
+        ${worlds.length > 1 ? `<button type="button" data-mw-delete="${String(w.id).replace(/"/g, '&quot;')}" style="font-size:10px;font-weight:700;padding:5px 11px;border-radius:16px;border:1.5px solid #ffcccc;background:#fff8f8;cursor:pointer;font-family:inherit;color:#c00;">删除</button>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -40863,17 +40871,23 @@ ${recentChat}
 }
 async function tryPersonaSendTextImage(p, recentChat) {
   if (!p || !apiConfig.url || !apiConfig.key || !apiConfig.model) return;
-  const recentMsgs = Array.isArray(p.history) ? p.history.slice(-8) : [];
+  const recentMsgs = Array.isArray(p.history) ? p.history.slice(-12) : [];
   if (!recentMsgs.length) return;
   const recentText = recentMsgs.map(function(m) { return String(m.content || ''); }).join(' ');
   if (/去世|死|病危|自杀|分手|离婚|葬礼|急救|住院|崩溃|绝望|遗书/.test(recentText)) return;
-  if (recentMsgs.slice(-3).some(function(m) { return m && m.role === 'assistant' && m.msgType === 'image'; })) return;
-  const strongCue = /照片|图片|自拍|穿搭|看看|发来|发我|给我看|图呢|拍给我|想看|看下|猫猫|狗狗|晚霞|天空|奶茶|饭|外卖/.test(recentText);
+  if (recentMsgs.some(function(m) { return m && m.role === 'assistant' && m.msgType === 'image'; })) return;
+  const recentAssistantImages = (Array.isArray(p.history) ? p.history.slice(-30) : []).filter(function(m) {
+    return m && m.role === 'assistant' && m.msgType === 'image';
+  }).length;
+  if (recentAssistantImages >= 2) return;
+  const explicitCue = /照片|图片|自拍|穿搭|看看|发来|发我|给我看|图呢|拍给我|想看|看下/.test(recentText);
+  const sceneCue = /猫猫|狗狗|晚霞|天空|奶茶|饭|外卖|火锅|咖啡|甜品|风景|路上|教室|工位|桌面|妆容|衣服/.test(recentText);
   const personaText = String(p.persona || '');
-  let baseProb = strongCue ? 0.68 : 0.06;
-  if (/分享欲|摄影|爱拍照|活泼|可爱|俏皮|喜欢记录|浪漫|感性|黏人|热情/.test(personaText)) baseProb += 0.05;
+  let baseProb = explicitCue ? 0.26 : (sceneCue ? 0.1 : 0.02);
+  if (/分享欲|摄影|爱拍照|活泼|可爱|俏皮|喜欢记录|浪漫|感性|黏人|热情/.test(personaText)) baseProb += 0.03;
   if (/高冷|冷淡|克制|寡言|理智|稳重|严肃/.test(personaText)) baseProb -= 0.03;
-  if (Math.random() > Math.max(0.02, Math.min(baseProb, 0.75))) return;
+  if (!explicitCue && !sceneCue) return;
+  if (Math.random() > Math.max(0.01, Math.min(baseProb, 0.3))) return;
   const prompt = `${LANG_SYSTEM_PREFIX}你是${p.name}，人设：${p.persona}。
 你现在可以选择是否额外发送一张“文字描述生成的模拟图片”给${userProfile.name}。这张图会以真实图片消息的形式出现在聊天里。\n【核心要求：图片必须与当前聊天内容强相关】\n- 图片内容必须直接来源于当前对话：对话在聊什么、提到了什么地点/事物/行为，图片就顺势拍什么。\n- 不要凭空发一张和话题毫无关联的图。如果当前话题想不到自然对应的画面，直接返回 send:false。\n- 举例：聊到“在吃火锅”→ 拍桌上的锅和食材；聊到“今天去爬山”→ 山顶或山路的画面；聊到“你穿了什么”→ 自己当天的穿搭；用户说“发我看看”→ 结合上文正在聊的具体内容拍给对方。\n【发送原则】\n1. 只有当前对话有明确可视化的内容，或用户明确要求看时才发。\n2. 如果当前只是普通问答、严肃沟通、争执、解释、安慰沉重情绪，不要发。\n3. desc 必须是“画面里看得见的东西”，像真实照片描述，细节具体，不写抄象感想，不写“我给你发一张图”这种说明。\n4. desc 控制在 18 到 60 字。\n请只返回 JSON，不要解释：{"send":true/false,"desc":"图片画面描述（必须与聊天内容直接相关）","caption":"可留空的短配文"}\n\n【最近聊天】\n${recentChat || '（暂无）'}`;
   try {
@@ -45515,6 +45529,7 @@ ${modePrompt}${quoteTip}${fwdContext}${timeContext}${transferContext}${wbInjecti
       if (p.allowVoice) await tryPersonaSendVoice(p, normalizedReplyMessages);
       if (p.allowSticker) await tryPersonaSendSticker(p);
       await tryPersonaSendTextImage(p, latestRecentChat);
+      await tryPersonaInitiateTransfer(p, latestRecentChat);
     }
     spyDataCache = {};
     try { renderContactList(); } catch(e) {}
@@ -108790,6 +108805,172 @@ body.mono-fwd-modal-open {
   setTimeout(function(){ installLoadOverride(); installSaveOverride(); installCreateEditGuards(); restoreBestMasks('t1200'); }, 1200);
 })();
 /* === /MONO v11 USER MASK PERSISTENCE FIX === */
+</script>
+
+
+<script>
+/* === MONO MULTIWORLD SWITCH FINAL FIX v3 ===
+   参考 05-19 版本对齐多世界切换：
+   - 世界列表同时从 raw localStorage、proxy localStorage 读取并合并
+   - 点击按钮时直接信任 data-mw-switch 的世界 id
+   - 若世界列表暂时缺失该 id，会先补回世界列表再切换
+   - active / enabled 同时写回 raw / proxy / IDB，确保刷新后仍停留在目标世界
+*/
+(function(){
+  'use strict';
+  if (window.__monoMultiWorldSwitchFinalFixV3) return;
+  window.__monoMultiWorldSwitchFinalFixV3 = true;
+
+  function rawLS(){ return window._monoRawLocalStorage || window.localStorage; }
+  function parseList(raw){
+    try {
+      var arr = JSON.parse(raw || '[]');
+      return Array.isArray(arr) ? arr : [];
+    } catch(e){
+      return [];
+    }
+  }
+  function uniqMerge(a, b){
+    var map = {};
+    var out = [];
+    (a || []).concat(b || []).forEach(function(w){
+      if (!w || !w.id) return;
+      var id = String(w.id);
+      if (!map[id]) {
+        map[id] = Object.assign({}, w, { id: id });
+        out.push(map[id]);
+      } else {
+        Object.assign(map[id], w, { id: id });
+      }
+    });
+    return out;
+  }
+  function getWorldsMerged(){
+    var raw = [];
+    var prox = [];
+    try { raw = parseList(rawLS().getItem('mono_multiworld_worlds')); } catch(e) {}
+    try { prox = parseList(window.localStorage.getItem('mono_multiworld_worlds')); } catch(e) {}
+    return uniqMerge(raw, prox);
+  }
+  function saveWorldsEverywhere(worlds){
+    var json = JSON.stringify(worlds || []);
+    try { rawLS().setItem('mono_multiworld_worlds', json); } catch(e) {}
+    try { window.localStorage.setItem('mono_multiworld_worlds', json); } catch(e) {}
+    try {
+      if (window._idb) {
+        var tx = window._idb.transaction('kv', 'readwrite');
+        tx.objectStore('kv').put(json, 'mono_multiworld_worlds');
+      }
+    } catch(e) {}
+  }
+  function ensureWorldExists(worldId, fallbackName){
+    worldId = String(worldId || '').trim();
+    if (!worldId) return null;
+    var worlds = getWorldsMerged();
+    var world = worlds.find(function(w){ return w && String(w.id) === worldId; });
+    if (!world) {
+      world = { id: worldId, name: fallbackName || '未命名世界', desc: '', userPersona: '', createdAt: Date.now() };
+      worlds.push(world);
+    }
+    saveWorldsEverywhere(worlds);
+    return world;
+  }
+  function writeActive(worldId, done){
+    worldId = String(worldId || '').trim();
+    try { rawLS().setItem('mono_multiworld_enabled', 'true'); } catch(e) {}
+    try { rawLS().setItem('mono_multiworld_active', worldId); } catch(e) {}
+    try { window.localStorage.setItem('mono_multiworld_enabled', 'true'); } catch(e) {}
+    try { window.localStorage.setItem('mono_multiworld_active', worldId); } catch(e) {}
+    try { if (window.__monoRealLSSet) window.__monoRealLSSet('mono_multiworld_active', worldId); } catch(e) {}
+    var finished = false;
+    function finish(){
+      if (finished) return;
+      finished = true;
+      if (typeof done === 'function') done();
+    }
+    try {
+      if (window._idb) {
+        var tx = window._idb.transaction('kv', 'readwrite');
+        var st = tx.objectStore('kv');
+        st.put('true', 'mono_multiworld_enabled');
+        st.put(worldId, 'mono_multiworld_active');
+        tx.oncomplete = finish;
+        tx.onerror = finish;
+        tx.onabort = finish;
+        setTimeout(finish, 400);
+        return;
+      }
+    } catch(e) {}
+    finish();
+  }
+  function finalSwitch(worldId, fallbackName){
+    worldId = String(worldId || '').trim();
+    if (!worldId) {
+      alert('世界 ID 为空，请重新打开“我的”再试。');
+      return;
+    }
+    ensureWorldExists(worldId, fallbackName);
+    writeActive(worldId, function(){
+      try { sessionStorage.setItem('mono_after_world_switch', worldId); } catch(e) {}
+      location.reload();
+    });
+  }
+  function confirmSwitch(worldId, fallbackName){
+    worldId = String(worldId || '').trim();
+    if (!worldId) {
+      alert('世界 ID 为空，请重新打开“我的”再试。');
+      return;
+    }
+    var world = ensureWorldExists(worldId, fallbackName);
+    var name = (world && world.name) || fallbackName || '该世界';
+    var old = document.getElementById('monoMwFinalConfirm');
+    if (old) old.remove();
+    var div = document.createElement('div');
+    div.id = 'monoMwFinalConfirm';
+    div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:20px;';
+    div.innerHTML = '<div style="width:min(320px,92vw);background:#fff;border-radius:18px;padding:22px;box-shadow:0 18px 60px rgba(0,0,0,.25);font-family:inherit;">'
+      + '<div style="font-weight:800;font-size:16px;margin-bottom:8px;">切换世界</div>'
+      + '<div style="font-size:13px;line-height:1.6;color:#333;margin-bottom:18px;">进入「<b></b>」？页面会重新载入到该世界。</div>'
+      + '<div style="display:flex;gap:10px;">'
+      + '<button type="button" data-final-cancel style="flex:1;padding:10px;border-radius:12px;border:1px solid #ddd;background:#f6f6f6;font-weight:700;font-family:inherit;">取消</button>'
+      + '<button type="button" data-final-ok style="flex:1;padding:10px;border-radius:12px;border:0;background:#1a1a1a;color:#fff;font-weight:800;font-family:inherit;">进入</button>'
+      + '</div></div>';
+    document.body.appendChild(div);
+    var b = div.querySelector('b');
+    if (b) b.textContent = name;
+    div.querySelector('[data-final-cancel]').onclick = function(){ div.remove(); };
+    div.querySelector('[data-final-ok]').onclick = function(){ div.remove(); finalSwitch(worldId, name); };
+  }
+  function getButtonWorldName(btn){
+    try {
+      var card = btn.closest('div[style*="display:flex"]');
+      var title = card && card.querySelector('div[style*="font-size:13px"]');
+      return title ? (title.textContent || '').replace('当前', '').trim() : '';
+    } catch(e) {
+      return '';
+    }
+  }
+  function install(){
+    try { window.mwSwitchWorld = function(id){ confirmSwitch(id); }; } catch(e) {}
+    try { mwSwitchWorld = window.mwSwitchWorld; } catch(e) {}
+  }
+
+  document.addEventListener('click', function(e){
+    var btn = e.target && e.target.closest && e.target.closest('[data-mw-switch]');
+    if (!btn) return;
+    var id = btn.getAttribute('data-mw-switch');
+    if (!id) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+    confirmSwitch(id, getButtonWorldName(btn));
+  }, true);
+
+  install();
+  document.addEventListener('DOMContentLoaded', install);
+  setTimeout(install, 250);
+  setTimeout(install, 1000);
+})();
 </script>
 
 </body>

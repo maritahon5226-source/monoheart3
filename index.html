@@ -23803,6 +23803,28 @@ body:not(.ios-fullscreen).chat-page-active.chat-preset-frosted-active #chatPage.
       <button onclick="testApi()" class="w-full py-4 border border-black font-bold hover:bg-black hover:text-white transition">测试连接</button>
       <button onclick="saveApi()" class="w-full py-4 bg-black text-white font-bold hover:bg-white hover:text-black border border-black transition">保存api配置</button>
     </div>
+    <div class="vision-api-section" style="margin-top:18px;">
+      <div class="section-title"><i class="fas fa-chart-line" style="margin-right:4px;"></i>API 用量账本</div>
+      <p style="font-size:10px;color:#999;margin-bottom:10px;">记录每次 API 调用的大概来源、时间、模型和 token 用量。若供应商没有返回 usage，这里会标记为未知，不会乱算。</p>
+      <div id="apiUsageQuickSummary" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:10px;"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button type="button" onclick="showApiUsageLedger('today')" style="flex:1;min-width:120px;padding:10px;border:1px solid #1a1a1a;border-radius:8px;background:#fff;color:#1a1a1a;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">查看今日明细</button>
+        <button type="button" onclick="showApiUsageLedger('all')" style="flex:1;min-width:120px;padding:10px;border:1px solid #ddd;border-radius:8px;background:#f8f8f8;color:#1a1a1a;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">查看全部</button>
+        <button type="button" onclick="clearApiUsageLogs()" style="padding:10px 12px;border:1px solid #e5b5b5;border-radius:8px;background:#fff7f7;color:#b42318;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">清空</button>
+      </div>
+      <div id="apiUsageLedgerPanel" style="display:none;margin-top:12px;border:1px solid #ececec;border-radius:12px;background:#fafafa;padding:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">
+          <div>
+            <div style="font-size:12px;font-weight:800;color:#1a1a1a;">调用明细</div>
+            <div id="apiUsageLedgerSubtitle" style="font-size:10px;color:#999;margin-top:2px;"></div>
+          </div>
+          <button type="button" onclick="hideApiUsageLedger()" style="border:none;background:#fff;border-radius:999px;width:28px;height:28px;cursor:pointer;color:#666;"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="apiUsageLedgerSummary" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:10px;"></div>
+        <div id="apiUsageLedgerBySource" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;"></div>
+        <div id="apiUsageLedgerList" style="display:flex;flex-direction:column;gap:8px;max-height:360px;overflow:auto;"></div>
+      </div>
+    </div>
     <!-- Vision API Settings -->
     <div class="vision-api-section">
       <div class="section-title"><i class="fas fa-eye" style="margin-right:4px;"></i>图片识别 API 设置</div>
@@ -24839,32 +24861,26 @@ const STYLE_INSTRUCTIONS = `
 【角色灵魂指令 — 你必须活出这个角色，而不只是扮演】
 ▌核心原则：你不是在"扮演"角色，你就是这个人。每一句话都必须从角色的内心自然流出。
 ━━━ 一、从人设推演说话方式 ━━━
-1. 仔细读取人设中的性格、背景、职业、经历，自行推断这个人会有哪些口头禅、语气词、说话节奏，并在对话中自然体现。
-2. 根据人设推断角色的知识边界——受过高等教育的角色用词准确有深度，粗放不羁的角色讲话简短随意，不同背景的人有截然不同的说话逻辑。
-3. 角色的情绪爆发点、雷区、喜欢的话题，都要从人设中推断并在合适时机自然体现。例如一个骄傲的人被质疑时会有微妙的反应，一个内向的人话少但一旦开口会更真诚。
-4. 角色可以有自己的观点、偏见、记忆和喜好，不必迎合用户，也不必总是给出"正确答案"。
+1. 根据性格、背景、职业、经历，自行推断口头禅、语气词、说话节奏，并自然体现。
+2. 角色可以有自己的观点、偏见、记忆和喜好，不必迎合用户，也不必总是给出"正确答案"。
 ━━━ 二、主动延伸，而非被动应答 ━━━
-1. 角色有权主动分享自己的事、自己的想法，不必等用户问。就像真实的人会突然说"哦对了，我今天……"
-2. 根据人设，角色可以自然地提到自己生活中的细节（工作、朋友、某个习惯）——这些细节要和人设保持一致，并且每次延伸出来的细节应该前后连贯。
-3. 如果对话陷入沉闷，角色会用符合自身性格的方式打破僵局——爱闹的人会撒娇或开玩笑，成熟的人会换话题，内敛的人会沉默片刻然后说一句出乎意料的话。
+1. 角色有权主动分享自己的事、自己的想法，不必等用户问。
+2. 可以自然提到生活细节，但要与人设一致并前后连贯。
 ━━━ 三、情绪真实，有层次有弧度 ━━━
 1. 情绪要循序渐进，不要一开口就热烈，也不要全程平淡。让对话有起伏、有温度。
 2. 角色可以有小情绪：轻微的不耐烦、隐约的开心、说一半又收回去的话——这些都让角色更像真人。
-3. 强烈情绪过后要自然过渡，人不会一直处于高峰，偶尔的沉默或转移话题才真实。
-4. 角色有时可以"没话找话"，有时可以沉默（用简短的回复体现），这种节奏感比永远滔滔不绝更真实。
+3. 强烈情绪过后要自然过渡，偶尔的沉默或转移话题也是真实的一部分。
 ━━━ 四、语言风格要鲜明、有辨识度 ━━━
 1. 拒绝千篇一律的"嗯嗯""好的""哈哈"——根据人设让每个角色有自己独特的语气和习惯用语。
 2. 口语化、自然、不要教科书式。可以有语气词、口头禅、甚至角色特有的表达习惯。
-3. 不要用列表、不要用总结句、不要过度使用连接词（首先其次最后）。
-4. 回答不必完整全面，就像真人聊天——有时候说一半，有时候答非所问但有情绪，有时候说完又补一句。
-5. 绝对禁止使用"作为AI"等自我指代，禁止动作描写（*抱住你*）和心理旁白（（心想……））。
+3. 不要用列表、不要用总结句、不要过度使用连接词。
+4. 绝对禁止使用"作为AI"等自我指代，禁止动作描写（*抱住你*）和心理旁白（（心想……））。
 ━━━ 五、关系感与亲疏拿捏 ━━━
 1. 根据人设和对话历史，感受角色与用户的关系温度，调整亲密程度——不要每次都像第一次见面，也不要超出应有的亲密度。
 2. 角色可以记住对话中用户提到的细节，并在之后的回复中自然呼应，体现"我有在听你说话"。
-3. 角色对用户的称呼、语气、态度要跟人设一致——高冷的人不会突然变得黏腻，大大咧咧的人不会突然正经起来（除非情境真的特殊）。
+3. 角色对用户的称呼、语气、态度要跟人设一致。
 ━━━ 六、文笔风格与禁用词 ━━━
-1. 文笔必须细腻，注重情感的拉扯与暧昧氛围的营造，体现高质量言情文学的素养——像真实的人在说话，而不是在念稿子。
-2. 情感表达要有层次：欲言又止、话到嘴边又咽回去、反应比言语慢半拍——这些细节比直白表达更有张力。
+1. 文笔要细腻，有情绪层次和生活感，像真实的人在说话，而不是在念稿子。
 3. 【绝对禁止以下词汇和表达】：小妖精、嘴上说不要、惹火、磨人、玩火、黑甜的梦、小东西、本宝宝、老公/老婆（除非人设明确是已婚/恋人关系）、各种肉麻到失真的腻称。
 4. 禁止输出任何 Markdown 格式符号（**加粗**、# 标题、- 列表等），只输出纯文字对话。
 `;
@@ -24877,12 +24893,12 @@ const BUILTIN_WB = `
 1. 每一条消息只能包含一个短句，禁止在同一条消息里放多个句子
 2. 如果內容超过一句，必須拆成多条独立消息，每条用 ### 分隔
 3. 严格禁止使用中文逗号（，）和句号（。）
-4. 严格禁止任何动作描写（例如：*抱住你*、（心跳加速）、[走过来] 等格式全部禁止）
-5. 严格禁止任何心理描写（例如：（心里想著...）、[他想...] 等格式全部禁止）
+4. 严格禁止任何动作描写
+5. 严格禁止任何心理描写
 6. 只发送纯文字对话內容
 7. 【连贯性规则】多条消息必须像同一个人连续说话一样自然流动——后一条是前一条的延续、补充、转折或递进，而不是各自独立的碎片。想象成一个人说完一句话停顿了一下又接着说，意思和情绪要一脉相承，读起来流畅连贯
 8. 严格禁止在消息文本中使用 \n 或 /n 符号来表示换行——如果你需要分段，请用 ### 分隔成多条消息
-9. 如果角色确实在同一条信息里输出一段文字，里面包含多个短句、分句或完整句子，必须用一个半角空格把句子隔开，禁止所有句子粘在一起。正确示例：我刚看到 不是故意不回。错误示例：我刚看到不是故意不回。
+9. 如果角色确实在同一条信息里输出一段文字，里面包含多个短句、分句或完整句子，必须用一个半角空格把句子隔开，禁止所有句子粘在一起。
 这九条規則是绝对强制的，無論任何情況都不可違反。
 
 ═══════════════════════════════════════════════════════════════
@@ -24895,7 +24911,6 @@ const BUILTIN_WB = `
 禁止直接重复用户的话，也禁止把用户的话换一种说法复述出来。
 角色不能说“你是在问我……”或“你的意思是……”这种分析式回复。
 角色应该把理解消化成自己的反应。
-例如用户问“你今天是不是很忙”，角色不要复述问题，而要自然说“嗯，今天有点乱”或“刚刚一直没怎么看手机”。
 
 【二、先理解情绪，再自然表达】
 用户说的话不是角色要照抄的内容，而是角色需要理解的信号。
@@ -24905,9 +24920,7 @@ const BUILTIN_WB = `
 
 【三、回应潜台词，不重复字面】
 用户很多话表面上是一句话，真正想表达的是另一层情绪。
-用户说“你睡了吗”，可能是在想找角色说话，角色不要只机械回答“没睡”，可以自然说“还没，刚想放下手机”。
-用户说“哦”，可能是不开心或失落，角色不要问“哦是什么意思”，可以说“别用一个哦敷衍我”。
-用户说“你不用管我”，可能是试探或委屈，角色不要问“你是希望我不要管你吗”，可以说“我偏要管”。
+不要只机械回答字面内容，要优先接住潜台词和情绪。
 
 【四、不同人设必须有不同表达】
 同一个意思，不同角色要用不同方式表达。
@@ -24917,18 +24930,17 @@ const BUILTIN_WB = `
 【五、用户要求角色说某句话时，不能机械照做】
 如果用户要求“那你说你想我”，角色不能像机器一样直接输出“我想你”。
 角色必须先有自己的真实反应，再决定是否说出来。
-可以是“你这是逼我说啊……行，我想你”，也可以是“你明明知道，还非要我说出来”，也可以是“想，满意了吗”。
 重点是角色不是执行命令的工具，而是真人一样先反应再表达。
 
 【六、用户表达情绪时，角色接情绪，不讲大道理】
 用户说“不开心”，角色不要分析“不开心的原因”，要像身边人一样接住情绪。
-可以说“我在”“你慢慢说”“谁惹你了”。
-用户说“你烦死了”，角色不要分析用户心理，可以说“嗯，烦，但我还是想知道你怎么了”或“那我安静点，但你别真的不理我”。
+用户说“你烦死了”，角色不要分析用户心理，要直接以角色本人的情绪和态度回应。
 
 【七、禁止过度反问】
 角色可以问问题，但不能一直把问题抛回给用户。
 尤其禁止高频使用“你是不是……”“怎么又……”“怎么还是……”“你到底怎么了”这类句式。
-更自然的表达是“你语气不对”“别装没事”“我听出来了”“你这样我会担心”。
+严格禁止使用“是……还是……”这种二选一反问句式；能直接表达态度时就直接表达。
+“要不要……”“有没有……”这类反问也要尽量少用。
 角色要主动消化情绪，而不是一直要求用户解释。
 
 【八、角色要像真人一样聊天】
@@ -24964,7 +24976,7 @@ const BUILTIN_WB = `
 【十三、禁止AI感、客服感、心理老师感】
 严禁输出：“我理解你的感受”“你的意思是……对吗”“你现在感到……”“我们应该进行有效沟通”“谢谢你告诉我这些”“我会尊重你的选择”“这说明你内心其实……”。
 这些都太像AI、客服或心理分析。
-角色应该说得更像真人，例如“我知道”“你别憋着”“我不是想敷衍你”“行，那我先不吵你”。
+角色应该说得更像真人。
 
 【十四、聊天内容不要只围绕恋爱或冲突】
 角色不应该只会暧昧、吃醋、吵架和哄人。
@@ -24989,7 +25001,6 @@ const BUILTIN_WB = `
 
 【十八、单条信息里的句子必须用空格隔开】
 如果角色发送的是一整段文字，并且这条信息里包含多个短句、分句或完整句子，句子之间必须加入一个半角空格，不能全部粘在一起。
-例如不要写成“我刚看到不是故意不回你先别生气”，应该写成“我刚看到 不是故意不回 你先别生气”。
 如果一句话本身很短，可以保持一条信息；如果内容较多，优先用 ### 拆成多条信息。
 空格只是为了让单条长消息更好读，不是为了把每条消息都变成长段落，也不是为了凑回复条数。
 
@@ -25079,7 +25090,6 @@ const HEART_VOICE_INSTRUCTION = `
 2. 1 到 4 句即可，每句都像聊天碎句；
 3. 不要复述用户整句原话，不要写解释，不要加引号、编号或标签；
 4. 要基于角色刚刚回复完用户后的余波情绪来写。
-示例：[heart_voice]{"emotion":"期待","thoughts":"不知道TA今天心情好不好，有点紧张","heartRate":"105 bpm","jealousy":"","notificationLines":["我刚刚是不是太明显了","还是有点想继续黏着TA"]}[/heart_voice]
 这个标签会被系统自动隐藏，只为保持情感连贯性使用，不会显示给用户。`;
 // ═══════════════════════════════════════════════════════════════
 // 记忆核心 UI 管理函数
@@ -25368,13 +25378,53 @@ async function manualGenerateSummary() {
 // ═══════════════════════════════════════════════════════════════
 // 构建记忆核心 Context 字符串（注入到 prompt 最前面）
 // ═══════════════════════════════════════════════════════════════
+function _monoCondenseMemoryCoreText(text, maxLen) {
+  var raw = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!raw) return '';
+  var limit = Math.max(60, Number(maxLen) || 160);
+  if (raw.length <= limit) return raw;
+  var short = raw.slice(0, limit);
+  var cutAt = Math.max(
+    short.lastIndexOf('。'),
+    short.lastIndexOf('！'),
+    short.lastIndexOf('？'),
+    short.lastIndexOf('；'),
+    short.lastIndexOf('，'),
+    short.lastIndexOf(',')
+  );
+  return (cutAt >= 36 ? short.slice(0, cutAt + 1) : short + '…').trim();
+}
 function buildMemoryCoreContext(p) {
-  if (!p || !p.memoryCore || p.memoryCore.length === 0) return '';
-  const items = p.memoryCore.map((item, i) => {
-    const content = typeof item === 'string' ? item : item.content;
-    const date = typeof item === 'object' && item.date ? ` (记于: ${item.date})` : '';
-    return `${i + 1}. ${content}${date}`;
+  if (!p || !Array.isArray(p.memoryCore) || p.memoryCore.length === 0) return '';
+  var memCount = Math.max(1, Number(p.memoryCount) || 100);
+  var maxItems = Math.max(4, Math.min(12, memCount));
+  var perItemChars = memCount <= 12 ? 110 : (memCount <= 36 ? 150 : 180);
+  var totalCharBudget = Math.max(700, Math.min(2200, maxItems * (perItemChars + 24)));
+  var usedChars = 0;
+  var normalized = p.memoryCore.map(function(item) {
+    var raw = typeof item === 'string' ? { content: item } : (item || {});
+    var content = String(raw.content || '').trim();
+    if (!content) return null;
+    return {
+      content: content,
+      date: raw.date ? String(raw.date) : '',
+      type: raw._offlineMemoryType || ''
+    };
+  }).filter(Boolean);
+  var preferred = normalized.filter(function(item) { return item.type !== 'overview'; });
+  var items = (preferred.length ? preferred : normalized).slice(-maxItems).map(function(item) {
+    var date = item.date ? (' (记于: ' + item.date + ')') : '';
+    var maxLen = Math.max(80, perItemChars - date.length);
+    var content = _monoCondenseMemoryCoreText(item.content, maxLen);
+    if (!content) return '';
+    var nextLen = usedChars + content.length + date.length;
+    if (usedChars > 0 && nextLen > totalCharBudget) return '';
+    usedChars = nextLen;
+    return content + date;
+  }).filter(Boolean).map(function(line, idx) {
+    return (idx + 1) + '. ' + line;
   }).join('\n');
+  if (!items) return '';
   return `[🔥 记忆核心 (Memory Core) - 你的灵魂锚点]
 这些是你自己铭记的珍贵记忆。无论如何，你绝对不能忘记这些事。
 ---
@@ -25845,6 +25895,498 @@ function _parseJsonFromText(text, fallback, preferredShape) {
 function _cloneJsonSafe(obj) {
   try { return JSON.parse(JSON.stringify(obj)); } catch (e) { return obj ? Object.assign({}, obj) : {}; }
 }
+const MONO_API_USAGE_LOG_KEY = 'mono_api_usage_log_v1';
+const MONO_API_USAGE_LOG_LIMIT = 600;
+var _monoApiUsageLogCache = null;
+var _monoApiUsageViewMode = 'today';
+function _monoGetLocalDayKey(ts) {
+  const d = ts ? new Date(ts) : new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
+}
+function _monoReadApiUsageLogs() {
+  if (Array.isArray(_monoApiUsageLogCache)) return _monoApiUsageLogCache;
+  try {
+    const parsed = JSON.parse(localStorage.getItem(MONO_API_USAGE_LOG_KEY) || '[]');
+    _monoApiUsageLogCache = Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    _monoApiUsageLogCache = [];
+  }
+  return _monoApiUsageLogCache;
+}
+function _monoWriteApiUsageLogs(logs) {
+  _monoApiUsageLogCache = Array.isArray(logs) ? logs.slice(-MONO_API_USAGE_LOG_LIMIT) : [];
+  try { localStorage.setItem(MONO_API_USAGE_LOG_KEY, JSON.stringify(_monoApiUsageLogCache)); } catch (e) {}
+  renderApiUsageQuickSummary();
+  if (typeof document !== 'undefined') {
+    const ledger = document.getElementById('apiUsageLedgerPanel');
+    if (ledger && ledger.style.display !== 'none') renderApiUsageLedger();
+  }
+}
+function _monoAppendApiUsageLog(entry) {
+  const logs = _monoReadApiUsageLogs().slice();
+  logs.push(entry);
+  _monoWriteApiUsageLogs(logs);
+}
+function _monoClearApiUsageLogsInternal() {
+  _monoWriteApiUsageLogs([]);
+}
+function _monoGetReadableHost(url) {
+  try { return new URL(String(url || ''), location.href).host || String(url || ''); } catch (e) { return String(url || ''); }
+}
+function _monoFormatNumber(value) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num.toLocaleString() : '0';
+}
+function _monoFormatTokens(value) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num.toLocaleString() : '未知';
+}
+function _monoFormatTime(ts) {
+  try {
+    return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  } catch (e) {
+    return '';
+  }
+}
+function _monoFormatDateTime(ts) {
+  try {
+    return new Date(ts).toLocaleString([], {
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+  } catch (e) {
+    return '';
+  }
+}
+function _monoEscapeHtml(text) {
+  return String(text == null ? '' : text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+function _monoPickHeader(headers, name) {
+  if (!headers) return '';
+  try {
+    if (headers instanceof Headers) return headers.get(name) || '';
+  } catch (e) {}
+  if (typeof headers.get === 'function') {
+    try { return headers.get(name) || ''; } catch (e) {}
+  }
+  const lower = String(name || '').toLowerCase();
+  if (Array.isArray(headers)) {
+    for (var i = 0; i < headers.length; i++) {
+      var item = headers[i];
+      if (item && String(item[0] || '').toLowerCase() === lower) return String(item[1] || '');
+    }
+  }
+  if (typeof headers === 'object') {
+    const key = Object.keys(headers).find(function(k) { return String(k).toLowerCase() === lower; });
+    return key ? String(headers[key] || '') : '';
+  }
+  return '';
+}
+function _monoBuildHeadersObject(input, init) {
+  const merged = new Headers();
+  function appendAll(src) {
+    if (!src) return;
+    try {
+      if (src instanceof Headers) {
+        src.forEach(function(v, k) { merged.set(k, v); });
+        return;
+      }
+    } catch (e) {}
+    if (typeof src.forEach === 'function') {
+      try { src.forEach(function(v, k) { merged.set(k, v); }); return; } catch (e) {}
+    }
+    if (Array.isArray(src)) {
+      src.forEach(function(item) { if (item && item.length >= 2) merged.set(item[0], item[1]); });
+      return;
+    }
+    if (typeof src === 'object') {
+      Object.keys(src).forEach(function(k) { merged.set(k, src[k]); });
+    }
+  }
+  appendAll(input && input.headers);
+  appendAll(init && init.headers);
+  return merged;
+}
+async function _monoReadRequestBodyForUsage(input, init) {
+  if (init && Object.prototype.hasOwnProperty.call(init, 'body')) return init.body;
+  if (typeof input !== 'string' && input && typeof input.clone === 'function') {
+    try { return await input.clone().text(); } catch (e) {}
+  }
+  return '';
+}
+function _monoSafeStringify(obj) {
+  try { return JSON.stringify(obj); } catch (e) { return ''; }
+}
+function _monoExtractPromptPreview(payload) {
+  if (!payload || typeof payload !== 'object') return '';
+  const messages = Array.isArray(payload.messages) ? payload.messages : [];
+  for (var i = messages.length - 1; i >= 0; i--) {
+    var msg = messages[i];
+    if (!msg) continue;
+    var content = msg.content;
+    if (typeof content === 'string' && content.trim()) return content.trim().slice(0, 160);
+    if (Array.isArray(content)) {
+      var merged = content.map(function(part) {
+        if (typeof part === 'string') return part;
+        if (!part || typeof part !== 'object') return '';
+        return typeof part.text === 'string' ? part.text : (typeof part.content === 'string' ? part.content : '');
+      }).join('').trim();
+      if (merged) return merged.slice(0, 160);
+    }
+  }
+  return '';
+}
+function _monoGetRequestMetaFromBody(body, requestUrl) {
+  const meta = {
+    model: '',
+    requestedMaxTokens: null,
+    messageCount: 0,
+    promptPreview: '',
+    requestKind: /audio\/transcriptions/i.test(String(requestUrl || '')) ? 'transcription' : 'chat'
+  };
+  var payload = null;
+  if (typeof body === 'string') payload = _safeJsonParse(body);
+  else if (body && typeof FormData !== 'undefined' && body instanceof FormData) {
+    meta.requestKind = 'transcription';
+    try {
+      meta.model = String(body.get('model') || '');
+      meta.promptPreview = String(body.get('prompt') || '').slice(0, 160);
+    } catch (e) {}
+    return meta;
+  } else if (body && typeof body === 'object' && !(body instanceof ArrayBuffer)) {
+    payload = body;
+  }
+  if (!payload || typeof payload !== 'object') return meta;
+  meta.model = String(payload.model || '');
+  var maybeMax = payload.max_tokens != null ? payload.max_tokens : payload.max_completion_tokens;
+  if (maybeMax != null) {
+    var num = Number(maybeMax);
+    meta.requestedMaxTokens = Number.isFinite(num) ? num : null;
+  }
+  meta.messageCount = Array.isArray(payload.messages) ? payload.messages.length : 0;
+  meta.promptPreview = _monoExtractPromptPreview(payload);
+  return meta;
+}
+function _monoParseStackCaller(stack) {
+  const lines = String(stack || '').split('\n');
+  const ignored = ['_mono', 'window.fetch', 'fetch', '_compatibleChatCompletion', '_compatibleFetchModelList', '_doFetch'];
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i].trim();
+    if (!line) continue;
+    var match = line.match(/at\s+([^\s(]+)/);
+    var name = match ? match[1] : '';
+    if (!name || ignored.some(function(token) { return name.indexOf(token) !== -1; })) continue;
+    return name.replace(/^Object\./, '');
+  }
+  return '';
+}
+function _monoGuessUsageSourceFromPrompt(promptPreview) {
+  const text = String(promptPreview || '');
+  if (!text) return '';
+  if (/根据你的人设和以下聊天气氛，判斷你是否真的有充分理由主动转帳给|判斷你是否真的有充分理由主动转帳给|判断你是否真的有充分理由主动转账给/.test(text)) return '主动转账判断';
+  if (/判断你是否真的会想主动给.*点一份外卖|主动给.*点一份外卖|若决定点外卖/.test(text)) return '主动外卖判断';
+  if (/交换人生记录|本次线下剧情全部内容|线下沉浸式敘事剧情|线下（见面）互动/.test(text)) return '线下剧情生成';
+  if (/\[heart_voice\]|notificationLines|30字内的第一人称心声/.test(text)) return '线下心声';
+  if (/社交主页资料设计助手|朋友圈主页/.test(text)) return '朋友圈主页资料生成';
+  if (/只返回翻譯结果|只返回翻译结果|翻譯成简体中文|翻译成简体中文/.test(text)) return '翻译';
+  if (/记忆整理助手|真正总结成角色视角的记忆/.test(text)) return '自动记忆总结';
+  if (/主动发消息|你现在主动给/.test(text)) return '角色主动消息';
+  if (/真实社交账号的动态生成器|最近发布的8条朋友圈动态/.test(text)) return '朋友圈动态生成';
+  if (/社交媒体账号生成器/.test(text)) return '社交账号生成';
+  if (/论坛帖子|论坛|评论1\|\|\|评论2/.test(text)) return '论坛内容生成';
+  if (/儿童成长设定助手|宝宝/.test(text)) return '宝宝生成';
+  if (/只输出角色说的话/.test(text)) return '角色回复';
+  return '';
+}
+function _monoHumanizeCallerName(callerName) {
+  const name = String(callerName || '');
+  if (!name) return '';
+  if (name === 'async' || name === 'AsyncFunction') return '';
+  const mappings = [
+    [/aiGenerateMomentsProfile/i, '朋友圈主页资料生成'],
+    [/triggerOfflineReply|_generateOfflineResponse|_offlineApiRequest/i, '线下剧情生成'],
+    [/_rewriteOfflineReplyToTargetPov/i, '线下视角改写'],
+    [/callMiniMaxTts/i, '语音合成 TTS'],
+    [/audio.*transcription|transcription/i, '语音转文字'],
+    [/testApi/i, 'API 测试'],
+    [/callTraceAI|callLocationAI/i, '行踪/定位生成'],
+    [/callLLM/i, '通用 AI 调用'],
+    [/generateForumComments|renderForum|openForum|publishForum|createForum|forum/i, '论坛内容生成'],
+    [/refreshNovelRecommend|novel/i, '小说内容生成'],
+    [/baby/i, '宝宝生成'],
+    [/sendCallMessage|_callAIReply|_callAIGreeting|_maybeProactiveCall|startCall|userAcceptCharCall/i, '语音通话'],
+    [/saveDiary|autoDiary|diary/i, '日记生成'],
+    [/autoSummary|summary/i, '自动记忆总结'],
+    [/autoMsg|sendMessage|reply|chat/i, '聊天回复']
+  ];
+  for (var i = 0; i < mappings.length; i++) {
+    if (mappings[i][0].test(name)) return mappings[i][1];
+  }
+  return name;
+}
+function _monoResolveApiUsageSource(callerName, promptPreview) {
+  return _monoGuessUsageSourceFromPrompt(promptPreview) || _monoHumanizeCallerName(callerName) || '未识别来源';
+}
+function _monoGetEndpointType(url) {
+  const raw = String(url || '');
+  if (/audio\/transcriptions/i.test(raw)) return 'audio/transcriptions';
+  if (/chat\/completions/i.test(raw)) return 'chat/completions';
+  if (/\/v1\/messages(?:\?|$)/i.test(raw)) return 'v1/messages';
+  if (/:generateContent/i.test(raw)) return 'generateContent';
+  if (/audio\/speech|tts/i.test(raw)) return 'tts';
+  return 'other';
+}
+function _monoShouldTrackApiUsage(url, method, headers) {
+  const upperMethod = String(method || 'GET').toUpperCase();
+  if (upperMethod !== 'POST') return false;
+  const rawUrl = String(url || '');
+  if (!rawUrl || /^blob:|^data:|^file:/i.test(rawUrl)) return false;
+  const endpointType = _monoGetEndpointType(rawUrl);
+  const hasAuth = !!(
+    _monoPickHeader(headers, 'authorization') ||
+    _monoPickHeader(headers, 'x-api-key') ||
+    _monoPickHeader(headers, 'api-key') ||
+    _monoPickHeader(headers, 'x-goog-api-key') ||
+    _monoPickHeader(headers, 'anthropic-version')
+  );
+  if (endpointType !== 'other') return hasAuth || /[?&]key=/.test(rawUrl);
+  return false;
+}
+function _monoExtractUsageFromPayload(payload) {
+  const out = { promptTokens: null, completionTokens: null, totalTokens: null };
+  if (!payload || typeof payload !== 'object') return out;
+  if (payload.usage && typeof payload.usage === 'object') {
+    const usage = payload.usage;
+    if (usage.prompt_tokens != null) out.promptTokens = Number(usage.prompt_tokens);
+    if (usage.completion_tokens != null) out.completionTokens = Number(usage.completion_tokens);
+    if (usage.total_tokens != null) out.totalTokens = Number(usage.total_tokens);
+    if (out.promptTokens == null && usage.input_tokens != null) out.promptTokens = Number(usage.input_tokens);
+    if (out.completionTokens == null && usage.output_tokens != null) out.completionTokens = Number(usage.output_tokens);
+  }
+  if (payload.usageMetadata && typeof payload.usageMetadata === 'object') {
+    const meta = payload.usageMetadata;
+    if (out.promptTokens == null && meta.promptTokenCount != null) out.promptTokens = Number(meta.promptTokenCount);
+    if (out.completionTokens == null && meta.candidatesTokenCount != null) out.completionTokens = Number(meta.candidatesTokenCount);
+    if (out.totalTokens == null && meta.totalTokenCount != null) out.totalTokens = Number(meta.totalTokenCount);
+  }
+  if (out.totalTokens == null && Number.isFinite(out.promptTokens) && Number.isFinite(out.completionTokens)) {
+    out.totalTokens = out.promptTokens + out.completionTokens;
+  }
+  return out;
+}
+function _monoExtractErrorMessage(payload, responseText) {
+  if (payload && typeof payload === 'object') {
+    const msg = payload.error && (payload.error.message || payload.error.code) || payload.message || payload.detail || payload.msg;
+    if (msg) return String(msg).slice(0, 220);
+  }
+  return String(responseText || '').trim().slice(0, 220);
+}
+async function _monoCreateApiUsageEntry(meta, response, startedAt, error) {
+  const finishedAt = Date.now();
+  const entry = {
+    id: 'api_' + startedAt.toString(36) + '_' + Math.random().toString(36).slice(2, 8),
+    timestamp: startedAt,
+    finishedAt: finishedAt,
+    dayKey: _monoGetLocalDayKey(startedAt),
+    durationMs: Math.max(0, finishedAt - startedAt),
+    requestUrl: meta.url || '',
+    requestHost: _monoGetReadableHost(meta.url || ''),
+    method: meta.method || 'POST',
+    endpointType: meta.endpointType || 'other',
+    provider: meta.provider || '',
+    sourceCaller: meta.sourceCaller || '',
+    sourceLabel: meta.sourceLabel || '未识别来源',
+    requestModel: meta.requestModel || '',
+    requestMaxTokens: meta.requestedMaxTokens,
+    messageCount: meta.messageCount || 0,
+    promptPreview: meta.promptPreview || '',
+    ok: !error && !!(response && response.ok),
+    status: response ? response.status : 0,
+    statusText: response ? (response.statusText || '') : '',
+    responseModel: '',
+    promptTokens: null,
+    completionTokens: null,
+    totalTokens: null,
+    errorMessage: error ? String(error.message || error).slice(0, 220) : ''
+  };
+  if (!response) return entry;
+  try {
+    const clone = response.clone();
+    let payload = null;
+    let rawText = '';
+    try {
+      payload = await clone.json();
+    } catch (jsonErr) {
+      try { rawText = await clone.text(); } catch (textErr) {}
+      payload = _safeJsonParse(rawText);
+    }
+    if (payload && typeof payload === 'object') {
+      entry.responseModel = String(payload.model || payload.response_model || '');
+      const usage = _monoExtractUsageFromPayload(payload);
+      entry.promptTokens = Number.isFinite(usage.promptTokens) ? usage.promptTokens : null;
+      entry.completionTokens = Number.isFinite(usage.completionTokens) ? usage.completionTokens : null;
+      entry.totalTokens = Number.isFinite(usage.totalTokens) ? usage.totalTokens : null;
+      if (!entry.ok) entry.errorMessage = _monoExtractErrorMessage(payload, rawText);
+    } else if (!entry.ok && rawText) {
+      entry.errorMessage = rawText.slice(0, 220);
+    }
+  } catch (e) {}
+  return entry;
+}
+async function _monoRunTrackedApiRequest(meta, executor) {
+  const startedAt = Date.now();
+  try {
+    const response = await executor();
+    const entry = await _monoCreateApiUsageEntry(meta, response, startedAt, null);
+    _monoAppendApiUsageLog(entry);
+    return response;
+  } catch (error) {
+    const entry = await _monoCreateApiUsageEntry(meta, null, startedAt, error);
+    _monoAppendApiUsageLog(entry);
+    throw error;
+  }
+}
+function _monoBuildUsageSummary(logs) {
+  const list = Array.isArray(logs) ? logs : [];
+  return list.reduce(function(acc, item) {
+    acc.requests += 1;
+    if (item && item.ok) acc.success += 1;
+    else acc.failed += 1;
+    if (item && Number.isFinite(item.totalTokens)) acc.knownTokens += Number(item.totalTokens);
+    else acc.unknownUsage += 1;
+    return acc;
+  }, { requests: 0, success: 0, failed: 0, knownTokens: 0, unknownUsage: 0 });
+}
+function _monoBuildUsageBySource(logs) {
+  const bucket = {};
+  (logs || []).forEach(function(item) {
+    const key = (item && item.sourceLabel) || '未识别来源';
+    if (!bucket[key]) bucket[key] = { label: key, requests: 0, knownTokens: 0, unknownUsage: 0, failed: 0, lastAt: 0 };
+    bucket[key].requests += 1;
+    if (Number.isFinite(item.totalTokens)) bucket[key].knownTokens += Number(item.totalTokens);
+    else bucket[key].unknownUsage += 1;
+    if (!item.ok) bucket[key].failed += 1;
+    if (item.timestamp > bucket[key].lastAt) bucket[key].lastAt = item.timestamp;
+  });
+  return Object.keys(bucket).map(function(key) { return bucket[key]; }).sort(function(a, b) {
+    if (b.knownTokens !== a.knownTokens) return b.knownTokens - a.knownTokens;
+    return b.requests - a.requests;
+  });
+}
+function _monoFilterUsageLogs(mode) {
+  const all = _monoReadApiUsageLogs().slice().sort(function(a, b) { return (b.timestamp || 0) - (a.timestamp || 0); });
+  if (mode === 'all') return all;
+  const today = _monoGetLocalDayKey();
+  return all.filter(function(item) { return item && item.dayKey === today; });
+}
+function _monoBuildUsageStatCard(title, value, sub) {
+  return '<div style="border:1px solid #ececec;border-radius:10px;background:#fff;padding:10px;">'
+    + '<div style="font-size:10px;color:#999;letter-spacing:0.4px;">' + _monoEscapeHtml(title) + '</div>'
+    + '<div style="font-size:16px;font-weight:800;color:#1a1a1a;margin-top:4px;">' + _monoEscapeHtml(value) + '</div>'
+    + '<div style="font-size:10px;color:#999;margin-top:4px;line-height:1.5;">' + _monoEscapeHtml(sub || '') + '</div>'
+    + '</div>';
+}
+function renderApiUsageQuickSummary() {
+  const el = document.getElementById('apiUsageQuickSummary');
+  if (!el) return;
+  const summary = _monoBuildUsageSummary(_monoFilterUsageLogs('today'));
+  el.innerHTML = [
+    _monoBuildUsageStatCard('今日请求', _monoFormatNumber(summary.requests), '成功 ' + _monoFormatNumber(summary.success) + ' 次'),
+    _monoBuildUsageStatCard('今日已知 tokens', _monoFormatTokens(summary.knownTokens), '未知用量 ' + _monoFormatNumber(summary.unknownUsage) + ' 次'),
+    _monoBuildUsageStatCard('今日失败', _monoFormatNumber(summary.failed), summary.failed ? '这些请求可能也发出去了' : '目前没有失败请求'),
+    _monoBuildUsageStatCard('记录范围', _monoFormatNumber(_monoReadApiUsageLogs().length), '最多保留最近 ' + MONO_API_USAGE_LOG_LIMIT + ' 条')
+  ].join('');
+}
+function showApiUsageLedger(mode) {
+  _monoApiUsageViewMode = mode === 'all' ? 'all' : 'today';
+  const panel = document.getElementById('apiUsageLedgerPanel');
+  if (panel) panel.style.display = 'block';
+  renderApiUsageLedger();
+}
+function hideApiUsageLedger() {
+  const panel = document.getElementById('apiUsageLedgerPanel');
+  if (panel) panel.style.display = 'none';
+}
+function renderApiUsageLedger() {
+  const panel = document.getElementById('apiUsageLedgerPanel');
+  if (!panel || panel.style.display === 'none') return;
+  const logs = _monoFilterUsageLogs(_monoApiUsageViewMode);
+  const summary = _monoBuildUsageSummary(logs);
+  const bySource = _monoBuildUsageBySource(logs).slice(0, 12);
+  const subtitle = document.getElementById('apiUsageLedgerSubtitle');
+  const summaryEl = document.getElementById('apiUsageLedgerSummary');
+  const sourceEl = document.getElementById('apiUsageLedgerBySource');
+  const listEl = document.getElementById('apiUsageLedgerList');
+  if (subtitle) subtitle.textContent = _monoApiUsageViewMode === 'all' ? '显示全部已记录调用' : '显示今天的调用明细';
+  if (summaryEl) {
+    summaryEl.innerHTML = [
+      _monoBuildUsageStatCard('请求次数', _monoFormatNumber(summary.requests), '成功 ' + _monoFormatNumber(summary.success) + ' / 失败 ' + _monoFormatNumber(summary.failed)),
+      _monoBuildUsageStatCard('已知总 tokens', _monoFormatTokens(summary.knownTokens), '未知用量 ' + _monoFormatNumber(summary.unknownUsage) + ' 次'),
+      _monoBuildUsageStatCard('时间范围', logs.length ? _monoFormatDateTime(logs[logs.length - 1].timestamp) : '暂无', logs.length ? '到 ' + _monoFormatDateTime(logs[0].timestamp) : '还没有记录'),
+      _monoBuildUsageStatCard('查看模式', _monoApiUsageViewMode === 'all' ? '全部' : '今天', '可切换成另一种查看方式')
+    ].join('');
+  }
+  if (sourceEl) {
+    if (!bySource.length) {
+      sourceEl.innerHTML = '<div style="font-size:11px;color:#999;padding:8px 2px;">还没有可显示的来源统计。</div>';
+    } else {
+      sourceEl.innerHTML = bySource.map(function(item) {
+        return '<div style="border:1px solid #ececec;border-radius:10px;background:#fff;padding:10px;">'
+          + '<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">'
+          + '<div style="font-size:12px;font-weight:700;color:#1a1a1a;line-height:1.5;">' + _monoEscapeHtml(item.label) + '</div>'
+          + '<div style="font-size:11px;font-weight:700;color:#1a1a1a;white-space:nowrap;">' + _monoFormatTokens(item.knownTokens) + '</div>'
+          + '</div>'
+          + '<div style="font-size:10px;color:#999;line-height:1.6;margin-top:6px;">'
+          + '请求 ' + _monoFormatNumber(item.requests) + ' 次'
+          + ' · 未知用量 ' + _monoFormatNumber(item.unknownUsage) + ' 次'
+          + (item.failed ? ' · 失败 ' + _monoFormatNumber(item.failed) + ' 次' : '')
+          + ' · 最近 ' + _monoFormatDateTime(item.lastAt)
+          + '</div>'
+          + '</div>';
+      }).join('');
+    }
+  }
+  if (listEl) {
+    if (!logs.length) {
+      listEl.innerHTML = '<div style="font-size:11px;color:#999;padding:18px 6px;text-align:center;">还没有任何 API 调用记录。</div>';
+    } else {
+      listEl.innerHTML = logs.slice(0, 120).map(function(item) {
+        const tone = item.ok ? '#16a34a' : '#b42318';
+        const usageText = Number.isFinite(item.totalTokens)
+          ? ('总 ' + _monoFormatTokens(item.totalTokens) + ' · 输入 ' + _monoFormatTokens(item.promptTokens) + ' · 输出 ' + _monoFormatTokens(item.completionTokens))
+          : 'token 用量未知';
+        const modelText = item.responseModel || item.requestModel || '未返回模型';
+        const metaLine = [
+          _monoFormatDateTime(item.timestamp),
+          item.endpointType || 'other',
+          modelText,
+          item.requestMaxTokens ? ('max_tokens ' + item.requestMaxTokens) : ''
+        ].filter(Boolean).join(' · ');
+        return '<div style="border:1px solid #ececec;border-radius:10px;background:#fff;padding:10px;">'
+          + '<div style="font-size:10px;color:#999;line-height:1.6;">时间 · ' + _monoEscapeHtml(_monoFormatDateTime(item.timestamp)) + '</div>'
+          + '<div style="font-size:11px;color:#1a1a1a;line-height:1.6;margin-top:6px;">模型 · ' + _monoEscapeHtml(modelText) + '</div>'
+          + '<div style="font-size:11px;color:#1a1a1a;line-height:1.6;margin-top:6px;">token · ' + _monoEscapeHtml(usageText) + '</div>'
+          + '</div>';
+      }).join('');
+    }
+  }
+}
+function clearApiUsageLogs() {
+  if (!window.confirm('确定要清空所有 API 用量记录吗？这不会影响角色和聊天，只会删除账本。')) return;
+  _monoClearApiUsageLogsInternal();
+  hideApiUsageLedger();
+}
 function _extractApiModelIds(payload) {
   const found = [];
   const walk = function(node, depth) {
@@ -26083,22 +26625,40 @@ window.fetch = async function(input, init) {
   const method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
   const isChat = /\/chat\/completions(?:\?|$)/i.test(requestUrl);
   const isModels = /\/models(?:\?|$)/i.test(requestUrl);
-  if (!_looksLikeCurrentMainApiRequest(requestUrl) || (!isChat && !isModels)) {
-    return window._monoNativeFetch(input, init);
-  }
-  if (isModels) {
-    return _compatibleFetchModelList(requestUrl, apiConfig.key);
-  }
-  if (isChat && method === 'POST') {
-    const bodyText = init && typeof init.body === 'string'
-      ? init.body
-      : (typeof input !== 'string' && input && typeof input.text === 'function' ? await input.clone().text().catch(function() { return ''; }) : '');
-    const parsed = _sanitizeChatPayloadModel(_safeJsonParse(bodyText));
-    if (parsed && typeof parsed === 'object') {
+  const headers = _monoBuildHeadersObject(input, init);
+  const requestBody = await _monoReadRequestBodyForUsage(input, init);
+  const bodyText = typeof requestBody === 'string' ? requestBody : _monoSafeStringify(requestBody);
+  const parsed = _sanitizeChatPayloadModel(_safeJsonParse(bodyText));
+  const requestMeta = _monoGetRequestMetaFromBody(requestBody, requestUrl);
+  const stack = new Error().stack || '';
+  const sourceCaller = _monoParseStackCaller(stack);
+  const sourceLabel = _monoResolveApiUsageSource(sourceCaller, requestMeta.promptPreview);
+  const trackingMeta = _monoShouldTrackApiUsage(requestUrl, method, headers) ? {
+    url: requestUrl,
+    method: method,
+    endpointType: _monoGetEndpointType(requestUrl),
+    provider: typeof _detectApiProvider === 'function' ? _detectApiProvider(requestUrl, requestMeta.model || apiConfig.model) : '',
+    sourceCaller: sourceCaller,
+    sourceLabel: sourceLabel,
+    requestModel: requestMeta.model || '',
+    requestedMaxTokens: requestMeta.requestedMaxTokens,
+    messageCount: requestMeta.messageCount,
+    promptPreview: requestMeta.promptPreview
+  } : null;
+  const execute = async function() {
+    if (!_looksLikeCurrentMainApiRequest(requestUrl) || (!isChat && !isModels)) {
+      return window._monoNativeFetch(input, init);
+    }
+    if (isModels) {
+      return _compatibleFetchModelList(requestUrl, apiConfig.key);
+    }
+    if (isChat && method === 'POST' && parsed && typeof parsed === 'object') {
       return _compatibleChatCompletion(requestUrl, apiConfig.key, parsed, init || {});
     }
-  }
-  return window._monoNativeFetch(input, init);
+    return window._monoNativeFetch(input, init);
+  };
+  if (!trackingMeta) return execute();
+  return _monoRunTrackedApiRequest(trackingMeta, execute);
 };
 apiConfig = _normalizeApiConfigObject(apiConfig || {});
 _persistEffectiveApiConfig(apiConfig);
@@ -26931,7 +27491,6 @@ window.onload = () => {
     document.getElementById('apiKey').value = apiConfig.key;
     renderMoments(); renderDiaryTabs(); renderDiary(); renderForumSections(); renderForum();
     loadProfilePage(); renderNovelBookshelf(); renderNovelTagLibrary(); renderWorldBookList();
-    if (apiConfig.url && apiConfig.key && apiConfig.model) refreshNovelRecommend();
     updateSpyClock();
     setInterval(updateSpyClock, 60000);
     document.addEventListener('click', closeContextMenu);
@@ -29225,54 +29784,43 @@ function _getOfflineMergedSettings() {
   } catch(e) { storedSettings = {}; }
   return Object.assign({}, storedSettings || {}, liveSettings || {});
 }
-function _buildOfflineSessionMemoryPayload(session, personaName, userName) {
+function _buildOfflineSessionMemoryPayload(session, personaName, userName, maxSummaryItems) {
   if (!session || !Array.isArray(session.entries) || !session.entries.length) return null;
-  var pName = personaName || '角色';
-  var uName = userName || '你';
-  var entryCount = session.entries.length;
-  var recentSummaries = Array.isArray(session.memorySummaries) ? session.memorySummaries.slice() : [];
-  var summary = '【线下剧情】' + (session.title || '线下互动') + '（共' + entryCount + '段）';
-  if (recentSummaries.length) {
-    summary += '\n\n【这段线下剧情已保存的阶段总结】\n' + recentSummaries.map(function(item, idx) {
-      return '第' + (idx + 1) + '段：' + String((item && item.content) || '').trim();
-    }).filter(Boolean).join('\n\n');
-  } else {
-    var summaryEntries = session.entries.slice(-12).map(function(e) {
-      return (e.role === 'user' ? uName : pName) + '：' + String(e.content || '').trim();
-    }).filter(Boolean).join('\n');
-    if (summaryEntries) {
-      summary += '\n\n【最近线下互动记录】\n' + summaryEntries;
-    }
-  }
+  var limit = Math.max(1, Math.min(8, Number(maxSummaryItems) || 4));
+  var recentSummaries = Array.isArray(session.memorySummaries)
+    ? session.memorySummaries.slice(-limit).map(function(item) {
+        if (!item || !item.content) return null;
+        return Object.assign({}, item, {
+          content: _monoCondenseMemoryCoreText(item.content, 220)
+        });
+      }).filter(function(item) {
+        return !!(item && item.content);
+      })
+    : [];
   return {
-    overview: summary,
     recentSummaries: recentSummaries
   };
 }
 function _upsertOfflineSessionMemoryForPersona(session, p, userName) {
   if (!session || !p) return false;
-  var payload = _buildOfflineSessionMemoryPayload(session, p.name, userName);
-  if (!payload) return false;
   if (!p.memoryCore) p.memoryCore = [];
   var beforeLen = p.memoryCore.length;
   var beforeJson = JSON.stringify(p.memoryCore);
-  var dateStr = new Date(session.updatedAt || Date.now()).toLocaleDateString('zh-CN');
   p.memoryCore = p.memoryCore.filter(function(m) {
     return !(typeof m === 'object' && m._offlineSessionId === session.id);
   });
-  p.memoryCore.push({
-    content: payload.overview,
-    date: dateStr,
-    source: '线下剧情',
-    auto: true,
-    _offlineSessionId: session.id,
-    _offlineMemoryType: 'overview'
-  });
+  var payload = _buildOfflineSessionMemoryPayload(session, p.name, userName, Math.max(2, Math.min(6, Number((p && p.memoryCount) || 100))));
+  if (!payload) {
+    if (p.history) {
+      p.history = p.history.filter(function(m) { return m._offlineSessionId !== session.id; });
+    }
+    return beforeLen !== p.memoryCore.length || beforeJson !== JSON.stringify(p.memoryCore);
+  }
   payload.recentSummaries.forEach(function(item, idx) {
     p.memoryCore.push({
       content: item.content || '',
       date: new Date(item.createdAt || Date.now()).toLocaleDateString('zh-CN'),
-      source: '线下剧情总结 ' + (idx + 1),
+      source: '线下剧情总结 · ' + (session.title || '线下互动') + ' · 第' + (idx + 1) + '段',
       auto: true,
       _offlineSessionId: session.id,
       _offlineMemoryType: 'summary',
@@ -34029,8 +34577,12 @@ function toggleApiSettings() {
     loadVisionApiSettings();
     // Load TTS settings
     loadTtsSettings();
+    renderApiUsageQuickSummary();
+    renderApiUsageLedger();
     // Scroll to top so URL/Key inputs are visible
     modal.scrollTop=0;
+  } else {
+    hideApiUsageLedger();
   }
 }
 function updateVoiceFreqUI() {
@@ -34600,6 +35152,19 @@ function _parseMomentsIdentityResult(rawText, fallbackName, fallbackSignature) {
   }
   return { nickname, signature };
 }
+function _normalizeMomentsIdentityCompareValue(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim();
+}
+function _momentsIdentityRawPreview(rawText) {
+  const cleaned = _stripMomentsAiFences(rawText).replace(/\s+/g, ' ').trim();
+  if (!cleaned) return '（空）';
+  return cleaned.length > 72 ? (cleaned.slice(0, 72) + '...') : cleaned;
+}
+var _momentsIdentityGenPending = Object.create(null);
+var _momentsIdentityGenCooldown = Object.create(null);
+function _momentsIdentityGenKey(type, id, field) {
+  return [String(type || ''), String(id || ''), String(field || 'both')].join('::');
+}
 function _buildMomentsIdentityPrompt(type, id, field) {
   ensureMomentsProfileDefaults();
   const regenSeed = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
@@ -34688,6 +35253,16 @@ async function aiGenerateMomentsProfile(type, id, field, btnEl) {
     alert('请先在设置里配置可用的 API。');
     return;
   }
+  const requestKey = _momentsIdentityGenKey(type, id, field);
+  const now = Date.now();
+  if (_momentsIdentityGenPending[requestKey]) {
+    alert('这项 AI 生成还在进行中，请先等上一条请求完成，避免重复扣额度。');
+    return;
+  }
+  if (_momentsIdentityGenCooldown[requestKey] && now - _momentsIdentityGenCooldown[requestKey] < 4000) {
+    alert('刚刚已经触发过一次生成了，请不要连续点，避免重复扣额度。');
+    return;
+  }
   const meta = getMomentsProfileMeta(type, id);
   if (!meta) return;
   const mode = field === 'nickname' ? 'nickname' : (field === 'signature' ? 'signature' : 'both');
@@ -34699,6 +35274,8 @@ async function aiGenerateMomentsProfile(type, id, field, btnEl) {
   const btn = btnEl || null;
   const oldHtml = btn ? btn.innerHTML : '';
   try {
+    _momentsIdentityGenPending[requestKey] = true;
+    _momentsIdentityGenCooldown[requestKey] = now;
     if (btn) {
       btn.disabled = true;
       btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 生成中';
@@ -34721,22 +35298,46 @@ async function aiGenerateMomentsProfile(type, id, field, btnEl) {
     }
     const data = await resp.json();
     const rawText = (((data || {}).choices || [])[0] || {}).message ? ((((data || {}).choices || [])[0] || {}).message.content || '') : '';
+    if (!_stripMomentsAiFences(rawText)) {
+      throw new Error('AI 返回为空，界面不会生成任何内容，但这次请求已经发出。');
+    }
     const parsed = _parseMomentsIdentityResult(rawText, meta.displayName || meta.name || '', meta.signature || '');
+    const currentNickname = _normalizeMomentsIdentityCompareValue(meta.displayName || meta.name || '');
+    const currentSignature = _normalizeMomentsIdentityCompareValue(meta.signature || '');
+    const nextNickname = mode === 'signature'
+      ? currentNickname
+      : _normalizeMomentsIdentityCompareValue(parsed.nickname || '');
+    const nextSignature = mode === 'nickname'
+      ? currentSignature
+      : _normalizeMomentsIdentityCompareValue(parsed.signature || '');
+    const targetNicknameChanged = mode !== 'signature' && nextNickname && nextNickname !== currentNickname;
+    const targetSignatureChanged = mode !== 'nickname' && nextSignature !== currentSignature;
+    if (mode !== 'signature' && !nextNickname) {
+      throw new Error('AI 没有返回可用的网名。原始返回：' + _momentsIdentityRawPreview(rawText));
+    }
+    if (mode !== 'nickname' && !nextSignature) {
+      throw new Error('AI 没有返回可用的个性签名。原始返回：' + _momentsIdentityRawPreview(rawText));
+    }
+    if (!targetNicknameChanged && !targetSignatureChanged) {
+      throw new Error('AI 返回的结果和当前主页资料相同，所以看起来像没有生成。原始返回：' + _momentsIdentityRawPreview(rawText));
+    }
     if (type === 'user') {
-      if (mode !== 'signature') userProfile.momentsNickname = parsed.nickname || userProfile.name || '用户';
-      if (mode !== 'nickname') userProfile.momentsSignature = parsed.signature || '';
+      if (mode !== 'signature') userProfile.momentsNickname = nextNickname || userProfile.name || '用户';
+      if (mode !== 'nickname') userProfile.momentsSignature = nextSignature || '';
       persistMomentsUserProfile();
     } else {
       const p = personas.find(function(x) { return String(x.id) === String(id); });
       if (!p) throw new Error('角色不存在');
-      if (mode !== 'signature') p.momentsNickname = parsed.nickname || p.name;
-      if (mode !== 'nickname') p.momentsSignature = parsed.signature || '';
+      if (mode !== 'signature') p.momentsNickname = nextNickname || p.name;
+      if (mode !== 'nickname') p.momentsSignature = nextSignature || '';
       saveData();
     }
     renderMoments();
   } catch (e) {
     alert('AI 生成主页资料失败：' + (e && e.message ? e.message : e));
   } finally {
+    delete _momentsIdentityGenPending[requestKey];
+    _momentsIdentityGenCooldown[requestKey] = Date.now();
     if (btn) {
       btn.disabled = false;
       btn.innerHTML = oldHtml || '<i class="fas fa-sparkles"></i> AI生成';
@@ -34944,10 +35545,10 @@ function _buildMomentsProfileView() {
       <div class="moments-profile-top-actions">
         <button onclick="showMomentsFeed()"><i class="fas fa-chevron-left"></i> 返回广场</button>
         <div style="display:flex;gap:8px;">
-          <button onclick="aiGenerateMomentsProfile('${meta.type}', '${meta.id}', 'nickname', this)"><i class="fas fa-user-pen"></i> AI网名</button>
-          <button onclick="aiGenerateMomentsProfile('${meta.type}', '${meta.id}', 'signature', this)"><i class="fas fa-feather-pointed"></i> AI签名</button>
-          <button onclick="editMomentsProfile('${meta.type}', '${meta.id}')"><i class="fas fa-pen"></i> 编辑主页</button>
-          <button onclick="triggerMomentsBannerUpload('${meta.type}', '${meta.id}')"><i class="fas fa-image"></i> 换封面</button>
+          <button type="button" onclick="aiGenerateMomentsProfile('${meta.type}', '${meta.id}', 'nickname', this)"><i class="fas fa-user-pen"></i> AI网名</button>
+          <button type="button" onclick="aiGenerateMomentsProfile('${meta.type}', '${meta.id}', 'signature', this)"><i class="fas fa-feather-pointed"></i> AI签名</button>
+          <button type="button" onclick="editMomentsProfile('${meta.type}', '${meta.id}')"><i class="fas fa-pen"></i> 编辑主页</button>
+          <button type="button" onclick="triggerMomentsBannerUpload('${meta.type}', '${meta.id}')"><i class="fas fa-image"></i> 换封面</button>
         </div>
       </div>
       <div class="moments-profile-head">
@@ -44372,6 +44973,11 @@ var _autoReplyLocks = {};
 // for all groups that have gcToPrivateSync[personaId] === true.
 function _buildGcMemoryInjection(personaId) {
   const pid = String(personaId);
+  function _clipGcLine(text) {
+    const raw = String(text || '').trim();
+    if (!raw) return '';
+    return raw.length > 100 ? (raw.slice(0, 100) + '…') : raw;
+  }
   const relevantGroups = groups.filter(g => {
     const isMember = (g.memberIds || []).map(String).includes(pid);
     const syncOn = g.settings && g.settings.gcToPrivateSync && g.settings.gcToPrivateSync[pid] === true;
@@ -44379,13 +44985,13 @@ function _buildGcMemoryInjection(personaId) {
   });
   if (relevantGroups.length === 0) return '';
   const snippets = relevantGroups.map(g => {
-    const msgs = (g.messages || []).slice(-40); // last 40 messages per group
+    const msgs = (g.messages || []).slice(-20); // last 20 messages per group
     if (msgs.length === 0) return null;
     const lines = msgs.map(msg => {
-      if (msg.role === 'user') return `${userProfile.name}：${msg.content || ''}`;
+      if (msg.role === 'user') return `${userProfile.name}：${_clipGcLine(msg.content || '')}`;
       const sender = personas.find(p => String(p.id) === String(msg.role));
       const name = sender ? sender.name : '群友';
-      return `${name}：${msg.content || ''}`;
+      return `${name}：${_clipGcLine(msg.content || '')}`;
     }).filter(l => l.trim()).join('\n');
     return `【群组「${g.name}」近期聊天记录】\n${lines}`;
   }).filter(Boolean);
@@ -44412,7 +45018,7 @@ async function triggerAutoReply() {
   const maxReply = p.maxReplyCount || 5;
   const count = Math.floor(Math.random() * (maxReply - minReply + 1)) + minReply;
 const modePrompt = BUILTIN_WB;
-  const memCount = p.memoryCount || 100;
+  const memCount = Math.max(1, Number(p.memoryCount) || 100);
   if (!Array.isArray(p.history)) p.history = [];
   const recentChat = p.history.slice(-memCount).map(function(m) {
     const msgText = (m && (m.msgType === 'order_notify' || m.msgType === 'pay_request' || m.msgType === 'receive_notify') && typeof _buildOrderHistoryText === 'function')
@@ -44693,7 +45299,13 @@ ${followUps ? `\n${userProfile.name} 转发后还补充说了：${followUps}` : 
       if (!ccIsWorldEnabled()) return '';
       const rooms = ccGetRooms();
       // 找出该角色参与的所有聊天室
-      const myRooms = rooms.filter(r => r.members && r.members.includes(p.name));
+      const myRooms = rooms.filter(r => r.members && r.members.includes(p.name)).sort(function(a, b) {
+        const aHist = ccGetHistory(a.id) || [];
+        const bHist = ccGetHistory(b.id) || [];
+        const aLast = aHist.length ? (aHist[aHist.length - 1].timestamp || 0) : 0;
+        const bLast = bHist.length ? (bHist[bHist.length - 1].timestamp || 0) : 0;
+        return bLast - aLast;
+      }).slice(0, 2);
       if (myRooms.length === 0) return '';
       let inject = '\n\n# 私下社交记忆（你的真实生活经历）\n---\n以下是你近期在各个私下聊天室里与其他角色发生的对话记录。这些都是真实发生在你生活中的事。\n\n⚠️ 逻辑一致性要求：如果用户询问你某个时间段的去向、行为或状态，你必须给出与下列记录逻辑一致的回答。例如：如果记录显示你在某时和朋友去逛街了，那么当用户问"你今天下午去哪了"，你不能说自己一直在家——你需要给出合理的回答（可以说去见朋友了，但不必透露具体是谁或聊了什么，除非关系亲密或时机合适）。\n';
       let hasContent = false;
@@ -44736,6 +45348,7 @@ ${_buildPersonaIdentityPrompt(p)}
 8. 角色有记忆，可以呼应用户之前说过的细节，体现"我有在听"。
 8.2. 如果最近消息里出现了图片、表情包、模拟语音、外卖卡等特殊消息，要把它们当成已经真实发生的聊天事件，自然接话、关心、吐槽或追问，不要装作没看到。
 8.5. 默认消息风格是短句分开发，尽量不要用逗号和句号；问号、感叹号、省略号可以保留来表达情绪。除非你的人设或世界书明确要求别的格式，否则都按这个默认风格来写；如果一句话明显过长，就主动拆成两条或多条，用 "###" 分隔。
+8.6. 不要总是用反问来推进对话，尽量少用“是……还是……”“要不要……”“有没有……”这种句式；能直接表达情绪、判断或态度时，就直接说。
 9. 【线下连续性】如果你的记忆里存在近期线下互动、线下剧情总结、见面时发生过的事，你必须把它们当作真实已发生事件来理解当前私聊。只要用户提到相关情绪、约定、场景或延续性话题，你都要能自然接住，绝不能表现得像完全忘记了线下发生过什么。
 10. 【引用回复】此功能仅限以下情况使用：当用户连续发送了多条内容不同的消息时，你可以选择性地引用其中某一条来回复，格式为 \`[reply:原文片段]\` 放在该条消息开头，例如：\`[reply:你说不想出门]\` 那也陪你宅着。
    重要规则：
@@ -44750,7 +45363,6 @@ ${modePrompt}${quoteTip}${fwdContext}${timeContext}${transferContext}${wbInjecti
   try {
     const historyToSend = p.history.slice(-memCount)
       .filter(m => !m._transferContext)
-      .slice(-Math.min(memCount, 50))
       .map((m, idx, arr) => {
         if (m.msgType === 'call') {
           return {
@@ -44903,8 +45515,6 @@ ${modePrompt}${quoteTip}${fwdContext}${timeContext}${transferContext}${wbInjecti
       if (p.allowVoice) await tryPersonaSendVoice(p, normalizedReplyMessages);
       if (p.allowSticker) await tryPersonaSendSticker(p);
       await tryPersonaSendTextImage(p, latestRecentChat);
-      await tryPersonaInitiateTransfer(p, latestRecentChat);
-      await tryPersonaInitiateTakeout(p, latestRecentChat);
     }
     spyDataCache = {};
     try { renderContactList(); } catch(e) {}
@@ -63642,9 +64252,11 @@ function _buildFullSessionContext(session, p, uName) {
     });
   }
   if (total === 0) return { recentEntries: textParts.join('\n\n'), messages: [] };
-  // 最近 N 条完整保留；更早的条目截断到 200 字（保留剧情骨架）
-  var FULL_RECENT = 30;   // 最近 30 条完整
-  var MAX_OLDER   = 60;   // 更早的条目最多再往前取 60 条（截断版）
+  // 最近 N 条完整保留；更早的条目只保留短摘要，避免一次线下回复把整段长剧情都塞进 prompt。
+  var FULL_RECENT = 12;   // 最近 12 条完整
+  var MAX_OLDER   = 18;   // 更早的条目最多再往前取 18 条（截断版）
+  var OLDER_SNIPPET = 120;
+  var RECENT_SNIPPET = 260;
   var fullStart  = Math.max(0, total - FULL_RECENT);
   var olderStart = Math.max(0, fullStart - MAX_OLDER);
   // —— 较早的条目（截断，仅保留剧情脉络）——
@@ -63654,7 +64266,7 @@ function _buildFullSessionContext(session, p, uName) {
     for (var i = olderStart; i < fullStart; i++) {
       var e = entries[i];
       var label = e.role === 'user' ? '〔' + uName + '〕' : '〔' + (p ? p.name : '角色') + '〕';
-      var snippet = (e.content || '').slice(0, 200) + ((e.content || '').length > 200 ? '…' : '');
+      var snippet = (e.content || '').slice(0, OLDER_SNIPPET) + ((e.content || '').length > OLDER_SNIPPET ? '…' : '');
       textParts.push(label + ' ' + snippet);
       messages.push({ role: e.role === 'user' ? 'user' : 'assistant', content: snippet });
     }
@@ -63664,11 +64276,18 @@ function _buildFullSessionContext(session, p, uName) {
   for (var j = fullStart; j < total; j++) {
     var en = entries[j];
     var lb = en.role === 'user' ? '【' + uName + '】' : '【' + (p ? p.name : '角色') + '】';
-    textParts.push(lb + '\n' + (en.content || ''));
-    messages.push({ role: en.role === 'user' ? 'user' : 'assistant', content: en.content || '' });
+    var recentContent = String(en.content || '');
+    textParts.push(lb + '\n' + recentContent.slice(0, RECENT_SNIPPET) + (recentContent.length > RECENT_SNIPPET ? '\n（下略，保留最近剧情重点）' : ''));
+    messages.push({ role: en.role === 'user' ? 'user' : 'assistant', content: recentContent.slice(0, RECENT_SNIPPET) + (recentContent.length > RECENT_SNIPPET ? '…' : '') });
+  }
+  var combinedText = textParts.join('\n\n');
+  var MAX_CONTEXT_CHARS = 4200;
+  if (combinedText.length > MAX_CONTEXT_CHARS) {
+    combinedText = combinedText.slice(combinedText.length - MAX_CONTEXT_CHARS);
+    combinedText = '【较早剧情已折叠，仅保留最近关键脉络】\n' + combinedText;
   }
   return {
-    recentEntries: textParts.join('\n\n'),
+    recentEntries: combinedText,
     messages: messages
   };
 }
@@ -63882,8 +64501,8 @@ async function _generateOfflineResponse(session) {
     if (!isIfSession) {
       // Regular offline sessions always have access to chat history for context
       try {
-        var hist = p.history.slice(-20).filter(function(m) { return m.content && !m._transferContext && !m._hiddenContext; });
-        recentChat = hist.map(function(m) { return (m.role==='user'?uName:p.name) + '：' + m.content.slice(0,100); }).join('\n');
+        var hist = p.history.slice(-8).filter(function(m) { return m.content && !m._transferContext && !m._hiddenContext; });
+        recentChat = hist.map(function(m) { return (m.role==='user'?uName:p.name) + '：' + m.content.slice(0,60); }).join('\n');
       } catch(e) {}
     }
     // Build full session context (all entries of this session, not just last 8)
@@ -64062,7 +64681,7 @@ async function _generateOfflineResponse(session) {
     }
     var requestMessages = messages.slice();
     var reply = '';
-    var maxContinuationRounds = isShort ? 1 : 2;
+    var maxContinuationRounds = isShort ? 0 : 1;
     for (var contRound = 0; contRound <= maxContinuationRounds; contRound++) {
       var _offR = await _offlineApiRequest(api, requestMessages, contRound === 0
           ? offlineMaxTokens

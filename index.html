@@ -36,6 +36,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head><base href="https://d16ilfvy4mv02r.cloudfront.net/workspaces/sh0bDVYUIEw8H1dpwjAJvINuiJ6ETxg0/6c9a375e-adcc-44e2-9ec5-2d1ce63bc50b/files/">
@@ -23956,13 +23957,32 @@ body:not(.ios-fullscreen).chat-page-active.chat-preset-frosted-active #chatPage.
       <div class="section-header">
         <div>
           <div class="section-title"><i class="fas fa-server" style="margin-right:4px;"></i>副 API 管理</div>
-          <p style="font-size:9px;color:#999;margin-top:4px;">添加多个副 API，随时切换使用不同的 API 来生成内容。</p>
+          <p style="font-size:9px;color:#999;margin-top:4px;">添加多个 API 方案；当前选中哪个 API，聊天和独立功能就使用哪个 API。</p>
         </div>
         <button class="add-api-btn" onclick="addSecondaryApi()"><i class="fas fa-plus" style="margin-right:3px;"></i>添加</button>
       </div>
       <div class="secondary-api-list" id="secondaryApiList">
         <div class="secondary-api-empty"><i class="fas fa-plug" style="font-size:18px;margin-bottom:6px;display:block;"></i>尚未添加副 API<br>点击上方「+ 添加」来新增</div>
       </div>
+      <div id="lowPriorityApiBox" style="margin-top:14px;padding:12px;border:1px solid #e5e7eb;border-radius:12px;background:#fbfbfb;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;">
+          <div>
+            <div style="font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#333;">低优先小功能 API</div>
+            <div style="font-size:9px;color:#999;margin-top:3px;line-height:1.5;">可选：把总结、翻译、贴图/卡片判断、线下等低成本功能交给指定 API；普通聊天仍用当前选中的 API。</div>
+          </div>
+          <label style="position:relative;display:inline-block;width:42px;height:24px;cursor:pointer;flex:0 0 auto;">
+            <input type="checkbox" id="lowPriorityApiEnabled" onchange="monoSaveLowPriorityApiSettings()" style="opacity:0;width:0;height:0;position:absolute;">
+            <span id="lowPriorityApiTrack" style="position:absolute;inset:0;background:#ccc;border-radius:12px;transition:background .2s;"></span>
+            <span id="lowPriorityApiThumb" style="position:absolute;left:2px;top:2px;width:20px;height:20px;background:#fff;border-radius:50%;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2);"></span>
+          </label>
+        </div>
+        <select id="lowPriorityApiSelect" onchange="monoSaveLowPriorityApiSettings()" style="width:100%;border:1px solid #ddd;border-radius:8px;padding:8px;font-size:11px;background:#fff;outline:none;box-sizing:border-box;margin-bottom:8px;">
+          <option value="">跟随当前 API</option>
+        </select>
+        <div id="lowPriorityFeatureChecks" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;font-size:10px;color:#666;"></div>
+        <div id="lowPriorityApiHint" style="font-size:9px;color:#999;line-height:1.5;margin-top:8px;">关闭时：所有功能跟随当前 API。开启后：勾选的小功能优先使用指定 API。线下/电话不计入，始终跟随当前 API。</div>
+      </div>
+
     </div>
     <!-- FAB Toggle Section -->
     <div class="fab-toggle-section">
@@ -25445,7 +25465,8 @@ ${items}
 // 自动总结生成函数（每次生成一条综合记忆，永久保留）
 // ═══════════════════════════════════════════════════════════════
 async function generateAutoSummary(p, isManual) {
-  if (!p || !_hasUsableApiConfig(apiConfig)) {
+  const _summaryApi = (typeof monoGetApiForFeature === 'function') ? monoGetApiForFeature('summary') : apiConfig;
+  if (!p || !_hasUsableApiConfig(_summaryApi)) {
     if (isManual) alert('请先配置 API 才能生成总结。');
     return;
   }
@@ -25514,14 +25535,14 @@ ${chatLines}
 5. 重点保留：重要事件、情感变化、达成的约定、关键转折点
 6. 已有历史总结里涉及的内容一律不重复，只聚焦这批新对话带来的新内容
 7. 只输出总结正文，不要任何标题、说明或解释文字`;
-    const resp = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, {
+    const resp = await fetch(`${_summaryApi.url.replace(/\/$/, '')}/chat/completions`, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${apiConfig.key}`, 'Content-Type': 'application/json' },
+      headers: { 'Authorization': `Bearer ${_summaryApi.key}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(_applyApiModel({
         messages: [{ role: 'user', content: summaryPrompt }],
         max_tokens: msgCount > 60 ? 1000 : msgCount > 30 ? 700 : 400,
         temperature: 0.6
-      }, apiConfig.model))
+      }, _summaryApi.model))
     });
     if (!resp.ok) throw new Error(`API Error ${resp.status}`);
     const data = await resp.json();
@@ -25595,6 +25616,236 @@ let isWechatMode = true; // 强制微信模式，永久开啟
 let apiConfig = _safeParse('mono_api', { url: '', key: '', model: '' });
 const AUTO_MODEL_SENTINEL = '__auto__';
 const EFFECTIVE_API_STORAGE_KEY = 'mono_effective_api';
+// ===== MONO API COST ROUTER PATCH =====
+// 普通聊天采用一次 API 聊天包模式：当前正在使用的 API 负责本轮聊天包。
+// 副 API 不再被强制指定为“小功能 API”；用户切换到哪个 API，独立功能/生成就跟随哪个 API。
+const MONO_AUX_API_FEATURES_KEY = 'mono_aux_features_enabled';
+const MONO_AUX_API_ID_KEY = 'mono_aux_api_id';
+const MONO_ONE_SHOT_CHAT_KEY = 'mono_one_shot_chat_enabled';
+function monoOneShotChatEnabled() {
+  const stored = localStorage.getItem(MONO_ONE_SHOT_CHAT_KEY);
+  // 默认开启：普通 char 聊天尽量只调用一次 API；用户手动关闭才恢复旧的多段小功能调用。
+  return stored !== 'false';
+}
+function monoToggleOneShotChat(enabled) {
+  try { localStorage.setItem(MONO_ONE_SHOT_CHAT_KEY, enabled ? 'true' : 'false'); } catch(e) {}
+}
+function monoOneShotChatInstruction() {
+  if (!monoOneShotChatEnabled()) return '';
+  return `
+
+【一次 API 聊天包模式 · 省调用规则】
+- 本次普通 char 聊天只能依靠这一轮 API 完成核心回复、心声/记忆标签判断和语气决策，不要让系统再为贴图判断、文字图判断、转账/外卖判断、黑盒心声记录、自动总结等另开 API。
+- 如果需要记录心声，只能在本次回复末尾使用既有 [heart_voice]{...} 标签；如果需要自刻记忆，只能使用既有 [memory: ...] 标签。
+- 不要输出任何“需要另行调用功能”“稍后生成小功能”的说明。
+- 除非用户明确点击了独立小功能按钮，否则普通聊天只生成聊天正文。`; 
+}
+
+function monoBuildOneShotStickerPack(p) {
+  try {
+    if (!monoOneShotChatEnabled() || !p || !p.allowSticker) return { prompt: '', candidates: [] };
+    if (typeof getStickers !== 'function' || typeof _buildPersonaStickerCandidates !== 'function') return { prompt: '', candidates: [] };
+    const allowedLibraryIds = Array.isArray(p.stickerLibraryIds) && p.stickerLibraryIds.length ? p.stickerLibraryIds : null;
+    const stickers = getStickers(allowedLibraryIds);
+    if (!Array.isArray(stickers) || stickers.length === 0) return { prompt: '', candidates: [] };
+    const recentText = (Array.isArray(p.history) ? p.history.slice(-8) : []).map(function(m){ return String(m.content || ''); }).join(' ');
+    if (/去世|死|病危|自杀|分手|离婚|葬礼|急救|住院|崩溃|绝望|遗书/.test(recentText)) return { prompt: '', candidates: [] };
+    const candidates = _buildPersonaStickerCandidates(stickers, Array.isArray(p.history) ? p.history : [], 12);
+    if (!candidates.length) return { prompt: '', candidates: [] };
+    const list = candidates.map(function(s, i){
+      const desc = s._visionDesc || s.caption || '无描述';
+      return i + '：' + String(desc).slice(0, 80);
+    }).join('\n');
+    return {
+      candidates: candidates,
+      prompt: `\n\n【一次聊天包 · 真实表情包规则】\n如果你觉得这一轮回复适合发送表情包，可以在回复末尾单独追加一行：[sticker:编号]\n编号只能从下面列表选择。不要写“（表情包消息）”“发送表情包”“表情包消息”等文字占位。\n如果不适合发，就不要写 sticker 标签。严肃/沉重/争吵升级时不要发表情包。\n【可用表情包编号】\n${list}\n【输出例】\n文字回复###下一条文字\n[sticker:2]\n`
+    };
+  } catch(e) {
+    console.warn('[one-shot sticker] build pack failed:', e);
+    return { prompt: '', candidates: [] };
+  }
+}
+function monoExtractOneShotSticker(rawContent, stickerPack) {
+  const out = { text: String(rawContent || ''), sticker: null };
+  try {
+    if (!stickerPack || !Array.isArray(stickerPack.candidates) || !stickerPack.candidates.length) return out;
+    const re = /\n?\s*(?:\[\s*(?:sticker|贴图|表情包|sticker_id)\s*[:：]\s*(\d+)\s*\]|【\s*(?:sticker|贴图|表情包)\s*[:：]\s*(\d+)\s*】)\s*$/i;
+    const m = out.text.match(re);
+    if (!m) return out;
+    const idx = parseInt(m[1] || m[2], 10);
+    if (!Number.isFinite(idx) || idx < 0 || idx >= stickerPack.candidates.length) {
+      out.text = out.text.replace(re, '').trim();
+      return out;
+    }
+    const s = stickerPack.candidates[idx];
+    if (s && (s.src || s.stickerSrc || s.url || s.image)) {
+      out.sticker = (typeof window !== 'undefined' && typeof window._normalizeStickerItem === 'function') ? window._normalizeStickerItem(s) : s;
+    }
+    out.text = out.text.replace(re, '').trim();
+  } catch(e) { console.warn('[one-shot sticker] extract failed:', e); }
+  return out;
+}
+function monoCleanFakeStickerText(s) {
+  return String(s || '')
+    .replace(/[（(]\s*(?:表情包消息|贴图消息|发送表情包|发了?一?个?表情包)\s*[）)]/g, '')
+    .replace(/\[\s*(?:表情包消息|贴图消息|发送表情包|发了?一?个?表情包)\s*\]/g, '')
+    .trim();
+}
+
+function monoBuildOneShotRichMessagePrompt(p) {
+  if (!monoOneShotChatEnabled() || !p) return '';
+  return `
+
+【一次聊天包 · 真实特殊消息规则】
+普通聊天仍然只调用本次主 API。你可以在回复末尾用“结构化标签”顺便决定是否发送特殊消息；前端会把标签渲染成真实气泡/卡片/图片，不要写成文字占位。
+
+可用标签（都必须单独一行，且放在回复最后；不需要就不要写）：
+1. 转账卡： [card:transfer|amount=金额|note=留言]
+2. 亲密付邀请： [card:intimate|amount=额度|note=留言]
+3. 外卖卡： [card:takeout|name=餐品名|shop=店铺名|price=金额|note=留言]
+4. 文字图： [card:text_image|prompt=图片里的文字/内容|caption=可选配文]
+5. 聊天截图： [card:screenshot|title=聊天对象或群名|caption=可选配文|messages=左边人:内容;${p && p.name ? p.name : '我'}:内容;左边人:内容]
+
+严格规则：
+- 不要输出“（截图消息）”“（转账消息）”“（亲密付邀请）”“（文字图消息）”“（外卖卡）”这种文字占位。
+- 这些特殊消息必须少量、自然、符合人设和当前语境；不要每轮都发。
+- 不能为了发卡片随便编造过去事实。只能把它当成本轮聊天里角色“现在决定发送”的消息。
+- 转账/亲密付/外卖只有在真的适合哄人、请客、照顾、补偿、撒娇或推进关系时才发。
+- 截图只有在用户要求截图，或角色自然说“我发你看/截图给你看/群里有人说了”时才发。
+- 文字图只有在用户明确想看文字图/配图/小卡片，或当前剧情非常适合发一张带字图片时才发。
+- 一轮最多 1 个特殊消息标签；表情包 [sticker:编号] 可以和文字同时出现，但不要和大型卡片同时乱发。
+`;
+}
+function monoParseKvTagBody(body) {
+  const obj = {};
+  String(body || '').split('|').forEach(function(part) {
+    const idx = part.indexOf('=');
+    if (idx > -1) {
+      const k = part.slice(0, idx).trim().toLowerCase();
+      const v = part.slice(idx + 1).trim();
+      if (k) obj[k] = v;
+    }
+  });
+  return obj;
+}
+function monoMakeTextImageDataUrl(text, caption) {
+  const raw = String(text || caption || '文字图').trim().slice(0, 320) || '文字图';
+  const lines = [];
+  let line = '';
+  Array.from(raw).forEach(function(ch) {
+    line += ch;
+    if (line.length >= 15) { lines.push(line); line = ''; }
+  });
+  if (line) lines.push(line);
+  const shown = lines.slice(0, 8);
+  const h = Math.max(360, 170 + shown.length * 42);
+  const esc = function(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+  const txt = shown.map(function(l, i){ return '<text x="50%" y="' + (150 + i*42) + '" text-anchor="middle" font-size="26" fill="#333" font-family="-apple-system,BlinkMacSystemFont,PingFang SC,Arial">' + esc(l) + '</text>'; }).join('');
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="720" height="' + h + '" viewBox="0 0 720 ' + h + '"><rect width="720" height="' + h + '" rx="32" fill="#f7f3ee"/><rect x="34" y="34" width="652" height="' + (h-68) + '" rx="26" fill="rgba(255,255,255,0.72)" stroke="#e2d8ce"/><text x="50%" y="92" text-anchor="middle" font-size="20" fill="#9a8f84" font-family="-apple-system,BlinkMacSystemFont,PingFang SC,Arial" letter-spacing="3">MONO TEXT IMAGE</text>' + txt + '</svg>';
+  return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
+}
+function monoMakeMiniChatScreenshotDataUrl(title, rawMessages, personaName) {
+  const esc = function(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+  const W = 720, rowH = 92, H = Math.max(420, 110 + Math.min(rawMessages.length || 0, 7) * rowH + 50);
+  const msgs = (rawMessages || []).slice(0, 7);
+  const rows = msgs.map(function(m, i) {
+    const isRight = !!m.isRight;
+    const y = 116 + i * rowH;
+    const text = esc(String(m.text || '').slice(0, 42));
+    const sender = esc(String(m.sender || (isRight ? personaName : '对方')).slice(0, 8));
+    if (isRight) {
+      return '<circle cx="660" cy="' + (y+26) + '" r="24" fill="#78c25a"/><text x="660" y="' + (y+33) + '" text-anchor="middle" font-size="13" fill="#fff">' + esc((personaName||'我').slice(0,2)) + '</text><rect x="160" y="' + y + '" width="470" height="54" rx="14" fill="#95ec69"/><text x="184" y="' + (y+35) + '" font-size="22" fill="#161616" font-family="-apple-system,BlinkMacSystemFont,PingFang SC,Arial">' + text + '</text>';
+    }
+    return '<circle cx="60" cy="' + (y+26) + '" r="24" fill="#b8b8b8"/><text x="60" y="' + (y+33) + '" text-anchor="middle" font-size="13" fill="#fff">' + sender.slice(0,2) + '</text><text x="96" y="' + (y-5) + '" font-size="15" fill="#777">' + sender + '</text><rect x="96" y="' + y + '" width="470" height="54" rx="14" fill="#fff"/><text x="120" y="' + (y+35) + '" font-size="22" fill="#161616" font-family="-apple-system,BlinkMacSystemFont,PingFang SC,Arial">' + text + '</text>';
+  }).join('');
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="720" height="' + H + '" viewBox="0 0 720 ' + H + '"><rect width="720" height="' + H + '" fill="#ededed"/><rect width="720" height="84" fill="#f7f7f7"/><text x="360" y="54" text-anchor="middle" font-size="28" font-weight="600" fill="#111" font-family="-apple-system,BlinkMacSystemFont,PingFang SC,Arial">' + esc(title || '聊天截图') + '</text>' + rows + '</svg>';
+  return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
+}
+function monoExtractOneShotRichMessages(rawContent) {
+  const out = { text: String(rawContent || ''), cards: [] };
+  try {
+    const lines = out.text.split(/\n/);
+    const kept = [];
+    lines.forEach(function(line) {
+      const m = String(line || '').trim().match(/^\[card\s*:\s*([a-zA-Z_\-\u4e00-\u9fa5]+)\s*\|([\s\S]*?)\]\s*$/);
+      if (!m) { kept.push(line); return; }
+      const typeRaw = String(m[1] || '').trim().toLowerCase();
+      const kv = monoParseKvTagBody(m[2] || '');
+      let type = typeRaw;
+      if (/转|transfer/.test(typeRaw)) type = 'transfer';
+      else if (/intimate|亲密|親密/.test(typeRaw)) type = 'intimate';
+      else if (/takeout|外卖|外賣/.test(typeRaw)) type = 'takeout';
+      else if (/text.*image|文字图|文字圖/.test(typeRaw)) type = 'text_image';
+      else if (/screen|截图|截圖/.test(typeRaw)) type = 'screenshot';
+      if (out.cards.length < 2) out.cards.push({ type: type, data: kv });
+    });
+    out.text = kept.join('\n').trim();
+  } catch(e) { console.warn('[one-shot rich] extract failed:', e); }
+  return out;
+}
+function monoCleanFakeRichMessageText(s) {
+  return String(s || '')
+    .replace(/[（(]\s*(?:截图消息|截屏消息|聊天截图|转账消息|轉帳消息|转帳消息|亲密付邀请|親密付邀請|亲密付消息|文字图消息|文字圖消息|外卖卡|外賣卡|外卖卡片|外賣卡片)\s*[）)]/g, '')
+    .replace(/\[\s*(?:截图消息|截屏消息|聊天截图|转账消息|轉帳消息|转帳消息|亲密付邀请|親密付邀請|亲密付消息|文字图消息|文字圖消息|外卖卡|外賣卡|外卖卡片|外賣卡片)\s*\]/g, '')
+    .trim();
+}
+function monoPushOneShotRichCards(p, cards, personaName, userName) {
+  if (!p || !Array.isArray(cards) || !cards.length) return false;
+  let pushed = false;
+  cards.forEach(function(card) {
+    const d = card.data || {};
+    const type = card.type;
+    if (type === 'transfer') {
+      const amt = Math.max(1, Math.min(9999, parseFloat(d.amount || d.amt || d.money || 0) || 0));
+      if (!amt) return;
+      p.history.push({ role:'assistant', msgType:'transfer', transferAmt:amt, transferNote:String(d.note || '').slice(0,80), transferStatus:'pending', content:'[角色转帳: ¥' + amt.toFixed(2) + ']', timestamp:Date.now() });
+      pushed = true;
+    } else if (type === 'intimate') {
+      const amt = Math.max(1, Math.min(9999, parseFloat(d.amount || d.amt || d.money || 0) || 0));
+      if (!amt) return;
+      p.history.push({ role:'assistant', msgType:'intimate_invite', intimateAmount:amt, intimateStatus:'pending', intimateFromChar:true, intimateNote:String(d.note || '').slice(0,80), content:'[親密付邀请: ¥' + amt.toFixed(2) + ']', timestamp:Date.now() });
+      pushed = true;
+    } else if (type === 'takeout') {
+      const name = String(d.name || d.item || '').trim().slice(0,60);
+      if (!name) return;
+      const takeoutData = { senderName: personaName || '角色', recipientName: userName || '你', name:name, shop:String(d.shop || '').slice(0,50), price:String(d.price || d.amount || '').slice(0,20), note:String(d.note || '').slice(0,100) };
+      p.history.push({ role:'assistant', msgType:'takeout_card', takeoutData:takeoutData, content:(typeof _buildTakeoutHistoryText === 'function' ? _buildTakeoutHistoryText(takeoutData) : '[外卖卡] ' + name), timestamp:Date.now() });
+      pushed = true;
+    } else if (type === 'text_image') {
+      const prompt = String(d.prompt || d.text || d.content || '').trim().slice(0,320);
+      if (!prompt) return;
+      const imgUrl = monoMakeTextImageDataUrl(prompt, d.caption || '');
+      p.history.push({ role:'assistant', msgType:'image', imageSrc:imgUrl, imageCaption:String(d.caption || '').slice(0,80), imageDesc:prompt, imageSimulated:true, textImagePrompt:prompt, content:'[你发送了一张文字图：' + prompt + ']', timestamp:Date.now() });
+      pushed = true;
+    } else if (type === 'screenshot') {
+      const title = String(d.title || '聊天截图').slice(0,24);
+      const raw = String(d.messages || d.msgs || '').trim();
+      if (!raw) return;
+      const messages = raw.split(';').map(function(seg) {
+        const idx = seg.indexOf(':') > -1 ? seg.indexOf(':') : seg.indexOf('：');
+        if (idx < 0) return null;
+        const sender = seg.slice(0, idx).trim();
+        const text = seg.slice(idx + 1).trim();
+        if (!text) return null;
+        const isRight = sender === personaName || sender === '我' || sender === '角色';
+        return { sender: sender || (isRight ? personaName : '对方'), isRight:isRight, text:text };
+      }).filter(Boolean);
+      if (!messages.length) return;
+      const imgUrl = monoMakeMiniChatScreenshotDataUrl(title, messages, personaName || '我');
+      p.history.push({ role:'assistant', msgType:'image', imageSrc:imgUrl, imageCaption:String(d.caption || '').slice(0,80), imageSimulated:false, _isChatScreenshot:true, content:'[角色发送了聊天截图: ' + title + ']', timestamp:Date.now() });
+      pushed = true;
+    }
+  });
+  return pushed;
+}
+
+function monoGetSecondaryApisSafe() {
+  try {
+    const arr = JSON.parse(localStorage.getItem('mono_secondary_apis') || '[]');
+    return Array.isArray(arr) ? arr.filter(function(a){ return a && a.url && a.key && a.model; }) : [];
+  } catch(e) { return []; }
+}
+// 低优先 API 函数已在 API Switcher 区统一定义，避免旧逻辑覆盖。
 function _uniqStrings(arr) {
   return Array.from(new Set((arr || []).filter(Boolean)));
 }
@@ -45349,6 +45600,7 @@ ${followUps ? `\n${userProfile.name} 转发后还补充说了：${followUps}` : 
   const _langPriorityHeader = _langOverride
     ? `${_langOverride}\n⚠️ 上述语言指令为最高优先级，必须在整个回复中严格遵守，不得使用其他语言。\n\n`
     : '';
+  const _monoOneShotStickerPack = monoBuildOneShotStickerPack(p);
   const sysPrompt = (_langPriorityHeader || memoryCoreContext) + (_langPriorityHeader ? memoryCoreContext : '') + `${LANG_SYSTEM_PREFIX}${STYLE_INSTRUCTIONS}\n你是${p.name}。人设：${p.persona}。你对用户（${userProfile.name}）的昵称是${p.nickname||p.name}。${_langOverride}${lastHeartVoiceInject}${userPersonaInject}${_mwRelInject}${_ccRoomMemoryInject}${timeGapAlert}
 ${_buildPersonaIdentityPrompt(p)}
 【回复要求】
@@ -45373,7 +45625,7 @@ ${_buildPersonaIdentityPrompt(p)}
    - 大部分情况下不需要引用，直接自然回复即可
 11. 【自刻记忆】当发生了里程碑式的事件（如第一次表白、确认关系、解开误会、说了让你极度触动的话）时，你可以在回复末尾另起一行使用 \`[memory: 内容]\` 指令将这段经历永久刻入你的记忆核心。例如：\`[memory: 2025/06/01，TA第一次对我说了"我喜欢你"]\`
 12. 【消息撤回】如果你觉得有充分理由撤回你刚才说的话（如说错了、太冲动、想收回某句话），可以在下一次回复的第一条消息最前面加 \`[RECALL]\` 标签，系统会自动撤回你上一条消息。例如：\`[RECALL]等等，我刚才那话说重了。\` 不要频繁使用，只在真的需要的时候。
-${modePrompt}${quoteTip}${fwdContext}${timeContext}${transferContext}${wbInjection}${gcMemInjection}${offlineSceneInject}${readStatusInject}${typeof _buildHealthInjection === 'function' ? _buildHealthInjection(p.id) : ''}${_isHeartVoiceGenerationEnabled(p) ? HEART_VOICE_INSTRUCTION : ''}`;
+${monoOneShotChatInstruction()}${_monoOneShotStickerPack.prompt || ''}${monoBuildOneShotRichMessagePrompt(p)}${modePrompt}${quoteTip}${fwdContext}${timeContext}${transferContext}${wbInjection}${gcMemInjection}${offlineSceneInject}${readStatusInject}${typeof _buildHealthInjection === 'function' ? _buildHealthInjection(p.id) : ''}${_isHeartVoiceGenerationEnabled(p) ? HEART_VOICE_INSTRUCTION : ''}`;
   try {
     const historyToSend = p.history.slice(-memCount)
       .filter(m => !m._transferContext)
@@ -45457,6 +45709,16 @@ ${modePrompt}${quoteTip}${fwdContext}${timeContext}${transferContext}${wbInjecti
     }
     const data = await response.json();
     let rawContent = data.choices[0].message.content;
+    let _monoOneShotStickerToSend = null;
+    let _monoOneShotRichCardsToSend = [];
+    if (monoOneShotChatEnabled()) {
+      const _stickerExtracted = monoExtractOneShotSticker(rawContent, _monoOneShotStickerPack);
+      rawContent = _stickerExtracted.text;
+      _monoOneShotStickerToSend = _stickerExtracted.sticker || null;
+      const _richExtracted = monoExtractOneShotRichMessages(rawContent);
+      rawContent = _richExtracted.text;
+      _monoOneShotRichCardsToSend = _richExtracted.cards || [];
+    }
     // ── 处理角色撤回指令 [RECALL] ──
     rawContent = _processCharRecall(p, rawContent);
     // ── 解析并剥离 [heart_voice] ──
@@ -45493,10 +45755,12 @@ ${modePrompt}${quoteTip}${fwdContext}${timeContext}${transferContext}${wbInjecti
     rawContent = rawContent.replace(/\[memory:\s*[\s\S]*?\]/g, '').trim();
     // 剥离 AI 回复中可能残留的时间标签，如 [5月5日 04:30] 或 [2024年5月5日 04:30]
     rawContent = rawContent.replace(/\[(\d{4}年)?\d{1,2}月\d{1,2}日\s+\d{2}:\d{2}\]\s*/g, '').trim();
+    rawContent = monoCleanFakeRichMessageText(monoCleanFakeStickerText(rawContent));
     let messages = _normalizeChatReplyMessages(rawContent, { maxParts: maxReply, isWechatMode: isWechatMode, styleContext: [p.persona || '', wbInjection || ''].join('\n'), langCode: _personaLangCode });
+    messages = messages.map(function(x){ return monoCleanFakeRichMessageText(monoCleanFakeStickerText(x)); }).filter(Boolean);
     // 强制执行最少/最多信息条数限制
     if (messages.length > maxReply) messages = messages.slice(0, maxReply);
-    if (messages.length === 0) {
+    if (messages.length === 0 && !_monoOneShotStickerToSend && (!_monoOneShotRichCardsToSend || !_monoOneShotRichCardsToSend.length)) {
       throw new Error('角色回复为空，请重试。可能是API返回了无效内容。');
     }
     if (typing) typing.classList.add('hidden');
@@ -45521,6 +45785,26 @@ ${modePrompt}${quoteTip}${fwdContext}${timeContext}${transferContext}${wbInjecti
       }
       saveData();
     }
+    if (_monoOneShotRichCardsToSend && _monoOneShotRichCardsToSend.length && !_autoReplyCancelled) {
+      await new Promise(r => setTimeout(r, 120 + Math.random()*260));
+      try {
+        if (monoPushOneShotRichCards(p, _monoOneShotRichCardsToSend, p.name || '角色', _effectiveUserName || '你')) {
+          if (currentId == _replyPersonaId) { try { renderMessages(); } catch(e) {} }
+          saveData();
+        }
+      } catch(e) { console.warn('[one-shot rich] push failed:', e); }
+    }
+    if (_monoOneShotStickerToSend && !_autoReplyCancelled) {
+      await new Promise(r => setTimeout(r, 120 + Math.random()*260));
+      const _s = _monoOneShotStickerToSend;
+      const _stickerSrc = _s.stickerSrc || _s.src || _s.url || _s.image || _s.imageUrl || '';
+      const _caption = _s._visionDesc || _s.caption || '';
+      if (_stickerSrc) {
+        p.history.push({ role: 'assistant', msgType: 'sticker', stickerSrc: _stickerSrc, src: _stickerSrc, caption: _caption, content: '[角色发送了表情包: ' + (_caption || '无描述') + ']', timestamp: Date.now() });
+        if (currentId == _replyPersonaId) { try { renderMessages(); } catch(e) {} }
+        saveData();
+      }
+    }
     const normalizedReplyMessages = messages.map(function(m) { return String(m || '').trim(); }).filter(Boolean);
     if (!_autoReplyCancelled) {
       const latestRecentChat = p.history.slice(-(p.memoryCount || 100)).map(function(m) {
@@ -45538,7 +45822,9 @@ ${modePrompt}${quoteTip}${fwdContext}${timeContext}${transferContext}${wbInjecti
       const lastUserMsg = [...p.history].reverse().find(m => m.role === 'user');
       const combinedReply = messages.join(' ');
       if (lastUserMsg && combinedReply && shouldRecordBbThought(lastUserMsg.content, combinedReply)) {
-        generateBbThoughtRecord(_replyPersonaId, lastUserMsg.content, combinedReply).catch(e => console.warn('BB record gen err:', e));
+        if (!monoOneShotChatEnabled() && typeof monoAuxFeaturesEnabled === 'function' && monoAuxFeaturesEnabled()) {
+          generateBbThoughtRecord(_replyPersonaId, lastUserMsg.content, combinedReply).catch(e => console.warn('BB record gen err:', e));
+        }
       }
     } catch(bbErr) { console.warn('BB hook error:', bbErr); }
     // ── 自动总结触发检测 ──
@@ -45558,7 +45844,9 @@ ${modePrompt}${quoteTip}${fwdContext}${timeContext}${transferContext}${wbInjecti
           }
         }
         if (userMsgCount > 0 && userMsgCount - lastAutoUserMsgCountEnd >= interval) {
-          generateAutoSummary(p, false).catch(e => console.warn('[AutoSummary] error:', e));
+          if (!monoOneShotChatEnabled() && typeof monoAuxFeaturesEnabled === 'function' && monoAuxFeaturesEnabled()) {
+            generateAutoSummary(p, false).catch(e => console.warn('[AutoSummary] error:', e));
+          }
         }
       }
     } catch(asErr) { console.warn('[AutoSummary] hook error:', asErr); }
@@ -71797,6 +72085,18 @@ const SEC_API_STORAGE_KEY = 'mono_secondary_apis';
 const ACTIVE_API_KEY = 'mono_active_api'; // 'preset' or a secondary API id
 const FAB_ENABLED_KEY = 'mono_fab_enabled';
 const FAB_POS_KEY = 'mono_fab_position';
+// 可选低优先小功能 API：普通聊天仍跟随当前 API，勾选的小功能可走指定便宜 API。
+const LOW_PRIORITY_API_ENABLED_KEY = 'mono_low_priority_api_enabled';
+const LOW_PRIORITY_API_ID_KEY = 'mono_low_priority_api_id';
+const LOW_PRIORITY_FEATURES_KEY = 'mono_low_priority_features';
+const LOW_PRIORITY_DEFAULT_FEATURES = ['summary','translation','sticker','card','minor'];
+const LOW_PRIORITY_FEATURE_LABELS = {
+  summary: '总结/记忆整理',
+  translation: '翻译',
+  sticker: '贴图/表情判断',
+  card: '转账/外卖/文字图',
+  minor: '心声/状态/其他小判断'
+};
 // ── Data ──
 let secondaryApis = [];
 let activeApiId = 'preset'; // 'preset' means the main apiConfig
@@ -71819,6 +72119,7 @@ function initApiSwitcher() {
   applyActiveApi();
   // Render secondary API list in settings
   renderSecondaryApiList();
+  renderLowPriorityApiSettings();
   renderActiveApiIndicator();
   // FAB toggle
   const fabToggle = document.getElementById('fabToggleInput');
@@ -71864,6 +72165,7 @@ function switchActiveApi(id) {
   localStorage.setItem(ACTIVE_API_KEY, id);
   applyActiveApi();
   renderSecondaryApiList();
+  renderLowPriorityApiSettings();
   renderActiveApiIndicator();
   updateFabPanel();
 }
@@ -71885,6 +72187,7 @@ function renderSecondaryApiList() {
     container.innerHTML = '<div class="secondary-api-empty"><i class="fas fa-plug" style="font-size:18px;margin-bottom:6px;display:block;"></i>尚未添加副 API<br>点击上方「+ 添加」来新增</div>';
     return;
   }
+  renderLowPriorityApiSettings();
   container.innerHTML = secondaryApis.map(api => {
     const isActive = activeApiId === api.id;
     return `
@@ -71894,6 +72197,7 @@ function renderSecondaryApiList() {
             <i class="fas fa-server" style="font-size:10px;color:#888;"></i>
             ${escapeHtml(api.name)}
             ${isActive ? '<span class="active-badge">使用中</span>' : ''}
+            ${(monoGetLowPrioritySettings && monoGetLowPrioritySettings().enabled && monoGetLowPrioritySettings().apiId === api.id) ? '<span class="active-badge" style="background:#6366f1;">低优先</span>' : ''}
           </div>
           <div class="card-actions">
             ${!isActive ? `<button onclick="switchActiveApi('${api.id}')" title="切换到此 API"><i class="fas fa-check-circle"></i> 使用</button>` : `<button onclick="switchActiveApi('preset')" title="切换回预设"><i class="fas fa-undo"></i> 切换预设</button>`}
@@ -71913,6 +72217,113 @@ function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
+}
+function monoGetLowPrioritySettings() {
+  let features;
+  try { features = JSON.parse(localStorage.getItem(LOW_PRIORITY_FEATURES_KEY) || 'null'); } catch(e) { features = null; }
+  if (!Array.isArray(features) || !features.length) features = LOW_PRIORITY_DEFAULT_FEATURES.slice();
+  return {
+    enabled: localStorage.getItem(LOW_PRIORITY_API_ENABLED_KEY) === 'true',
+    apiId: localStorage.getItem(LOW_PRIORITY_API_ID_KEY) || '',
+    features: features
+  };
+}
+function monoSaveLowPriorityApiSettings() {
+  const enabledEl = document.getElementById('lowPriorityApiEnabled');
+  const selectEl = document.getElementById('lowPriorityApiSelect');
+  const checks = Array.from(document.querySelectorAll('[data-low-priority-feature]'));
+  const enabled = !!(enabledEl && enabledEl.checked);
+  const apiId = selectEl ? selectEl.value : '';
+  const features = checks.filter(function(ch){ return ch.checked; }).map(function(ch){ return ch.getAttribute('data-low-priority-feature'); }).filter(Boolean);
+  try {
+    localStorage.setItem(LOW_PRIORITY_API_ENABLED_KEY, enabled ? 'true' : 'false');
+    localStorage.setItem(LOW_PRIORITY_API_ID_KEY, apiId || '');
+    localStorage.setItem(LOW_PRIORITY_FEATURES_KEY, JSON.stringify(features.length ? features : LOW_PRIORITY_DEFAULT_FEATURES));
+  } catch(e) {}
+  renderLowPriorityApiSettings();
+}
+function monoGetLowPriorityApiConfig(feature) {
+  const st = monoGetLowPrioritySettings();
+  const allowed = !feature || st.features.indexOf(feature) >= 0;
+  if (!st.enabled || !st.apiId || !allowed) return null;
+  const api = (secondaryApis || []).find(function(a){ return a && a.id === st.apiId; });
+  return api ? _normalizeApiConfigObject(api) : null;
+}
+function monoGetApiForFeature(feature) {
+  return monoGetLowPriorityApiConfig(feature) || ((typeof _getCurrentActiveApiConfig === 'function') ? _getCurrentActiveApiConfig() : _normalizeApiConfigObject(apiConfig));
+}
+async function monoWithLowPriorityApiConfig(feature, fn) {
+  const cfg = monoGetApiForFeature(feature);
+  return await fn(cfg);
+}
+function monoClassifyLowPriorityPrompt(bodyText) {
+  const s = String(bodyText || '');
+  if (!s.trim()) return '';
+  // 主聊天包永远不转低优先，避免角色正文被便宜 API 生成。
+  if (s.indexOf('【一次 API 聊天包模式') >= 0 || /你是[^\n]{1,40}。人设[:：]/.test(s)) return '';
+  if (/记忆整理助手|自动总结|生成总结|总结正文|对话内容（共/.test(s)) return 'summary';
+  if (/翻译|翻譯|translate/i.test(s)) return 'translation';
+  if (/贴图|表情包|sticker|emoji|表情判断/.test(s)) return 'sticker';
+  if (/转账|外卖|订单|文字图|卡片|红包/.test(s)) return 'card';
+  // 线下 / 电话不计入低优先小功能，始终跟随用户当前选择的 API。
+  if (/线下|離線|offline|离线|行踪|情侣定位|电话|通话|语音|voice|call/i.test(s)) return '';
+  if (/心声|黑盒|状态整理|关系值|情绪标签|小功能|判断/.test(s)) return 'minor';
+  return '';
+}
+function renderLowPriorityApiSettings() {
+  const box = document.getElementById('lowPriorityApiBox');
+  if (!box) return;
+  const st = monoGetLowPrioritySettings();
+  const enabledEl = document.getElementById('lowPriorityApiEnabled');
+  const track = document.getElementById('lowPriorityApiTrack');
+  const thumb = document.getElementById('lowPriorityApiThumb');
+  if (enabledEl) enabledEl.checked = st.enabled;
+  if (track) track.style.background = st.enabled ? '#1a1a1a' : '#ccc';
+  if (thumb) thumb.style.left = st.enabled ? '20px' : '2px';
+  const select = document.getElementById('lowPriorityApiSelect');
+  if (select) {
+    const options = ['<option value="">跟随当前 API</option>'].concat((secondaryApis || []).map(function(api){
+      return '<option value="' + escapeHtml(api.id) + '">' + escapeHtml(api.name || '未命名 API') + ' · ' + escapeHtml(api.model || '未设模型') + '</option>';
+    }));
+    select.innerHTML = options.join('');
+    select.value = st.apiId || '';
+    select.disabled = !st.enabled;
+  }
+  const checks = document.getElementById('lowPriorityFeatureChecks');
+  if (checks) {
+    checks.innerHTML = Object.keys(LOW_PRIORITY_FEATURE_LABELS).map(function(k){
+      const checked = st.features.indexOf(k) >= 0 ? 'checked' : '';
+      return '<label style="display:flex;align-items:center;gap:5px;padding:5px 6px;border:1px solid #eee;border-radius:7px;background:#fff;">' +
+        '<input type="checkbox" data-low-priority-feature="' + escapeHtml(k) + '" onchange="monoSaveLowPriorityApiSettings()" ' + checked + ' ' + (st.enabled ? '' : 'disabled') + ' style="accent-color:#1a1a1a;">' +
+        '<span>' + escapeHtml(LOW_PRIORITY_FEATURE_LABELS[k]) + '</span></label>';
+    }).join('');
+  }
+  const hint = document.getElementById('lowPriorityApiHint');
+  if (hint) {
+    const api = (secondaryApis || []).find(function(a){ return a.id === st.apiId; });
+    hint.textContent = st.enabled && api
+      ? '已启用：勾选的小功能会优先使用「' + (api.name || '低优先 API') + '」，普通聊天、线下和电话仍使用当前切换的 API。'
+      : '关闭或未选择时：所有功能跟随当前 API。开启后：勾选的小功能优先使用指定 API；线下和电话不计入。';
+  }
+}
+// 兼容旧函数名：现在它代表“低优先小功能 API”，不是强制副 API。
+function monoGetAuxApiConfig() {
+  return monoGetLowPriorityApiConfig('minor') || ((typeof _getCurrentActiveApiConfig === 'function') ? _getCurrentActiveApiConfig() : _normalizeApiConfigObject(apiConfig));
+}
+function monoHasAuxApi() {
+  const cfg = monoGetAuxApiConfig();
+  return !!(cfg && cfg.url && cfg.key);
+}
+async function monoWithAuxApiConfig(fn) {
+  return await monoWithLowPriorityApiConfig('minor', fn);
+}
+function monoSetAuxApiForFeatures(apiId) {
+  try { localStorage.setItem(LOW_PRIORITY_API_ID_KEY, String(apiId || '')); localStorage.setItem(LOW_PRIORITY_API_ENABLED_KEY, apiId ? 'true' : 'false'); } catch(e) {}
+  renderLowPriorityApiSettings();
+}
+function monoToggleAuxFeatures(enabled) {
+  try { localStorage.setItem(LOW_PRIORITY_API_ENABLED_KEY, enabled ? 'true' : 'false'); } catch(e) {}
+  renderLowPriorityApiSettings();
 }
 // ── Save secondary APIs to storage ──
 function saveSecondaryApis() {

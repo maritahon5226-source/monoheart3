@@ -25272,227 +25272,21 @@ function addMemoryCoreItem() {
   saveData();
   renderMemoryCoreList(p.memoryCore);
 }
-// ===== 核心记忆单条永久删除修复：同时清理 live / localStorage / IndexedDB / 多世界缓存 =====
-function _monoCoreMemoryContentOf(item) {
-  if (item == null) return '';
-  if (typeof item === 'string') return item.trim();
-  if (typeof item === 'object') {
-    return String(item.content || item.text || item.value || item.note || item.memory || '').trim();
-  }
-  return String(item).trim();
-}
-function _monoCoreMemoryStableSig(item) {
-  var obj = item;
-  if (item && typeof item === 'object') {
-    obj = {};
-    Object.keys(item).sort().forEach(function(k){
-      if (/^(_ui|_temp|_render|editing|selected|checked)$/i.test(k)) return;
-      obj[k] = item[k];
-    });
-  }
-  var full = '';
-  try { full = JSON.stringify(obj); } catch(e) { full = String(obj || ''); }
-  return {
-    content: _monoCoreMemoryContentOf(item),
-    source: item && typeof item === 'object' ? String(item.source || '') : '',
-    date: item && typeof item === 'object' ? String(item.date || item.createdAt || item.time || '') : '',
-    auto: !!(item && typeof item === 'object' && item.auto),
-    full: full
-  };
-}
-function _monoCoreMemorySameItem(item, sig) {
-  if (!sig) return false;
-  var s = _monoCoreMemoryStableSig(item);
-  if (s.full && sig.full && s.full === sig.full) return true;
-  if (s.content && sig.content && s.content === sig.content) {
-    // 内容相同且来源/日期能对上，就视为同一条；旧数据缺少日期/来源时也允许删除，避免残留。
-    var sourceOk = !sig.source || !s.source || s.source === sig.source;
-    var dateOk = !sig.date || !s.date || s.date === sig.date;
-    return sourceOk && dateOk;
-  }
-  return false;
-}
-function _monoCoreMemoryPurgeFromPersonaObject(persona, personaId, sig, fallbackIdx) {
-  if (!persona || String(persona.id) !== String(personaId) || !Array.isArray(persona.memoryCore)) return 0;
-  var before = persona.memoryCore.length;
-  persona.memoryCore = persona.memoryCore.filter(function(item, i){
-    if (_monoCoreMemorySameItem(item, sig)) return false;
-    // 只有同一个角色的当前 live 列表会用 fallback index；存储副本只按签名删，避免误删其他条。
-    if (fallbackIdx != null && i === fallbackIdx && _monoCoreMemoryContentOf(item) === sig.content) return false;
-    return true;
-  });
-  return before - persona.memoryCore.length;
-}
-function _monoCoreMemoryUpdatePersonaArray(arr, personaId, sig, fallbackIdx) {
-  var removed = 0;
-  if (!Array.isArray(arr)) return 0;
-  arr.forEach(function(p){ removed += _monoCoreMemoryPurgeFromPersonaObject(p, personaId, sig, fallbackIdx); });
-  return removed;
-}
-function _monoCoreMemoryTryParse(raw) {
-  try { return JSON.parse(raw || 'null'); } catch(e) { return null; }
-}
-function _monoCoreMemoryLooksPersonaKey(key) {
-  return !!(key && /^mono_/.test(key) && (
-    key === 'mono_personas' ||
-    /^mono_mw_[^_]+_personas$/.test(key) ||
-    /^mono_mw_.+_personas$/.test(key) ||
-    /personas/i.test(key)
-  ));
-}
-function _monoCoreMemoryWriteExactKey(key, value) {
-  var str = JSON.stringify(value);
-  try { localStorage.setItem(key, str); } catch(e) {}
-  try {
-    if (window._monoRawLocalStorage && window._monoRawLocalStorage.setItem) {
-      window._monoRawLocalStorage.setItem(key, str);
-    }
-  } catch(e) {}
-}
-function _monoCoreMemoryUpdateRawValue(raw, personaId, sig) {
-  var data = _monoCoreMemoryTryParse(raw);
-  var changed = false;
-  if (Array.isArray(data)) {
-    changed = _monoCoreMemoryUpdatePersonaArray(data, personaId, sig, null) > 0;
-    return changed ? data : null;
-  }
-  if (data && typeof data === 'object') {
-    var paths = [
-      data.personas,
-      data.chat && data.chat.personas,
-      data.data && data.data.personas,
-      data.state && data.state.personas,
-      data.mono && data.mono.personas
-    ];
-    paths.forEach(function(arr){
-      if (Array.isArray(arr) && _monoCoreMemoryUpdatePersonaArray(arr, personaId, sig, null) > 0) changed = true;
-    });
-    return changed ? data : null;
-  }
-  return null;
-}
-async function _monoCoreMemoryUpdateIndexedDB(personaId, sig) {
-  try {
-    var db = window._idb || null;
-    if (!db && window.indexedDB) {
-      db = await new Promise(function(resolve){
-        try {
-          var req = indexedDB.open('MonoHeartDB', 2);
-          req.onsuccess = function(e){ resolve(e.target.result); };
-          req.onerror = function(){ resolve(null); };
-        } catch(e) { resolve(null); }
-      });
-    }
-    if (!db || !db.objectStoreNames || !db.objectStoreNames.contains('kv')) return;
-    await new Promise(function(resolve){
-      try {
-        var tx = db.transaction('kv', 'readwrite');
-        var store = tx.objectStore('kv');
-        store.openCursor().onsuccess = function(e){
-          var cursor = e.target.result;
-          if (!cursor) return;
-          var key = cursor.key;
-          if (_monoCoreMemoryLooksPersonaKey(String(key))) {
-            var updated = _monoCoreMemoryUpdateRawValue(cursor.value, personaId, sig);
-            if (updated) cursor.update(JSON.stringify(updated));
-          }
-          cursor.continue();
-        };
-        tx.oncomplete = function(){ resolve(); };
-        tx.onerror = function(){ resolve(); };
-      } catch(e) { resolve(); }
-    });
-  } catch(e) {}
-}
-async function _monoCoreMemoryPermanentDeleteItem(personaId, targetItem, fallbackIdx) {
-  var sig = _monoCoreMemoryStableSig(targetItem);
-  if (!sig.content && !sig.full) return 0;
-  var removed = 0;
-
-  // 1. 当前运行内存中的角色数组
-  try { if (Array.isArray(window.personas)) removed += _monoCoreMemoryUpdatePersonaArray(window.personas, personaId, sig, fallbackIdx); } catch(e) {}
-  try { if (typeof personas !== 'undefined' && Array.isArray(personas) && personas !== window.personas) removed += _monoCoreMemoryUpdatePersonaArray(personas, personaId, sig, fallbackIdx); } catch(e) {}
-
-  // 2. 当前世界/默认角色数据
-  try {
-    var raw = localStorage.getItem('mono_personas');
-    var updated = _monoCoreMemoryUpdateRawValue(raw, personaId, sig);
-    if (updated) _monoCoreMemoryWriteExactKey('mono_personas', updated);
-  } catch(e) {}
-
-  // 3. raw localStorage 中所有可能保存 personas 的世界/备份键
-  try {
-    var rawLS = window._monoRawLocalStorage || window.localStorage;
-    var keys = [];
-    for (var i = 0; i < rawLS.length; i++) {
-      var k = rawLS.key(i);
-      if (_monoCoreMemoryLooksPersonaKey(k)) keys.push(k);
-    }
-    keys.forEach(function(k){
-      try {
-        var val = rawLS.getItem(k);
-        var upd = _monoCoreMemoryUpdateRawValue(val, personaId, sig);
-        if (upd) _monoCoreMemoryWriteExactKey(k, upd);
-      } catch(e) {}
-    });
-  } catch(e) {}
-
-  // 4. 多世界列表中登记过的角色键，防止切换世界后旧记忆复活
-  try {
-    var worlds = (typeof mwGetWorlds === 'function') ? mwGetWorlds() : [];
-    if (Array.isArray(worlds)) {
-      worlds.forEach(function(w){
-        if (!w || !w.id) return;
-        var key = 'mono_mw_' + w.id + '_personas';
-        try {
-          var raw = localStorage.getItem(key) || (window._monoRawLocalStorage && window._monoRawLocalStorage.getItem(key));
-          var upd = _monoCoreMemoryUpdateRawValue(raw, personaId, sig);
-          if (upd) _monoCoreMemoryWriteExactKey(key, upd);
-        } catch(e) {}
-      });
-    }
-  } catch(e) {}
-
-  // 5. 导入预览/待导入数据中的缓存
-  try {
-    if (window._pendingImportData && window._pendingImportData.chat && Array.isArray(window._pendingImportData.chat.personas)) {
-      _monoCoreMemoryUpdatePersonaArray(window._pendingImportData.chat.personas, personaId, sig, null);
-    }
-  } catch(e) {}
-  try {
-    if (typeof _pendingImportData !== 'undefined' && _pendingImportData && _pendingImportData.chat && Array.isArray(_pendingImportData.chat.personas)) {
-      _monoCoreMemoryUpdatePersonaArray(_pendingImportData.chat.personas, personaId, sig, null);
-    }
-  } catch(e) {}
-
-  // 6. IndexedDB kv 里所有 persona 数据
-  await _monoCoreMemoryUpdateIndexedDB(personaId, sig);
-
-  // 7. 用原保存流程再写一次当前 slim 数据，确保 localStorage proxy + IndexedDB 同步
-  try { if (typeof saveData === 'function') saveData(); } catch(e) {}
-  return removed;
-}
 async function deleteMemoryCoreItem(idx) {
   if (!currentId) return;
   const p = personas.find(x => x.id == currentId);
-  if (!p || !Array.isArray(p.memoryCore)) return;
-  const targetItem = p.memoryCore[idx];
-  if (targetItem === undefined) return;
+  if (!p || !p.memoryCore) return;
   const ok = await window.monoInAppConfirm({
-    title: '永久删除记忆',
-    note: '确定删除这条核心记忆吗？会同时清除 localStorage、IndexedDB、多世界缓存和导入缓存里的同一条记忆，删除后无法恢复。',
-    confirmText: '永久删除',
+    title: '删除记忆',
+    note: '确定删除这条记忆吗？删除后无法恢复。',
+    confirmText: '删除',
     cancelText: '取消',
     danger: true
   });
   if (!ok) return;
-  await _monoCoreMemoryPermanentDeleteItem(currentId, targetItem, idx);
-  const latest = personas.find(x => x.id == currentId);
-  if (latest && Array.isArray(latest.memoryCore)) renderMemoryCoreList(latest.memoryCore);
-  try {
-    if (typeof showToast === 'function') showToast('核心记忆已永久删除');
-    else if (typeof showMonoNotifToast === 'function') showMonoNotifToast('已删除', '核心记忆已永久删除，不会从缓存恢复。', '');
-  } catch(e) {}
+  p.memoryCore.splice(idx, 1);
+  saveData();
+  renderMemoryCoreList(p.memoryCore);
 }
 function editMemoryCoreItem(idx) {
   const textEl = document.getElementById(`memitem-text-${idx}`);
@@ -27187,6 +26981,69 @@ function monoApplyUserAvatarToUi(avatar, opts) {
     if (_g) renderGroupMessages(_g);
   }} catch(e) {}
 }
+
+// === MONO PATCH: 禁止网页载入时自动调用任何外部 API（2026-05-22） ===
+(function installMonoNoAutoApiOnBootGuard(){
+  if (window.__monoNoAutoApiOnBootGuardInstalled) return;
+  window.__monoNoAutoApiOnBootGuardInstalled = true;
+
+  // 页面刚打开时，不允许自动测试 / 自动识别 / 自动模型拉取 / 自动补生成偷偷打 API。
+  // 只有用户发生真实交互后，才允许外部 API 请求继续。
+  window.__monoUserInitiatedApiUnlocked = false;
+  window.__monoLastUserGestureAt = 0;
+
+  function markUserGesture(){
+    window.__monoUserInitiatedApiUnlocked = true;
+    window.__monoLastUserGestureAt = Date.now();
+  }
+  ['pointerdown','touchstart','mousedown','keydown','click','input','change','submit'].forEach(function(evt){
+    try { document.addEventListener(evt, markUserGesture, true); } catch(e) {}
+  });
+
+  function isExternalApiLikeUrl(url){
+    var u = String(url || '').toLowerCase();
+    if (!u || u.indexOf('data:') === 0 || u.indexOf('blob:') === 0) return false;
+    // 常见聊天 / 视觉 / 模型列表 API：OpenAI 兼容、Gemini、Mistral、Claude 等。
+    if (/\/chat\/completions(?:\?|$)/i.test(u)) return true;
+    if (/\/v1\/models(?:\?|$)|\/models(?:\?|$)/i.test(u)) return true;
+    if (/generativelanguage\.googleapis\.com|\/v1beta\/models\/.*generatecontent|\/v1\/models\/.*generatecontent/i.test(u)) return true;
+    if (/api\.openai\.com|openrouter\.ai|anthropic\.com|mistral\.ai|moonshot|kimi|deepseek|siliconflow|volces|dashscope|bigmodel|zhipu|minimax|stepfun|baichuan|together\.ai|fireworks\.ai/i.test(u)) return true;
+    return false;
+  }
+
+  function makeBlockedResponse(url){
+    var body = JSON.stringify({
+      error: {
+        message: 'MONO 已阻止页面载入时的自动 API 调用。请点击发送、测试、识别图片或手动功能按钮后再调用 API。',
+        type: 'mono_auto_api_blocked_on_boot',
+        url: String(url || '')
+      }
+    });
+    try {
+      return new Response(body, {
+        status: 499,
+        statusText: 'Blocked automatic API call before user action',
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch(e) {
+      return Promise.reject(new Error('MONO 已阻止页面载入时的自动 API 调用'));
+    }
+  }
+
+  var previousFetch = window.fetch ? window.fetch.bind(window) : null;
+  if (!previousFetch) return;
+  window.fetch = function(input, init){
+    var requestUrl = typeof input === 'string' ? input : ((input && input.url) || '');
+    var method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
+    var allowBeforeGesture = init && init.__monoAllowBeforeUserGesture === true;
+    if (!allowBeforeGesture && !window.__monoUserInitiatedApiUnlocked && isExternalApiLikeUrl(requestUrl)) {
+      console.warn('[MONO] 已阻止页面载入自动 API 调用：', method, requestUrl);
+      return Promise.resolve(makeBlockedResponse(requestUrl));
+    }
+    return previousFetch(input, init);
+  };
+})();
+
 // userProfile 初始化：从 localStorage 读文字字段，头像从 IDB blob 异步加载
 let userProfile = (() => {
   try {
@@ -42100,6 +41957,11 @@ async function testTtsConnection(mode) {
     btns.forEach(b => b.disabled = false);
   }
 }
+
+// === MONO PATCH: 图片识别 API 不自动测试 / 不自动跳 Gemini（2026-05-22） ===
+window.__monoVisionApiNeverAutoTest = true;
+window.__monoVisionApiFollowCurrentByDefault = true;
+
 // ===================== 图片识别 Vision API 配置 =====================
 let visionApiConfig = _safeParse('mono_vision_api', {});
 // visionApiConfig: { mode: 'existing'|'gemini'|'custom', geminiKey: '', customUrl: '', customKey: '', customModel: '' }
@@ -42162,8 +42024,11 @@ async function fetchVisionModels(which) {
   }
 }
 function loadVisionApiSettings() {
-  const cfg = visionApiConfig;
-  const mode = cfg.mode || 'existing';
+  const cfg = visionApiConfig || {};
+  // 默认使用当前已连接的聊天 API；除非用户明确保存了 Gemini/custom 且配置完整。
+  let mode = cfg.mode || 'existing';
+  if (mode === 'gemini' && !String(cfg.geminiKey || '').trim()) mode = 'existing';
+  if (mode === 'custom' && (!String(cfg.customUrl || '').trim() || !String(cfg.customKey || '').trim())) mode = 'existing';
   const radios = document.querySelectorAll('input[name="visionApiMode"]');
   radios.forEach(r => { r.checked = r.value === mode; });
   // Gemini fields

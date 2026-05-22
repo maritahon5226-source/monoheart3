@@ -25272,21 +25272,227 @@ function addMemoryCoreItem() {
   saveData();
   renderMemoryCoreList(p.memoryCore);
 }
+// ===== 核心记忆单条永久删除修复：同时清理 live / localStorage / IndexedDB / 多世界缓存 =====
+function _monoCoreMemoryContentOf(item) {
+  if (item == null) return '';
+  if (typeof item === 'string') return item.trim();
+  if (typeof item === 'object') {
+    return String(item.content || item.text || item.value || item.note || item.memory || '').trim();
+  }
+  return String(item).trim();
+}
+function _monoCoreMemoryStableSig(item) {
+  var obj = item;
+  if (item && typeof item === 'object') {
+    obj = {};
+    Object.keys(item).sort().forEach(function(k){
+      if (/^(_ui|_temp|_render|editing|selected|checked)$/i.test(k)) return;
+      obj[k] = item[k];
+    });
+  }
+  var full = '';
+  try { full = JSON.stringify(obj); } catch(e) { full = String(obj || ''); }
+  return {
+    content: _monoCoreMemoryContentOf(item),
+    source: item && typeof item === 'object' ? String(item.source || '') : '',
+    date: item && typeof item === 'object' ? String(item.date || item.createdAt || item.time || '') : '',
+    auto: !!(item && typeof item === 'object' && item.auto),
+    full: full
+  };
+}
+function _monoCoreMemorySameItem(item, sig) {
+  if (!sig) return false;
+  var s = _monoCoreMemoryStableSig(item);
+  if (s.full && sig.full && s.full === sig.full) return true;
+  if (s.content && sig.content && s.content === sig.content) {
+    // 内容相同且来源/日期能对上，就视为同一条；旧数据缺少日期/来源时也允许删除，避免残留。
+    var sourceOk = !sig.source || !s.source || s.source === sig.source;
+    var dateOk = !sig.date || !s.date || s.date === sig.date;
+    return sourceOk && dateOk;
+  }
+  return false;
+}
+function _monoCoreMemoryPurgeFromPersonaObject(persona, personaId, sig, fallbackIdx) {
+  if (!persona || String(persona.id) !== String(personaId) || !Array.isArray(persona.memoryCore)) return 0;
+  var before = persona.memoryCore.length;
+  persona.memoryCore = persona.memoryCore.filter(function(item, i){
+    if (_monoCoreMemorySameItem(item, sig)) return false;
+    // 只有同一个角色的当前 live 列表会用 fallback index；存储副本只按签名删，避免误删其他条。
+    if (fallbackIdx != null && i === fallbackIdx && _monoCoreMemoryContentOf(item) === sig.content) return false;
+    return true;
+  });
+  return before - persona.memoryCore.length;
+}
+function _monoCoreMemoryUpdatePersonaArray(arr, personaId, sig, fallbackIdx) {
+  var removed = 0;
+  if (!Array.isArray(arr)) return 0;
+  arr.forEach(function(p){ removed += _monoCoreMemoryPurgeFromPersonaObject(p, personaId, sig, fallbackIdx); });
+  return removed;
+}
+function _monoCoreMemoryTryParse(raw) {
+  try { return JSON.parse(raw || 'null'); } catch(e) { return null; }
+}
+function _monoCoreMemoryLooksPersonaKey(key) {
+  return !!(key && /^mono_/.test(key) && (
+    key === 'mono_personas' ||
+    /^mono_mw_[^_]+_personas$/.test(key) ||
+    /^mono_mw_.+_personas$/.test(key) ||
+    /personas/i.test(key)
+  ));
+}
+function _monoCoreMemoryWriteExactKey(key, value) {
+  var str = JSON.stringify(value);
+  try { localStorage.setItem(key, str); } catch(e) {}
+  try {
+    if (window._monoRawLocalStorage && window._monoRawLocalStorage.setItem) {
+      window._monoRawLocalStorage.setItem(key, str);
+    }
+  } catch(e) {}
+}
+function _monoCoreMemoryUpdateRawValue(raw, personaId, sig) {
+  var data = _monoCoreMemoryTryParse(raw);
+  var changed = false;
+  if (Array.isArray(data)) {
+    changed = _monoCoreMemoryUpdatePersonaArray(data, personaId, sig, null) > 0;
+    return changed ? data : null;
+  }
+  if (data && typeof data === 'object') {
+    var paths = [
+      data.personas,
+      data.chat && data.chat.personas,
+      data.data && data.data.personas,
+      data.state && data.state.personas,
+      data.mono && data.mono.personas
+    ];
+    paths.forEach(function(arr){
+      if (Array.isArray(arr) && _monoCoreMemoryUpdatePersonaArray(arr, personaId, sig, null) > 0) changed = true;
+    });
+    return changed ? data : null;
+  }
+  return null;
+}
+async function _monoCoreMemoryUpdateIndexedDB(personaId, sig) {
+  try {
+    var db = window._idb || null;
+    if (!db && window.indexedDB) {
+      db = await new Promise(function(resolve){
+        try {
+          var req = indexedDB.open('MonoHeartDB', 2);
+          req.onsuccess = function(e){ resolve(e.target.result); };
+          req.onerror = function(){ resolve(null); };
+        } catch(e) { resolve(null); }
+      });
+    }
+    if (!db || !db.objectStoreNames || !db.objectStoreNames.contains('kv')) return;
+    await new Promise(function(resolve){
+      try {
+        var tx = db.transaction('kv', 'readwrite');
+        var store = tx.objectStore('kv');
+        store.openCursor().onsuccess = function(e){
+          var cursor = e.target.result;
+          if (!cursor) return;
+          var key = cursor.key;
+          if (_monoCoreMemoryLooksPersonaKey(String(key))) {
+            var updated = _monoCoreMemoryUpdateRawValue(cursor.value, personaId, sig);
+            if (updated) cursor.update(JSON.stringify(updated));
+          }
+          cursor.continue();
+        };
+        tx.oncomplete = function(){ resolve(); };
+        tx.onerror = function(){ resolve(); };
+      } catch(e) { resolve(); }
+    });
+  } catch(e) {}
+}
+async function _monoCoreMemoryPermanentDeleteItem(personaId, targetItem, fallbackIdx) {
+  var sig = _monoCoreMemoryStableSig(targetItem);
+  if (!sig.content && !sig.full) return 0;
+  var removed = 0;
+
+  // 1. 当前运行内存中的角色数组
+  try { if (Array.isArray(window.personas)) removed += _monoCoreMemoryUpdatePersonaArray(window.personas, personaId, sig, fallbackIdx); } catch(e) {}
+  try { if (typeof personas !== 'undefined' && Array.isArray(personas) && personas !== window.personas) removed += _monoCoreMemoryUpdatePersonaArray(personas, personaId, sig, fallbackIdx); } catch(e) {}
+
+  // 2. 当前世界/默认角色数据
+  try {
+    var raw = localStorage.getItem('mono_personas');
+    var updated = _monoCoreMemoryUpdateRawValue(raw, personaId, sig);
+    if (updated) _monoCoreMemoryWriteExactKey('mono_personas', updated);
+  } catch(e) {}
+
+  // 3. raw localStorage 中所有可能保存 personas 的世界/备份键
+  try {
+    var rawLS = window._monoRawLocalStorage || window.localStorage;
+    var keys = [];
+    for (var i = 0; i < rawLS.length; i++) {
+      var k = rawLS.key(i);
+      if (_monoCoreMemoryLooksPersonaKey(k)) keys.push(k);
+    }
+    keys.forEach(function(k){
+      try {
+        var val = rawLS.getItem(k);
+        var upd = _monoCoreMemoryUpdateRawValue(val, personaId, sig);
+        if (upd) _monoCoreMemoryWriteExactKey(k, upd);
+      } catch(e) {}
+    });
+  } catch(e) {}
+
+  // 4. 多世界列表中登记过的角色键，防止切换世界后旧记忆复活
+  try {
+    var worlds = (typeof mwGetWorlds === 'function') ? mwGetWorlds() : [];
+    if (Array.isArray(worlds)) {
+      worlds.forEach(function(w){
+        if (!w || !w.id) return;
+        var key = 'mono_mw_' + w.id + '_personas';
+        try {
+          var raw = localStorage.getItem(key) || (window._monoRawLocalStorage && window._monoRawLocalStorage.getItem(key));
+          var upd = _monoCoreMemoryUpdateRawValue(raw, personaId, sig);
+          if (upd) _monoCoreMemoryWriteExactKey(key, upd);
+        } catch(e) {}
+      });
+    }
+  } catch(e) {}
+
+  // 5. 导入预览/待导入数据中的缓存
+  try {
+    if (window._pendingImportData && window._pendingImportData.chat && Array.isArray(window._pendingImportData.chat.personas)) {
+      _monoCoreMemoryUpdatePersonaArray(window._pendingImportData.chat.personas, personaId, sig, null);
+    }
+  } catch(e) {}
+  try {
+    if (typeof _pendingImportData !== 'undefined' && _pendingImportData && _pendingImportData.chat && Array.isArray(_pendingImportData.chat.personas)) {
+      _monoCoreMemoryUpdatePersonaArray(_pendingImportData.chat.personas, personaId, sig, null);
+    }
+  } catch(e) {}
+
+  // 6. IndexedDB kv 里所有 persona 数据
+  await _monoCoreMemoryUpdateIndexedDB(personaId, sig);
+
+  // 7. 用原保存流程再写一次当前 slim 数据，确保 localStorage proxy + IndexedDB 同步
+  try { if (typeof saveData === 'function') saveData(); } catch(e) {}
+  return removed;
+}
 async function deleteMemoryCoreItem(idx) {
   if (!currentId) return;
   const p = personas.find(x => x.id == currentId);
-  if (!p || !p.memoryCore) return;
+  if (!p || !Array.isArray(p.memoryCore)) return;
+  const targetItem = p.memoryCore[idx];
+  if (targetItem === undefined) return;
   const ok = await window.monoInAppConfirm({
-    title: '删除记忆',
-    note: '确定删除这条记忆吗？删除后无法恢复。',
-    confirmText: '删除',
+    title: '永久删除记忆',
+    note: '确定删除这条核心记忆吗？会同时清除 localStorage、IndexedDB、多世界缓存和导入缓存里的同一条记忆，删除后无法恢复。',
+    confirmText: '永久删除',
     cancelText: '取消',
     danger: true
   });
   if (!ok) return;
-  p.memoryCore.splice(idx, 1);
-  saveData();
-  renderMemoryCoreList(p.memoryCore);
+  await _monoCoreMemoryPermanentDeleteItem(currentId, targetItem, idx);
+  const latest = personas.find(x => x.id == currentId);
+  if (latest && Array.isArray(latest.memoryCore)) renderMemoryCoreList(latest.memoryCore);
+  try {
+    if (typeof showToast === 'function') showToast('核心记忆已永久删除');
+    else if (typeof showMonoNotifToast === 'function') showMonoNotifToast('已删除', '核心记忆已永久删除，不会从缓存恢复。', '');
+  } catch(e) {}
 }
 function editMemoryCoreItem(idx) {
   const textEl = document.getElementById(`memitem-text-${idx}`);

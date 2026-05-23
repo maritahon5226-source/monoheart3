@@ -44230,7 +44230,7 @@ function renderStickerManageView() {
     <div class="sticker-item" style="position:relative;display:block;min-width:0;min-height:0;">
       <img src="${s.src}" alt="sticker" style="width:100%;height:100%;object-fit:cover;display:block;">
       <div class="sticker-item-overlay">
-        <button class="sticker-overlay-btn" onclick="editStickerCaption('${currentLib.id}', ${i})">✏️ 编輯</button>
+        <button class="sticker-overlay-btn" onclick="editStickerCaption('${currentLib.id}', ${i}, event);event.stopPropagation();return false;">✏️ 编輯</button>
         <button class="sticker-overlay-btn" style="background:rgba(255,80,80,0.9);color:#fff;" onclick="deleteSticker('${currentLib.id}', ${i})">🗑 刪除</button>
       </div>
     </div>
@@ -109452,6 +109452,134 @@ body.mono-fwd-modal-open {
   document.addEventListener('DOMContentLoaded', install);
   setTimeout(install, 250);
   setTimeout(install, 1000);
+})();
+</script>
+
+
+
+<!-- FIX: Sticker library edit modal top-layer + safe edit binding -->
+<style id="sticker-edit-modal-top-layer-fix">
+  #stickerAddModal.sticker-add-modal-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 2147483000 !important;
+    background: rgba(0,0,0,0.55) !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 20px !important;
+    box-sizing: border-box !important;
+    pointer-events: auto !important;
+  }
+  #stickerAddModal.sticker-add-modal-overlay.show {
+    display: flex !important;
+  }
+  #stickerAddModal .sticker-add-modal-box {
+    max-height: calc(100vh - 40px) !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    position: relative !important;
+    z-index: 2147483001 !important;
+  }
+  .sticker-overlay-btn { pointer-events: auto !important; }
+</style>
+<script id="sticker-edit-modal-safe-fix">
+(function(){
+  function byId(id){ return document.getElementById(id); }
+  function normalizeStickerItemForEdit(s){
+    if (!s) return null;
+    if (typeof s === 'string') return { src: s, caption: '' };
+    return s;
+  }
+  function getLibSafe(libraryId){
+    try {
+      if (typeof getStickerLibraryById === 'function') {
+        return getStickerLibraryById(libraryId || (typeof getCurrentStickerLibraryId === 'function' ? getCurrentStickerLibraryId() : ''));
+      }
+    } catch(e) {}
+    try {
+      var libs = typeof getStickerLibraries === 'function' ? getStickerLibraries() : [];
+      return libs.find(function(lib){ return lib && lib.id === libraryId; }) || libs[0] || null;
+    } catch(e) { return null; }
+  }
+  window.openStickerAddModal = function(libraryId, editIdx){
+    var modal = byId('stickerAddModal');
+    if (!modal) { console.warn('[sticker edit] stickerAddModal not found'); return; }
+    // Move to body so it is not trapped under the sticker library panel or parent overflow.
+    try { if (modal.parentElement !== document.body) document.body.appendChild(modal); } catch(e) {}
+
+    window._stickerPendingImage = null;
+    window._stickerEditIdx = (editIdx !== undefined && editIdx !== null)
+      ? { libraryId: libraryId || (typeof getCurrentStickerLibraryId === 'function' ? getCurrentStickerLibraryId() : ''), idx: Number(editIdx) }
+      : null;
+    if (libraryId) window._currentStickerLibraryId = libraryId;
+
+    var previewImg = byId('stickerPreviewImg');
+    var placeholder = byId('stickerPreviewPlaceholder');
+    var captionInput = byId('stickerCaptionInput');
+    var fileInput = byId('stickerFileInput');
+    var saveBtn = byId('stickerSaveBtn');
+    var title = modal.querySelector('.sticker-add-modal-box > div:first-child');
+
+    if (fileInput) { try { fileInput.value = ''; } catch(e) {} }
+    if (previewImg) { previewImg.removeAttribute('src'); previewImg.style.display = 'none'; }
+    if (placeholder) placeholder.style.display = 'flex';
+    if (captionInput) captionInput.value = '';
+    if (saveBtn) saveBtn.textContent = (editIdx !== undefined && editIdx !== null) ? '保存修改' : '保存表情包';
+    if (title) title.textContent = (editIdx !== undefined && editIdx !== null) ? '编辑表情包' : '新增表情包';
+
+    if (editIdx !== undefined && editIdx !== null) {
+      var lib = getLibSafe(libraryId || (typeof getCurrentStickerLibraryId === 'function' ? getCurrentStickerLibraryId() : ''));
+      var s = lib && lib.stickers ? normalizeStickerItemForEdit(lib.stickers[Number(editIdx)]) : null;
+      if (s) {
+        var src = s.src || s.url || s.image || s.dataUrl || '';
+        var caption = s.caption || s._visionDesc || s.desc || s.name || '';
+        if (previewImg && src) { previewImg.src = src; previewImg.style.display = 'block'; }
+        if (placeholder && src) placeholder.style.display = 'none';
+        if (captionInput) captionInput.value = caption;
+        window._stickerPendingImage = src;
+      } else {
+        console.warn('[sticker edit] sticker not found', libraryId, editIdx);
+      }
+    }
+    modal.classList.add('show');
+    modal.style.display = 'flex';
+    modal.setAttribute('aria-hidden', 'false');
+    setTimeout(function(){ if (captionInput) captionInput.focus(); }, 50);
+  };
+
+  window.closeStickerAddModal = function(){
+    var modal = byId('stickerAddModal');
+    if (modal) { modal.classList.remove('show'); modal.style.display = 'none'; modal.setAttribute('aria-hidden', 'true'); }
+    window._stickerPendingImage = null;
+    window._stickerEditIdx = null;
+  };
+
+  window.editStickerCaption = function(libraryId, idx, ev){
+    if (ev) { try { ev.preventDefault(); ev.stopPropagation(); } catch(e) {} }
+    window.openStickerAddModal(libraryId, idx);
+    return false;
+  };
+
+  // Extra safety for dynamically rendered management buttons.
+  document.addEventListener('click', function(ev){
+    var target = ev.target;
+    if (!target) return;
+    var btn = target.closest && target.closest('.sticker-overlay-btn');
+    if (!btn) return;
+    var text = (btn.textContent || '').trim();
+    if (text.indexOf('编') === -1 && text.indexOf('輯') === -1 && text.indexOf('✏') === -1) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    var onclick = btn.getAttribute('onclick') || '';
+    var m = onclick.match(/editStickerCaption\(['\"]([^'\"]*)['\"]\s*,\s*(\d+)/);
+    if (m) window.openStickerAddModal(m[1], Number(m[2]));
+  }, true);
 })();
 </script>
 

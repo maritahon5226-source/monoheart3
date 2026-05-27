@@ -37,6 +37,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head><base href="https://d16ilfvy4mv02r.cloudfront.net/workspaces/sh0bDVYUIEw8H1dpwjAJvINuiJ6ETxg0/6c9a375e-adcc-44e2-9ec5-2d1ce63bc50b/files/">
@@ -109583,5 +109584,603 @@ body.mono-fwd-modal-open {
 })();
 </script>
 
+
+
+<!-- MONO HOTFIX: Sticker manager buttons not clickable because panels were covered -->
+<style id="mono-sticker-covered-buttons-fix-style">
+  /* 表情包主弹层、单个导入弹窗、批量导入弹窗全部提升到真实屏幕顶层，避免被聊天输入栏/主弹层/透明遮罩盖住 */
+  body.mono-sticker-modal-open #stickerModal.sticker-modal-overlay,
+  #stickerModal.sticker-modal-overlay.show,
+  #stickerModal.mono-sticker-viewport-fixed.sticker-modal-overlay.show {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    z-index: 2147483000 !important;
+    pointer-events: auto !important;
+    overflow: hidden !important;
+  }
+
+  #stickerAddModal.sticker-add-modal-overlay.show,
+  #batchStickerModal.batch-sticker-modal-overlay.show {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    z-index: 2147483200 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: calc(env(safe-area-inset-top, 0px) + 16px) 16px calc(env(safe-area-inset-bottom, 0px) + 16px) !important;
+    box-sizing: border-box !important;
+    pointer-events: auto !important;
+    overflow: hidden !important;
+    background: rgba(0,0,0,0.52) !important;
+  }
+
+  #stickerAddModal .sticker-add-modal-box,
+  #batchStickerModal .batch-sticker-modal-box {
+    position: relative !important;
+    z-index: 2147483201 !important;
+    pointer-events: auto !important;
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 36px) !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    box-sizing: border-box !important;
+  }
+
+  /* 管理库页面上方的导入区域必须压在表情包列表上面，避免被列表/grid 透明层盖住 */
+  #stickerManageView {
+    position: relative !important;
+    z-index: 2 !important;
+    pointer-events: auto !important;
+  }
+  #stickerManageView > div,
+  #stickerManageView .sticker-url-section,
+  #stickerLibraryToolbar,
+  #stickerUrlInput,
+  #stickerBulkUrlInput,
+  #stickerBulkUrlAutoDesc,
+  #stickerManageView button {
+    position: relative !important;
+    z-index: 5 !important;
+    pointer-events: auto !important;
+  }
+  #stickerManageGrid {
+    position: relative !important;
+    z-index: 1 !important;
+    flex: 0 0 auto !important;
+    overflow: visible !important;
+    pointer-events: auto !important;
+  }
+  #stickerSendView[style*="display: none"],
+  #stickerManageView[style*="display: none"] {
+    pointer-events: none !important;
+  }
+
+  /* 弹窗按钮/输入框明确可点，防止继承到不可点状态 */
+  #batchStickerModal button,
+  #batchStickerModal input,
+  #batchStickerModal textarea,
+  #batchStickerModal .batch-sticker-slot,
+  #batchStickerModal .slot-preview,
+  #stickerAddModal button,
+  #stickerAddModal input,
+  #stickerAddModal textarea,
+  #stickerAddModal .sticker-preview-area {
+    pointer-events: auto !important;
+    touch-action: manipulation !important;
+  }
+</style>
+<script id="mono-sticker-covered-buttons-fix-script">
+(function(){
+  if (window.__monoStickerCoveredButtonsFix) return;
+  window.__monoStickerCoveredButtonsFix = true;
+
+  function byId(id){ return document.getElementById(id); }
+  function moveToBody(el){
+    if (el && el.parentElement !== document.body) {
+      try { document.body.appendChild(el); } catch(e) {}
+    }
+    return el;
+  }
+  function ensurePanelsOnTop(){
+    moveToBody(byId('stickerModal'));
+    moveToBody(byId('stickerAddModal'));
+    moveToBody(byId('batchStickerModal'));
+  }
+  function activateOverlay(el){
+    if (!el) return;
+    moveToBody(el);
+    el.classList.add('show');
+    el.style.pointerEvents = 'auto';
+  }
+  function deactivateOverlay(el){
+    if (!el) return;
+    el.classList.remove('show');
+  }
+
+  // 打开表情包库时，先把主弹层和两个子弹窗都搬到 body，避免受 chatPage overflow / z-index 影响。
+  var oldOpenStickerModal = window.openStickerModal;
+  window.openStickerModal = function(){
+    ensurePanelsOnTop();
+    document.body.classList.add('mono-sticker-modal-open');
+    if (typeof oldOpenStickerModal === 'function') return oldOpenStickerModal.apply(this, arguments);
+    var modal = byId('stickerModal');
+    activateOverlay(modal);
+    if (typeof renderStickerSendView === 'function') renderStickerSendView();
+    if (typeof switchStickerTab === 'function') switchStickerTab('send');
+  };
+
+  var oldSwitchStickerTab = window.switchStickerTab;
+  window.switchStickerTab = function(tab){
+    ensurePanelsOnTop();
+    if (typeof oldSwitchStickerTab === 'function') oldSwitchStickerTab.apply(this, arguments);
+    var send = byId('stickerSendView');
+    var manage = byId('stickerManageView');
+    if (send) {
+      send.style.pointerEvents = tab === 'send' ? 'auto' : 'none';
+      if (tab !== 'send') send.style.display = 'none';
+    }
+    if (manage) {
+      manage.style.pointerEvents = tab === 'manage' ? 'auto' : 'none';
+      if (tab === 'manage') {
+        manage.style.display = 'block';
+        manage.style.position = 'relative';
+        manage.style.zIndex = '2';
+      } else {
+        manage.style.display = 'none';
+      }
+    }
+  };
+
+  var oldOpenStickerAddModal = window.openStickerAddModal;
+  window.openStickerAddModal = function(libraryId, editIdx){
+    ensurePanelsOnTop();
+    if (typeof oldOpenStickerAddModal === 'function') {
+      oldOpenStickerAddModal.apply(this, arguments);
+      activateOverlay(byId('stickerAddModal'));
+      return false;
+    }
+    activateOverlay(byId('stickerAddModal'));
+    return false;
+  };
+
+  var oldCloseStickerAddModal = window.closeStickerAddModal;
+  window.closeStickerAddModal = function(){
+    deactivateOverlay(byId('stickerAddModal'));
+    if (typeof oldCloseStickerAddModal === 'function') {
+      try { oldCloseStickerAddModal.apply(this, arguments); } catch(e) {}
+    }
+  };
+
+  var oldOpenBatchStickerModal = window.openBatchStickerModal;
+  window.openBatchStickerModal = function(){
+    ensurePanelsOnTop();
+    if (typeof oldOpenBatchStickerModal === 'function') {
+      oldOpenBatchStickerModal.apply(this, arguments);
+      activateOverlay(byId('batchStickerModal'));
+      return false;
+    }
+    if (window._batchStickerSlots) window._batchStickerSlots = [];
+    if (typeof renderBatchStickerSlots === 'function') renderBatchStickerSlots();
+    var area = byId('batchStickerUrlArea');
+    var progress = byId('batchStickerProgress');
+    if (area) area.style.display = 'none';
+    if (progress) progress.style.display = 'none';
+    activateOverlay(byId('batchStickerModal'));
+    return false;
+  };
+
+  var oldCloseBatchStickerModal = window.closeBatchStickerModal;
+  window.closeBatchStickerModal = function(){
+    deactivateOverlay(byId('batchStickerModal'));
+    if (typeof oldCloseBatchStickerModal === 'function') {
+      try { oldCloseBatchStickerModal.apply(this, arguments); } catch(e) {}
+    }
+  };
+
+  // 捕获阶段兜底：如果透明层先吃掉点击，也直接触发目标按钮原本的功能。
+  document.addEventListener('click', function(e){
+    var target = e.target && e.target.closest ? e.target.closest('button, .sticker-add-btn, .sticker-preview-area') : null;
+    if (!target) return;
+    var text = (target.textContent || '').replace(/\s+/g, ' ').trim();
+    var onclick = target.getAttribute && (target.getAttribute('onclick') || '');
+
+    if (/openBatchStickerModal/.test(onclick) || text.indexOf('批量添加') !== -1) {
+      e.preventDefault(); e.stopPropagation();
+      window.openBatchStickerModal();
+      return;
+    }
+    if (/openStickerAddModal/.test(onclick) || text === '添加') {
+      e.preventDefault(); e.stopPropagation();
+      window.openStickerAddModal();
+      return;
+    }
+    if (/batchStickerAddFromAlbum/.test(onclick) || text.indexOf('从相簿选择') !== -1) {
+      e.preventDefault(); e.stopPropagation();
+      var input = byId('batchStickerFileInput');
+      if (input) input.click();
+      else if (typeof batchStickerAddFromAlbum === 'function') batchStickerAddFromAlbum();
+      return;
+    }
+    if (/batchStickerToggleUrlInput/.test(onclick) || text.indexOf('输入URL') !== -1) {
+      e.preventDefault(); e.stopPropagation();
+      if (typeof batchStickerToggleUrlInput === 'function') batchStickerToggleUrlInput();
+      else {
+        var area = byId('batchStickerUrlArea');
+        if (area) area.style.display = area.style.display === 'none' ? 'block' : 'none';
+      }
+      return;
+    }
+  }, true);
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', ensurePanelsOnTop, { once:true });
+  } else {
+    ensurePanelsOnTop();
+  }
+})();
+</script>
+
+
+
+<!-- MONO FIX: sticker library management dialogs must stay above sticker modal -->
+<style id="mono-sticker-library-dialog-top-fix-style">
+  /* 主表情包库弹层很高，所以应用内 prompt/confirm/alert 必须比它更高，否则“新建/重命名/删除/导入”看起来像没反应 */
+  #monoDialogOverlay,
+  #monoDialogOverlay.open {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 2147483646 !important;
+    pointer-events: auto !important;
+  }
+  #monoDialogOverlay.open { display: flex !important; }
+  #monoDialogOverlay .mono-dialog-card {
+    position: relative !important;
+    z-index: 2147483647 !important;
+    pointer-events: auto !important;
+  }
+  #monoSystemAlertOverlay,
+  #monoSystemAlertOverlay.open {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 2147483644 !important;
+    pointer-events: auto !important;
+  }
+  #monoSystemAlertOverlay.open { display: flex !important; }
+  #monoSystemAlertOverlay .mono-system-alert-card {
+    position: relative !important;
+    z-index: 2147483645 !important;
+    pointer-events: auto !important;
+  }
+
+  /* 库管理行、URL导入区必须比表情包 grid 和空白点击层更高 */
+  #stickerManageView > div:first-child,
+  #stickerLibraryToolbar,
+  #stickerLibraryToolbar button,
+  #stickerManageView .sticker-url-section,
+  #stickerManageView .sticker-url-section *,
+  #stickerUrlInput,
+  #stickerBulkUrlInput,
+  #stickerBulkUrlAutoDesc {
+    position: relative !important;
+    z-index: 2147483305 !important;
+    pointer-events: auto !important;
+    touch-action: manipulation !important;
+  }
+  #stickerManageGrid {
+    position: relative !important;
+    z-index: 1 !important;
+  }
+</style>
+<script id="mono-sticker-library-dialog-top-fix-script">
+(function(){
+  if (window.__monoStickerLibraryDialogTopFix) return;
+  window.__monoStickerLibraryDialogTopFix = true;
+
+  function byId(id){ return document.getElementById(id); }
+  function moveToBody(el){
+    if (el && el.parentElement !== document.body) {
+      try { document.body.appendChild(el); } catch(e) {}
+    }
+    return el;
+  }
+  function forceTop(el, z){
+    if (!el) return;
+    moveToBody(el);
+    el.style.position = 'fixed';
+    el.style.inset = '0';
+    el.style.zIndex = String(z);
+    el.style.pointerEvents = 'auto';
+  }
+  function ensureDialogTop(){
+    forceTop(byId('monoDialogOverlay'), 2147483646);
+    forceTop(byId('monoSystemAlertOverlay'), 2147483644);
+    moveToBody(byId('stickerModal'));
+    moveToBody(byId('stickerAddModal'));
+    moveToBody(byId('batchStickerModal'));
+  }
+  function ensureManageClickable(){
+    var ids = ['stickerManageView','stickerLibraryToolbar','stickerUrlInput','stickerBulkUrlInput','stickerBulkUrlAutoDesc'];
+    ids.forEach(function(id){
+      var el = byId(id);
+      if (!el) return;
+      el.style.pointerEvents = 'auto';
+      el.style.position = el.style.position || 'relative';
+      if (id !== 'stickerManageView') el.style.zIndex = '2147483305';
+    });
+    var sections = document.querySelectorAll('#stickerManageView .sticker-url-section, #stickerManageView button, #stickerLibraryToolbar button');
+    sections.forEach(function(el){
+      el.style.pointerEvents = 'auto';
+      el.style.position = el.style.position || 'relative';
+      el.style.zIndex = '2147483305';
+      el.style.touchAction = 'manipulation';
+    });
+  }
+
+  // 包一层应用内弹窗函数：每次打开前/打开后都搬到 body 顶层。
+  ['monoInAppForm','monoInAppPrompt','monoInAppConfirm'].forEach(function(name){
+    var oldFn = window[name];
+    if (typeof oldFn !== 'function' || oldFn.__monoStickerDialogWrapped) return;
+    var wrapped = function(){
+      ensureDialogTop();
+      var result = oldFn.apply(this, arguments);
+      setTimeout(ensureDialogTop, 0);
+      setTimeout(ensureDialogTop, 30);
+      return result;
+    };
+    wrapped.__monoStickerDialogWrapped = true;
+    window[name] = wrapped;
+  });
+
+  // 重新渲染管理页后，马上把按钮区抬高，避免被 grid/遮罩盖住。
+  var oldRenderManage = window.renderStickerManageView;
+  if (typeof oldRenderManage === 'function' && !oldRenderManage.__monoStickerManageWrapped) {
+    var wrappedRender = function(){
+      var res = oldRenderManage.apply(this, arguments);
+      ensureDialogTop();
+      ensureManageClickable();
+      setTimeout(ensureManageClickable, 0);
+      return res;
+    };
+    wrappedRender.__monoStickerManageWrapped = true;
+    window.renderStickerManageView = wrappedRender;
+  }
+
+  var oldSwitch = window.switchStickerTab;
+  if (typeof oldSwitch === 'function' && !oldSwitch.__monoStickerDialogSwitchWrapped) {
+    var wrappedSwitch = function(tab){
+      var res = oldSwitch.apply(this, arguments);
+      if (tab === 'manage') {
+        ensureDialogTop();
+        ensureManageClickable();
+        setTimeout(ensureManageClickable, 0);
+      }
+      return res;
+    };
+    wrappedSwitch.__monoStickerDialogSwitchWrapped = true;
+    window.switchStickerTab = wrappedSwitch;
+  }
+
+  // 捕获这些按钮，先把 dialog 提到顶层，再放行原本 onclick；这样不重写原导入逻辑。
+  document.addEventListener('click', function(ev){
+    var btn = ev.target && ev.target.closest ? ev.target.closest('#stickerManageView button, #stickerLibraryToolbar button') : null;
+    if (!btn) return;
+    var txt = (btn.textContent || '').replace(/\s+/g,' ').trim();
+    var oc = btn.getAttribute('onclick') || '';
+    if (/createStickerLibrary|renameStickerLibrary|deleteStickerLibrary|importStickerFromUrl|importStickerUrlsBulk|openStickerAddModal|openBatchStickerModal/.test(oc) || /新建表情包库|重命名|删除当前库|导入表情包|批量导入 URL 表情包/.test(txt)) {
+      ensureDialogTop();
+      ensureManageClickable();
+      setTimeout(ensureDialogTop, 0);
+      setTimeout(ensureDialogTop, 50);
+    }
+  }, true);
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function(){ ensureDialogTop(); ensureManageClickable(); }, {once:true});
+  } else {
+    ensureDialogTop();
+    ensureManageClickable();
+  }
+})();
+</script>
+
 </body>
+
+<!-- MONO FINAL FIX: Sticker library dialogs are not covered; use a real top-layer modal and direct button routing -->
+<style id="mono-sticker-real-top-dialog-style">
+  .mono-sticker-real-top-overlay{
+    position:fixed!important; inset:0!important; width:100vw!important; height:100dvh!important;
+    z-index:2147483647!important; display:flex!important; align-items:center!important; justify-content:center!important;
+    padding:calc(env(safe-area-inset-top,0px) + 18px) 16px calc(env(safe-area-inset-bottom,0px) + 18px)!important;
+    box-sizing:border-box!important; background:rgba(0,0,0,.42)!important;
+    backdrop-filter:blur(12px)!important; -webkit-backdrop-filter:blur(12px)!important;
+    pointer-events:auto!important; touch-action:none!important;
+  }
+  .mono-sticker-real-top-card{
+    position:relative!important; z-index:2147483647!important; width:min(390px,calc(100vw - 32px))!important;
+    max-height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 44px)!important;
+    overflow:auto!important; -webkit-overflow-scrolling:touch!important;
+    background:linear-gradient(180deg,rgba(255,255,255,.99),rgba(245,245,245,.99))!important;
+    border:1px solid rgba(220,220,220,.95)!important; border-radius:24px!important;
+    box-shadow:0 24px 80px rgba(0,0,0,.28)!important; padding:18px!important;
+    font-family:inherit!important; color:#222!important; pointer-events:auto!important;
+  }
+  .mono-sticker-real-top-handle{width:42px;height:4px;border-radius:999px;background:rgba(170,170,170,.55);margin:0 auto 14px;}
+  .mono-sticker-real-top-title{text-align:center;font-size:14px;font-weight:800;letter-spacing:.8px;margin-bottom:8px;color:#202124;}
+  .mono-sticker-real-top-note{font-size:12px;line-height:1.65;color:#777;text-align:center;white-space:pre-wrap;margin-bottom:14px;}
+  .mono-sticker-real-top-label{font-size:11px;font-weight:700;color:#555;margin:0 0 7px;}
+  .mono-sticker-real-top-input,.mono-sticker-real-top-textarea{
+    width:100%!important; box-sizing:border-box!important; border:1px solid #ddd!important; border-radius:16px!important;
+    background:#fff!important; color:#222!important; outline:none!important; padding:12px 13px!important;
+    font-size:13px!important; font-family:inherit!important; pointer-events:auto!important; user-select:text!important;
+  }
+  .mono-sticker-real-top-textarea{min-height:120px!important;resize:vertical!important;line-height:1.55!important;}
+  .mono-sticker-real-top-actions{display:flex;gap:10px;margin-top:16px;}
+  .mono-sticker-real-top-btn{flex:1;border:none;border-radius:16px;padding:12px 10px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;pointer-events:auto!important;touch-action:manipulation!important;}
+  .mono-sticker-real-top-cancel{background:#fff;color:#777;border:1px solid #ddd;}
+  .mono-sticker-real-top-ok{background:#1f1f1f;color:#fff;}
+  .mono-sticker-real-top-danger{background:#d93025;color:#fff;}
+  body.mono-sticker-real-dialog-open #stickerModal.sticker-modal-overlay,
+  body.mono-sticker-real-dialog-open #stickerAddModal.sticker-add-modal-overlay,
+  body.mono-sticker-real-dialog-open #batchStickerModal.batch-sticker-modal-overlay{
+    pointer-events:none!important;
+  }
+</style>
+<script id="mono-sticker-real-top-dialog-script">
+(function(){
+  if(window.__monoStickerRealTopDialogFix) return;
+  window.__monoStickerRealTopDialogFix = true;
+
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function moveToBody(el){ if(el && el.parentElement !== document.body){ try{ document.body.appendChild(el); }catch(e){} } return el; }
+  function keepStickerPanelsLow(){
+    ['stickerModal','stickerAddModal','batchStickerModal','monoDialogOverlay','monoSystemAlertOverlay'].forEach(function(id){
+      var el=$(id); if(!el) return; moveToBody(el);
+      if(id==='stickerModal'){ el.style.zIndex='2147482500'; }
+      if(id==='stickerAddModal' || id==='batchStickerModal'){ el.style.zIndex='2147482600'; }
+      if(id==='monoDialogOverlay' || id==='monoSystemAlertOverlay'){ el.style.zIndex='2147482700'; }
+    });
+  }
+  function topDialog(opts){
+    opts = opts || {};
+    keepStickerPanelsLow();
+    document.body.classList.add('mono-sticker-real-dialog-open');
+    return new Promise(function(resolve){
+      var old = $('monoStickerRealTopOverlay');
+      if(old) old.remove();
+      var overlay=document.createElement('div');
+      overlay.id='monoStickerRealTopOverlay';
+      overlay.className='mono-sticker-real-top-overlay';
+      var multiline=!!opts.multiline;
+      var hasInput=opts.mode==='prompt';
+      overlay.innerHTML = '<div class="mono-sticker-real-top-card" role="dialog" aria-modal="true">' +
+        '<div class="mono-sticker-real-top-handle"></div>' +
+        '<div class="mono-sticker-real-top-title">'+esc(opts.title||'操作确认')+'</div>' +
+        (opts.note ? '<div class="mono-sticker-real-top-note">'+esc(opts.note)+'</div>' : '') +
+        (hasInput ? '<div class="mono-sticker-real-top-label">'+esc(opts.label||'内容')+'</div>' +
+          (multiline ? '<textarea class="mono-sticker-real-top-textarea" id="monoStickerRealTopInput" placeholder="'+esc(opts.placeholder||'')+'">'+esc(opts.value||'')+'</textarea>' : '<input class="mono-sticker-real-top-input" id="monoStickerRealTopInput" value="'+esc(opts.value||'')+'" placeholder="'+esc(opts.placeholder||'')+'">') : '') +
+        '<div class="mono-sticker-real-top-actions">' +
+          (opts.hideCancel ? '' : '<button type="button" class="mono-sticker-real-top-btn mono-sticker-real-top-cancel" id="monoStickerRealTopCancel">'+esc(opts.cancelText||'取消')+'</button>') +
+          '<button type="button" class="mono-sticker-real-top-btn '+(opts.danger?'mono-sticker-real-top-danger':'mono-sticker-real-top-ok')+'" id="monoStickerRealTopOk">'+esc(opts.confirmText||'确定')+'</button>' +
+        '</div></div>';
+      document.body.appendChild(overlay);
+      function close(val){
+        try{ overlay.remove(); }catch(e){}
+        document.body.classList.remove('mono-sticker-real-dialog-open');
+        resolve(val);
+      }
+      var input=$('monoStickerRealTopInput'), ok=$('monoStickerRealTopOk'), cancel=$('monoStickerRealTopCancel');
+      if(cancel) cancel.onclick=function(){ close(opts.mode==='prompt' ? null : false); };
+      ok.onclick=function(){ close(opts.mode==='prompt' ? (input ? input.value : '') : true); };
+      overlay.addEventListener('click',function(ev){ if(ev.target===overlay && opts.closeOnBackdrop !== false) close(opts.mode==='prompt' ? null : false); }, true);
+      overlay.addEventListener('keydown',function(ev){
+        if(ev.key==='Escape'){ ev.preventDefault(); close(opts.mode==='prompt' ? null : false); }
+        if(ev.key==='Enter' && !ev.shiftKey && (!multiline || opts.submitOnEnter)){ ev.preventDefault(); ok.click(); }
+      }, true);
+      setTimeout(function(){ try{ (input||ok).focus({preventScroll:true}); if(input && input.select) input.select(); }catch(e){} keepStickerPanelsLow(); }, 0);
+    });
+  }
+  window.monoStickerTopAlert=function(message,title){ return topDialog({title:title||'系统提示', note:String(message||''), hideCancel:true, confirmText:'知道了'}); };
+  window.monoStickerTopConfirm=function(o){ o=o||{}; return topDialog({title:o.title||'操作确认', note:o.note||o.message||'', cancelText:o.cancelText||'取消', confirmText:o.confirmText||'确定', danger:!!o.danger}); };
+  window.monoStickerTopPrompt=function(o){ o=o||{}; return topDialog({mode:'prompt', title:o.title||'输入内容', note:o.note||'', label:o.label||'内容', value:o.value||'', placeholder:o.placeholder||'', cancelText:o.cancelText||'取消', confirmText:o.confirmText||'保存', multiline:!!o.multiline, submitOnEnter:o.submitOnEnter!==false}); };
+
+  function getLibs(){ return (typeof getStickerLibraries==='function') ? getStickerLibraries() : []; }
+  function currentLibId(){ return (typeof getCurrentStickerLibraryId==='function') ? getCurrentStickerLibraryId() : null; }
+  function saveLibs(libs){ if(typeof saveStickerLibraries==='function') saveStickerLibraries(libs); }
+  function refreshStickerViews(){
+    try{ if(typeof renderStickerManageView==='function') renderStickerManageView(); }catch(e){}
+    try{ if(typeof renderStickerSendView==='function') renderStickerSendView(); }catch(e){}
+    try{ if(typeof renderPersonaStickerLibraryOptions==='function' && typeof getSelectedPersonaStickerLibraryIds==='function') renderPersonaStickerLibraryOptions(getSelectedPersonaStickerLibraryIds()); }catch(e){}
+    setTimeout(keepStickerPanelsLow,0);
+  }
+  function makeId(){ return 'sticker_lib_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8); }
+
+  window.createStickerLibrary = async function(){
+    var name = await window.monoStickerTopPrompt({title:'新建表情包库', label:'表情包库名称', placeholder:'请输入新的表情包库名称', confirmText:'创建'});
+    if(!name || !String(name).trim()) return;
+    var libs=getLibs();
+    var lib={id:(typeof _makeStickerLibraryId==='function' ? _makeStickerLibraryId() : makeId()), name:String(name).trim(), stickers:[]};
+    libs.push(lib); saveLibs(libs);
+    try{ window._currentStickerLibraryId = lib.id; }catch(e){}
+    if(typeof _currentStickerLibraryId !== 'undefined') _currentStickerLibraryId = lib.id;
+    refreshStickerViews();
+  };
+  window.renameStickerLibrary = async function(id){
+    var libs=getLibs(); var target=libs.find(function(x){return x.id===id;}); if(!target) return;
+    var name = await window.monoStickerTopPrompt({title:'重命名表情包库', label:'表情包库名称', value:target.name||'', confirmText:'保存'});
+    if(!name || !String(name).trim()) return;
+    target.name=String(name).trim(); saveLibs(libs); refreshStickerViews();
+  };
+  window.deleteStickerLibrary = async function(id){
+    var libs=getLibs();
+    if(libs.length<=1){ await window.monoStickerTopAlert('至少需要保留一个表情包库'); return; }
+    var target=libs.find(function(x){return x.id===id;}); if(!target) return;
+    var ok = await window.monoStickerTopConfirm({title:'删除当前库', note:'确定删除表情包库「'+(target.name||'未命名')+'」？库内表情包也会一起删除。', confirmText:'删除', cancelText:'取消', danger:true});
+    if(!ok) return;
+    var next=libs.filter(function(x){return x.id!==id;}); saveLibs(next);
+    if(typeof _stickerSendLibraryFilter !== 'undefined' && _stickerSendLibraryFilter===id) _stickerSendLibraryFilter='all';
+    refreshStickerViews();
+  };
+  window.importStickerFromUrl = async function(){
+    var input=$('stickerUrlInput'); var url=(input&&input.value||'').trim();
+    if(!url){ await window.monoStickerTopAlert('请输入表情包图片 URL'); return; }
+    if(!/^https?:\/\//i.test(url)){ await window.monoStickerTopAlert('请输入有效的 URL，需要以 http:// 或 https:// 开头'); return; }
+    var caption = await window.monoStickerTopPrompt({title:'导入表情包', label:'表情包描述（可留空）', value:'', placeholder:'例如：开心、无语、撒娇', confirmText:'导入'});
+    if(caption===null) return;
+    var libs=getLibs(); var target=libs.find(function(x){return x.id===currentLibId();}) || libs[0];
+    if(!target){ await window.monoStickerTopAlert('没有可用的表情包库'); return; }
+    target.stickers = Array.isArray(target.stickers) ? target.stickers : [];
+    target.stickers.push({src:url, caption:String(caption||''), isUrl:true, _visionDesc:String(caption||'')});
+    saveLibs(libs); if(input) input.value=''; refreshStickerViews();
+    await window.monoStickerTopAlert('表情包已成功导入到「'+(target.name||'当前库')+'」。');
+  };
+  window.importStickerUrlsBulk = async function(){
+    var textarea=$('stickerBulkUrlInput'); var raw=(textarea&&textarea.value||'').trim();
+    if(!raw){ await window.monoStickerTopAlert('请先在文本框里粘贴图片 URL，每行一个。'); return; }
+    var urls=raw.split(/\r?\n/).map(function(x){return x.trim();}).filter(function(x){return /^https?:\/\//i.test(x);});
+    if(!urls.length){ await window.monoStickerTopAlert('没有识别到有效的图片 URL。'); return; }
+    var autoDesc=!!(($('stickerBulkUrlAutoDesc')||{}).checked);
+    if(autoDesc && typeof isVisionApiConfigured==='function' && !isVisionApiConfigured()){ await window.monoStickerTopAlert('请先在设置里配置图片识别 API，或取消勾选“自动识别图片描述”。'); return; }
+    var libs=getLibs(); var target=libs.find(function(x){return x.id===currentLibId();}) || libs[0];
+    if(!target){ await window.monoStickerTopAlert('没有可用的表情包库'); return; }
+    target.stickers = Array.isArray(target.stickers) ? target.stickers : [];
+    var status=$('stickerBulkUrlStatus'); if(status){ status.style.display='block'; status.textContent='正在导入 URL 表情包...'; }
+    for(var i=0;i<urls.length;i++){
+      var caption='';
+      if(status) status.textContent='正在导入第 '+(i+1)+' / '+urls.length+' 个 URL...';
+      if(autoDesc && typeof describeImageWithVisionApi==='function'){
+        try{ var base64 = (typeof urlToBase64==='function') ? await urlToBase64(urls[i]).catch(function(){return urls[i];}) : urls[i]; caption = await describeImageWithVisionApi(base64); }catch(e){ caption=''; }
+      }
+      target.stickers.push({src:urls[i], caption:caption, isUrl:true, _visionDesc:caption});
+    }
+    saveLibs(libs); if(textarea) textarea.value=''; if(status) status.style.display='none'; refreshStickerViews();
+    await window.monoStickerTopAlert('成功导入 '+urls.length+' 个 URL 表情包到「'+(target.name||'当前库')+'」。');
+  };
+
+  document.addEventListener('click', function(ev){
+    var btn = ev.target && ev.target.closest ? ev.target.closest('#stickerLibraryToolbar button, #stickerManageView button') : null;
+    if(!btn) return;
+    var text=(btn.textContent||'').replace(/\s+/g,' ').trim();
+    var oc=btn.getAttribute('onclick')||'';
+    function stop(){ ev.preventDefault(); ev.stopPropagation(); try{ev.stopImmediatePropagation();}catch(e){} keepStickerPanelsLow(); }
+    var m;
+    if(/createStickerLibrary/.test(oc) || /新建表情包库/.test(text)){ stop(); window.createStickerLibrary(); return; }
+    if((m=oc.match(/renameStickerLibrary\('([^']+)'\)/)) || /重命名/.test(text)){ stop(); window.renameStickerLibrary(m ? m[1] : currentLibId()); return; }
+    if((m=oc.match(/deleteStickerLibrary\('([^']+)'\)/)) || /删除当前库/.test(text)){ stop(); window.deleteStickerLibrary(m ? m[1] : currentLibId()); return; }
+    if(/importStickerUrlsBulk/.test(oc) || /批量导入 URL 表情包/.test(text)){ stop(); window.importStickerUrlsBulk(); return; }
+    if(/importStickerFromUrl/.test(oc) || /^导入表情包$/.test(text)){ stop(); window.importStickerFromUrl(); return; }
+  }, true);
+
+  var oldOpen=window.openStickerModal;
+  if(typeof oldOpen==='function' && !oldOpen.__monoRealTopWrapped){
+    window.openStickerModal=function(){ var r=oldOpen.apply(this,arguments); setTimeout(keepStickerPanelsLow,0); return r; };
+    window.openStickerModal.__monoRealTopWrapped=true;
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', keepStickerPanelsLow, {once:true}); else keepStickerPanelsLow();
+})();
+</script>
+
 </html>

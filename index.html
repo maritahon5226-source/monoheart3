@@ -25993,10 +25993,26 @@ function _persistEffectiveApiConfig(cfg) {
   return normalized;
 }
 function _getCurrentActiveApiConfig() {
+  // 修复：不要先相信 mono_effective_api 旧缓存。
+  // 用户在悬浮 API / 副 API 面板切换后，真实来源应优先看 mono_active_api；
+  // 否则缓存还停留在默认 API 时，低优先/小功能/独立功能都会误用默认 API。
   try {
-    const cached = JSON.parse(localStorage.getItem(EFFECTIVE_API_STORAGE_KEY) || 'null');
-    if (cached && (cached.url || cached.key || cached.model)) {
-      return _normalizeApiConfigObject(cached);
+    const currentActiveId = localStorage.getItem('mono_active_api') || 'preset';
+    if (currentActiveId !== 'preset') {
+      const apis = JSON.parse(localStorage.getItem('mono_secondary_apis') || '[]');
+      const matched = Array.isArray(apis) ? apis.find(function(item) { return item && item.id === currentActiveId; }) : null;
+      if (matched) {
+        const normalized = _normalizeApiConfigObject(matched);
+        try { _persistEffectiveApiConfig(normalized); } catch(e) {}
+        return normalized;
+      }
+    }
+    if (currentActiveId === 'preset') {
+      const preset = _getPresetApiConfig();
+      if (preset && (preset.url || preset.key || preset.model)) {
+        try { _persistEffectiveApiConfig(preset); } catch(e) {}
+        return preset;
+      }
     }
   } catch (e) {}
   try {
@@ -26005,11 +26021,9 @@ function _getCurrentActiveApiConfig() {
     }
   } catch (e) {}
   try {
-    const currentActiveId = localStorage.getItem('mono_active_api') || 'preset';
-    if (currentActiveId !== 'preset') {
-      const apis = JSON.parse(localStorage.getItem('mono_secondary_apis') || '[]');
-      const matched = Array.isArray(apis) ? apis.find(function(item) { return item && item.id === currentActiveId; }) : null;
-      if (matched) return _normalizeApiConfigObject(matched);
+    const cached = JSON.parse(localStorage.getItem(EFFECTIVE_API_STORAGE_KEY) || 'null');
+    if (cached && (cached.url || cached.key || cached.model)) {
+      return _normalizeApiConfigObject(cached);
     }
   } catch (e) {}
   return _getPresetApiConfig();
@@ -41203,7 +41217,11 @@ async function tryPersonaSendTextImage(p, recentChat) {
   if (/高冷|冷淡|克制|寡言|理智|稳重|严肃/.test(personaText)) baseProb -= 0.03;
   if (!explicitCue && !sceneCue) return;
   if (Math.random() > Math.max(0.01, Math.min(baseProb, 0.3))) return;
-  const prompt = `${LANG_SYSTEM_PREFIX}你是${p.name}，人设：${p.persona}。
+  const isNormalTextImageOnly = p.allowImageGen !== true;
+  const prompt = isNormalTextImageOnly
+    ? `${LANG_SYSTEM_PREFIX}你是${p.name}，人设：${p.persona}。
+你现在可以选择是否额外发送一张“普通文字图卡片”给${userProfile.name}。注意：这个角色没有开启生图，所以这不是照片、不是图片 prompt、不是画面描述，只是聊天里一张带字小卡片。\n【核心要求】\n- 只在当前对话很适合发一句带字卡片时才发；不适合就返回 send:false。\n- text 必须是卡片上显示的普通文字，可以是短句、吐槽、暧昧小句、提醒、梗、台词或一句自然回应。\n- 绝对不要写照片、画面、镜头、光线、桌面、物件、视角、手机随手拍、prompt、图片描述。\n- text 控制在 8 到 60 字。\n请只返回 JSON，不要解释：{"send":true/false,"text":"普通文字图内容","caption":"可留空的短配文"}\n\n【最近聊天】\n${recentChat || '（暂无）'}`
+    : `${LANG_SYSTEM_PREFIX}你是${p.name}，人设：${p.persona}。
 你现在可以选择是否额外发送一张“文字描述生成的模拟图片”给${userProfile.name}。这张图会以真实图片消息的形式出现在聊天里。\n【核心要求：图片必须与当前聊天内容强相关】\n- 图片内容必须直接来源于当前对话：对话在聊什么、提到了什么地点/事物/行为，图片就顺势拍什么。\n- 不要凭空发一张和话题毫无关联的图。如果当前话题想不到自然对应的画面，直接返回 send:false。\n- 举例：聊到“在吃火锅”→ 拍桌上的锅和食材；聊到“今天去爬山”→ 山顶或山路的画面；聊到“你穿了什么”→ 自己当天的穿搭；用户说“发我看看”→ 结合上文正在聊的具体内容拍给对方。\n【发送原则】\n1. 只有当前对话有明确可视化的内容，或用户明确要求看时才发。\n2. 如果当前只是普通问答、严肃沟通、争执、解释、安慰沉重情绪，不要发。\n3. desc 必须是“画面里看得见的东西”，像真实照片描述，细节具体，不写抄象感想，不写“我给你发一张图”这种说明。\n4. desc 控制在 18 到 60 字。\n请只返回 JSON，不要解释：{"send":true/false,"desc":"图片画面描述（必须与聊天内容直接相关）","caption":"可留空的短配文"}\n\n【最近聊天】\n${recentChat || '（暂无）'}`;
   try {
     const r = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, {
@@ -41222,7 +41240,9 @@ async function tryPersonaSendTextImage(p, recentChat) {
     if (match) raw = match[0];
     const result = JSON.parse(raw);
     if (!result || !result.send) return;
-    const desc = String(result.desc || '').trim();
+    const desc = isNormalTextImageOnly
+      ? monoCleanNormalTextImageContent(result.text || result.content || result.desc || '')
+      : String(result.desc || '').trim();
     const caption = String(result.caption || '').trim();
     if (!desc) return;
     await new Promise(function(res) { setTimeout(res, 650 + Math.random() * 950); });
@@ -41231,7 +41251,8 @@ async function tryPersonaSendTextImage(p, recentChat) {
       imageDesc: desc,
       imageCaption: caption,
       imageSimulated: true,
-      textImagePrompt: desc
+      textImagePrompt: desc,
+      _normalTextImageFallback: isNormalTextImageOnly
     });
     saveData();
     if (currentId == p.id) renderMessages();
@@ -72317,8 +72338,20 @@ function monoSaveLowPriorityApiSettings() {
 function monoGetLowPriorityApiConfig(feature) {
   const st = monoGetLowPrioritySettings();
   const allowed = !feature || st.features.indexOf(feature) >= 0;
-  if (!st.enabled || !st.apiId || !allowed) return null;
-  const api = (secondaryApis || []).find(function(a){ return a && a.id === st.apiId; });
+  if (!st.enabled || !allowed) return null;
+  // 下拉框为“跟随当前 API”时，不应该回落默认 API，而是跟随当前真实 active API。
+  if (!st.apiId) {
+    try { return (typeof _getCurrentActiveApiConfig === 'function') ? _getCurrentActiveApiConfig() : _normalizeApiConfigObject(apiConfig); } catch(e) {}
+    return null;
+  }
+  let api = (secondaryApis || []).find(function(a){ return a && a.id === st.apiId; });
+  // 修复：如果运行时 secondaryApis 还没初始化，直接从 localStorage 读，避免误判为空后回落默认 API。
+  if (!api) {
+    try {
+      const stored = JSON.parse(localStorage.getItem(SEC_API_STORAGE_KEY) || '[]');
+      api = Array.isArray(stored) ? stored.find(function(a){ return a && a.id === st.apiId; }) : null;
+    } catch(e) {}
+  }
   return api ? _normalizeApiConfigObject(api) : null;
 }
 function monoGetApiForFeature(feature) {
@@ -72327,6 +72360,14 @@ function monoGetApiForFeature(feature) {
 async function monoWithLowPriorityApiConfig(feature, fn) {
   const cfg = monoGetApiForFeature(feature);
   return await fn(cfg);
+}
+
+function monoLowPriorityDebugInfo() {
+  try {
+    const st = (typeof monoGetLowPrioritySettings === 'function') ? monoGetLowPrioritySettings() : {};
+    const cfg = (typeof monoGetLowPriorityApiConfig === 'function') ? monoGetLowPriorityApiConfig('minor') : null;
+    return { enabled: !!st.enabled, apiId: st.apiId || '', features: st.features || [], resolvedApi: cfg ? { url: cfg.url, model: cfg.model } : null, activeApi: (typeof _getCurrentActiveApiConfig === 'function' ? _getCurrentActiveApiConfig() : null) };
+  } catch(e) { return { error: String(e && e.message || e) }; }
 }
 function monoClassifyLowPriorityPrompt(bodyText) {
   const s = String(bodyText || '');
@@ -109983,6 +110024,124 @@ body.mono-fwd-modal-open {
     ensureDialogTop();
     ensureManageClickable();
   }
+})();
+</script>
+
+
+
+<script>
+/* ===== MONO PATCH: strict low-priority API select routing =====
+   Rule:
+   1) Low-priority switch OFF -> no interception, use current active API.
+   2) Low-priority switch ON + feature checked + select = "follow current" -> use true current active API.
+   3) Low-priority switch ON + feature checked + select = any API id -> MUST use that selected API, not preset/default/effective cache.
+*/
+(function(){
+  if (window.__monoStrictLowPrioritySelectPatch) return;
+  window.__monoStrictLowPrioritySelectPatch = true;
+
+  function safeJson(raw, fb){ try { var v = JSON.parse(raw); return v == null ? fb : v; } catch(e){ return fb; } }
+  function normApi(api){
+    try { if (typeof _normalizeApiConfigObject === 'function') return _normalizeApiConfigObject(api || {}); } catch(e) {}
+    api = api || {};
+    return { id: api.id || '', name: api.name || '', url: api.url || '', key: api.key || '', model: api.model || '' };
+  }
+  function getStoredSecondaryApis(){
+    var arr = [];
+    try { if (Array.isArray(window.secondaryApis)) arr = window.secondaryApis; } catch(e) {}
+    if (!Array.isArray(arr) || !arr.length) arr = safeJson(localStorage.getItem('mono_secondary_apis') || '[]', []);
+    return Array.isArray(arr) ? arr : [];
+  }
+  function getStrictActiveApi(){
+    var id = localStorage.getItem('mono_active_api') || (typeof window.activeApiId !== 'undefined' ? window.activeApiId : '') || 'preset';
+    if (id && id !== 'preset') {
+      var sec = getStoredSecondaryApis().find(function(a){ return a && a.id === id; });
+      if (sec) return normApi(sec);
+    }
+    try { if (typeof _getPresetApiConfig === 'function') return normApi(_getPresetApiConfig()); } catch(e) {}
+    return normApi(window.apiConfig || safeJson(localStorage.getItem('mono_api') || '{}', {}));
+  }
+  function getStrictLowPrioritySettings(){
+    var defaults = ['summary','translation','sticker','card','minor'];
+    var features = safeJson(localStorage.getItem('mono_low_priority_features') || 'null', null);
+    if (!Array.isArray(features) || !features.length) features = defaults.slice();
+    return {
+      enabled: localStorage.getItem('mono_low_priority_api_enabled') === 'true',
+      apiId: localStorage.getItem('mono_low_priority_api_id') || '',
+      features: features
+    };
+  }
+  window.monoGetLowPriorityApiConfig = function(feature){
+    var st = getStrictLowPrioritySettings();
+    var allowed = !feature || st.features.indexOf(feature) >= 0;
+    if (!st.enabled || !allowed) return null;
+
+    // Follow-current means true active API only.
+    if (!st.apiId) return getStrictActiveApi();
+
+    // Specific selected API means selected API only.
+    var selected = getStoredSecondaryApis().find(function(a){ return a && a.id === st.apiId; });
+    if (selected) return normApi(selected);
+
+    // Do not silently fall back to preset/default when a concrete API was selected but cannot be found.
+    console.warn('[low-priority-api] Selected API not found, request will not be rerouted to default:', st.apiId);
+    return null;
+  };
+  window.monoGetApiForFeature = function(feature){
+    return window.monoGetLowPriorityApiConfig(feature) || getStrictActiveApi();
+  };
+  window.monoLowPriorityDebugInfo = function(){
+    var st = getStrictLowPrioritySettings();
+    var out = { enabled: !!st.enabled, apiId: st.apiId || 'FOLLOW_CURRENT', features: st.features || [], activeApi: getStrictActiveApi(), resolvedByFeature: {} };
+    (st.features || []).forEach(function(f){ out.resolvedByFeature[f] = window.monoGetLowPriorityApiConfig(f); });
+    return out;
+  };
+
+  // Last-layer fetch guard: any checked low-priority feature must be sent to the selected/follow-current API.
+  var prevFetch = window.fetch.bind(window);
+  window.fetch = async function(input, init){
+    var requestUrl = typeof input === 'string' ? input : ((input && input.url) || '');
+    var method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
+    var isChat = /\/chat\/completions(?:\?|$)/i.test(requestUrl);
+    if (isChat && method === 'POST') {
+      var bodyText = init && typeof init.body === 'string'
+        ? init.body
+        : (typeof input !== 'string' && input && typeof input.text === 'function' ? await input.clone().text().catch(function(){ return ''; }) : '');
+      var feature = '';
+      try { feature = (typeof monoClassifyLowPriorityPrompt === 'function') ? monoClassifyLowPriorityPrompt(bodyText) : ''; } catch(e) { feature = ''; }
+      var target = feature ? window.monoGetLowPriorityApiConfig(feature) : null;
+      if (target && target.url && target.key) {
+        var parsed = safeJson(bodyText, null);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          try { if (typeof _sanitizeChatPayloadModel === 'function') parsed = _sanitizeChatPayloadModel(parsed); } catch(e) {}
+          var routedPayload = Object.assign({}, parsed);
+          if (target.model && target.model !== '__auto__') routedPayload.model = target.model;
+          else delete routedPayload.model;
+          if (typeof _compatibleChatCompletion === 'function') {
+            return _compatibleChatCompletion(target.url, target.key, routedPayload, init || {});
+          }
+        }
+      }
+    }
+    return prevFetch(input, init);
+  };
+
+  // Keep hint precise.
+  try {
+    var oldRender = window.renderLowPriorityApiSettings;
+    if (typeof oldRender === 'function') {
+      window.renderLowPriorityApiSettings = function(){
+        oldRender.apply(this, arguments);
+        var hint = document.getElementById('lowPriorityApiHint');
+        if (!hint) return;
+        var st = getStrictLowPrioritySettings();
+        var api = st.apiId ? getStoredSecondaryApis().find(function(a){ return a && a.id === st.apiId; }) : null;
+        if (!st.enabled) hint.textContent = '关闭时：所有功能都使用当前切换的 API。';
+        else if (api) hint.textContent = '已启用：被勾选的小功能一定使用下拉框选择的「' + (api.name || '低优先 API') + '」生成；普通聊天、线下、电话仍跟随当前 API。';
+        else hint.textContent = '已启用：下拉框为“跟随当前 API”，被勾选的小功能会跟随当前真正 active API，不会回到默认 API。';
+      };
+    }
+  } catch(e) {}
 })();
 </script>
 

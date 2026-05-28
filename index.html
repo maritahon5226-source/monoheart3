@@ -53928,8 +53928,31 @@ async function gcAiGrabRedEnvelopes(g, msgIdx) {
     renderGroupMessages(g);
   }
 }
-// ── 角色也可以发紅包 ──
+
+// ── 群聊角色红包低频控制：避免角色频繁主动发红包 ──
+function gcShouldRoleSendRedEnvelopeRarely(g, responder) {
+  try {
+    const msgs = Array.isArray(g && g.messages) ? g.messages : [];
+    const now = Date.now();
+    const recent = msgs.slice(-80);
+    // 群里最近已经有人发过红包，则不要继续叠加刷屏。
+    const recentRed = [...recent].reverse().find(m => m && m.type === 'redenvelope');
+    if (recentRed && now - (recentRed.timestamp || 0) < 3 * 60 * 60 * 1000) return false;
+    // 同一个角色 24 小时内最多主动发一次红包。
+    const sameRoleRed = [...msgs].reverse().find(m => m && m.type === 'redenvelope' && String(m.role) === String(responder && responder.id));
+    if (sameRoleRed && now - (sameRoleRed.timestamp || 0) < 24 * 60 * 60 * 1000) return false;
+    const lastText = msgs.slice(-12).map(m => String(m && m.content || '')).join(' ');
+    const hasStrongContext = /红包|紅包|抢红包|搶紅包|生日|过年|新年|春节|恭喜|中奖|庆祝|慶祝|发钱|請客|请客|奶茶钱|群福利|開心一下|开心一下/.test(lastText);
+    // 有明确红包/庆祝/请客语境时才小概率触发；没有语境时几乎不主动发。
+    return Math.random() < (hasStrongContext ? 0.08 : 0.003);
+  } catch (e) {
+    return false;
+  }
+}
+
+// ── 角色也可以发紅包（受低频控制） ──
 async function gcRoleSendRedEnvelope(g, responder) {
+  if (!gcShouldRoleSendRedEnvelopeRarely(g, responder)) return;
   const members = (g.memberIds || []).map(mid => personas.find(p => p.id == mid)).filter(Boolean);
   const count = Math.min(members.length + 1, Math.floor(Math.random() * 3) + 2);
   const amount = Math.round((Math.random() * 50 + 5) * 100) / 100;
@@ -54021,7 +54044,8 @@ async function triggerGcAutoReply() {
         if (g.notificationEnabled !== false) {
           showGroupNotification(g, responder, reply);
         }
-        if (i === 0 && Math.random() < 0.05) {
+        if (i === 0) {
+          // 红包不再作为常规群聊随机动作；只有在 gcShouldRoleSendRedEnvelopeRarely 判断通过时才会极低频触发。
           await new Promise(r => setTimeout(r, 1000 + Math.random() * 2000));
           await gcRoleSendRedEnvelope(g, responder);
         }
@@ -54144,6 +54168,7 @@ ${countInstruction}
 6. 禁止在回复前加自己名字的前缀（如"${responder.name}："），直接说话。
 7. 鼓励角色展现性格棱角：可以有自己的观点、小情绪、说话习惯——一个自来熟的人会主动搭话，一个高冷的人只说关键一句，一个爱吐槽的人会忍不住评论两句。这种差异才让群聊有生命力。
 8. 【关系一致性】若群内有与你存在关系设定的成员，发言时务必体现该关系的情感倾向，不能无视已设定的亲密、对立或特殊情感。
+9. 【红包低频】群聊里不要频繁主动提“发红包/抢红包/红包来了”。除非最近话题明确是生日、新年、庆祝、请客或用户直接要求红包，否则不要把红包当作常规回复内容。
 ${BUILTIN_WB}`;
   try {
     const response = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, {
@@ -64690,47 +64715,6 @@ function _buildFullSessionContext(session, p, uName) {
     messages: messages
   };
 }
-
-/* MONO PATCH: Offline character fidelity guard
-   强制所有线下/IF线生成始终贴合角色人设；IF线优先于原人设。 */
-function _monoBuildOfflineCharacterFidelityBlock(p, session, uName) {
-  var charName = p && p.name ? p.name : '角色';
-  var basePersona = p && p.persona ? String(p.persona).slice(0, 6000) : '';
-  var isIf = !!(session && (session.mode === 'if' || session.ifSettings || session.ifSubMode));
-  var ifSettings = (session && session.ifSettings) ? session.ifSettings : null;
-  var ifChar = ifSettings && ifSettings.charPersona ? String(ifSettings.charPersona).slice(0, 5000) : '';
-  var ifWorld = ifSettings && ifSettings.worldSetting ? String(ifSettings.worldSetting).slice(0, 5000) : '';
-  var ifPlot = ifSettings && ifSettings.plotBackground ? String(ifSettings.plotBackground).slice(0, 5000) : '';
-  var ifUser = ifSettings && ifSettings.userPersona ? String(ifSettings.userPersona).slice(0, 3000) : '';
-  var lines = [
-    '【线下角色贴合强制规则 · 最高优先级】',
-    '你当前扮演的是「' + charName + '」。所有线下聊天、短线下、长线下、重生成、继续剧情、自动剧情，都必须严格贴合角色人设。',
-    '角色的说话方式、称呼习惯、情绪反应、价值观、行动动机、关系态度、身份认知，必须和人设一致；禁止为了推进剧情而突然换性格、换身份、换口吻、换关系逻辑。',
-    '不要写成通用恋爱男主/女主/路人模板；每一句话、每个动作都要像这个角色本人会做出的反应。',
-    '如果用户的输入很跳跃，也要先用角色自己的性格和逻辑接住，而不是脱离人设迎合。',
-    basePersona ? ('【原始角色人设】\n' + basePersona) : '【原始角色人设】当前角色未填写详细人设时，也必须根据角色姓名、身份、历史聊天、世界书和已有关系保持一致。'
-  ];
-  if (isIf) {
-    lines.push(
-      '',
-      '【IF线优先规则 · 高于原始人设】',
-      '当前是 IF线 / 平行线 / 特殊线下设定时，必须优先遵守 IF线设定。',
-      '如果 IF线设定与原始人设存在逻辑冲突，以 IF线设定为准；但不冲突的说话习惯、核心性格、情绪底色、关系反应仍尽量保留原角色味道。',
-      ifWorld ? ('【IF线世界设定】\n' + ifWorld) : '',
-      ifChar ? ('【IF线角色设定】\n' + ifChar) : '',
-      ifUser ? ('【IF线用户设定】\n' + ifUser) : '',
-      ifPlot ? ('【IF线剧情背景】\n' + ifPlot) : ''
-    );
-  }
-  lines.push(
-    '',
-    '【禁止事项】',
-    '禁止脱离人设写成陌生人；禁止忽略角色身份；禁止把角色写得过度温柔/冷漠/病娇/主动，除非人设或 IF线明确如此；禁止出现与设定矛盾的记忆、职业、年龄、关系。',
-    '若剧情需要改变关系或情绪，必须有合理铺垫，不能一轮内突然崩人设。'
-  );
-  return lines.filter(Boolean).join('\n');
-}
-
 function _getIfLineSystemPrompt(p, session) {
   var s = session.ifSettings || _getIfSettings();
   var uName = (typeof userProfile !== 'undefined' && userProfile.name) ? userProfile.name : '你';
@@ -64742,7 +64726,6 @@ function _getIfLineSystemPrompt(p, session) {
   var styleNote = modeConfig.styleText || fallbackStyleNote;
   var targetWords = _offlineClampNumber(modeConfig.targetWords, isShort ? 70 : 140, 20, 5000);
   var wordRule = _buildOfflineWordTargetRule(targetWords, isShort);
-  var charFidelityBlock = (typeof _monoBuildOfflineCharacterFidelityBlock === 'function') ? _monoBuildOfflineCharacterFidelityBlock(p, session, uName) : '';
   var worldBlock = [
     s.worldSetting   ? '【世界】' + s.worldSetting : '',
     s.charPersona    ? '【' + charName + '】' + s.charPersona : '',
@@ -64853,7 +64836,6 @@ function _getIfLineSystemPrompt(p, session) {
   return [
     '你是「' + charName + '」，正在与「' + uName + '」共同创作一段完全沉浸式的互动故事。',
     '你的存在、思维、语言、行动，全部根植于以下设定的世界之中。',
-    charFidelityBlock,
     '⚠ 用户填写的世界观与人物设定是绝对权威——你必须100%忠于这些设定，不得自行替换、忽略或偏离。',
     '',
     '═══ 世界设定（用户亲自设定，绝对遵从）═══',
@@ -64874,7 +64856,6 @@ function _getIfLineSystemPrompt(p, session) {
     '═══ 叙事规则 ═══',
     '1. 你完全不记得现实聊天室里的任何内容——那个世界对你来说不存在。',
     '2. 保留你原本的说话语气、口头禅与核心性格，但完全融入新身份与新世界。',
-    '2. IF线设定优先于原始人设；若二者冲突，以 IF线的身份、世界观、关系、剧情背景为准，不冲突部分仍保留原角色味道。',
     '3. ' + narrativeRule,
     '4. 风格：' + styleNote + '。这条要求优先级很高，你的措辞、节奏、画面感、情绪推进都必须尽量贴近这个文风。',
     '5. 用户发送的【】内容为剧情引导，将其自然融入故事推进，不要打破叙事。',
@@ -64931,7 +64912,6 @@ async function _generateOfflineResponse(session) {
     var api = typeof apiConfig !== 'undefined' ? apiConfig : {};
     if (!api.url || !api.key || !api.model) throw new Error('no api');
     var uName = (typeof userProfile !== 'undefined' && userProfile.name) ? userProfile.name : '你';
-    var offlineCharacterFidelity = (typeof _monoBuildOfflineCharacterFidelityBlock === 'function') ? _monoBuildOfflineCharacterFidelityBlock(p, session, uName) : '';
     var styleIdx = _offlineState.settings.style || 0;
     var fallbackStyleNote = OFFLINE_STYLE_PROMPTS[styleIdx] || OFFLINE_STYLE_PROMPTS[0];
     // Build recent chat history context
@@ -65007,12 +64987,11 @@ async function _generateOfflineResponse(session) {
       ? _getIfLineSystemPrompt(p, session)
       : isShort
       ? [
-          '你是「' + p.name + '」，完整人设：' + (p.persona || '').slice(0, 4000) + '。',
+          '你是「' + p.name + '」，人设：' + (p.persona || '').slice(0, 200) + '。',
           '你和「' + uName + '」正在进行线下（见面）互动。',
           '这是短线下模式：像真实见面的日常互动，语言自然简短，有动作描写但简短不誇张。',
           
           locationNote,
-          offlineCharacterFidelity,
           offlineWbInjection,
           bgmNote,
           offlineHeartVoiceRule,
@@ -65026,7 +65005,7 @@ async function _generateOfflineResponse(session) {
           (typeof _monoGetOfflineShortPromptRule === 'function')
             ? _monoGetOfflineShortPromptRule()
             : '根据以下线下剧情继续发展：用第三人称或直接对话自然推进。句数按情节需要决定，不要被固定句数束缚，但也不要拖沓。',
-          '严格按照你的人设和性格，不要背离角色；角色的口吻、身份、关系态度、行动动机必须像本人，不能写成通用模板。',
+          '严格按照你的人设和性格，不要背离角色。',
           '你的回应要融入场景、动作、对话。',
           autoSummaryEvery > 0 ? '系统会按剧情互动自动总结，所以你的每次回应都要有明确推进，方便后续记忆承接。' : '',
           '',
@@ -65035,7 +65014,7 @@ async function _generateOfflineResponse(session) {
           '【本次线下剧情全部内容（完整记忆）】\n' + (recentEntries || '（刚开始见面）')
         ].filter(Boolean).join('\n')
       : [
-          '你是「' + p.name + '」，完整人设：' + (p.persona || '').slice(0, 4000) + '。',
+          '你是「' + p.name + '」，人设：' + (p.persona || '').slice(0, 200) + '。',
           '你和「' + uName + '」正在进行一段线下沉浸式敘事剧情，像小说一样细膩描写。',
           (typeof _monoGetOfflineLongPromptRule === 'function')
             ? _monoGetOfflineLongPromptRule()
@@ -65049,11 +65028,10 @@ async function _generateOfflineResponse(session) {
             : '',
           '语言精緻，画面感强，像在写真实的故事。',
           
-          offlineCharacterFidelity,
           offlineWbInjection,
           bgmNote,
           offlineHeartVoiceRule,
-          '根据角色的人设和最近的聊天脉络，自然发展剧情。剧情要合乎邏輯，场景变换要自然；任何情绪、关系或行为变化都必须符合角色原本人设，不能突然崩人设。',
+          '根据角色的人设和最近的聊天脉络，自然发展剧情。剧情要合乎邏輯，场景变换要自然。',
           '用「──」分隔场景，用斜体（*文字*）标示环境描写。',
           autoSummaryEvery > 0 ? '系统会按剧情互动自动总结，你必须保持剧情连贯，让后续总结能准确承接之前发生的事。' : '',
           '',
@@ -110321,465 +110299,6 @@ body.mono-fwd-modal-open {
   try { new MutationObserver(function(){ setTimeout(run, 0); }).observe(document.documentElement, { childList:true, subtree:true, attributes:true, attributeFilter:['src'] }); } catch(e) {}
 })();
 </script>
-
-
-
-<!-- MONO PATCH: 世界书目录超过两个后编辑按钮/弹窗显示修复 -->
-<style id="mono-wb-many-items-visible-fix">
-  /* 让世界书目录无论有多少个都可以滚动，不再把后面的编辑/删除按钮挤出或盖住 */
-  .wb-section{overflow:visible!important;position:relative!important;z-index:auto!important;}
-  #wbList.wb-list{
-    max-height:min(52vh, 430px)!important;
-    overflow-y:auto!important;
-    overflow-x:hidden!important;
-    padding-right:4px!important;
-    -webkit-overflow-scrolling:touch!important;
-    position:relative!important;
-    z-index:2!important;
-  }
-  #wbList .wb-card{position:relative!important;overflow:visible!important;z-index:1!important;}
-  #wbList .wb-card-actions{
-    display:flex!important;
-    flex-wrap:wrap!important;
-    gap:6px!important;
-    position:relative!important;
-    z-index:20!important;
-    pointer-events:auto!important;
-    visibility:visible!important;
-    opacity:1!important;
-  }
-  #wbList .wb-card-actions button{
-    pointer-events:auto!important;
-    visibility:visible!important;
-    opacity:1!important;
-    position:relative!important;
-    z-index:21!important;
-  }
-  /* 世界书弹窗全部提升到最高层，避免被“我的/设置页”或其他 modal stacking context 压住 */
-  #wbCreateModal.wb-modal,
-  #wbEntriesModal.wb-modal,
-  #wbEntryEditModal.wb-modal{
-    position:fixed!important;
-    inset:0!important;
-    z-index:2147483500!important;
-    pointer-events:auto!important;
-  }
-  #wbEntriesModal.wb-modal{z-index:2147483510!important;}
-  #wbEntryEditModal.wb-modal{z-index:2147483520!important;}
-  #wbHelpModal{z-index:2147483530!important;}
-  .wb-modal.open{display:flex!important;align-items:center!important;justify-content:center!important;}
-  .wb-modal-content{
-    max-height:min(88vh, 720px)!important;
-    overflow-y:auto!important;
-    -webkit-overflow-scrolling:touch!important;
-  }
-  #wbEntriesModal .wb-modal-content{
-    height:min(88vh, 720px)!important;
-    max-height:min(88vh, 720px)!important;
-    display:flex!important;
-    flex-direction:column!important;
-    overflow:hidden!important;
-  }
-  #wbEntriesList{
-    flex:1 1 auto!important;
-    min-height:0!important;
-    overflow-y:auto!important;
-    -webkit-overflow-scrolling:touch!important;
-    padding-bottom:10px!important;
-  }
-  #wbEntriesModal .wb-btn-row{
-    flex-shrink:0!important;
-    background:#fff!important;
-    position:relative!important;
-    z-index:5!important;
-  }
-</style>
-<script id="mono-wb-many-items-visible-fix-script">
-(function(){
-  if (window.__monoWbManyItemsVisibleFix) return;
-  window.__monoWbManyItemsVisibleFix = true;
-
-  function moveWorldBookModalsToBody(){
-    ['wbCreateModal','wbEntriesModal','wbEntryEditModal','wbHelpModal'].forEach(function(id){
-      var el = document.getElementById(id);
-      if (el && el.parentNode !== document.body) document.body.appendChild(el);
-    });
-  }
-
-  function normalizeWorldBookArea(){
-    moveWorldBookModalsToBody();
-    var list = document.getElementById('wbList');
-    if (list){
-      list.style.maxHeight = 'min(52vh, 430px)';
-      list.style.overflowY = 'auto';
-      list.style.overflowX = 'hidden';
-      list.querySelectorAll('.wb-card-actions, .wb-card-actions button').forEach(function(el){
-        el.style.pointerEvents = 'auto';
-        el.style.visibility = 'visible';
-        el.style.opacity = '1';
-        el.style.position = 'relative';
-        el.style.zIndex = el.tagName === 'BUTTON' ? '21' : '20';
-      });
-    }
-  }
-
-  // 防止有些旧结构里按钮被卡片 onclick 或遮罩吞掉：只在世界书列表内部做定向兜底。
-  document.addEventListener('click', function(ev){
-    var btn = ev.target && ev.target.closest ? ev.target.closest('#wbList .wb-card-actions button') : null;
-    if (!btn) return;
-    var card = btn.closest('.wb-card');
-    if (!card) return;
-    var cards = Array.prototype.slice.call(document.querySelectorAll('#wbList .wb-card'));
-    var idx = cards.indexOf(card);
-    var wb = Array.isArray(window.worldBooks) ? window.worldBooks[idx] : null;
-    if (!wb) return;
-    var text = (btn.textContent || '').trim();
-    ev.stopPropagation();
-    if (text.indexOf('编辑') !== -1 && typeof window.editWorldBook === 'function') {
-      ev.preventDefault();
-      moveWorldBookModalsToBody();
-      window.editWorldBook(wb.id);
-    } else if (text.indexOf('删除') !== -1 && typeof window.deleteWorldBook === 'function') {
-      ev.preventDefault();
-      window.deleteWorldBook(wb.id);
-    }
-  }, true);
-
-  // 包一层原 render，保证每次新增/删除/导入后都重新恢复可见和可点击。
-  var oldRender = window.renderWorldBookList;
-  if (typeof oldRender === 'function') {
-    window.renderWorldBookList = function(){
-      var ret = oldRender.apply(this, arguments);
-      setTimeout(normalizeWorldBookArea, 0);
-      return ret;
-    };
-  }
-
-  document.addEventListener('DOMContentLoaded', function(){
-    normalizeWorldBookArea();
-    setTimeout(normalizeWorldBookArea, 300);
-  });
-  setTimeout(normalizeWorldBookArea, 800);
-})();
-</script>
-
-
-<!-- MONO PATCH: Offline JSON Preset Import Interface -->
-<style id="mono-offline-json-preset-style">
-.mono-offline-preset-wrap{margin-top:12px;border:1px solid var(--off-border);border-radius:14px;background:var(--off-bubble);overflow:hidden;}
-.mono-offline-preset-head{display:flex;align-items:center;gap:10px;padding:12px 12px;border-bottom:1px solid var(--off-border);}
-.mono-offline-preset-title{flex:1;min-width:0;font-size:11px;font-weight:800;letter-spacing:1.8px;text-transform:uppercase;color:var(--off-text);font-family:'DM Mono',monospace;}
-.mono-offline-preset-sub{font-size:9px;color:var(--off-text3);line-height:1.45;margin-top:4px;font-family:inherit;letter-spacing:0;}
-.mono-offline-preset-actions{display:flex;gap:6px;flex-wrap:wrap;padding:10px 12px;border-bottom:1px solid var(--off-border);}
-.mono-offline-preset-btn{border:1px solid var(--off-border2);background:var(--off-input-bg);color:var(--off-text2);border-radius:9px;padding:7px 9px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit;}
-.mono-offline-preset-btn.primary{background:var(--off-accent);color:var(--off-bg);border-color:var(--off-accent);}
-.mono-offline-preset-list{display:flex;flex-direction:column;gap:6px;padding:10px 12px;max-height:260px;overflow-y:auto;}
-.mono-offline-preset-empty{font-size:10px;color:var(--off-text3);text-align:center;padding:12px 0;line-height:1.6;}
-.mono-offline-preset-item{border:1px solid var(--off-border);border-radius:10px;padding:9px 10px;background:var(--off-input-bg);}
-.mono-offline-preset-row{display:flex;align-items:flex-start;gap:8px;}
-.mono-offline-preset-check{width:18px;height:18px;border-radius:5px;border:1.5px solid var(--off-border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;margin-top:1px;cursor:pointer;}
-.mono-offline-preset-check.on{background:var(--off-text);border-color:var(--off-text);}
-.mono-offline-preset-check.on:after{content:'✓';font-size:11px;color:var(--off-bg);font-weight:900;}
-.mono-offline-preset-main{flex:1;min-width:0;cursor:pointer;}
-.mono-offline-preset-name{font-size:11.5px;font-weight:800;color:var(--off-text);line-height:1.35;word-break:break-word;}
-.mono-offline-preset-preview{font-size:9.5px;color:var(--off-text3);line-height:1.45;margin-top:4px;white-space:pre-wrap;word-break:break-word;max-height:45px;overflow:hidden;}
-.mono-offline-preset-mini{display:flex;gap:6px;margin-top:8px;}
-.mono-offline-preset-mini button{border:none;background:transparent;color:var(--off-text3);font-size:9px;cursor:pointer;padding:2px 4px;font-family:inherit;}
-.mono-offline-preset-editor{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:2147483642;display:none;align-items:flex-end;justify-content:center;}
-.mono-offline-preset-editor.open{display:flex;}
-.mono-offline-preset-box{width:min(520px,100%);max-height:82vh;background:var(--off-bg,#111);border-radius:18px 18px 0 0;border:1px solid var(--off-border,#333);padding:16px;box-sizing:border-box;color:var(--off-text,#eee);overflow:auto;}
-.mono-offline-preset-box h3{margin:0 0 10px;font-size:14px;}
-.mono-offline-preset-box textarea,.mono-offline-preset-box input{width:100%;box-sizing:border-box;background:var(--off-input-bg,#181818);border:1px solid var(--off-input-border,#333);border-radius:10px;color:var(--off-text,#eee);font-size:12px;line-height:1.55;padding:10px 12px;outline:none;font-family:inherit;}
-.mono-offline-preset-box textarea{min-height:220px;resize:vertical;}
-.mono-offline-preset-box .mono-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
-</style>
-<script id="mono-offline-json-preset-patch">
-(function(){
-  'use strict';
-  if (window.__MONO_OFFLINE_JSON_PRESET_PATCH__) return;
-  window.__MONO_OFFLINE_JSON_PRESET_PATCH__ = true;
-  var STORE_KEY = 'mono_offline_json_presets_v1';
-  var MAX_ENTRY_CHARS = 12000;
-  function esc(s){
-    s = String(s == null ? '' : s);
-    return s.replace(/[&<>'"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c];});
-  }
-  function uid(){ return 'op_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8); }
-  function read(){
-    try { var arr = JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); return Array.isArray(arr) ? arr : []; } catch(e){ return []; }
-  }
-  function write(arr){
-    try { localStorage.setItem(STORE_KEY, JSON.stringify((arr || []).slice(0,500))); } catch(e){}
-  }
-  function cleanText(v){
-    var s = typeof v === 'string' ? v : JSON.stringify(v, null, 2);
-    s = String(s || '').replace(/data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=\s]+/g, '[图片base64已省略]').trim();
-    if (s.length > MAX_ENTRY_CHARS) s = s.slice(0, MAX_ENTRY_CHARS) + '\n…（已截断）';
-    return s;
-  }
-  function makeEntry(title, content, source){
-    content = cleanText(content);
-    if (!content || content === '{}' || content === '[]') return null;
-    title = String(title || '').trim() || '未命名预设';
-    if (title.length > 80) title = title.slice(0,80) + '…';
-    return { id: uid(), title: title, content: content, enabled: true, source: source || 'json', createdAt: Date.now() };
-  }
-  function likelyContentKey(k){
-    return /^(content|prompt|systemPrompt|system|instruction|instructions|persona|character|charPersona|userPersona|worldSetting|plotBackground|openingScene|text|description|desc|设定|人设|世界观|剧情|规则|提示词)$/i.test(String(k||''));
-  }
-  function skipKey(k){
-    return /^(avatar|icon|image|img|photo|picture|cover|base64|url|href|src|id|createdAt|updatedAt)$/i.test(String(k||''));
-  }
-  function collectFromJson(obj, path, out, depth){
-    if (out.length > 300 || depth > 7 || obj == null) return;
-    path = path || '预设';
-    if (typeof obj === 'string') {
-      var s = obj.trim();
-      if (s.length >= 2 && !/^data:image\//.test(s) && !/^https?:\/\//i.test(s)) out.push(makeEntry(path, s, 'string'));
-      return;
-    }
-    if (Array.isArray(obj)) {
-      obj.forEach(function(item, i){ collectFromJson(item, path + ' #' + (i+1), out, depth+1); });
-      return;
-    }
-    if (typeof obj !== 'object') return;
-    var title = obj.title || obj.name || obj.key || obj.label || obj.名称 || obj.标题 || obj.名字;
-    var direct = obj.content || obj.prompt || obj.systemPrompt || obj.instruction || obj.instructions || obj.text || obj.description || obj.desc || obj.内容 || obj.提示词 || obj.人设 || obj.设定 || obj.世界观;
-    if (direct) {
-      out.push(makeEntry(title || path, direct, 'object'));
-      return;
-    }
-    var combined = [];
-    Object.keys(obj).forEach(function(k){
-      if (skipKey(k)) return;
-      var v = obj[k];
-      if (typeof v === 'string' && v.trim() && likelyContentKey(k)) combined.push('【' + k + '】\n' + v.trim());
-    });
-    if (combined.length) out.push(makeEntry(title || path, combined.join('\n\n'), 'combined'));
-    Object.keys(obj).forEach(function(k){
-      if (skipKey(k)) return;
-      var v = obj[k];
-      if (v && typeof v === 'object') collectFromJson(v, (title || path) + ' / ' + k, out, depth+1);
-    });
-  }
-  function parsePresetJsonText(text){
-    var data = JSON.parse(String(text || '').replace(/^```(?:json)?\s*/i,'').replace(/```$/,'').trim());
-    var out = [];
-    collectFromJson(data, 'JSON预设', out, 0);
-    var seen = new Set();
-    return out.filter(function(e){
-      if (!e || !e.content) return false;
-      var sig = (e.title + '|' + e.content.slice(0,300)).replace(/\s+/g,'');
-      if (seen.has(sig)) return false;
-      seen.add(sig);
-      return true;
-    });
-  }
-  function toast(msg){
-    if (typeof showToast === 'function') showToast(msg); else alert(msg);
-  }
-  function ensurePanel(){
-    var wbPanel = document.getElementById('offlineWbPanel');
-    if (!wbPanel) return null;
-    if (document.getElementById('monoOfflineJsonPresetPanel')) return document.getElementById('monoOfflineJsonPresetPanel');
-    var wrap = document.createElement('div');
-    wrap.id = 'monoOfflineJsonPresetPanel';
-    wrap.className = 'mono-offline-preset-wrap';
-    var parentBlock = wbPanel.parentElement || wbPanel;
-    parentBlock.parentNode.insertBefore(wrap, parentBlock.nextSibling);
-    return wrap;
-  }
-  function renderPanel(){
-    var wrap = ensurePanel();
-    if (!wrap) return;
-    var arr = read();
-    var enabledCount = arr.filter(function(x){ return x.enabled !== false; }).length;
-    var html = '';
-    html += '<div class="mono-offline-preset-head"><div class="mono-offline-preset-title">JSON 线下预设导入<div class="mono-offline-preset-sub">导入后会拆成提示词条目；开启的条目会插入线下 / IF线生成 prompt。已启用 ' + enabledCount + ' / ' + arr.length + ' 条。</div></div></div>';
-    html += '<div class="mono-offline-preset-actions">'
-      + '<button class="mono-offline-preset-btn primary" onclick="monoOfflinePresetPickFile()">导入 JSON 文件</button>'
-      + '<button class="mono-offline-preset-btn" onclick="monoOfflinePresetPasteJson()">粘贴 JSON</button>'
-      + '<button class="mono-offline-preset-btn" onclick="monoOfflinePresetEnableAll(true)">全开</button>'
-      + '<button class="mono-offline-preset-btn" onclick="monoOfflinePresetEnableAll(false)">全关</button>'
-      + '<button class="mono-offline-preset-btn" onclick="monoOfflinePresetExport()">导出</button>'
-      + '<button class="mono-offline-preset-btn" onclick="monoOfflinePresetClear()">清空</button>'
-      + '<input id="monoOfflinePresetFileInput" type="file" accept=".json,application/json,text/json,text/plain" style="display:none">'
-      + '</div>';
-    html += '<div class="mono-offline-preset-list">';
-    if (!arr.length) {
-      html += '<div class="mono-offline-preset-empty">还没有导入线下 JSON 预设。<br>可以导入角色卡、世界观、关系设定、剧情规则、语气规则等 JSON。</div>';
-    } else {
-      arr.forEach(function(e, i){
-        html += '<div class="mono-offline-preset-item">'
-          + '<div class="mono-offline-preset-row">'
-          + '<div class="mono-offline-preset-check ' + (e.enabled !== false ? 'on' : '') + '" onclick="monoOfflinePresetToggle(\'' + e.id + '\')"></div>'
-          + '<div class="mono-offline-preset-main" onclick="monoOfflinePresetEdit(\'' + e.id + '\')">'
-          + '<div class="mono-offline-preset-name">' + esc(e.title || ('预设 ' + (i+1))) + '</div>'
-          + '<div class="mono-offline-preset-preview">' + esc((e.content || '').slice(0,140) + ((e.content || '').length > 140 ? '…' : '')) + '</div>'
-          + '</div></div>'
-          + '<div class="mono-offline-preset-mini"><button onclick="monoOfflinePresetEdit(\'' + e.id + '\')">编辑</button><button onclick="monoOfflinePresetDelete(\'' + e.id + '\')">删除</button></div>'
-          + '</div>';
-      });
-    }
-    html += '</div>';
-    wrap.innerHTML = html;
-    bindFileInput();
-  }
-  function bindFileInput(){
-    var input = document.getElementById('monoOfflinePresetFileInput');
-    if (!input || input.__monoBound) return;
-    input.__monoBound = true;
-    input.addEventListener('change', function(){
-      var file = input.files && input.files[0];
-      input.value = '';
-      if (!file) return;
-      var reader = new FileReader();
-      reader.onload = function(){ importText(reader.result, file.name || 'JSON文件'); };
-      reader.onerror = function(){ toast('读取 JSON 文件失败'); };
-      reader.readAsText(file, 'utf-8');
-    });
-  }
-  function importText(text, sourceName){
-    var entries;
-    try { entries = parsePresetJsonText(text); } catch(e) { alert('JSON 解析失败：' + e.message); return; }
-    if (!entries.length) { alert('没有识别到可用的预设条目。请确认 JSON 里有 content / prompt / persona / worldSetting / description 等字段。'); return; }
-    var arr = read();
-    entries.forEach(function(e){ e.sourceName = sourceName || 'JSON'; arr.push(e); });
-    write(arr);
-    renderPanel();
-    toast('已导入 ' + entries.length + ' 条线下预设');
-  }
-  window.monoOfflinePresetPickFile = function(){
-    var input = document.getElementById('monoOfflinePresetFileInput');
-    if (!input) { renderPanel(); input = document.getElementById('monoOfflinePresetFileInput'); }
-    if (input) input.click();
-  };
-  window.monoOfflinePresetPasteJson = function(){
-    openEditor({ mode:'paste', title:'粘贴 JSON 预设', name:'', content:'', ok:'导入' });
-  };
-  window.monoOfflinePresetToggle = function(id){
-    var arr = read();
-    arr.forEach(function(e){ if (e.id === id) e.enabled = e.enabled === false ? true : false; });
-    write(arr); renderPanel();
-  };
-  window.monoOfflinePresetEnableAll = function(on){
-    var arr = read(); arr.forEach(function(e){ e.enabled = !!on; }); write(arr); renderPanel();
-  };
-  window.monoOfflinePresetDelete = function(id){
-    var arr = read().filter(function(e){ return e.id !== id; }); write(arr); renderPanel();
-  };
-  window.monoOfflinePresetClear = function(){
-    if (!confirm('确定清空所有线下 JSON 预设吗？')) return;
-    write([]); renderPanel();
-  };
-  window.monoOfflinePresetExport = function(){
-    var arr = read();
-    var blob = new Blob([JSON.stringify({ type:'mono_offline_json_presets', version:1, entries:arr }, null, 2)], {type:'application/json'});
-    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'mono-offline-json-presets.json'; a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); }, 500);
-  };
-  window.monoOfflinePresetEdit = function(id){
-    var item = read().find(function(e){ return e.id === id; });
-    if (!item) return;
-    openEditor({ mode:'edit', id:id, title:'编辑预设条目', name:item.title || '', content:item.content || '', ok:'保存' });
-  };
-  function ensureEditor(){
-    var el = document.getElementById('monoOfflinePresetEditor');
-    if (el) return el;
-    el = document.createElement('div');
-    el.id = 'monoOfflinePresetEditor';
-    el.className = 'mono-offline-preset-editor';
-    el.innerHTML = '<div class="mono-offline-preset-box">'
-      + '<h3 id="monoOfflinePresetEditorTitle">JSON 预设</h3>'
-      + '<input id="monoOfflinePresetEditorName" placeholder="条目标题 / 可留空">'
-      + '<textarea id="monoOfflinePresetEditorText" placeholder="粘贴 JSON，或编辑此条提示词内容"></textarea>'
-      + '<div class="mono-row"><button class="mono-offline-preset-btn" onclick="monoOfflinePresetCloseEditor()">取消</button><button class="mono-offline-preset-btn primary" id="monoOfflinePresetEditorOk">确定</button></div>'
-      + '</div>';
-    document.body.appendChild(el);
-    el.addEventListener('click', function(ev){ if (ev.target === el) window.monoOfflinePresetCloseEditor(); });
-    return el;
-  }
-  function openEditor(cfg){
-    var el = ensureEditor();
-    document.getElementById('monoOfflinePresetEditorTitle').textContent = cfg.title || 'JSON 预设';
-    document.getElementById('monoOfflinePresetEditorName').value = cfg.name || '';
-    document.getElementById('monoOfflinePresetEditorText').value = cfg.content || '';
-    var ok = document.getElementById('monoOfflinePresetEditorOk');
-    ok.textContent = cfg.ok || '确定';
-    ok.onclick = function(){
-      var name = document.getElementById('monoOfflinePresetEditorName').value.trim();
-      var text = document.getElementById('monoOfflinePresetEditorText').value;
-      if (cfg.mode === 'paste') {
-        importText(text, name || '粘贴JSON');
-        window.monoOfflinePresetCloseEditor();
-      } else if (cfg.mode === 'edit') {
-        var arr = read();
-        arr.forEach(function(e){ if (e.id === cfg.id) { e.title = name || e.title || '未命名预设'; e.content = cleanText(text); e.updatedAt = Date.now(); } });
-        write(arr); renderPanel(); window.monoOfflinePresetCloseEditor();
-      }
-    };
-    el.classList.add('open');
-  }
-  window.monoOfflinePresetCloseEditor = function(){
-    var el = document.getElementById('monoOfflinePresetEditor'); if (el) el.classList.remove('open');
-  };
-  window.monoBuildOfflineJsonPresetPromptBlock = function(){
-    var arr = read().filter(function(e){ return e && e.enabled !== false && e.content; });
-    if (!arr.length) return '';
-    return '\n\n【用户导入的线下 JSON 预设条目 · 可选启用 · 必须遵守】\n'
-      + '以下条目来自用户自行导入的 JSON 预设。它们是线下聊天/IF线生成的额外设定与提示词。若与普通风格要求冲突，优先保证角色人设和 IF线逻辑；若与 IF线设定冲突，以 IF线为准。\n'
-      + arr.map(function(e, i){ return '【预设条目 ' + (i+1) + '：' + (e.title || '未命名') + '】\n' + e.content; }).join('\n---\n')
-      + '\n';
-  };
-  function patchOfflineApiRequest(){
-    if (typeof window._offlineApiRequest !== 'function' || window._offlineApiRequest.__monoPresetWrapped) return;
-    var original = window._offlineApiRequest;
-    var wrapped = async function(api, messages, maxTokens, temperature){
-      try {
-        var block = window.monoBuildOfflineJsonPresetPromptBlock ? window.monoBuildOfflineJsonPresetPromptBlock() : '';
-        if (block && Array.isArray(messages)) {
-          var joined = messages.map(function(m){ return String((m && m.content) || ''); }).join('\n');
-          var looksOffline = /线下|短线下|长篇|沉浸式|If线|IF线|剧情|见面|离线|offline/i.test(joined);
-          var isRewrite = /视角校对助手|只改写叙事视角|改写为/.test(joined);
-          var isSummary = /总结|归纳/.test(joined) && !/继续剧情|线下剧情/.test(joined);
-          if (looksOffline && !isRewrite && !isSummary) {
-            var cloned = messages.map(function(m){ return Object.assign({}, m); });
-            var sysIdx = cloned.findIndex(function(m){ return m && m.role === 'system'; });
-            if (sysIdx >= 0) cloned[sysIdx].content = String(cloned[sysIdx].content || '') + block;
-            else if (cloned[0]) cloned[0].content = block + '\n\n' + String(cloned[0].content || '');
-            messages = cloned;
-          }
-        }
-      } catch(e) {}
-      return original.call(this, api, messages, maxTokens, temperature);
-    };
-    wrapped.__monoPresetWrapped = true;
-    window._offlineApiRequest = wrapped;
-  }
-  var oldSync = window._syncOfflineSettingsUI;
-  if (typeof oldSync === 'function' && !oldSync.__monoPresetWrapped) {
-    var syncWrap = function(){
-      var r = oldSync.apply(this, arguments);
-      try { renderPanel(); patchOfflineApiRequest(); } catch(e) {}
-      return r;
-    };
-    syncWrap.__monoPresetWrapped = true;
-    window._syncOfflineSettingsUI = syncWrap;
-  }
-  var oldShow = window.showOfflineSettings;
-  if (typeof oldShow === 'function' && !oldShow.__monoPresetWrapped) {
-    var showWrap = function(){
-      var r = oldShow.apply(this, arguments);
-      setTimeout(function(){ try { renderPanel(); patchOfflineApiRequest(); } catch(e){} }, 30);
-      return r;
-    };
-    showWrap.__monoPresetWrapped = true;
-    window.showOfflineSettings = showWrap;
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ setTimeout(function(){ renderPanel(); patchOfflineApiRequest(); }, 80); });
-  else setTimeout(function(){ renderPanel(); patchOfflineApiRequest(); }, 80);
-})();
-</script>
-<!-- /MONO PATCH: Offline JSON Preset Import Interface -->
 
 </body>
 

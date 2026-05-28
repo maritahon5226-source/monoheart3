@@ -110462,6 +110462,325 @@ body.mono-fwd-modal-open {
   setTimeout(normalizeWorldBookArea, 800);
 })();
 </script>
+
+
+<!-- MONO PATCH: Offline JSON Preset Import Interface -->
+<style id="mono-offline-json-preset-style">
+.mono-offline-preset-wrap{margin-top:12px;border:1px solid var(--off-border);border-radius:14px;background:var(--off-bubble);overflow:hidden;}
+.mono-offline-preset-head{display:flex;align-items:center;gap:10px;padding:12px 12px;border-bottom:1px solid var(--off-border);}
+.mono-offline-preset-title{flex:1;min-width:0;font-size:11px;font-weight:800;letter-spacing:1.8px;text-transform:uppercase;color:var(--off-text);font-family:'DM Mono',monospace;}
+.mono-offline-preset-sub{font-size:9px;color:var(--off-text3);line-height:1.45;margin-top:4px;font-family:inherit;letter-spacing:0;}
+.mono-offline-preset-actions{display:flex;gap:6px;flex-wrap:wrap;padding:10px 12px;border-bottom:1px solid var(--off-border);}
+.mono-offline-preset-btn{border:1px solid var(--off-border2);background:var(--off-input-bg);color:var(--off-text2);border-radius:9px;padding:7px 9px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit;}
+.mono-offline-preset-btn.primary{background:var(--off-accent);color:var(--off-bg);border-color:var(--off-accent);}
+.mono-offline-preset-list{display:flex;flex-direction:column;gap:6px;padding:10px 12px;max-height:260px;overflow-y:auto;}
+.mono-offline-preset-empty{font-size:10px;color:var(--off-text3);text-align:center;padding:12px 0;line-height:1.6;}
+.mono-offline-preset-item{border:1px solid var(--off-border);border-radius:10px;padding:9px 10px;background:var(--off-input-bg);}
+.mono-offline-preset-row{display:flex;align-items:flex-start;gap:8px;}
+.mono-offline-preset-check{width:18px;height:18px;border-radius:5px;border:1.5px solid var(--off-border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;margin-top:1px;cursor:pointer;}
+.mono-offline-preset-check.on{background:var(--off-text);border-color:var(--off-text);}
+.mono-offline-preset-check.on:after{content:'✓';font-size:11px;color:var(--off-bg);font-weight:900;}
+.mono-offline-preset-main{flex:1;min-width:0;cursor:pointer;}
+.mono-offline-preset-name{font-size:11.5px;font-weight:800;color:var(--off-text);line-height:1.35;word-break:break-word;}
+.mono-offline-preset-preview{font-size:9.5px;color:var(--off-text3);line-height:1.45;margin-top:4px;white-space:pre-wrap;word-break:break-word;max-height:45px;overflow:hidden;}
+.mono-offline-preset-mini{display:flex;gap:6px;margin-top:8px;}
+.mono-offline-preset-mini button{border:none;background:transparent;color:var(--off-text3);font-size:9px;cursor:pointer;padding:2px 4px;font-family:inherit;}
+.mono-offline-preset-editor{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:2147483642;display:none;align-items:flex-end;justify-content:center;}
+.mono-offline-preset-editor.open{display:flex;}
+.mono-offline-preset-box{width:min(520px,100%);max-height:82vh;background:var(--off-bg,#111);border-radius:18px 18px 0 0;border:1px solid var(--off-border,#333);padding:16px;box-sizing:border-box;color:var(--off-text,#eee);overflow:auto;}
+.mono-offline-preset-box h3{margin:0 0 10px;font-size:14px;}
+.mono-offline-preset-box textarea,.mono-offline-preset-box input{width:100%;box-sizing:border-box;background:var(--off-input-bg,#181818);border:1px solid var(--off-input-border,#333);border-radius:10px;color:var(--off-text,#eee);font-size:12px;line-height:1.55;padding:10px 12px;outline:none;font-family:inherit;}
+.mono-offline-preset-box textarea{min-height:220px;resize:vertical;}
+.mono-offline-preset-box .mono-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
+</style>
+<script id="mono-offline-json-preset-patch">
+(function(){
+  'use strict';
+  if (window.__MONO_OFFLINE_JSON_PRESET_PATCH__) return;
+  window.__MONO_OFFLINE_JSON_PRESET_PATCH__ = true;
+  var STORE_KEY = 'mono_offline_json_presets_v1';
+  var MAX_ENTRY_CHARS = 12000;
+  function esc(s){
+    s = String(s == null ? '' : s);
+    return s.replace(/[&<>'"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c];});
+  }
+  function uid(){ return 'op_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8); }
+  function read(){
+    try { var arr = JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); return Array.isArray(arr) ? arr : []; } catch(e){ return []; }
+  }
+  function write(arr){
+    try { localStorage.setItem(STORE_KEY, JSON.stringify((arr || []).slice(0,500))); } catch(e){}
+  }
+  function cleanText(v){
+    var s = typeof v === 'string' ? v : JSON.stringify(v, null, 2);
+    s = String(s || '').replace(/data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=\s]+/g, '[图片base64已省略]').trim();
+    if (s.length > MAX_ENTRY_CHARS) s = s.slice(0, MAX_ENTRY_CHARS) + '\n…（已截断）';
+    return s;
+  }
+  function makeEntry(title, content, source){
+    content = cleanText(content);
+    if (!content || content === '{}' || content === '[]') return null;
+    title = String(title || '').trim() || '未命名预设';
+    if (title.length > 80) title = title.slice(0,80) + '…';
+    return { id: uid(), title: title, content: content, enabled: true, source: source || 'json', createdAt: Date.now() };
+  }
+  function likelyContentKey(k){
+    return /^(content|prompt|systemPrompt|system|instruction|instructions|persona|character|charPersona|userPersona|worldSetting|plotBackground|openingScene|text|description|desc|设定|人设|世界观|剧情|规则|提示词)$/i.test(String(k||''));
+  }
+  function skipKey(k){
+    return /^(avatar|icon|image|img|photo|picture|cover|base64|url|href|src|id|createdAt|updatedAt)$/i.test(String(k||''));
+  }
+  function collectFromJson(obj, path, out, depth){
+    if (out.length > 300 || depth > 7 || obj == null) return;
+    path = path || '预设';
+    if (typeof obj === 'string') {
+      var s = obj.trim();
+      if (s.length >= 2 && !/^data:image\//.test(s) && !/^https?:\/\//i.test(s)) out.push(makeEntry(path, s, 'string'));
+      return;
+    }
+    if (Array.isArray(obj)) {
+      obj.forEach(function(item, i){ collectFromJson(item, path + ' #' + (i+1), out, depth+1); });
+      return;
+    }
+    if (typeof obj !== 'object') return;
+    var title = obj.title || obj.name || obj.key || obj.label || obj.名称 || obj.标题 || obj.名字;
+    var direct = obj.content || obj.prompt || obj.systemPrompt || obj.instruction || obj.instructions || obj.text || obj.description || obj.desc || obj.内容 || obj.提示词 || obj.人设 || obj.设定 || obj.世界观;
+    if (direct) {
+      out.push(makeEntry(title || path, direct, 'object'));
+      return;
+    }
+    var combined = [];
+    Object.keys(obj).forEach(function(k){
+      if (skipKey(k)) return;
+      var v = obj[k];
+      if (typeof v === 'string' && v.trim() && likelyContentKey(k)) combined.push('【' + k + '】\n' + v.trim());
+    });
+    if (combined.length) out.push(makeEntry(title || path, combined.join('\n\n'), 'combined'));
+    Object.keys(obj).forEach(function(k){
+      if (skipKey(k)) return;
+      var v = obj[k];
+      if (v && typeof v === 'object') collectFromJson(v, (title || path) + ' / ' + k, out, depth+1);
+    });
+  }
+  function parsePresetJsonText(text){
+    var data = JSON.parse(String(text || '').replace(/^```(?:json)?\s*/i,'').replace(/```$/,'').trim());
+    var out = [];
+    collectFromJson(data, 'JSON预设', out, 0);
+    var seen = new Set();
+    return out.filter(function(e){
+      if (!e || !e.content) return false;
+      var sig = (e.title + '|' + e.content.slice(0,300)).replace(/\s+/g,'');
+      if (seen.has(sig)) return false;
+      seen.add(sig);
+      return true;
+    });
+  }
+  function toast(msg){
+    if (typeof showToast === 'function') showToast(msg); else alert(msg);
+  }
+  function ensurePanel(){
+    var wbPanel = document.getElementById('offlineWbPanel');
+    if (!wbPanel) return null;
+    if (document.getElementById('monoOfflineJsonPresetPanel')) return document.getElementById('monoOfflineJsonPresetPanel');
+    var wrap = document.createElement('div');
+    wrap.id = 'monoOfflineJsonPresetPanel';
+    wrap.className = 'mono-offline-preset-wrap';
+    var parentBlock = wbPanel.parentElement || wbPanel;
+    parentBlock.parentNode.insertBefore(wrap, parentBlock.nextSibling);
+    return wrap;
+  }
+  function renderPanel(){
+    var wrap = ensurePanel();
+    if (!wrap) return;
+    var arr = read();
+    var enabledCount = arr.filter(function(x){ return x.enabled !== false; }).length;
+    var html = '';
+    html += '<div class="mono-offline-preset-head"><div class="mono-offline-preset-title">JSON 线下预设导入<div class="mono-offline-preset-sub">导入后会拆成提示词条目；开启的条目会插入线下 / IF线生成 prompt。已启用 ' + enabledCount + ' / ' + arr.length + ' 条。</div></div></div>';
+    html += '<div class="mono-offline-preset-actions">'
+      + '<button class="mono-offline-preset-btn primary" onclick="monoOfflinePresetPickFile()">导入 JSON 文件</button>'
+      + '<button class="mono-offline-preset-btn" onclick="monoOfflinePresetPasteJson()">粘贴 JSON</button>'
+      + '<button class="mono-offline-preset-btn" onclick="monoOfflinePresetEnableAll(true)">全开</button>'
+      + '<button class="mono-offline-preset-btn" onclick="monoOfflinePresetEnableAll(false)">全关</button>'
+      + '<button class="mono-offline-preset-btn" onclick="monoOfflinePresetExport()">导出</button>'
+      + '<button class="mono-offline-preset-btn" onclick="monoOfflinePresetClear()">清空</button>'
+      + '<input id="monoOfflinePresetFileInput" type="file" accept=".json,application/json,text/json,text/plain" style="display:none">'
+      + '</div>';
+    html += '<div class="mono-offline-preset-list">';
+    if (!arr.length) {
+      html += '<div class="mono-offline-preset-empty">还没有导入线下 JSON 预设。<br>可以导入角色卡、世界观、关系设定、剧情规则、语气规则等 JSON。</div>';
+    } else {
+      arr.forEach(function(e, i){
+        html += '<div class="mono-offline-preset-item">'
+          + '<div class="mono-offline-preset-row">'
+          + '<div class="mono-offline-preset-check ' + (e.enabled !== false ? 'on' : '') + '" onclick="monoOfflinePresetToggle(\'' + e.id + '\')"></div>'
+          + '<div class="mono-offline-preset-main" onclick="monoOfflinePresetEdit(\'' + e.id + '\')">'
+          + '<div class="mono-offline-preset-name">' + esc(e.title || ('预设 ' + (i+1))) + '</div>'
+          + '<div class="mono-offline-preset-preview">' + esc((e.content || '').slice(0,140) + ((e.content || '').length > 140 ? '…' : '')) + '</div>'
+          + '</div></div>'
+          + '<div class="mono-offline-preset-mini"><button onclick="monoOfflinePresetEdit(\'' + e.id + '\')">编辑</button><button onclick="monoOfflinePresetDelete(\'' + e.id + '\')">删除</button></div>'
+          + '</div>';
+      });
+    }
+    html += '</div>';
+    wrap.innerHTML = html;
+    bindFileInput();
+  }
+  function bindFileInput(){
+    var input = document.getElementById('monoOfflinePresetFileInput');
+    if (!input || input.__monoBound) return;
+    input.__monoBound = true;
+    input.addEventListener('change', function(){
+      var file = input.files && input.files[0];
+      input.value = '';
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(){ importText(reader.result, file.name || 'JSON文件'); };
+      reader.onerror = function(){ toast('读取 JSON 文件失败'); };
+      reader.readAsText(file, 'utf-8');
+    });
+  }
+  function importText(text, sourceName){
+    var entries;
+    try { entries = parsePresetJsonText(text); } catch(e) { alert('JSON 解析失败：' + e.message); return; }
+    if (!entries.length) { alert('没有识别到可用的预设条目。请确认 JSON 里有 content / prompt / persona / worldSetting / description 等字段。'); return; }
+    var arr = read();
+    entries.forEach(function(e){ e.sourceName = sourceName || 'JSON'; arr.push(e); });
+    write(arr);
+    renderPanel();
+    toast('已导入 ' + entries.length + ' 条线下预设');
+  }
+  window.monoOfflinePresetPickFile = function(){
+    var input = document.getElementById('monoOfflinePresetFileInput');
+    if (!input) { renderPanel(); input = document.getElementById('monoOfflinePresetFileInput'); }
+    if (input) input.click();
+  };
+  window.monoOfflinePresetPasteJson = function(){
+    openEditor({ mode:'paste', title:'粘贴 JSON 预设', name:'', content:'', ok:'导入' });
+  };
+  window.monoOfflinePresetToggle = function(id){
+    var arr = read();
+    arr.forEach(function(e){ if (e.id === id) e.enabled = e.enabled === false ? true : false; });
+    write(arr); renderPanel();
+  };
+  window.monoOfflinePresetEnableAll = function(on){
+    var arr = read(); arr.forEach(function(e){ e.enabled = !!on; }); write(arr); renderPanel();
+  };
+  window.monoOfflinePresetDelete = function(id){
+    var arr = read().filter(function(e){ return e.id !== id; }); write(arr); renderPanel();
+  };
+  window.monoOfflinePresetClear = function(){
+    if (!confirm('确定清空所有线下 JSON 预设吗？')) return;
+    write([]); renderPanel();
+  };
+  window.monoOfflinePresetExport = function(){
+    var arr = read();
+    var blob = new Blob([JSON.stringify({ type:'mono_offline_json_presets', version:1, entries:arr }, null, 2)], {type:'application/json'});
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'mono-offline-json-presets.json'; a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); }, 500);
+  };
+  window.monoOfflinePresetEdit = function(id){
+    var item = read().find(function(e){ return e.id === id; });
+    if (!item) return;
+    openEditor({ mode:'edit', id:id, title:'编辑预设条目', name:item.title || '', content:item.content || '', ok:'保存' });
+  };
+  function ensureEditor(){
+    var el = document.getElementById('monoOfflinePresetEditor');
+    if (el) return el;
+    el = document.createElement('div');
+    el.id = 'monoOfflinePresetEditor';
+    el.className = 'mono-offline-preset-editor';
+    el.innerHTML = '<div class="mono-offline-preset-box">'
+      + '<h3 id="monoOfflinePresetEditorTitle">JSON 预设</h3>'
+      + '<input id="monoOfflinePresetEditorName" placeholder="条目标题 / 可留空">'
+      + '<textarea id="monoOfflinePresetEditorText" placeholder="粘贴 JSON，或编辑此条提示词内容"></textarea>'
+      + '<div class="mono-row"><button class="mono-offline-preset-btn" onclick="monoOfflinePresetCloseEditor()">取消</button><button class="mono-offline-preset-btn primary" id="monoOfflinePresetEditorOk">确定</button></div>'
+      + '</div>';
+    document.body.appendChild(el);
+    el.addEventListener('click', function(ev){ if (ev.target === el) window.monoOfflinePresetCloseEditor(); });
+    return el;
+  }
+  function openEditor(cfg){
+    var el = ensureEditor();
+    document.getElementById('monoOfflinePresetEditorTitle').textContent = cfg.title || 'JSON 预设';
+    document.getElementById('monoOfflinePresetEditorName').value = cfg.name || '';
+    document.getElementById('monoOfflinePresetEditorText').value = cfg.content || '';
+    var ok = document.getElementById('monoOfflinePresetEditorOk');
+    ok.textContent = cfg.ok || '确定';
+    ok.onclick = function(){
+      var name = document.getElementById('monoOfflinePresetEditorName').value.trim();
+      var text = document.getElementById('monoOfflinePresetEditorText').value;
+      if (cfg.mode === 'paste') {
+        importText(text, name || '粘贴JSON');
+        window.monoOfflinePresetCloseEditor();
+      } else if (cfg.mode === 'edit') {
+        var arr = read();
+        arr.forEach(function(e){ if (e.id === cfg.id) { e.title = name || e.title || '未命名预设'; e.content = cleanText(text); e.updatedAt = Date.now(); } });
+        write(arr); renderPanel(); window.monoOfflinePresetCloseEditor();
+      }
+    };
+    el.classList.add('open');
+  }
+  window.monoOfflinePresetCloseEditor = function(){
+    var el = document.getElementById('monoOfflinePresetEditor'); if (el) el.classList.remove('open');
+  };
+  window.monoBuildOfflineJsonPresetPromptBlock = function(){
+    var arr = read().filter(function(e){ return e && e.enabled !== false && e.content; });
+    if (!arr.length) return '';
+    return '\n\n【用户导入的线下 JSON 预设条目 · 可选启用 · 必须遵守】\n'
+      + '以下条目来自用户自行导入的 JSON 预设。它们是线下聊天/IF线生成的额外设定与提示词。若与普通风格要求冲突，优先保证角色人设和 IF线逻辑；若与 IF线设定冲突，以 IF线为准。\n'
+      + arr.map(function(e, i){ return '【预设条目 ' + (i+1) + '：' + (e.title || '未命名') + '】\n' + e.content; }).join('\n---\n')
+      + '\n';
+  };
+  function patchOfflineApiRequest(){
+    if (typeof window._offlineApiRequest !== 'function' || window._offlineApiRequest.__monoPresetWrapped) return;
+    var original = window._offlineApiRequest;
+    var wrapped = async function(api, messages, maxTokens, temperature){
+      try {
+        var block = window.monoBuildOfflineJsonPresetPromptBlock ? window.monoBuildOfflineJsonPresetPromptBlock() : '';
+        if (block && Array.isArray(messages)) {
+          var joined = messages.map(function(m){ return String((m && m.content) || ''); }).join('\n');
+          var looksOffline = /线下|短线下|长篇|沉浸式|If线|IF线|剧情|见面|离线|offline/i.test(joined);
+          var isRewrite = /视角校对助手|只改写叙事视角|改写为/.test(joined);
+          var isSummary = /总结|归纳/.test(joined) && !/继续剧情|线下剧情/.test(joined);
+          if (looksOffline && !isRewrite && !isSummary) {
+            var cloned = messages.map(function(m){ return Object.assign({}, m); });
+            var sysIdx = cloned.findIndex(function(m){ return m && m.role === 'system'; });
+            if (sysIdx >= 0) cloned[sysIdx].content = String(cloned[sysIdx].content || '') + block;
+            else if (cloned[0]) cloned[0].content = block + '\n\n' + String(cloned[0].content || '');
+            messages = cloned;
+          }
+        }
+      } catch(e) {}
+      return original.call(this, api, messages, maxTokens, temperature);
+    };
+    wrapped.__monoPresetWrapped = true;
+    window._offlineApiRequest = wrapped;
+  }
+  var oldSync = window._syncOfflineSettingsUI;
+  if (typeof oldSync === 'function' && !oldSync.__monoPresetWrapped) {
+    var syncWrap = function(){
+      var r = oldSync.apply(this, arguments);
+      try { renderPanel(); patchOfflineApiRequest(); } catch(e) {}
+      return r;
+    };
+    syncWrap.__monoPresetWrapped = true;
+    window._syncOfflineSettingsUI = syncWrap;
+  }
+  var oldShow = window.showOfflineSettings;
+  if (typeof oldShow === 'function' && !oldShow.__monoPresetWrapped) {
+    var showWrap = function(){
+      var r = oldShow.apply(this, arguments);
+      setTimeout(function(){ try { renderPanel(); patchOfflineApiRequest(); } catch(e){} }, 30);
+      return r;
+    };
+    showWrap.__monoPresetWrapped = true;
+    window.showOfflineSettings = showWrap;
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ setTimeout(function(){ renderPanel(); patchOfflineApiRequest(); }, 80); });
+  else setTimeout(function(){ renderPanel(); patchOfflineApiRequest(); }, 80);
+})();
+</script>
+<!-- /MONO PATCH: Offline JSON Preset Import Interface -->
+
 </body>
 
 <!-- MONO FINAL FIX: Sticker library dialogs are not covered; use a real top-layer modal and direct button routing -->

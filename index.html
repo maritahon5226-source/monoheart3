@@ -64690,6 +64690,47 @@ function _buildFullSessionContext(session, p, uName) {
     messages: messages
   };
 }
+
+/* MONO PATCH: Offline character fidelity guard
+   强制所有线下/IF线生成始终贴合角色人设；IF线优先于原人设。 */
+function _monoBuildOfflineCharacterFidelityBlock(p, session, uName) {
+  var charName = p && p.name ? p.name : '角色';
+  var basePersona = p && p.persona ? String(p.persona).slice(0, 6000) : '';
+  var isIf = !!(session && (session.mode === 'if' || session.ifSettings || session.ifSubMode));
+  var ifSettings = (session && session.ifSettings) ? session.ifSettings : null;
+  var ifChar = ifSettings && ifSettings.charPersona ? String(ifSettings.charPersona).slice(0, 5000) : '';
+  var ifWorld = ifSettings && ifSettings.worldSetting ? String(ifSettings.worldSetting).slice(0, 5000) : '';
+  var ifPlot = ifSettings && ifSettings.plotBackground ? String(ifSettings.plotBackground).slice(0, 5000) : '';
+  var ifUser = ifSettings && ifSettings.userPersona ? String(ifSettings.userPersona).slice(0, 3000) : '';
+  var lines = [
+    '【线下角色贴合强制规则 · 最高优先级】',
+    '你当前扮演的是「' + charName + '」。所有线下聊天、短线下、长线下、重生成、继续剧情、自动剧情，都必须严格贴合角色人设。',
+    '角色的说话方式、称呼习惯、情绪反应、价值观、行动动机、关系态度、身份认知，必须和人设一致；禁止为了推进剧情而突然换性格、换身份、换口吻、换关系逻辑。',
+    '不要写成通用恋爱男主/女主/路人模板；每一句话、每个动作都要像这个角色本人会做出的反应。',
+    '如果用户的输入很跳跃，也要先用角色自己的性格和逻辑接住，而不是脱离人设迎合。',
+    basePersona ? ('【原始角色人设】\n' + basePersona) : '【原始角色人设】当前角色未填写详细人设时，也必须根据角色姓名、身份、历史聊天、世界书和已有关系保持一致。'
+  ];
+  if (isIf) {
+    lines.push(
+      '',
+      '【IF线优先规则 · 高于原始人设】',
+      '当前是 IF线 / 平行线 / 特殊线下设定时，必须优先遵守 IF线设定。',
+      '如果 IF线设定与原始人设存在逻辑冲突，以 IF线设定为准；但不冲突的说话习惯、核心性格、情绪底色、关系反应仍尽量保留原角色味道。',
+      ifWorld ? ('【IF线世界设定】\n' + ifWorld) : '',
+      ifChar ? ('【IF线角色设定】\n' + ifChar) : '',
+      ifUser ? ('【IF线用户设定】\n' + ifUser) : '',
+      ifPlot ? ('【IF线剧情背景】\n' + ifPlot) : ''
+    );
+  }
+  lines.push(
+    '',
+    '【禁止事项】',
+    '禁止脱离人设写成陌生人；禁止忽略角色身份；禁止把角色写得过度温柔/冷漠/病娇/主动，除非人设或 IF线明确如此；禁止出现与设定矛盾的记忆、职业、年龄、关系。',
+    '若剧情需要改变关系或情绪，必须有合理铺垫，不能一轮内突然崩人设。'
+  );
+  return lines.filter(Boolean).join('\n');
+}
+
 function _getIfLineSystemPrompt(p, session) {
   var s = session.ifSettings || _getIfSettings();
   var uName = (typeof userProfile !== 'undefined' && userProfile.name) ? userProfile.name : '你';
@@ -64701,6 +64742,7 @@ function _getIfLineSystemPrompt(p, session) {
   var styleNote = modeConfig.styleText || fallbackStyleNote;
   var targetWords = _offlineClampNumber(modeConfig.targetWords, isShort ? 70 : 140, 20, 5000);
   var wordRule = _buildOfflineWordTargetRule(targetWords, isShort);
+  var charFidelityBlock = (typeof _monoBuildOfflineCharacterFidelityBlock === 'function') ? _monoBuildOfflineCharacterFidelityBlock(p, session, uName) : '';
   var worldBlock = [
     s.worldSetting   ? '【世界】' + s.worldSetting : '',
     s.charPersona    ? '【' + charName + '】' + s.charPersona : '',
@@ -64811,6 +64853,7 @@ function _getIfLineSystemPrompt(p, session) {
   return [
     '你是「' + charName + '」，正在与「' + uName + '」共同创作一段完全沉浸式的互动故事。',
     '你的存在、思维、语言、行动，全部根植于以下设定的世界之中。',
+    charFidelityBlock,
     '⚠ 用户填写的世界观与人物设定是绝对权威——你必须100%忠于这些设定，不得自行替换、忽略或偏离。',
     '',
     '═══ 世界设定（用户亲自设定，绝对遵从）═══',
@@ -64831,6 +64874,7 @@ function _getIfLineSystemPrompt(p, session) {
     '═══ 叙事规则 ═══',
     '1. 你完全不记得现实聊天室里的任何内容——那个世界对你来说不存在。',
     '2. 保留你原本的说话语气、口头禅与核心性格，但完全融入新身份与新世界。',
+    '2. IF线设定优先于原始人设；若二者冲突，以 IF线的身份、世界观、关系、剧情背景为准，不冲突部分仍保留原角色味道。',
     '3. ' + narrativeRule,
     '4. 风格：' + styleNote + '。这条要求优先级很高，你的措辞、节奏、画面感、情绪推进都必须尽量贴近这个文风。',
     '5. 用户发送的【】内容为剧情引导，将其自然融入故事推进，不要打破叙事。',
@@ -64887,6 +64931,7 @@ async function _generateOfflineResponse(session) {
     var api = typeof apiConfig !== 'undefined' ? apiConfig : {};
     if (!api.url || !api.key || !api.model) throw new Error('no api');
     var uName = (typeof userProfile !== 'undefined' && userProfile.name) ? userProfile.name : '你';
+    var offlineCharacterFidelity = (typeof _monoBuildOfflineCharacterFidelityBlock === 'function') ? _monoBuildOfflineCharacterFidelityBlock(p, session, uName) : '';
     var styleIdx = _offlineState.settings.style || 0;
     var fallbackStyleNote = OFFLINE_STYLE_PROMPTS[styleIdx] || OFFLINE_STYLE_PROMPTS[0];
     // Build recent chat history context
@@ -64962,11 +65007,12 @@ async function _generateOfflineResponse(session) {
       ? _getIfLineSystemPrompt(p, session)
       : isShort
       ? [
-          '你是「' + p.name + '」，人设：' + (p.persona || '').slice(0, 200) + '。',
+          '你是「' + p.name + '」，完整人设：' + (p.persona || '').slice(0, 4000) + '。',
           '你和「' + uName + '」正在进行线下（见面）互动。',
           '这是短线下模式：像真实见面的日常互动，语言自然简短，有动作描写但简短不誇张。',
           
           locationNote,
+          offlineCharacterFidelity,
           offlineWbInjection,
           bgmNote,
           offlineHeartVoiceRule,
@@ -64980,7 +65026,7 @@ async function _generateOfflineResponse(session) {
           (typeof _monoGetOfflineShortPromptRule === 'function')
             ? _monoGetOfflineShortPromptRule()
             : '根据以下线下剧情继续发展：用第三人称或直接对话自然推进。句数按情节需要决定，不要被固定句数束缚，但也不要拖沓。',
-          '严格按照你的人设和性格，不要背离角色。',
+          '严格按照你的人设和性格，不要背离角色；角色的口吻、身份、关系态度、行动动机必须像本人，不能写成通用模板。',
           '你的回应要融入场景、动作、对话。',
           autoSummaryEvery > 0 ? '系统会按剧情互动自动总结，所以你的每次回应都要有明确推进，方便后续记忆承接。' : '',
           '',
@@ -64989,7 +65035,7 @@ async function _generateOfflineResponse(session) {
           '【本次线下剧情全部内容（完整记忆）】\n' + (recentEntries || '（刚开始见面）')
         ].filter(Boolean).join('\n')
       : [
-          '你是「' + p.name + '」，人设：' + (p.persona || '').slice(0, 200) + '。',
+          '你是「' + p.name + '」，完整人设：' + (p.persona || '').slice(0, 4000) + '。',
           '你和「' + uName + '」正在进行一段线下沉浸式敘事剧情，像小说一样细膩描写。',
           (typeof _monoGetOfflineLongPromptRule === 'function')
             ? _monoGetOfflineLongPromptRule()
@@ -65003,10 +65049,11 @@ async function _generateOfflineResponse(session) {
             : '',
           '语言精緻，画面感强，像在写真实的故事。',
           
+          offlineCharacterFidelity,
           offlineWbInjection,
           bgmNote,
           offlineHeartVoiceRule,
-          '根据角色的人设和最近的聊天脉络，自然发展剧情。剧情要合乎邏輯，场景变换要自然。',
+          '根据角色的人设和最近的聊天脉络，自然发展剧情。剧情要合乎邏輯，场景变换要自然；任何情绪、关系或行为变化都必须符合角色原本人设，不能突然崩人设。',
           '用「──」分隔场景，用斜体（*文字*）标示环境描写。',
           autoSummaryEvery > 0 ? '系统会按剧情互动自动总结，你必须保持剧情连贯，让后续总结能准确承接之前发生的事。' : '',
           '',
@@ -110275,6 +110322,146 @@ body.mono-fwd-modal-open {
 })();
 </script>
 
+
+
+<!-- MONO PATCH: 世界书目录超过两个后编辑按钮/弹窗显示修复 -->
+<style id="mono-wb-many-items-visible-fix">
+  /* 让世界书目录无论有多少个都可以滚动，不再把后面的编辑/删除按钮挤出或盖住 */
+  .wb-section{overflow:visible!important;position:relative!important;z-index:auto!important;}
+  #wbList.wb-list{
+    max-height:min(52vh, 430px)!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    padding-right:4px!important;
+    -webkit-overflow-scrolling:touch!important;
+    position:relative!important;
+    z-index:2!important;
+  }
+  #wbList .wb-card{position:relative!important;overflow:visible!important;z-index:1!important;}
+  #wbList .wb-card-actions{
+    display:flex!important;
+    flex-wrap:wrap!important;
+    gap:6px!important;
+    position:relative!important;
+    z-index:20!important;
+    pointer-events:auto!important;
+    visibility:visible!important;
+    opacity:1!important;
+  }
+  #wbList .wb-card-actions button{
+    pointer-events:auto!important;
+    visibility:visible!important;
+    opacity:1!important;
+    position:relative!important;
+    z-index:21!important;
+  }
+  /* 世界书弹窗全部提升到最高层，避免被“我的/设置页”或其他 modal stacking context 压住 */
+  #wbCreateModal.wb-modal,
+  #wbEntriesModal.wb-modal,
+  #wbEntryEditModal.wb-modal{
+    position:fixed!important;
+    inset:0!important;
+    z-index:2147483500!important;
+    pointer-events:auto!important;
+  }
+  #wbEntriesModal.wb-modal{z-index:2147483510!important;}
+  #wbEntryEditModal.wb-modal{z-index:2147483520!important;}
+  #wbHelpModal{z-index:2147483530!important;}
+  .wb-modal.open{display:flex!important;align-items:center!important;justify-content:center!important;}
+  .wb-modal-content{
+    max-height:min(88vh, 720px)!important;
+    overflow-y:auto!important;
+    -webkit-overflow-scrolling:touch!important;
+  }
+  #wbEntriesModal .wb-modal-content{
+    height:min(88vh, 720px)!important;
+    max-height:min(88vh, 720px)!important;
+    display:flex!important;
+    flex-direction:column!important;
+    overflow:hidden!important;
+  }
+  #wbEntriesList{
+    flex:1 1 auto!important;
+    min-height:0!important;
+    overflow-y:auto!important;
+    -webkit-overflow-scrolling:touch!important;
+    padding-bottom:10px!important;
+  }
+  #wbEntriesModal .wb-btn-row{
+    flex-shrink:0!important;
+    background:#fff!important;
+    position:relative!important;
+    z-index:5!important;
+  }
+</style>
+<script id="mono-wb-many-items-visible-fix-script">
+(function(){
+  if (window.__monoWbManyItemsVisibleFix) return;
+  window.__monoWbManyItemsVisibleFix = true;
+
+  function moveWorldBookModalsToBody(){
+    ['wbCreateModal','wbEntriesModal','wbEntryEditModal','wbHelpModal'].forEach(function(id){
+      var el = document.getElementById(id);
+      if (el && el.parentNode !== document.body) document.body.appendChild(el);
+    });
+  }
+
+  function normalizeWorldBookArea(){
+    moveWorldBookModalsToBody();
+    var list = document.getElementById('wbList');
+    if (list){
+      list.style.maxHeight = 'min(52vh, 430px)';
+      list.style.overflowY = 'auto';
+      list.style.overflowX = 'hidden';
+      list.querySelectorAll('.wb-card-actions, .wb-card-actions button').forEach(function(el){
+        el.style.pointerEvents = 'auto';
+        el.style.visibility = 'visible';
+        el.style.opacity = '1';
+        el.style.position = 'relative';
+        el.style.zIndex = el.tagName === 'BUTTON' ? '21' : '20';
+      });
+    }
+  }
+
+  // 防止有些旧结构里按钮被卡片 onclick 或遮罩吞掉：只在世界书列表内部做定向兜底。
+  document.addEventListener('click', function(ev){
+    var btn = ev.target && ev.target.closest ? ev.target.closest('#wbList .wb-card-actions button') : null;
+    if (!btn) return;
+    var card = btn.closest('.wb-card');
+    if (!card) return;
+    var cards = Array.prototype.slice.call(document.querySelectorAll('#wbList .wb-card'));
+    var idx = cards.indexOf(card);
+    var wb = Array.isArray(window.worldBooks) ? window.worldBooks[idx] : null;
+    if (!wb) return;
+    var text = (btn.textContent || '').trim();
+    ev.stopPropagation();
+    if (text.indexOf('编辑') !== -1 && typeof window.editWorldBook === 'function') {
+      ev.preventDefault();
+      moveWorldBookModalsToBody();
+      window.editWorldBook(wb.id);
+    } else if (text.indexOf('删除') !== -1 && typeof window.deleteWorldBook === 'function') {
+      ev.preventDefault();
+      window.deleteWorldBook(wb.id);
+    }
+  }, true);
+
+  // 包一层原 render，保证每次新增/删除/导入后都重新恢复可见和可点击。
+  var oldRender = window.renderWorldBookList;
+  if (typeof oldRender === 'function') {
+    window.renderWorldBookList = function(){
+      var ret = oldRender.apply(this, arguments);
+      setTimeout(normalizeWorldBookArea, 0);
+      return ret;
+    };
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){
+    normalizeWorldBookArea();
+    setTimeout(normalizeWorldBookArea, 300);
+  });
+  setTimeout(normalizeWorldBookArea, 800);
+})();
+</script>
 </body>
 
 <!-- MONO FINAL FIX: Sticker library dialogs are not covered; use a real top-layer modal and direct button routing -->

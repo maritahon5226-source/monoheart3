@@ -109828,6 +109828,8 @@ body.mono-fwd-modal-open {
   document.addEventListener('click', function(e){
     var target = e.target && e.target.closest ? e.target.closest('button, .sticker-add-btn, .sticker-preview-area') : null;
     if (!target) return;
+    // MONO FIX: 这个兜底只能在表情包弹窗内部生效，避免误拦截副API/其它页面的“添加”按钮。
+    if (!target.closest('#stickerModal, #stickerAddModal, #batchStickerModal')) return;
     var text = (target.textContent || '').replace(/\s+/g, ' ').trim();
     var onclick = target.getAttribute && (target.getAttribute('onclick') || '');
 
@@ -110148,6 +110150,239 @@ body.mono-fwd-modal-open {
 })();
 </script>
 
+
+<script id="mono-pet-image-safe-fix">
+(function(){
+  'use strict';
+  if (window.__monoPetImageSafeFixInstalled) return;
+  window.__monoPetImageSafeFixInstalled = true;
+
+  function hasBrokenBase64Text(src){
+    return typeof src === 'string' && /^data:image\/png;base64,/i.test(src) && /[\u4e00-\u9fff]/.test(src);
+  }
+  function svgData(label, emoji, bg){
+    label = String(label || '宠物').slice(0, 8);
+    emoji = String(emoji || '🐾').slice(0, 4);
+    bg = String(bg || '#f6f2ee');
+    var svg = ''
+      + '<svg xmlns="http://www.w3.org/2000/svg" width="220" height="220" viewBox="0 0 220 220">'
+      + '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="' + bg + '"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs>'
+      + '<rect width="220" height="220" rx="54" fill="url(#g)"/>'
+      + '<circle cx="110" cy="104" r="72" fill="rgba(255,255,255,.72)"/>'
+      + '<text x="110" y="118" text-anchor="middle" dominant-baseline="middle" font-size="76" font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif">' + emoji + '</text>'
+      + '<text x="110" y="184" text-anchor="middle" font-size="18" font-weight="700" fill="#3b3b3b" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif">' + label.replace(/[&<>]/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;'})[c]; }) + '</text>'
+      + '</svg>';
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  }
+  window.monoPetSafeImageSrc = window.monoPetSafeImageSrc || function(key, char){
+    char = char || {};
+    return svgData(char.name || key || '宠物', char.emoji || '🐾', char.color || '#f6f2ee');
+  };
+
+  function patchPetChars(){
+    try {
+      if (typeof PET_CHARS === 'undefined' || !PET_CHARS) return false;
+      Object.keys(PET_CHARS).forEach(function(key){
+        var char = PET_CHARS[key] || {};
+        var oldImg = char.img;
+        char._monoOriginalImg = char._monoOriginalImg || oldImg;
+        char.img = function(){
+          var src = '';
+          try { src = (typeof oldImg === 'function') ? oldImg() : (oldImg || char.src || char.image || ''); } catch(e) { src = ''; }
+          if (!src || hasBrokenBase64Text(src)) return window.monoPetSafeImageSrc(key, char);
+          return src;
+        };
+      });
+      return true;
+    } catch(e) { return false; }
+  }
+
+  function findCharByNameOrAlt(alt){
+    try {
+      if (typeof PET_CHARS === 'undefined' || !PET_CHARS) return null;
+      alt = String(alt || '');
+      var keys = Object.keys(PET_CHARS);
+      for (var i=0;i<keys.length;i++){
+        var c = PET_CHARS[keys[i]] || {};
+        if (alt && (alt === c.name || alt.indexOf(c.name) >= 0)) return { key: keys[i], char: c };
+      }
+    } catch(e) {}
+    return null;
+  }
+
+  function patchBrokenPetImgs(root){
+    root = root || document;
+    var imgs = [];
+    try { imgs = root.querySelectorAll ? root.querySelectorAll('img') : []; } catch(e) { imgs = []; }
+    imgs.forEach(function(img){
+      var inPet = false;
+      try { inPet = !!img.closest('#petAppPage, .pet-gacha-pool, .pet-character-area, .pet-collection-grid, .pet-chat-wrap, .pet-archive-list, .ig-pet-icon-wrap'); } catch(e) {}
+      if (!inPet) return;
+      var altInfo = findCharByNameOrAlt(img.getAttribute('alt'));
+      if (hasBrokenBase64Text(img.getAttribute('src') || '') || !img.getAttribute('src')) {
+        img.src = altInfo ? window.monoPetSafeImageSrc(altInfo.key, altInfo.char) : svgData('宠物','🐾','#f6f2ee');
+      }
+      if (!img.__monoPetSafeOnError) {
+        img.__monoPetSafeOnError = true;
+        img.addEventListener('error', function(){
+          var info = findCharByNameOrAlt(img.getAttribute('alt'));
+          img.src = info ? window.monoPetSafeImageSrc(info.key, info.char) : svgData('宠物','🐾','#f6f2ee');
+        }, true);
+      }
+    });
+  }
+
+  function install(){
+    patchPetChars();
+    patchBrokenPetImgs(document);
+    try {
+      var oldRenderPet = window.renderPetApp || window._renderPetApp;
+      // Do not replace app render functions; scan after any UI update instead.
+    } catch(e) {}
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
+  else install();
+
+  var mo = new MutationObserver(function(ms){
+    var should = false;
+    for (var i=0;i<ms.length;i++){
+      if (ms[i].addedNodes && ms[i].addedNodes.length) { should = true; break; }
+    }
+    if (should) setTimeout(function(){ patchPetChars(); patchBrokenPetImgs(document); }, 0);
+  });
+  try { mo.observe(document.documentElement, { childList:true, subtree:true }); } catch(e) {}
+})();
+</script>
+
+
+
+<script id="mono-pet-image-no-pollution-root-fix">
+(function(){
+  'use strict';
+  if (window.__monoPetImageNoPollutionRootFix) return;
+  window.__monoPetImageNoPollutionRootFix = true;
+
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function petSvg(label, emoji, bg){
+    label = esc(String(label || '宠物').slice(0, 8));
+    emoji = esc(String(emoji || '🐾').slice(0, 4));
+    bg = /^#[0-9a-f]{3,8}$/i.test(String(bg||'')) ? String(bg) : '#f6f2ee';
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="220" height="220" viewBox="0 0 220 220">'
+      + '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="'+bg+'"/><stop offset="1" stop-color="#fff"/></linearGradient></defs>'
+      + '<rect width="220" height="220" rx="54" fill="url(#g)"/>'
+      + '<circle cx="110" cy="104" r="72" fill="rgba(255,255,255,.74)"/>'
+      + '<text x="110" y="118" text-anchor="middle" dominant-baseline="middle" font-size="76" font-family="Apple Color Emoji,Segoe UI Emoji,Noto Color Emoji,sans-serif">'+emoji+'</text>'
+      + '<text x="110" y="184" text-anchor="middle" font-size="18" font-weight="800" fill="#333" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif">'+label+'</text>'
+      + '</svg>';
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  }
+  function cleanBase64Payload(payload){
+    payload = String(payload || '').replace(/\s+/g, '').replace(/[^A-Za-z0-9+/=]/g, '');
+    payload = payload.replace(/=+$/,'');
+    var pad = payload.length % 4;
+    if (pad) payload += '='.repeat(4 - pad);
+    return payload;
+  }
+  function looksLikeImageBase64(mime, b64){
+    if (!b64 || b64.length < 80) return false;
+    mime = String(mime || '').toLowerCase();
+    if (mime.indexOf('png') >= 0) return /^iVBORw0KGgo/.test(b64);
+    if (mime.indexOf('jpeg') >= 0 || mime.indexOf('jpg') >= 0) return /^\/9j\//.test(b64);
+    if (mime.indexOf('gif') >= 0) return /^R0lGOD/.test(b64);
+    if (mime.indexOf('webp') >= 0) return /^UklGR/.test(b64);
+    return true;
+  }
+  function normalizePetImageSrc(src, key, char){
+    src = String(src || '');
+    if (/^data:image\/svg\+xml/i.test(src)) return src;
+    var m = src.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.*)$/s);
+    if (m) {
+      var clean = cleanBase64Payload(m[2]);
+      if (looksLikeImageBase64(m[1], clean)) return 'data:' + m[1] + ';base64,' + clean;
+      return petSvg((char && char.name) || key || '宠物', (char && char.emoji) || '🐾', (char && char.color) || '#f6f2ee');
+    }
+    if (/^(https?:|blob:|file:|\/|\.\/|\.\.\/)/i.test(src)) return src;
+    return petSvg((char && char.name) || key || '宠物', (char && char.emoji) || '🐾', (char && char.color) || '#f6f2ee');
+  }
+
+  window.monoNormalizePetImageSrc = normalizePetImageSrc;
+  window.monoPetSafeImageSrc = function(key, char){
+    try {
+      if (char && char.__monoPetRawImageGetter) {
+        return normalizePetImageSrc(char.__monoPetRawImageGetter(), key, char);
+      }
+    } catch(e) {}
+    return petSvg((char && char.name) || key || '宠物', (char && char.emoji) || '🐾', (char && char.color) || '#f6f2ee');
+  };
+
+  function patchPetCharsNoPollution(){
+    try {
+      if (typeof PET_CHARS === 'undefined' || !PET_CHARS) return false;
+      Object.keys(PET_CHARS).forEach(function(key){
+        var char = PET_CHARS[key] || {};
+        if (char.__monoPetNoPollutionPatched) return;
+        var original = char._monoOriginalImg || char.img || char.src || char.image || '';
+        char.__monoPetRawImageGetter = function(){
+          try { return (typeof original === 'function') ? original() : original; } catch(e) { return ''; }
+        };
+        char.img = function(){ return normalizePetImageSrc(char.__monoPetRawImageGetter(), key, char); };
+        char.__monoPetNoPollutionPatched = true;
+      });
+      return true;
+    } catch(e) { return false; }
+  }
+
+  function patchPetDOMImages(root){
+    root = root || document;
+    var imgs = [];
+    try { imgs = root.querySelectorAll ? root.querySelectorAll('img') : []; } catch(e) { imgs = []; }
+    imgs.forEach(function(img){
+      var inPet = false;
+      try { inPet = !!img.closest('#petAppPage, .pet-gacha-pool, .pet-character-area, .pet-collection-grid, .pet-chat-wrap, .pet-archive-list, .ig-pet-icon-wrap'); } catch(e) {}
+      if (!inPet) return;
+      var info = null;
+      try {
+        var alt = String(img.getAttribute('alt') || '');
+        if (typeof PET_CHARS !== 'undefined' && PET_CHARS) {
+          Object.keys(PET_CHARS).some(function(k){
+            var c = PET_CHARS[k] || {};
+            if ((alt && c.name && alt.indexOf(c.name) >= 0) || (img.src && c.img && normalizePetImageSrc(c.img(), k, c) === img.src)) { info = {key:k,char:c}; return true; }
+            return false;
+          });
+        }
+      } catch(e) {}
+      var cur = img.getAttribute('src') || '';
+      var next = info ? normalizePetImageSrc(cur || info.char.img(), info.key, info.char) : normalizePetImageSrc(cur, '宠物', {name:'宠物',emoji:'🐾'});
+      if (cur !== next) img.setAttribute('src', next);
+      if (!img.__monoPetNoPollutionErrorFix) {
+        img.__monoPetNoPollutionErrorFix = true;
+        img.addEventListener('error', function(){
+          var fallback = info ? petSvg(info.char.name || info.key, info.char.emoji || '🐾', info.char.color || '#f6f2ee') : petSvg('宠物','🐾','#f6f2ee');
+          if (img.getAttribute('src') !== fallback) img.setAttribute('src', fallback);
+        }, true);
+      }
+    });
+  }
+
+  function sanitizeStoredPetImages(){
+    try {
+      ['mono_icon_pet'].forEach(function(k){
+        var v = localStorage.getItem(k);
+        if (v && /^data:image\//i.test(v)) {
+          var nv = normalizePetImageSrc(v, '宠物', {name:'宠物',emoji:'🐾'});
+          if (nv !== v) localStorage.setItem(k, nv);
+        }
+      });
+    } catch(e) {}
+  }
+
+  function run(){ patchPetCharsNoPollution(); sanitizeStoredPetImages(); patchPetDOMImages(document); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else run();
+  try { new MutationObserver(function(){ setTimeout(run, 0); }).observe(document.documentElement, { childList:true, subtree:true, attributes:true, attributeFilter:['src'] }); } catch(e) {}
+})();
+</script>
+
 </body>
 
 <!-- MONO FINAL FIX: Sticker library dialogs are not covered; use a real top-layer modal and direct button routing -->
@@ -110325,6 +110560,10 @@ body.mono-fwd-modal-open {
   document.addEventListener('click', function(ev){
     var btn = ev.target && ev.target.closest ? ev.target.closest('#stickerLibraryToolbar button, #stickerManageView button') : null;
     if(!btn) return;
+    // MONO FIX: 只处理表情包管理弹窗里的库管理按钮，不能影响副API添加按钮。
+    if(!btn.closest('#stickerModal')) return;
+    var stickerModal = document.getElementById('stickerModal');
+    if(!stickerModal || stickerModal.style.display === 'none' || getComputedStyle(stickerModal).display === 'none') return;
     var text=(btn.textContent||'').replace(/\s+/g,' ').trim();
     var oc=btn.getAttribute('onclick')||'';
     function stop(){ ev.preventDefault(); ev.stopPropagation(); try{ev.stopImmediatePropagation();}catch(e){} keepStickerPanelsLow(); }

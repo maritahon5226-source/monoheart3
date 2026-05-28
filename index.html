@@ -46219,7 +46219,8 @@ async function _doExportAllData(statusEl) {
       profile: {
         userProfile: monoNormalizeUserProfile((typeof userProfile !== 'undefined' && userProfile) ? userProfile : JSON.parse(localStorage.getItem('mono_user_profile') || '{}')),
         userAvatar: (allBlobs && allBlobs['user_avatar']) || ((typeof userProfile !== 'undefined' && userProfile && userProfile.avatar) ? userProfile.avatar : ''),
-        userMasks: await monoExportUserMasksWithAvatars()
+        userMasks: await monoExportUserMasksWithAvatars(),
+        userStableSnapshot: (window.monoGetStableUserIdentityExport ? await window.monoGetStableUserIdentityExport() : null)
       },
       // 主屏幕自定义 (背景图、应用图标、桌件、页面、位置)
       homeScreen: {
@@ -46695,7 +46696,8 @@ function normalizeImportData(raw) {
   data.profile = {
     userProfile: monoNormalizeUserProfile(Object.assign({}, rawProfile || {})),
     userAvatar: (raw.profile && typeof raw.profile.userAvatar === 'string') ? raw.profile.userAvatar : ((rawProfile && rawProfile.avatar) || ''),
-    userMasks: ((raw.profile && Array.isArray(raw.profile.userMasks)) ? raw.profile.userMasks : (Array.isArray(raw.userMasks) ? raw.userMasks : [])).map(monoNormalizeUserMask)
+    userMasks: ((raw.profile && Array.isArray(raw.profile.userMasks)) ? raw.profile.userMasks : (Array.isArray(raw.userMasks) ? raw.userMasks : [])).map(monoNormalizeUserMask),
+    userStableSnapshot: (raw.profile && raw.profile.userStableSnapshot) ? raw.profile.userStableSnapshot : (raw.userStableSnapshot || null)
   };
   // --- homeScreen ---
   let rawHS = raw.homeScreen || {};
@@ -47279,6 +47281,11 @@ async function confirmImport() {
       monoRestoreUserMaskAvatarsFromIdb();
     } else {
       userMasks = monoLoadUserMasks();
+    }
+    if (data.profile && data.profile.userStableSnapshot && window.monoApplyStableUserIdentityImport) {
+      await window.monoApplyStableUserIdentityImport(data.profile.userStableSnapshot);
+    } else if (window.monoGetStableUserIdentityExport) {
+      try { await window.monoGetStableUserIdentityExport(); } catch(e) {}
     }
   });
   // 5. 主屏幕自定义
@@ -110335,6 +110342,231 @@ body.mono-fwd-modal-open {
     window.openStickerModal.__monoRealTopWrapped=true;
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', keepStickerPanelsLow, {once:true}); else keepStickerPanelsLow();
+})();
+</script>
+
+
+<script>
+/* === MONO PATCH: 稳定保存/恢复 User 资料、默认头像与 User 面具头像（2026-05-28） ===
+   目的：避免刷新、重退、导入导出时 user 名字/默认头像/面具头像被异步 IDB 或文字头像覆盖。 */
+(function installMonoStableUserIdentityPatch(){
+  if (window.__monoStableUserIdentityPatchInstalled) return;
+  window.__monoStableUserIdentityPatchInstalled = true;
+
+  var PROFILE_KEY = 'mono_user_profile_stable_v1';
+  var AVATAR_KEY  = 'mono_user_avatar_stable_v1';
+  var MASKS_KEY   = 'mono_user_masks_stable_v1';
+
+  function stores(){
+    var arr = [];
+    try { if (window.localStorage) arr.push(window.localStorage); } catch(e) {}
+    try { if (window._monoRawLocalStorage && arr.indexOf(window._monoRawLocalStorage) < 0) arr.push(window._monoRawLocalStorage); } catch(e) {}
+    return arr;
+  }
+  function rawStore(){
+    try { return window._monoRawLocalStorage || window.localStorage; } catch(e) { return window.localStorage; }
+  }
+  function readJson(key, fallback){
+    var ss = stores();
+    for (var i=0;i<ss.length;i++) {
+      try {
+        var raw = ss[i].getItem(key);
+        if (!raw) continue;
+        var parsed = JSON.parse(raw);
+        if (parsed != null) return parsed;
+      } catch(e) {}
+    }
+    return fallback;
+  }
+  function writeJson(key, value){
+    var raw = '';
+    try { raw = JSON.stringify(value); } catch(e) { return; }
+    stores().forEach(function(s){ try { s.setItem(key, raw); } catch(e) {} });
+  }
+  function readString(key){
+    var ss = stores();
+    for (var i=0;i<ss.length;i++) {
+      try { var v = ss[i].getItem(key) || ''; if (v) return v; } catch(e) {}
+    }
+    return '';
+  }
+  function writeString(key, value){ stores().forEach(function(s){ try { if(value) s.setItem(key,value); else s.removeItem(key); } catch(e) {} }); }
+  function isDataImage(v){ return typeof v === 'string' && /^data:image\//i.test(v) && v.length > 50; }
+  function isLikelyGeneratedAvatar(v){
+    if (!isDataImage(v)) return true;
+    var s = String(v).slice(0,180).toLowerCase();
+    return s.indexOf('svg') >= 0 || s.indexOf('data:image/svg') === 0;
+  }
+  function normalizeProfileSafe(p){
+    try { if (typeof monoNormalizeUserProfile === 'function') return monoNormalizeUserProfile(p || {}); } catch(e) {}
+    p = p && typeof p === 'object' ? p : {};
+    return {
+      name: String(p.name || '用户'), bio: String(p.bio || ''), gender: String(p.gender || ''),
+      avatar: String(p.avatar || ''), momentsNickname: String(p.momentsNickname || p.name || '用户'),
+      momentsSignature: String(p.momentsSignature || ''), momentsBanner: String(p.momentsBanner || ''),
+      momentsFollowersCustom: p.momentsFollowersCustom == null ? '' : String(p.momentsFollowersCustom),
+      momentsFollowingCustom: p.momentsFollowingCustom == null ? '' : String(p.momentsFollowingCustom)
+    };
+  }
+  function stableProfileSnapshot(profile, avatar){
+    var p = normalizeProfileSafe(profile || (window.userProfile || {}));
+    var av = avatar || p.avatar || readString(AVATAR_KEY) || '';
+    if (!isDataImage(av) && typeof monoReadUserAvatarBackup === 'function') {
+      try { av = monoReadUserAvatarBackup() || av; } catch(e) {}
+    }
+    if (isDataImage(av)) p.avatar = av;
+    return { version: 1, updatedAt: Date.now(), profile: p, avatar: isDataImage(av) ? av : (isDataImage(p.avatar) ? p.avatar : '') };
+  }
+  async function idbGet(key){
+    try { if (window._monoIdbBlobGet) return await window._monoIdbBlobGet(key); } catch(e) {}
+    return '';
+  }
+  async function idbSet(key, val){
+    try { if (window._monoIdbBlobSet && isDataImage(val)) await window._monoIdbBlobSet(key, val); } catch(e) {}
+  }
+  function saveStableProfile(profile, avatar){
+    var snap = stableProfileSnapshot(profile, avatar);
+    writeJson(PROFILE_KEY, snap);
+    if (isDataImage(snap.avatar)) writeString(AVATAR_KEY, snap.avatar);
+    try { if (isDataImage(snap.avatar) && typeof monoWriteUserAvatarBackup === 'function') monoWriteUserAvatarBackup(snap.avatar); } catch(e) {}
+    try { if (typeof monoWriteUserProfileBackup === 'function') monoWriteUserProfileBackup(Object.assign({}, snap.profile, { avatar: '' })); } catch(e) {}
+    idbSet('user_avatar', snap.avatar);
+    return snap;
+  }
+  async function restoreStableProfile(){
+    var snap = readJson(PROFILE_KEY, null);
+    var stableAvatar = readString(AVATAR_KEY) || (snap && (snap.avatar || (snap.profile && snap.profile.avatar))) || '';
+    var idbAvatar = await idbGet('user_avatar');
+    if (isDataImage(idbAvatar) && !isLikelyGeneratedAvatar(idbAvatar)) stableAvatar = idbAvatar;
+    var rawProfile = null;
+    try { rawProfile = JSON.parse((rawStore().getItem('mono_user_profile') || localStorage.getItem('mono_user_profile') || '{}')); } catch(e) { rawProfile = {}; }
+    var base = Object.assign({}, (snap && snap.profile) || {}, rawProfile || {}, window.userProfile || {});
+    var currentAvatar = base.avatar || (window.userProfile && window.userProfile.avatar) || '';
+    if (isDataImage(stableAvatar) && (isLikelyGeneratedAvatar(currentAvatar) || !isDataImage(currentAvatar))) base.avatar = stableAvatar;
+    else if (isDataImage(currentAvatar)) base.avatar = currentAvatar;
+    var currentName = String((window.userProfile && window.userProfile.name) || rawProfile.name || '').trim();
+    var stableName = String((snap && snap.profile && snap.profile.name) || '').trim();
+    if ((!currentName || currentName === '用户') && stableName && stableName !== '用户') base.name = stableName;
+    var normalized = normalizeProfileSafe(base);
+    if (window.userProfile) window.userProfile = Object.assign({}, normalized);
+    saveStableProfile(normalized, normalized.avatar);
+    try { if (typeof monoApplyUserAvatarToUi === 'function' && isDataImage(normalized.avatar)) monoApplyUserAvatarToUi(normalized.avatar); } catch(e) {}
+    try { if (typeof updateProfilePreview === 'function') updateProfilePreview(); } catch(e) {}
+    try { if (typeof monoRefreshUserIdentityUi === 'function') monoRefreshUserIdentityUi(); } catch(e) {}
+  }
+
+  async function buildMasksWithAvatars(list){
+    list = Array.isArray(list) ? list : (Array.isArray(window.userMasks) ? window.userMasks : []);
+    var out = [];
+    for (var i=0;i<list.length;i++) {
+      var m = list[i] || {};
+      var nm;
+      try { nm = typeof monoNormalizeUserMask === 'function' ? monoNormalizeUserMask(m) : Object.assign({}, m); } catch(e) { nm = Object.assign({}, m); }
+      var key = (typeof monoUserMaskAvatarBlobKey === 'function') ? monoUserMaskAvatarBlobKey(nm.id) : ('user_mask_avatar_' + nm.id);
+      var av = nm.avatar || '';
+      var fromIdb = await idbGet(key);
+      if (isDataImage(fromIdb) && !isLikelyGeneratedAvatar(fromIdb)) av = fromIdb;
+      if (isDataImage(av)) nm.avatar = av;
+      nm.hasCustomAvatar = isDataImage(nm.avatar) && !isLikelyGeneratedAvatar(nm.avatar);
+      out.push(nm);
+    }
+    return out;
+  }
+  async function saveStableMasks(list){
+    var full = await buildMasksWithAvatars(list);
+    writeJson(MASKS_KEY, { version: 1, updatedAt: Date.now(), masks: full });
+    full.forEach(function(m){
+      if (m && m.hasCustomAvatar && isDataImage(m.avatar)) {
+        var key = (typeof monoUserMaskAvatarBlobKey === 'function') ? monoUserMaskAvatarBlobKey(m.id) : ('user_mask_avatar_' + m.id);
+        idbSet(key, m.avatar);
+      }
+    });
+    return full;
+  }
+  async function restoreStableMasks(){
+    var snap = readJson(MASKS_KEY, null);
+    if (!snap || !Array.isArray(snap.masks) || !snap.masks.length) return;
+    var current = Array.isArray(window.userMasks) ? window.userMasks : [];
+    var byId = {};
+    current.forEach(function(m){ if(m && m.id) byId[String(m.id)] = Object.assign({}, m); });
+    snap.masks.forEach(function(m){
+      if (!m || !m.id) return;
+      var cur = byId[String(m.id)] || {};
+      var merged = Object.assign({}, m, cur);
+      if (isDataImage(m.avatar) && (isLikelyGeneratedAvatar(cur.avatar) || !isDataImage(cur.avatar))) merged.avatar = m.avatar;
+      merged.hasCustomAvatar = isDataImage(merged.avatar) && !isLikelyGeneratedAvatar(merged.avatar);
+      byId[String(m.id)] = merged;
+    });
+    var next = Object.keys(byId).map(function(id){ return byId[id]; });
+    window.userMasks = next;
+    try { if (typeof monoSaveUserMasks === 'function') monoSaveUserMasks(next); } catch(e) {}
+    try { if (typeof monoRefreshUserIdentityUi === 'function') monoRefreshUserIdentityUi(); } catch(e) {}
+  }
+
+  window.monoGetStableUserIdentityExport = async function(){
+    await restoreStableProfile();
+    var masks = await saveStableMasks(Array.isArray(window.userMasks) ? window.userMasks : []);
+    var snap = saveStableProfile(window.userProfile || {}, (window.userProfile && window.userProfile.avatar) || readString(AVATAR_KEY));
+    return { profileSnapshot: snap, masksSnapshot: { version: 1, updatedAt: Date.now(), masks: masks } };
+  };
+  window.monoApplyStableUserIdentityImport = async function(payload){
+    if (!payload) return;
+    var ps = payload.profileSnapshot || payload.profile || payload.userProfile || null;
+    if (ps && ps.profile) ps = ps.profile;
+    var av = payload.avatar || (payload.profileSnapshot && payload.profileSnapshot.avatar) || (ps && ps.avatar) || '';
+    if (ps) saveStableProfile(ps, av);
+    var masks = (payload.masksSnapshot && payload.masksSnapshot.masks) || payload.userMasks || payload.masks || [];
+    if (Array.isArray(masks) && masks.length) await saveStableMasks(masks);
+    await restoreStableProfile();
+    await restoreStableMasks();
+  };
+
+  // 包装原函数：以后每次保存 user 资料 / 头像 / 面具，都同步写入稳定快照。
+  var oldPersist = window.monoPersistUserProfile;
+  if (typeof oldPersist === 'function' && !oldPersist.__monoStableWrapped) {
+    window.monoPersistUserProfile = async function(profile, opts){
+      var res = await oldPersist.apply(this, arguments);
+      try { saveStableProfile(res || profile || window.userProfile || {}, (opts && opts.avatarData) || (res && res.avatar) || (profile && profile.avatar)); } catch(e) {}
+      return res;
+    };
+    window.monoPersistUserProfile.__monoStableWrapped = true;
+  }
+  var oldSaveMasks = window.monoSaveUserMasks;
+  if (typeof oldSaveMasks === 'function' && !oldSaveMasks.__monoStableWrapped) {
+    window.monoSaveUserMasks = function(nextMasks){
+      var r = oldSaveMasks.apply(this, arguments);
+      saveStableMasks(nextMasks || window.userMasks || []).catch(function(){});
+      return r;
+    };
+    window.monoSaveUserMasks.__monoStableWrapped = true;
+  }
+  var oldAvatarBackup = window.monoWriteUserAvatarBackup;
+  if (typeof oldAvatarBackup === 'function' && !oldAvatarBackup.__monoStableWrapped) {
+    window.monoWriteUserAvatarBackup = function(avatar){
+      var r = oldAvatarBackup.apply(this, arguments);
+      if (isDataImage(avatar)) writeString(AVATAR_KEY, avatar);
+      return r;
+    };
+    window.monoWriteUserAvatarBackup.__monoStableWrapped = true;
+  }
+
+  // 导出/导入原函数之外再补一层，确保旧备份和新备份都能恢复 user 头像/面具头像。
+  var oldNormalize = window.normalizeImportData;
+  if (typeof oldNormalize === 'function' && !oldNormalize.__monoStableWrapped) {
+    window.normalizeImportData = function(raw){
+      var data = oldNormalize.apply(this, arguments);
+      try {
+        if (!data.profile) data.profile = {};
+        if (raw && raw.profile && raw.profile.userStableSnapshot) data.profile.userStableSnapshot = raw.profile.userStableSnapshot;
+      } catch(e) {}
+      return data;
+    };
+    window.normalizeImportData.__monoStableWrapped = true;
+  }
+
+  setTimeout(function(){ restoreStableProfile(); restoreStableMasks(); }, 0);
+  setTimeout(function(){ restoreStableProfile(); restoreStableMasks(); }, 500);
+  setTimeout(function(){ restoreStableProfile(); restoreStableMasks(); }, 1600);
 })();
 </script>
 

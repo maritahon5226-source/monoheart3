@@ -41199,6 +41199,7 @@ ${recentChat}
   } catch(e) { console.warn('tryPersonaSendSticker error:', e); }
 }
 async function tryPersonaSendTextImage(p, recentChat) {
+  // 未允许生图时：不主动低频发图；但如果用户明确要求发图，允许走参考版本文字图，不调用生图 API。
   if (!p || !apiConfig.url || !apiConfig.key || !apiConfig.model) return;
   const recentMsgs = Array.isArray(p.history) ? p.history.slice(-12) : [];
   if (!recentMsgs.length) return;
@@ -41212,16 +41213,14 @@ async function tryPersonaSendTextImage(p, recentChat) {
   const explicitCue = /照片|图片|自拍|穿搭|看看|发来|发我|给我看|图呢|拍给我|想看|看下/.test(recentText);
   const sceneCue = /猫猫|狗狗|晚霞|天空|奶茶|饭|外卖|火锅|咖啡|甜品|风景|路上|教室|工位|桌面|妆容|衣服/.test(recentText);
   const personaText = String(p.persona || '');
-  let baseProb = explicitCue ? 0.26 : (sceneCue ? 0.1 : 0.02);
+  let baseProb = explicitCue ? 1 : (sceneCue ? 0.1 : 0.02);
   if (/分享欲|摄影|爱拍照|活泼|可爱|俏皮|喜欢记录|浪漫|感性|黏人|热情/.test(personaText)) baseProb += 0.03;
   if (/高冷|冷淡|克制|寡言|理智|稳重|严肃/.test(personaText)) baseProb -= 0.03;
   if (!explicitCue && !sceneCue) return;
-  if (Math.random() > Math.max(0.01, Math.min(baseProb, 0.3))) return;
-  const isNormalTextImageOnly = p.allowImageGen !== true;
-  const prompt = isNormalTextImageOnly
-    ? `${LANG_SYSTEM_PREFIX}你是${p.name}，人设：${p.persona}。
-你现在可以选择是否额外发送一张“普通文字图卡片”给${userProfile.name}。注意：这个角色没有开启生图，所以这不是照片、不是图片 prompt、不是画面描述，只是聊天里一张带字小卡片。\n【核心要求】\n- 只在当前对话很适合发一句带字卡片时才发；不适合就返回 send:false。\n- text 必须是卡片上显示的普通文字，可以是短句、吐槽、暧昧小句、提醒、梗、台词或一句自然回应。\n- 绝对不要写照片、画面、镜头、光线、桌面、物件、视角、手机随手拍、prompt、图片描述。\n- text 控制在 8 到 60 字。\n请只返回 JSON，不要解释：{"send":true/false,"text":"普通文字图内容","caption":"可留空的短配文"}\n\n【最近聊天】\n${recentChat || '（暂无）'}`
-    : `${LANG_SYSTEM_PREFIX}你是${p.name}，人设：${p.persona}。
+  // 角色未开启允许生图时，只在用户明确要求发图时发送文字图；不做主动随机图。
+  if (p.allowImageGen !== true && !explicitCue) return;
+  if (!explicitCue && Math.random() > Math.max(0.01, Math.min(baseProb, 0.3))) return;
+  const prompt = `${LANG_SYSTEM_PREFIX}你是${p.name}，人设：${p.persona}。
 你现在可以选择是否额外发送一张“文字描述生成的模拟图片”给${userProfile.name}。这张图会以真实图片消息的形式出现在聊天里。\n【核心要求：图片必须与当前聊天内容强相关】\n- 图片内容必须直接来源于当前对话：对话在聊什么、提到了什么地点/事物/行为，图片就顺势拍什么。\n- 不要凭空发一张和话题毫无关联的图。如果当前话题想不到自然对应的画面，直接返回 send:false。\n- 举例：聊到“在吃火锅”→ 拍桌上的锅和食材；聊到“今天去爬山”→ 山顶或山路的画面；聊到“你穿了什么”→ 自己当天的穿搭；用户说“发我看看”→ 结合上文正在聊的具体内容拍给对方。\n【发送原则】\n1. 只有当前对话有明确可视化的内容，或用户明确要求看时才发。\n2. 如果当前只是普通问答、严肃沟通、争执、解释、安慰沉重情绪，不要发。\n3. desc 必须是“画面里看得见的东西”，像真实照片描述，细节具体，不写抄象感想，不写“我给你发一张图”这种说明。\n4. desc 控制在 18 到 60 字。\n请只返回 JSON，不要解释：{"send":true/false,"desc":"图片画面描述（必须与聊天内容直接相关）","caption":"可留空的短配文"}\n\n【最近聊天】\n${recentChat || '（暂无）'}`;
   try {
     const r = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, {
@@ -41240,9 +41239,7 @@ async function tryPersonaSendTextImage(p, recentChat) {
     if (match) raw = match[0];
     const result = JSON.parse(raw);
     if (!result || !result.send) return;
-    const desc = isNormalTextImageOnly
-      ? monoCleanNormalTextImageContent(result.text || result.content || result.desc || '')
-      : String(result.desc || '').trim();
+    const desc = String(result.desc || '').trim();
     const caption = String(result.caption || '').trim();
     if (!desc) return;
     await new Promise(function(res) { setTimeout(res, 650 + Math.random() * 950); });
@@ -41251,8 +41248,7 @@ async function tryPersonaSendTextImage(p, recentChat) {
       imageDesc: desc,
       imageCaption: caption,
       imageSimulated: true,
-      textImagePrompt: desc,
-      _normalTextImageFallback: isNormalTextImageOnly
+      textImagePrompt: desc
     });
     saveData();
     if (currentId == p.id) renderMessages();

@@ -54415,7 +54415,7 @@ ${countInstruction}
 4. 如果有人@你，必须直接回应那个人，风格和态度必须符合你与他的关系设定（若关系图中有定义）。
 5. 提及群成员用@名字格式。
 6. 禁止在回复前加自己名字的前缀（如"${responder.name}："），直接说话。
-7. 鼓励角色展现性格棱角：可以有自己的观点、小情绪、说话习惯——一个自来熟的人会主动搭话，一个高冷的人只说关键一句，一个爱吐槽的人会忍不住评论两句。这种差异才让群聊有生命力。
+7. 鼓励角色展现性格差异：可以有自己的观点、节奏和说话习惯。差异应来自人设本身，而不是固定模板。
 8. 【关系一致性】若群内有与你存在关系设定的成员，发言时务必体现该关系的情感倾向，不能无视已设定的亲密、对立或特殊情感。
 9. 【红包低频】群聊里不要频繁主动提“发红包/抢红包/红包来了”。除非最近话题明确是生日、新年、庆祝、请客或用户直接要求红包，否则不要把红包当作常规回复内容。
 ${BUILTIN_WB}`;
@@ -110550,6 +110550,212 @@ body.mono-fwd-modal-open {
 })();
 </script>
 
+<script>
+/* MONO PATCH v12: group chat more lifelike everyday flow */
+(function(){
+  'use strict';
+  if(window.__MONO_GC_MORE_NATURAL_V12__) return;
+  window.__MONO_GC_MORE_NATURAL_V12__ = true;
+
+  function txt(v){ return (v==null?'':String(v)).trim(); }
+  function cleanText(v){
+    return txt(v).replace(/<[^>]*>/g,' ')
+      .replace(/\[(?:reply|quote|引用)\s*[:：][^\]]+\]/ig,' ')
+      .replace(/【(?:引用|回复)\s*[:：][^】]+】/g,' ')
+      .replace(/\s+/g,' ').trim();
+  }
+  function escReg(s){ return String(s||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
+  function getPersonas(){ try{ return Array.isArray(window.personas) ? window.personas : (typeof personas !== 'undefined' && Array.isArray(personas) ? personas : []); }catch(e){ return []; } }
+  function getGroups(){ try{ return Array.isArray(window.groups) ? window.groups : (typeof groups !== 'undefined' && Array.isArray(groups) ? groups : []); }catch(e){ return []; } }
+  function senderNameOfLocal(g,m){
+    try{
+      if(!m) return '';
+      if(m.senderName) return m.senderName;
+      if(m.name) return m.name;
+      if(String(m.role)==='user'){
+        if(typeof window.monoGroupUserName === 'function') return window.monoGroupUserName(g) || '用户';
+        try{ if(typeof monoGroupUserName === 'function') return monoGroupUserName(g) || '用户'; }catch(e){}
+        return '用户';
+      }
+      var p = getPersonas().find(function(x){ return String(x.id)===String(m.role); });
+      return p ? (p.name || '角色') : String(m.role || '成员');
+    }catch(e){ return '成员'; }
+  }
+  function msgTextOfLocal(m){
+    try{
+      var raw = m && (m.content || m.text || m.message || m.caption || '');
+      if(typeof raw === 'object') raw = JSON.stringify(raw);
+      return cleanText(raw);
+    }catch(e){ return ''; }
+  }
+  function recentQuoteCandidatesLocal(g,responderId){
+    var arr = [];
+    try{
+      var msgs = (g && Array.isArray(g.messages)) ? g.messages : [];
+      for(var i=msgs.length-1;i>=0 && arr.length<28;i--){
+        var m = msgs[i];
+        if(!m || m._hiddenContext || m._systemNote || m._recalled) continue;
+        if(responderId && String(m.role) === String(responderId)) continue;
+        var text = msgTextOfLocal(m);
+        if(!text) continue;
+        arr.push({idx:i, role:m.role, from:senderNameOfLocal(g,m), text:text, msg:m});
+      }
+    }catch(e){}
+    return arr;
+  }
+  function buildEverydayContext(g){
+    var visible = [];
+    try{ visible = (g.messages || []).filter(function(m){ return m && !m._hiddenContext && !m._systemNote && !m._recalled; }).slice(-22); }catch(e){}
+    var lines = visible.map(function(m){ return senderNameOfLocal(g,m) + ': ' + msgTextOfLocal(m); }).filter(function(x){ return cleanText(x); });
+    var last = lines[lines.length-1] || '';
+    var lastText = cleanText(last.replace(/^[^:：]{1,30}[:：]\s*/,''));
+    var recentBodies = lines.slice(-12).map(function(line){ return cleanText(line.replace(/^[^:：]{1,30}[:：]\s*/,'')); }).filter(Boolean);
+    var quiet = !lastText || lastText.length <= 8 || /^(嗯|哦|好|行|知道了|晚安|早|哈哈|笑死|？|\?|。|…|\.\.\.)$/.test(lastText);
+    var hot = /(笑死|救命|不是|真的|啊？|\?|？|吵|生气|烦|离谱|喜欢|讨厌|等下|别|谁|一起|吃什么|去哪|作业|上课|下课|游戏|外卖|奶茶|困|雨|天气|手机|照片|截图)/i.test(lines.slice(-6).join(' '));
+    var repeated = recentBodies.slice(-10).map(function(x){ return x.slice(0,38); }).join('\n');
+    return { transcript: lines.join('\n'), lastLine:last, lastText:lastText, quiet:quiet, hot:hot, noRepeat:repeated };
+  }
+  function similarity(a,b){
+    a = cleanText(a); b = cleanText(b);
+    if(!a || !b) return 0;
+    if(a === b) return 1;
+    if(a.length < 4 || b.length < 4) return 0;
+    var set = Object.create(null), inter = 0, total = 0;
+    for(var i=0;i<a.length-1;i++){ set[a.slice(i,i+2)] = true; total++; }
+    for(var j=0;j<b.length-1;j++){ if(set[b.slice(j,j+2)]) inter++; total++; }
+    return total ? (2*inter/total) : 0;
+  }
+  function isTooSimilarToRecent(g,text){
+    var c = cleanText(text);
+    if(!c) return true;
+    var recent = [];
+    try{ recent = (g.messages || []).filter(function(m){ return m && !m._hiddenContext && !m._systemNote; }).slice(-16); }catch(e){}
+    return recent.some(function(m){ return similarity(c,msgTextOfLocal(m)) >= 0.80; });
+  }
+  function maybeToneHint(responder, ctx){
+    var p = String((responder && responder.persona) || '');
+    var hints = [];
+    if(/冷|高冷|寡言|少话|沉默|淡漠|不爱说/i.test(p)) hints.push('你可以少说、冷一点，不需要解释完整。');
+    if(/毒舌|嘴欠|吐槽|傲娇|嘴硬|不服/i.test(p)) hints.push('可以嘴硬、吐槽、别太顺着别人。');
+    if(/温柔|体贴|照顾|护短/i.test(p)) hints.push('可以关心，但不要像客服安慰，像熟人顺手照顾一句。');
+    if(/活泼|开朗|话多|自来熟|搞笑/i.test(p)) hints.push('可以主动接梗、插话、带一点随口感。');
+    if(/学生|高中|大学|校园|学长|学姐|同学/i.test(p)) hints.push('日常可以自然带到课、作业、食堂、社团、考试、路上。');
+    if(ctx.quiet) hints.push('现在有点冷场，可以随口丢一个很小的日常点，不要开大剧情。');
+    if(ctx.hot) hints.push('现在群里有热度，先接梗或接情绪，不要突然换很远的话题。');
+    return hints.join('\n');
+  }
+
+  async function patchedGcFetchAiRepliesV12(g,responder,count){
+    var cfg = (typeof apiConfig !== 'undefined') ? apiConfig : window.apiConfig;
+    if(!cfg || !cfg.url || !cfg.key || !cfg.model) return [];
+    var members = (g.memberIds || []).map(function(mid){ return getPersonas().find(function(p){ return String(p.id) === String(mid); }); }).filter(Boolean);
+    var userIdentity = {name:'用户'};
+    try{ if(typeof window.monoResolveUserIdentityProfile === 'function') userIdentity = window.monoResolveUserIdentityProfile(responder) || userIdentity; else if(typeof monoResolveUserIdentityProfile === 'function') userIdentity = monoResolveUserIdentityProfile(responder) || userIdentity; }catch(e){}
+    var roomMode = 'different_people';
+    try{ if(typeof window.monoResolveGroupUserIdentityMode === 'function') roomMode = window.monoResolveGroupUserIdentityMode(g); else if(typeof monoResolveGroupUserIdentityMode === 'function') roomMode = monoResolveGroupUserIdentityMode(g); }catch(e){}
+    var roomModeInstruction = roomMode === 'same_person'
+      ? '【群聊里的用户身份规则】不同 userMaskId 代表同一个真实用户，但每个角色仍只按照自己连接到的用户面具设定、称呼、昵称与记忆来理解和称呼用户。若世界关系图已经把不同用户面具作为不同节点建立关系，则以世界关系图为最高优先级，必须把那些节点视为不同人物。'
+      : '【群聊里的用户身份规则】不同 userMaskId 代表不同的人。不同面具的称呼、头像、记忆、理解必须彼此隔离，不能混淆。';
+    var ctx = buildEverydayContext(g);
+    var transcript = ctx.transcript || '（暂无记录）';
+    var wbInjection = '';
+    try{ if(typeof window.buildWorldBookInjection === 'function') wbInjection = window.buildWorldBookInjection(transcript,responder.id) || ''; else if(typeof buildWorldBookInjection === 'function') wbInjection = buildWorldBookInjection(transcript,responder.id) || ''; }catch(e){}
+    var memoryContext = '';
+    try{
+      if(g.settings && g.settings.charMemoryShare && g.settings.charMemoryShare[responder.id]){
+        var charHistory = (responder.history || []).slice(-18).map(function(m){ return (m.role === 'user' ? (userIdentity.name || '用户') : responder.name) + ': ' + (m.content || ''); }).join('\n');
+        if(charHistory) memoryContext = '\n【你与' + (userIdentity.name || '用户') + '的私聊记忆（仅你知道，别硬提）】\n' + charHistory + '\n';
+      }
+    }catch(e){}
+    var otherMembers = members.filter(function(m){ return String(m.id) !== String(responder.id); }).map(function(m){ return m.name; }).join('、');
+    var memberNames = members.map(function(m){ return m.name; });
+    var relInject = '';
+    try{ if(typeof window._mwBuildRelInjectForChar === 'function') relInject = window._mwBuildRelInjectForChar(responder.name,memberNames,true) || ''; else if(typeof _mwBuildRelInjectForChar === 'function') relInject = _mwBuildRelInjectForChar(responder.name,memberNames,true) || ''; }catch(e){}
+    var quoteHints = recentQuoteCandidatesLocal(g,responder.id).slice(0,10).map(function(c){ return c.from + '｜' + c.text.slice(0,72); }).join('\n');
+    var countInstruction = count <= 1 ? '只发1条消息，不使用###分隔符。' : ('最多发' + count + '条消息，用###分隔。min/max 是角色习惯参考：可以只发一条；只有被点名、情绪上来、话题很贴你，才自然多发。');
+    var personaText = (responder.persona || '') + ' ' + wbInjection;
+    var langOverride = '';
+    if(/日语回覆|日本语回覆|用日语|用日本语|以日语|以日本语|日语.*回覆|日文回覆|用日文|以日文|Japanese.*reply|speak.*Japanese|日语回复/i.test(personaText)) langOverride='\n【语言设定：强制】角色人设要求你必须全程使用日语（日本语）回复。';
+    else if(/韓语回覆|韓文回覆|用韓语|用韓文|以韓语|以韓文|Korean.*reply|speak.*Korean|한국어로|用韩语|以韩语|韩语回复/i.test(personaText)) langOverride='\n【语言设定：强制】角色人设要求你必须全程使用韩语（한국어）回复。';
+    else if(/英语回覆|英文回覆|用英语|用英文|以英语|以英文|English.*reply|speak.*English|英语回复/i.test(personaText)) langOverride='\n【语言设定：强制】角色人设要求你必须全程使用英语（English）回复。';
+    var groupUserName = userIdentity.name || '用户';
+    try{ if(typeof window.monoGroupUserName === 'function') groupUserName = window.monoGroupUserName(g) || groupUserName; else if(typeof monoGroupUserName === 'function') groupUserName = monoGroupUserName(g) || groupUserName; }catch(e){}
+    var sysPrompt = `${typeof LANG_SYSTEM_PREFIX !== 'undefined' ? LANG_SYSTEM_PREFIX : ''}${typeof STYLE_INSTRUCTIONS !== 'undefined' ? STYLE_INSTRUCTIONS : ''}
+你是「${responder.name}」。人设：${responder.persona || ''}。${langOverride}
+当前场景：群聊「${g.name || '群聊'}」。
+群成员：${members.map(function(m){return m.name;}).join('、')}、${groupUserName}（用户）。
+其他角色：${otherMembers || '（无）'}。
+${roomModeInstruction}
+${wbInjection}${memoryContext}${relInject}
+【完整群聊记录（最近22条）】
+${transcript}
+【最近可引用消息】
+${quoteHints || '（暂无）'}
+【禁止复读/换皮重复的近期内容】
+${ctx.noRepeat || '（暂无）'}
+【上一句】
+${ctx.lastLine || '（暂无）'}
+【你的本轮语气提示】
+${maybeToneHint(responder,ctx) || '按人设自然接话。'}
+【现在轮到你「${responder.name}」发言】
+${countInstruction}
+【更自然的群聊规则】
+1. 这不是剧情生成，也不是问答。像微信/群聊里真人随手回一句：短、偏口语、带一点当下反应。多数消息 5-35 个字，除非人设本来话多。
+2. 先接住上一句里的一个小点，再轻轻往旁边挪半步。可以补细节、点人、追问或自然转场，但不要突然开大剧情或空降无关话题。
+3. 不要总结，不要上价值，不要“我理解/确实如此/你说得对”这种模板开头。不要像老师、客服、心理咨询师。
+4. 允许不完美口语：可以用“啊？”“不是”“等下”“我服了”“算了”“你别说”“有点”等，但别过度刷哈哈、emoji、波浪号。
+5. 角色要贴人设：发言长短、语气轻重、是否主动、是否接话，都由角色性格、关系和当前语境自然决定。
+6. 不要每个人都围着用户转。你可以回复其他角色，也可以接住群里的整体气氛，但必须和上下文连贯。
+7. 不要重复刚才别人已经表达过的意思。必须提供新反应、新细节、新态度，或者自然把话题推进到一个小日常。
+8. 如果你@某人并回复对方刚才的话，消息开头必须用隐藏引用：[reply:发送者名字|被回复的原文短句]。原文必须来自【最近可引用消息】，不要编。
+9. 除隐藏引用外，不要输出JSON、编号、括号解释、自己名字前缀。
+10. 红包极低频；没有明确生日、新年、庆祝、请客语境，不要主动提。
+${typeof BUILTIN_WB !== 'undefined' ? BUILTIN_WB : ''}`;
+    try{
+      var response = await fetch(`${String(cfg.url).replace(/\/$/, '')}/chat/completions`,{
+        method:'POST',
+        headers:{ 'Authorization':`Bearer ${cfg.key}`, 'Content-Type':'application/json' },
+        body:JSON.stringify({
+          model: cfg.model,
+          messages:[ {role:'system',content:sysPrompt}, {role:'user',content:'按真实日常群聊的感觉接一句，不要写成解释或总结。只输出角色消息本身。'} ],
+          temperature: Math.max(0.96, Number(responder.temperature || 1.12)),
+          top_p: 0.96,
+          presence_penalty: 0.55,
+          frequency_penalty: 0.65
+        })
+      });
+      if(!response.ok) return [];
+      var data = await response.json();
+      var raw = ((data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '').trim();
+      var namePrefix = new RegExp('^' + escReg(responder.name||'') + '[：:] *');
+      var pieces = raw.split('###').map(function(s){ return s.trim().replace(namePrefix,'').replace(/^[-•]\s*/,'').trim(); }).filter(Boolean).slice(0,count);
+      var out = [];
+      pieces.forEach(function(p){
+        var display = p.replace(/^\s*(?:\[(?:reply|quote)\s*[:：][^\]]+\]|【(?:引用|回复)\s*[:：][^】]+】)\s*/i,'').trim();
+        if(!display) return;
+        if(isTooSimilarToRecent(g,display)) return;
+        if(out.some(function(x){ return similarity(display,x.replace(/^\s*(?:\[(?:reply|quote)\s*[:：][^\]]+\]|【(?:引用|回复)\s*[:：][^】]+】)\s*/i,'')) >= 0.76; })) return;
+        out.push(p);
+      });
+      if(!out.length && pieces.length) out.push(pieces[0]);
+      return out.slice(0,count);
+    }catch(e){
+      console.warn('[mono gc more natural v12] fetch failed', e);
+      try{ if(typeof window._showApiErrorToast === 'function') window._showApiErrorToast('群聊 AI 回复失败'); else if(typeof _showApiErrorToast === 'function') _showApiErrorToast('群聊 AI 回复失败'); }catch(_){}
+      return [];
+    }
+  }
+
+  window.gcFetchAiReplies = patchedGcFetchAiRepliesV12;
+  try{ gcFetchAiReplies = patchedGcFetchAiRepliesV12; }catch(e){}
+  window.gcFetchAi回复 = async function(g,responder,userContent,isContinuation){
+    var arr = await patchedGcFetchAiRepliesV12(g,responder,1);
+    return arr[0] || null;
+  };
+  try{ gcFetchAi回复 = window.gcFetchAi回复; }catch(e){}
+})();
+</script>
+
 </body>
 
 <!-- MONO FINAL FIX: Sticker library dialogs are not covered; use a real top-layer modal and direct button routing -->
@@ -111162,4 +111368,915 @@ body.mono-fwd-modal-open {
 
 </script>
 
+
+<!-- === MONO PATCH: sync 2026-05-29 group chat v11 daily-natural rules to 2026-05-27 version === -->
+<script>
+/* MONO PATCH v7: group chat naturalness + AI quote rendering */
+(function(){
+  'use strict';
+  if (window.__monoGcNaturalQuotePatchV7) return;
+  window.__monoGcNaturalQuotePatchV7 = true;
+
+  function escHtml(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});
+  }
+  function cleanText(s){
+    return String(s == null ? '' : s).replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim();
+  }
+  function senderNameOf(g,m){
+    try{
+      if(!m) return '';
+      if(m.role === 'user') return (typeof monoGroupUserName === 'function' ? monoGroupUserName(g,m) : '用户') || '用户';
+      var p = (typeof personas !== 'undefined' ? personas : []).find(function(x){ return String(x.id) === String(m.role); });
+      return (p && p.name) || '';
+    }catch(e){ return ''; }
+  }
+  function msgTextOf(m){
+    if(!m) return '';
+    if(m.type === 'redenvelope') return '[红包] ' + (m.content || '');
+    if(m.type === 'sticker') return '[表情包]' + ((m.stickerData && m.stickerData.caption) ? ' ' + m.stickerData.caption : '');
+    if(m.type === 'voice') return '[语音] ' + (m.voiceText || m.content || '');
+    if(m.type === 'image') return '[图片] ' + (m.caption || m.imageCaption || '');
+    return cleanText(m.content || '');
+  }
+  function recentQuoteCandidates(g,responderId){
+    var arr = [];
+    try{
+      var msgs = (g && Array.isArray(g.messages)) ? g.messages : [];
+      for(var i=msgs.length-1;i>=0 && arr.length<24;i--){
+        var m = msgs[i];
+        if(!m || m._hiddenContext || m._systemNote || m._recalled) continue;
+        if(responderId && String(m.role) === String(responderId)) continue;
+        var text = msgTextOf(m);
+        if(!text) continue;
+        arr.push({idx:i, role:m.role, from:senderNameOf(g,m), text:text, msg:m});
+      }
+    }catch(e){}
+    return arr;
+  }
+  function fuzzyQuoteMatch(a,b){
+    a = cleanText(a); b = cleanText(b);
+    if(!a || !b) return false;
+    if(a === b) return true;
+    if(a.length >= 4 && b.indexOf(a) >= 0) return true;
+    if(b.length >= 4 && a.indexOf(b) >= 0) return true;
+    var ax = a.slice(0,24), bx = b.slice(0,24);
+    return ax.length >= 6 && bx.length >= 6 && (a.indexOf(bx) >= 0 || b.indexOf(ax) >= 0);
+  }
+  function findQuoteByNameAndText(g, from, text, responderId){
+    var cands = recentQuoteCandidates(g,responderId);
+    var fromClean = cleanText(from).replace(/^@/,'');
+    var textClean = cleanText(text);
+    var best = null;
+    for(var i=0;i<cands.length;i++){
+      var c = cands[i];
+      var nameOk = !fromClean || c.from === fromClean || c.from.indexOf(fromClean)>=0 || fromClean.indexOf(c.from)>=0;
+      var textOk = !textClean || fuzzyQuoteMatch(textClean,c.text);
+      if(nameOk && textOk){ best = c; break; }
+    }
+    return best;
+  }
+  function findLatestByMention(g, replyText, responderId){
+    var cands = recentQuoteCandidates(g,responderId);
+    var names = [];
+    String(replyText||'').replace(/@(\S+)/g,function(_,n){ names.push(cleanText(n)); return _; });
+    if(!names.length) return null;
+    for(var n=0;n<names.length;n++){
+      var name = names[n];
+      for(var i=0;i<cands.length;i++){
+        var c = cands[i];
+        if(c.from && (c.from === name || c.from.indexOf(name)>=0 || name.indexOf(c.from)>=0)) return c;
+      }
+    }
+    return null;
+  }
+  function parseGcAiReply(raw,g,responder){
+    var text = String(raw || '').trim();
+    var quoteFrom = '', quoteText = '';
+    // Supported model markers: [reply:Name|exact text], [quote:Name|exact text], 【引用:Name|exact text】
+    var marker = text.match(/^\s*(?:\[(?:reply|quote)\s*[:：]\s*([^|\]\n]{1,40})\s*\|\s*([^\]]{1,160})\]|【(?:引用|回复)\s*[:：]\s*([^|】\n]{1,40})\s*\|\s*([^】]{1,160})】)\s*/i);
+    if(marker){
+      quoteFrom = cleanText(marker[1] || marker[3] || '');
+      quoteText = cleanText(marker[2] || marker[4] || '');
+      text = text.slice(marker[0].length).trim();
+    }
+    // Also remove accidental loose markers anywhere, but do not trust them blindly.
+    text = text.replace(/\s*(?:\[(?:reply|quote)\s*[:：][^\]]+\]|【(?:引用|回复)\s*[:：][^】]+】)\s*/ig,' ').trim();
+    var matched = null;
+    if(quoteFrom || quoteText) matched = findQuoteByNameAndText(g,quoteFrom,quoteText,responder && responder.id);
+    if(!matched) matched = findLatestByMention(g,text,responder && responder.id);
+    var out = {content:text, mentions:[]};
+    String(text||'').replace(/@(\S+)/g,function(_,n){ out.mentions.push(n); return _; });
+    if(matched){
+      out.quoteFrom = matched.from;
+      out.quoteText = matched.text;
+      out.quoteMsgIdx = matched.idx;
+    }
+    return out;
+  }
+  window.monoGcParseAiReplyWithQuote = parseGcAiReply;
+
+  function chooseGcResponders(g,members,lastUserMsg,userContent){
+    var mentionedNames = [];
+    String(userContent||'').replace(/@(\S+)/g,function(_,n){ mentionedNames.push(cleanText(n)); return _; });
+    var must = [], maybe = [];
+    if(mentionedNames.length){
+      members.forEach(function(m){
+        var hit = mentionedNames.some(function(n){ return m.name && (m.name.indexOf(n)>=0 || n.indexOf(m.name)>=0); });
+        (hit ? must : maybe).push(m);
+      });
+      if(!must.length) must = members.slice(0,1);
+    }else{
+      maybe = members.slice();
+    }
+    function shuffle(a){ return a.slice().sort(function(){ return Math.random()-0.5; }); }
+    function clamp(n,min,max){ return Math.max(min, Math.min(max, n)); }
+    var pool = shuffle(maybe.length ? maybe : members);
+    if(mentionedNames.length){
+      // 被 @ 的角色必须优先回应；其他角色可按气氛插话，但不硬限制为固定人数。
+      var res = shuffle(must);
+      var extraMax = Math.max(0, Math.min(pool.length, Math.ceil(members.length * 0.55)));
+      shuffle(maybe).forEach(function(m){
+        if(res.length < must.length + extraMax && Math.random() < 0.26) res.push(m);
+      });
+      return res.slice(0, Math.max(1, Math.min(res.length, members.length)));
+    }
+    // 没有 @ 时不再固定限制 1-2 个角色；根据群人数和随机气氛自然决定。
+    var base = members.length <= 2 ? members.length : (1 + Math.floor(Math.random() * Math.min(members.length, 3)));
+    if(members.length >= 4 && Math.random() < 0.28) base += 1;
+    if(members.length >= 6 && Math.random() < 0.16) base += 1;
+    if(members.length >= 8 && Math.random() < 0.08) base += 1;
+    var targetCount = clamp(base, 1, members.length);
+    // 少数时候消息很适合全员热闹接话；但仍然由随机和群规模决定，不强迫每个人都说。
+    if(members.length >= 4 && /大家|所有人|你们|投票|选择|意见|怎么办|谁|一起|群里|来不来|去不去|吃什么|玩什么|生日|新年|红包|庆祝/.test(userContent||'') && Math.random() < 0.38){
+      targetCount = clamp(targetCount + Math.ceil(members.length * 0.35), 2, members.length);
+    }
+    return pool.slice(0, targetCount);
+  }
+
+  async function patchedTriggerGcAuto回复(){
+    var g = (typeof groups !== 'undefined' ? groups : []).find(function(x){ return x.id === currentGroupId; });
+    if(!g) return;
+    if(!apiConfig.url || !apiConfig.key || !apiConfig.model){ alert('请先配置API'); return; }
+    var members = (g.memberIds || []).map(function(mid){ return (typeof personas !== 'undefined' ? personas : []).find(function(p){ return String(p.id) === String(mid); }); }).filter(Boolean);
+    if(!members.length) return;
+    var lastUserMsg = (g.messages || []).slice().reverse().find(function(m){ return m && m.role === 'user' && !m._hiddenContext && !m._systemNote; });
+    var userContent = lastUserMsg ? (lastUserMsg.content || '') : '';
+    var finalResponders = chooseGcResponders(g,members,lastUserMsg,userContent);
+    var typing = document.getElementById('gcTypingArea');
+    if(typing) typing.style.display = 'flex';
+    for(var r=0;r<finalResponders.length;r++){
+      var responder = finalResponders[r];
+      try{
+        var minCount = Math.max(1, responder.min回复Count || responder.minReplyCount || 1);
+        var maxCount = Math.max(minCount, responder.max回复Count || responder.maxReplyCount || 2);
+        // min/max 仍然是角色回复条数的参考范围，但不再每次硬凑到最多。
+        // 多数情况下接近 min，情绪强、被 @、争论/热闹话题时更可能接近 max。
+        var mentionedThisResponder = String(userContent||'').indexOf('@' + (responder.name || '')) >= 0;
+        var heat = mentionedThisResponder ? 0.34 : 0.12;
+        if(/吵|生气|解释|为什么|怎么办|喜欢|讨厌|误会|真的|别|救命|笑死|哈哈|生日|红包|新年|庆祝|投票|选择/.test(userContent||'')) heat += 0.16;
+        var msgCount = minCount;
+        for(var mc=minCount+1; mc<=maxCount; mc++){
+          if(Math.random() < heat / (mc - minCount + 1)) msgCount = mc;
+        }
+        await new Promise(function(res){ setTimeout(res, 450 + Math.random()*900); });
+        var replies = await gcFetchAiReplies(g,responder,msgCount);
+        if(!replies || !replies.length) continue;
+        for(var i=0;i<replies.length;i++){
+          var parsed = parseGcAiReply(replies[i],g,responder);
+          if(!parsed.content) continue;
+          var msg = { role: responder.id, content: parsed.content, mentions: parsed.mentions || [], timestamp: Date.now() };
+          if(parsed.quoteText){ msg.quoteFrom = parsed.quoteFrom; msg.quoteText = parsed.quoteText; msg.quoteMsgIdx = parsed.quoteMsgIdx; }
+          g.messages.push(msg);
+          (g.messages || []).forEach(function(gm){ if(gm.role === 'user' && !gm._readByChar) gm._readByChar = true; });
+          if(typeof saveGroups === 'function') saveGroups(); else if(typeof saveData === 'function') saveData();
+          if(typeof renderGroupMessages === 'function') renderGroupMessages(g);
+          if(g.notificationEnabled !== false && typeof showGroupNotification === 'function') showGroupNotification(g,responder,parsed.content);
+          if(i === 0){
+            await new Promise(function(res){ setTimeout(res, 700 + Math.random()*1400); });
+            if(typeof gcRoleSendRedEnvelope === 'function') await gcRoleSendRedEnvelope(g,responder);
+          }
+          if(i < replies.length-1) await new Promise(function(res){ setTimeout(res, 350 + Math.random()*650); });
+        }
+      }catch(e){
+        console.warn('[mono gc natural trigger] responder failed', responder && responder.name, e);
+        if(typeof _showApiErrorToast === 'function') _showApiErrorToast('群聊 · ' + ((responder && responder.name) || '') + ' 回复失败', e);
+      }
+    }
+    if(typing) typing.style.display = 'none';
+  }
+
+  async function patchedGcFetchAiReplies(g,responder,count){
+    if(!apiConfig.url || !apiConfig.key || !apiConfig.model) return [];
+    var members = (g.memberIds || []).map(function(mid){ return (typeof personas !== 'undefined' ? personas : []).find(function(p){ return String(p.id) === String(mid); }); }).filter(Boolean);
+    var responderUserIdentity = (typeof monoResolveUserIdentityProfile === 'function') ? monoResolveUserIdentityProfile(responder) : {name:'用户'};
+    var roomMode = (typeof monoResolveGroupUserIdentityMode === 'function') ? monoResolveGroupUserIdentityMode(g) : 'different_people';
+    var roomModeInstruction = roomMode === 'same_person'
+      ? '【群聊里的用户身份规则】不同 userMaskId 代表同一个真实用户，但每个角色仍只按照自己连接到的用户面具设定、称呼、昵称与记忆来理解和称呼用户。若世界关系图已经把不同用户面具作为不同节点建立关系，则以世界关系图为最高优先级，必须把那些节点视为不同人物。'
+      : '【群聊里的用户身份规则】不同 userMaskId 代表不同的人。不同面具的称呼、头像、记忆、理解必须彼此隔离，不能混淆。';
+    var memoryContext = '';
+    try{
+      if(g.settings && g.settings.charMemoryShare && g.settings.charMemoryShare[responder.id]){
+        var charHistory = (responder.history || []).slice(-20).map(function(m){
+          var uname = (typeof monoResolveUserIdentityProfile === 'function') ? monoResolveUserIdentityProfile(responder,{message:m}).name : '用户';
+          return (m.role === 'user' ? uname : responder.name) + ': ' + (m.content || '');
+        }).join('\n');
+        if(charHistory) memoryContext = '\n【你与' + responderUserIdentity.name + '的私聊记忆（仅你知道）】\n' + charHistory + '\n';
+      }
+    }catch(e){}
+    var allMessages = g.messages || [];
+    function fmtMsg(m){
+      var sName = senderNameOf(g,m) || '?';
+      return sName + ': ' + msgTextOf(m);
+    }
+    var transcript = allMessages.slice(-60).filter(function(m){ return m && !m._hiddenContext && !m._systemNote; }).map(fmtMsg).join('\n');
+    var wbInjection = (typeof buildWorldBookInjection === 'function') ? buildWorldBookInjection(transcript,responder.id) : '';
+    var otherMembers = members.filter(function(m){ return String(m.id) !== String(responder.id); }).map(function(m){ return m.name; }).join('、');
+    var countInstruction = count <= 1 ? '只发1条消息，不使用###分隔符。' : ('最多发' + count + '条消息，每条消息之间用"###"分隔；但如果一句就够，只发一句，不要硬凑。');
+    var personaText = (responder.persona || '') + ' ' + (wbInjection || '');
+    var langOverride = '';
+    if(/日语回覆|日本语回覆|用日语|用日本语|以日语|以日本语|日语.*回覆|日文回覆|用日文|以日文|Japanese.*reply|speak.*Japanese|日语回复/i.test(personaText)) langOverride='\n【语言设定：强制】角色人设要求你必须全程使用日语（日本语）回复。';
+    else if(/韓语回覆|韓文回覆|用韓语|用韓文|以韓语|以韓文|Korean.*reply|speak.*Korean|한국어로|用韩语|以韩语|韩语回复/i.test(personaText)) langOverride='\n【语言设定：强制】角色人设要求你必须全程使用韩语（한국어）回复。';
+    else if(/英语回覆|英文回覆|用英语|用英文|以英语|以英文|English.*reply|speak.*English|英语回复/i.test(personaText)) langOverride='\n【语言设定：强制】角色人设要求你必须全程使用英语（English）回复。';
+    var memberNames = members.map(function(m){ return m.name; });
+    var relInject = (typeof _mwBuildRelInjectForChar === 'function') ? _mwBuildRelInjectForChar(responder.name,memberNames,true) : '';
+    var quoteHints = recentQuoteCandidates(g,responder.id).slice(0,8).map(function(c){ return c.from + '｜' + c.text.slice(0,70); }).join('\n');
+    var sysPrompt = `${typeof LANG_SYSTEM_PREFIX !== 'undefined' ? LANG_SYSTEM_PREFIX : ''}${typeof STYLE_INSTRUCTIONS !== 'undefined' ? STYLE_INSTRUCTIONS : ''}
+你是「${responder.name}」。人设：${responder.persona || ''}。${langOverride}
+当前场景：群聊「${g.name}」。
+群成员：${members.map(function(m){return m.name;}).join('、')}、${(typeof monoGroupUserName === 'function' ? monoGroupUserName(g) : responderUserIdentity.name) || responderUserIdentity.name}（用户）。
+其他角色：${otherMembers || '（无）'}。
+${roomModeInstruction}
+${wbInjection}${memoryContext}${relInject}
+【完整群聊记录（最近60条）】
+${transcript || '（暂无记录）'}
+【最近可引用消息】
+${quoteHints || '（暂无）'}
+【现在轮到你「${responder.name}」发言】
+${countInstruction}
+【真实群聊感规则】
+0. min/max 是你这次最多可发的条数参考。可以少于最多值，但不要无视角色原本的回复频率；情绪强、被点名、话题与你高度相关时可以多发几条。
+1. 你不是客服，也不是为了完成问答。像真人在群里接一句：可长可短，按人设自然表达；不要每句都完整解释。
+2. 不要总结用户的话，不要机械共情，不要“我理解你的感受”。直接按你的人设反应。
+3. 不要为了礼貌一直反问；只有真的想追问时才问。
+4. 如果上一条已经有人说清楚了，你可以接梗、拆台、补一句、转移一点点话题，不能重复同一个意思。
+5. 保留角色自己的生活感：可以说正在干嘛、刚看到什么、准备吃什么、作业/工作还没弄完、路上/天气/手机没电/困了等日常小事，但必须贴合人设和当前话题。
+6. 提到群成员用@名字格式。
+7. 如果你是在回复某个群成员刚才的话，尤其是你使用@某人时，必须在消息开头加隐藏引用标记：[reply:发送者名字|被回复的原文短句]。原文短句必须来自【最近可引用消息】，不要编造。
+8. 除了这个隐藏引用标记外，不要输出任何JSON、编号、括号解释、自己名字前缀。
+9. 关系图和世界书优先。对亲密、暧昧、敌对、前任、朋友等关系要自然体现，不要当陌生人。
+10. 红包极低频。没有生日、新年、庆祝、请客等明确语境，不要主动提红包。
+${typeof BUILTIN_WB !== 'undefined' ? BUILTIN_WB : ''}`;
+    try{
+      var response = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`,{
+        method:'POST',
+        headers:{ 'Authorization':`Bearer ${apiConfig.key}`, 'Content-Type':'application/json' },
+        body:JSON.stringify({
+          model: apiConfig.model,
+          messages:[ {role:'system',content:sysPrompt}, {role:'user',content:'按真实群聊方式自然接话。'} ],
+          temperature: responder.temperature || 1.05
+        })
+      });
+      if(!response.ok) return [];
+      var data = await response.json();
+      var raw = ((data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '').trim();
+      var namePrefix = new RegExp('^' + String(responder.name||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '[：:] *');
+      return raw.split('###').map(function(s){ return s.trim().replace(namePrefix,'').trim(); }).filter(Boolean).slice(0,count);
+    }catch(e){
+      console.warn('[mono gc natural fetch] error', e);
+      if(typeof _showApiErrorToast === 'function') _showApiErrorToast('群聊 AI 回复失败', e);
+      return [];
+    }
+  }
+
+  // Override the original group chat functions safely.
+  window.triggerGcAuto回复 = patchedTriggerGcAuto回复;
+  try { triggerGcAuto回复 = patchedTriggerGcAuto回复; } catch(e) {}
+  window.gcFetchAiReplies = patchedGcFetchAiReplies;
+  try { gcFetchAiReplies = patchedGcFetchAiReplies; } catch(e) {}
+  window.gcFetchAi回复 = async function(g,responder,userContent,isContinuation){
+    var arr = await patchedGcFetchAiReplies(g,responder,1);
+    return arr[0] || null;
+  };
+  try { gcFetchAi回复 = window.gcFetchAi回复; } catch(e) {}
+})();
+</script>
+
+
+<script>
+/* MONO PATCH v10: group chat natural progression + proactive topic steering */
+(function(){
+  'use strict';
+  if(window.__MONO_GC_NATURAL_PROGRESS_V10__) return;
+  window.__MONO_GC_NATURAL_PROGRESS_V10__ = true;
+
+  function txt(v){ return (v==null?'':String(v)).trim(); }
+  function cleanText(v){
+    return txt(v)
+      .replace(/<[^>]*>/g,' ')
+      .replace(/\[(?:reply|quote|引用)\s*[:：][^\]]+\]/ig,' ')
+      .replace(/【(?:引用|回复)\s*[:：][^】]+】/g,' ')
+      .replace(/\s+/g,' ')
+      .trim();
+  }
+  function escReg(s){ return String(s||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
+  function getPersonas(){ try{ return Array.isArray(window.personas) ? window.personas : (typeof personas !== 'undefined' && Array.isArray(personas) ? personas : []); }catch(e){ return []; } }
+  function senderNameOfLocal(g,m){
+    try{
+      if(!m) return '';
+      if(m.senderName) return m.senderName;
+      if(m.name) return m.name;
+      if(String(m.role)==='user'){
+        if(typeof window.monoGroupUserName === 'function') return window.monoGroupUserName(g) || '用户';
+        try{ if(typeof monoGroupUserName === 'function') return monoGroupUserName(g) || '用户'; }catch(e){}
+        return '用户';
+      }
+      var p = getPersonas().find(function(x){ return String(x.id)===String(m.role); });
+      return p ? (p.name || '角色') : String(m.role || '成员');
+    }catch(e){ return '成员'; }
+  }
+  function msgTextOfLocal(m){
+    try{
+      var raw = m && (m.content || m.text || m.message || m.caption || '');
+      if(typeof raw === 'object') raw = JSON.stringify(raw);
+      return cleanText(raw);
+    }catch(e){ return ''; }
+  }
+  function recentQuoteCandidatesLocal(g,responderId){
+    var arr = [];
+    try{
+      var msgs = (g && Array.isArray(g.messages)) ? g.messages : [];
+      for(var i=msgs.length-1;i>=0 && arr.length<26;i--){
+        var m = msgs[i];
+        if(!m || m._hiddenContext || m._systemNote || m._recalled) continue;
+        if(responderId && String(m.role) === String(responderId)) continue;
+        var text = msgTextOfLocal(m);
+        if(!text) continue;
+        arr.push({idx:i, role:m.role, from:senderNameOfLocal(g,m), text:text, msg:m});
+      }
+    }catch(e){}
+    return arr;
+  }
+  function buildTopicProgressionContext(g){
+    var msgs = [];
+    try{ msgs = (g.messages || []).filter(function(m){ return m && !m._hiddenContext && !m._systemNote; }).slice(-18); }catch(e){}
+    var lines = msgs.map(function(m){ return senderNameOfLocal(g,m) + ': ' + msgTextOfLocal(m); }).filter(function(x){ return cleanText(x); });
+    var lastLine = lines[lines.length-1] || '';
+    var repeatedBits = [];
+    lines.slice(-10).forEach(function(line){
+      var body = cleanText(line.replace(/^[^:：]{1,30}[:：]\s*/,''));
+      if(body.length >= 5) repeatedBits.push(body.slice(0,42));
+    });
+    var quiet = !lastLine || /(?:^|[:：]\s*)(嗯|哦|好|行|知道了|晚安|早|哈哈|笑死|。|…|\.\.\.)$/i.test(lastLine) || cleanText(lastLine).length <= 10;
+    return {
+      transcript: lines.join('\n'),
+      lastLine: lastLine,
+      quiet: quiet,
+      noRepeat: repeatedBits.slice(-8).join('\n')
+    };
+  }
+  function buildProgressInstruction(ctx,responder){
+    var name = responder && responder.name || '角色';
+    var mode = ctx.quiet ? 'quiet' : 'active';
+    var base = '\n【自然推进/主动发起话题规则】\n'
+      + '1. 群聊不是只回答用户。你要先承接最近一句，再把话题往前推半步：补一个新细节、给出态度、点另一个人、接梗、拆台、转向相关小事，任选其一。\n'
+      + '2. 可以主动发起话题，但必须像真人顺口提起，不能像发布任务。主动话题必须来自：当前聊天、角色人设、关系图、世界书、最近共同事件、群成员关系，不能凭空编过去发生过的大事。\n'
+      + '3. 不要来回重复同一个主题。别人刚说过的意思不要换皮复述；你要给新反应、新角度、新情绪或轻微转场。\n'
+      + '4. 主动推进方式示例：\n'
+      + '   - 点人：@某人 你刚刚不是也说过这个？\n'
+      + '   - 转细节：先别吵，重点是刚才那句谁截的。\n'
+      + '   - 开小话题：说到这个，我突然想起来今晚谁有空。\n'
+      + '   - 贴人设：按你的性格、关系、身份和当前语境自然说话，不要套固定反应模式。\n'
+      + '5. 主动话题低到中频：如果上一句还有明显可接内容，就优先接；如果群里开始冷场、用户只回很短、大家重复了，就可以自然开新话题。\n'
+      + '6. 你可以把话题抛给另一个角色，但只在真的符合关系时@他；@别人且回复对方原话时，必须用隐藏引用标记。\n'
+      + '7. 不要写“那我们换个话题吧/我来开启一个新话题”这种生硬句，直接像群里真的有人突然接一句。\n';
+    if(mode === 'quiet'){
+      base += '8. 当前群聊有冷场或短回复倾向，「' + name + '」可以更主动一点：顺口丢一个贴人设的小话题、叫某个人出来、或把刚才的话题往现实行动推进。\n';
+    }else{
+      base += '8. 当前仍有话题热度，「' + name + '」不要突然大跳话题；先接上，再轻轻带出新角度。\n';
+    }
+    return base;
+  }
+  function parseReplyLocal(raw,g,responder){
+    var text = txt(raw);
+    var quote = null;
+    var marker = text.match(/^\s*(?:\[(?:reply|quote)\s*[:：]\s*([^|\]\n]{1,40})\s*\|\s*([^\]]{1,180})\]|【(?:引用|回复)\s*[:：]\s*([^|】\n]{1,40})\s*\|\s*([^】]{1,180})】)\s*/i);
+    if(marker){
+      var from = cleanText(marker[1] || marker[3] || '');
+      var qtext = cleanText(marker[2] || marker[4] || '');
+      var cands = recentQuoteCandidatesLocal(g,responder && responder.id);
+      for(var i=0;i<cands.length;i++){
+        var c = cands[i];
+        var nameOk = !from || c.from===from || c.from.indexOf(from)>=0 || from.indexOf(c.from)>=0;
+        var textOk = !qtext || c.text.indexOf(qtext)>=0 || qtext.indexOf(c.text)>=0 || c.text.slice(0,24).indexOf(qtext.slice(0,12))>=0;
+        if(nameOk && textOk){ quote = c; break; }
+      }
+      text = text.replace(/^\s*(?:\[(?:reply|quote)\s*[:：][^\]]+\]|【(?:引用|回复)\s*[:：][^】]+】)\s*/i,'').trim();
+    }
+    if(!quote && /@\S+/.test(text)){
+      var cands2 = recentQuoteCandidatesLocal(g,responder && responder.id);
+      var names = [];
+      text.replace(/@(\S+)/g,function(_,n){ names.push(cleanText(n)); return _; });
+      outer: for(var n=0;n<names.length;n++){
+        for(var j=0;j<cands2.length;j++){
+          var c2 = cands2[j];
+          if(c2.from && (c2.from.indexOf(names[n])>=0 || names[n].indexOf(c2.from)>=0)){ quote = c2; break outer; }
+        }
+      }
+    }
+    var mentions = [];
+    text.replace(/@(\S+)/g,function(_,n){ mentions.push(cleanText(n)); return _; });
+    var out = { content: text, mentions: mentions };
+    if(quote){ out.quoteFrom = quote.from; out.quoteText = quote.text; out.quoteMsgIdx = quote.idx; }
+    return out;
+  }
+  function similarity(a,b){
+    a = cleanText(a); b = cleanText(b);
+    if(!a || !b) return 0;
+    if(a === b) return 1;
+    if(a.length < 4 || b.length < 4) return 0;
+    var set = Object.create(null), inter = 0, total = 0;
+    for(var i=0;i<a.length-1;i++){ set[a.slice(i,i+2)] = true; total++; }
+    for(var j=0;j<b.length-1;j++){ if(set[b.slice(j,j+2)]) inter++; total++; }
+    return total ? (2*inter/total) : 0;
+  }
+  function isTooSimilarToRecent(g,text){
+    var c = cleanText(text);
+    if(!c) return true;
+    var recent = [];
+    try{ recent = (g.messages || []).filter(function(m){ return m && !m._hiddenContext && !m._systemNote; }).slice(-14); }catch(e){}
+    return recent.some(function(m){ return similarity(c,msgTextOfLocal(m)) >= 0.82; });
+  }
+
+  async function patchedGcFetchAiRepliesV10(g,responder,count){
+    var cfg = (typeof apiConfig !== 'undefined') ? apiConfig : window.apiConfig;
+    if(!cfg || !cfg.url || !cfg.key || !cfg.model) return [];
+    var members = (g.memberIds || []).map(function(mid){ return getPersonas().find(function(p){ return String(p.id) === String(mid); }); }).filter(Boolean);
+    var userIdentity = {name:'用户'};
+    try{ if(typeof window.monoResolveUserIdentityProfile === 'function') userIdentity = window.monoResolveUserIdentityProfile(responder) || userIdentity; else if(typeof monoResolveUserIdentityProfile === 'function') userIdentity = monoResolveUserIdentityProfile(responder) || userIdentity; }catch(e){}
+    var roomMode = 'different_people';
+    try{ if(typeof window.monoResolveGroupUserIdentityMode === 'function') roomMode = window.monoResolveGroupUserIdentityMode(g); else if(typeof monoResolveGroupUserIdentityMode === 'function') roomMode = monoResolveGroupUserIdentityMode(g); }catch(e){}
+    var roomModeInstruction = roomMode === 'same_person'
+      ? '【群聊里的用户身份规则】不同 userMaskId 代表同一个真实用户，但每个角色仍只按照自己连接到的用户面具设定、称呼、昵称与记忆来理解和称呼用户。若世界关系图已经把不同用户面具作为不同节点建立关系，则以世界关系图为最高优先级，必须把那些节点视为不同人物。'
+      : '【群聊里的用户身份规则】不同 userMaskId 代表不同的人。不同面具的称呼、头像、记忆、理解必须彼此隔离，不能混淆。';
+    var ctx = buildTopicProgressionContext(g);
+    var transcript = ctx.transcript || '（暂无记录）';
+    var wbInjection = '';
+    try{ if(typeof window.buildWorldBookInjection === 'function') wbInjection = window.buildWorldBookInjection(transcript,responder.id) || ''; else if(typeof buildWorldBookInjection === 'function') wbInjection = buildWorldBookInjection(transcript,responder.id) || ''; }catch(e){}
+    var memoryContext = '';
+    try{
+      if(g.settings && g.settings.charMemoryShare && g.settings.charMemoryShare[responder.id]){
+        var charHistory = (responder.history || []).slice(-22).map(function(m){
+          var uname = userIdentity.name || '用户';
+          return (m.role === 'user' ? uname : responder.name) + ': ' + (m.content || '');
+        }).join('\n');
+        if(charHistory) memoryContext = '\n【你与' + (userIdentity.name || '用户') + '的私聊记忆（仅你知道）】\n' + charHistory + '\n';
+      }
+    }catch(e){}
+    var otherMembers = members.filter(function(m){ return String(m.id) !== String(responder.id); }).map(function(m){ return m.name; }).join('、');
+    var memberNames = members.map(function(m){ return m.name; });
+    var relInject = '';
+    try{ if(typeof window._mwBuildRelInjectForChar === 'function') relInject = window._mwBuildRelInjectForChar(responder.name,memberNames,true) || ''; else if(typeof _mwBuildRelInjectForChar === 'function') relInject = _mwBuildRelInjectForChar(responder.name,memberNames,true) || ''; }catch(e){}
+    var quoteHints = recentQuoteCandidatesLocal(g,responder.id).slice(0,10).map(function(c){ return c.from + '｜' + c.text.slice(0,78); }).join('\n');
+    var countInstruction = count <= 1 ? '只发1条消息，不使用###分隔符。' : ('最多发' + count + '条消息，用###分隔。min/max 是频率参考，不要每次拉满；但如果角色情绪强、被点名、想主动推进或话题和他高度相关，可以自然多发。');
+    var personaText = (responder.persona || '') + ' ' + wbInjection;
+    var langOverride = '';
+    if(/日语回覆|日本语回覆|用日语|用日本语|以日语|以日本语|日语.*回覆|日文回覆|用日文|以日文|Japanese.*reply|speak.*Japanese|日语回复/i.test(personaText)) langOverride='\n【语言设定：强制】角色人设要求你必须全程使用日语（日本语）回复。';
+    else if(/韓语回覆|韓文回覆|用韓语|用韓文|以韓语|以韓文|Korean.*reply|speak.*Korean|한국어로|用韩语|以韩语|韩语回复/i.test(personaText)) langOverride='\n【语言设定：强制】角色人设要求你必须全程使用韩语（한국어）回复。';
+    else if(/英语回覆|英文回覆|用英语|用英文|以英语|以英文|English.*reply|speak.*English|英语回复/i.test(personaText)) langOverride='\n【语言设定：强制】角色人设要求你必须全程使用英语（English）回复。';
+    var groupUserName = userIdentity.name || '用户';
+    try{ if(typeof window.monoGroupUserName === 'function') groupUserName = window.monoGroupUserName(g) || groupUserName; else if(typeof monoGroupUserName === 'function') groupUserName = monoGroupUserName(g) || groupUserName; }catch(e){}
+    var sysPrompt = `${typeof LANG_SYSTEM_PREFIX !== 'undefined' ? LANG_SYSTEM_PREFIX : ''}${typeof STYLE_INSTRUCTIONS !== 'undefined' ? STYLE_INSTRUCTIONS : ''}
+你是「${responder.name}」。人设：${responder.persona || ''}。${langOverride}
+当前场景：群聊「${g.name || '群聊'}」。
+群成员：${members.map(function(m){return m.name;}).join('、')}、${groupUserName}（用户）。
+其他角色：${otherMembers || '（无）'}。
+${roomModeInstruction}
+${wbInjection}${memoryContext}${relInject}
+【完整群聊记录（最近18条）】
+${transcript}
+【最近可引用消息】
+${quoteHints || '（暂无）'}
+【最近已经出现过的表达/话题，禁止复读】
+${ctx.noRepeat || '（暂无）'}
+【上一句】
+${ctx.lastLine || '（暂无）'}
+【现在轮到你「${responder.name}」发言】
+${countInstruction}
+【真实群聊感规则】
+0. 整体偏日常生活流，但不要使用固定话题库；日常感要来自角色人设、身份、关系、当前场景和最近聊天内容。
+1. 你不是在回答题目，而是在群里真实接话。表达方式完全按人设和上下文自然决定；不要为了显得活泼而硬塞某种反应。
+2. 不能所有角色都温柔理性。你的语气要明显来自「${responder.name}」的人设、身份、关系、最近情绪和生活状态。
+3. 不要总结用户的话，不要机械共情，不要用“我理解/确实如此/你说得对”当万能开头。
+4. 不要每句都反问。问句只在你真的想追问、挑衅、试探、点人时使用。
+5. 如果你回复某个群成员，尤其使用@某人，必须在消息开头加隐藏引用标记：[reply:发送者名字|被回复的原文短句]。原文短句必须来自【最近可引用消息】，不要编造。
+6. 除隐藏引用标记外，不要输出JSON、编号、括号解释、自己名字前缀。
+7. 红包极低频。没有生日、新年、庆祝、请客等明确语境，不要主动提红包。
+${buildProgressInstruction(ctx,responder)}
+${typeof BUILTIN_WB !== 'undefined' ? BUILTIN_WB : ''}`;
+    try{
+      var response = await fetch(`${String(cfg.url).replace(/\/$/, '')}/chat/completions`,{
+        method:'POST',
+        headers:{ 'Authorization':`Bearer ${cfg.key}`, 'Content-Type':'application/json' },
+        body:JSON.stringify({
+          model: cfg.model,
+          messages:[ {role:'system',content:sysPrompt}, {role:'user',content:'像真实群聊一样自然接话，偏日常生活感地推进。可以主动延续或自然转场，但不要复读，不要突然变成大剧情，不要使用固定话题库。只输出角色消息本身。'} ],
+          temperature: Math.max(0.9, Number(responder.temperature || 1.08)),
+          presence_penalty: 0.35,
+          frequency_penalty: 0.45
+        })
+      });
+      if(!response.ok) return [];
+      var data = await response.json();
+      var raw = ((data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '').trim();
+      var namePrefix = new RegExp('^' + escReg(responder.name||'') + '[：:] *');
+      var pieces = raw.split('###').map(function(s){ return s.trim().replace(namePrefix,'').replace(/^[-•]\s*/,'').trim(); }).filter(Boolean).slice(0,count);
+      var out = [];
+      pieces.forEach(function(p){
+        var parsed = parseReplyLocal(p,g,responder);
+        if(!parsed.content) return;
+        if(isTooSimilarToRecent(g,parsed.content)) return;
+        if(out.some(function(x){ return similarity(parsed.content,x) >= 0.78; })) return;
+        out.push(p);
+      });
+      if(!out.length && pieces.length) out.push(pieces[0]);
+      return out.slice(0,count);
+    }catch(e){
+      console.warn('[mono gc natural progress v10] fetch failed', e);
+      try{ if(typeof window._showApiErrorToast === 'function') window._showApiErrorToast('群聊 AI 回复失败'); else if(typeof _showApiErrorToast === 'function') _showApiErrorToast('群聊 AI 回复失败'); }catch(_){}
+      return [];
+    }
+  }
+
+  window.gcFetchAiReplies = patchedGcFetchAiRepliesV10;
+  try{ gcFetchAiReplies = patchedGcFetchAiRepliesV10; }catch(e){}
+  window.gcFetchAi回复 = async function(g,responder,userContent,isContinuation){
+    var arr = await patchedGcFetchAiRepliesV10(g,responder,1);
+    return arr[0] || null;
+  };
+  try{ gcFetchAi回复 = window.gcFetchAi回复; }catch(e){}
+})();
+</script>
 </html>
+
+<script>
+/* MONO PATCH v14: coherent daily group chat, no fixed topic bank, no preset conflict behavior */
+(function(){
+  'use strict';
+  if(window.__MONO_GC_NEUTRAL_COHERENT_DAILY_V14__) return;
+  window.__MONO_GC_NEUTRAL_COHERENT_DAILY_V14__ = true;
+
+  function txt(v){ return (v == null ? '' : String(v)).trim(); }
+  function cleanText(v){
+    return txt(v).replace(/<[^>]*>/g,' ')
+      .replace(/\[(?:reply|quote|引用)\s*[:：][^\]]+\]/ig,' ')
+      .replace(/【(?:引用|回复)\s*[:：][^】]+】/g,' ')
+      .replace(/\s+/g,' ').trim();
+  }
+  function escReg(s){ return String(s||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
+  function getPersonas(){ try{ return Array.isArray(window.personas) ? window.personas : (typeof personas !== 'undefined' && Array.isArray(personas) ? personas : []); }catch(e){ return []; } }
+  function getCurrentGroup(){
+    try{
+      var list = Array.isArray(window.groups) ? window.groups : (typeof groups !== 'undefined' && Array.isArray(groups) ? groups : []);
+      var gid = window.currentGroupId || (typeof currentGroupId !== 'undefined' ? currentGroupId : null);
+      return list.find(function(x){ return String(x.id) === String(gid); });
+    }catch(e){ return null; }
+  }
+  function groupUserName(g,m){
+    try{ if(typeof window.monoGroupUserName === 'function') return window.monoGroupUserName(g,m) || '用户'; }catch(e){}
+    try{ if(typeof monoGroupUserName === 'function') return monoGroupUserName(g,m) || '用户'; }catch(e){}
+    return '用户';
+  }
+  function senderNameOf(g,m){
+    try{
+      if(!m) return '';
+      if(m.senderName) return m.senderName;
+      if(m.name) return m.name;
+      if(String(m.role) === 'user') return groupUserName(g,m);
+      var p = getPersonas().find(function(x){ return String(x.id) === String(m.role); });
+      return (p && p.name) || String(m.role || '成员');
+    }catch(e){ return '成员'; }
+  }
+  function msgTextOf(m){
+    try{
+      if(!m) return '';
+      if(m.type === 'redenvelope') return '[红包] ' + (m.content || '');
+      if(m.type === 'sticker') return '[表情包]' + ((m.stickerData && m.stickerData.caption) ? ' ' + m.stickerData.caption : '');
+      if(m.type === 'voice') return '[语音] ' + (m.voiceText || m.content || '');
+      if(m.type === 'image') return '[图片] ' + (m.caption || m.imageCaption || '');
+      var raw = m.content || m.text || m.message || m.caption || '';
+      if(typeof raw === 'object') raw = JSON.stringify(raw);
+      return cleanText(raw);
+    }catch(e){ return ''; }
+  }
+  function recentQuoteCandidates(g,responderId){
+    var arr = [];
+    try{
+      var msgs = Array.isArray(g && g.messages) ? g.messages : [];
+      for(var i=msgs.length-1;i>=0 && arr.length<28;i--){
+        var m = msgs[i];
+        if(!m || m._hiddenContext || m._systemNote || m._recalled) continue;
+        if(responderId && String(m.role) === String(responderId)) continue;
+        var t = msgTextOf(m);
+        if(!t) continue;
+        arr.push({idx:i, role:m.role, from:senderNameOf(g,m), text:t, msg:m});
+      }
+    }catch(e){}
+    return arr;
+  }
+  function similarity(a,b){
+    a = cleanText(a); b = cleanText(b);
+    if(!a || !b) return 0;
+    if(a === b) return 1;
+    if(a.length < 4 || b.length < 4) return 0;
+    var set = Object.create(null), inter = 0, total = 0;
+    for(var i=0;i<a.length-1;i++){ set[a.slice(i,i+2)] = true; total++; }
+    for(var j=0;j<b.length-1;j++){ if(set[b.slice(j,j+2)]) inter++; total++; }
+    return total ? (2 * inter / total) : 0;
+  }
+  function tooSimilarToRecent(g,text){
+    var c = cleanText(text);
+    if(!c) return true;
+    var recent = [];
+    try{ recent = (g.messages || []).filter(function(m){ return m && !m._hiddenContext && !m._systemNote; }).slice(-18); }catch(e){}
+    return recent.some(function(m){ return similarity(c,msgTextOf(m)) >= 0.82; });
+  }
+  function fuzzyQuoteMatch(a,b){
+    a = cleanText(a); b = cleanText(b);
+    if(!a || !b) return false;
+    if(a === b) return true;
+    if(a.length >= 4 && b.indexOf(a) >= 0) return true;
+    if(b.length >= 4 && a.indexOf(b) >= 0) return true;
+    var ax = a.slice(0,24), bx = b.slice(0,24);
+    return ax.length >= 6 && bx.length >= 6 && (a.indexOf(bx) >= 0 || b.indexOf(ax) >= 0);
+  }
+  function findQuote(g,from,text,responderId){
+    var cands = recentQuoteCandidates(g,responderId);
+    var f = cleanText(from).replace(/^@/,'');
+    var t = cleanText(text);
+    for(var i=0;i<cands.length;i++){
+      var c = cands[i];
+      var nameOk = !f || c.from === f || c.from.indexOf(f) >= 0 || f.indexOf(c.from) >= 0;
+      var textOk = !t || fuzzyQuoteMatch(t,c.text);
+      if(nameOk && textOk) return c;
+    }
+    return null;
+  }
+  function latestMentionQuote(g,reply,responderId){
+    var names = [];
+    String(reply||'').replace(/@(\S+)/g,function(_,n){ names.push(cleanText(n)); return _; });
+    if(!names.length) return null;
+    var cands = recentQuoteCandidates(g,responderId);
+    for(var n=0;n<names.length;n++){
+      for(var i=0;i<cands.length;i++){
+        var c = cands[i];
+        if(c.from && (c.from === names[n] || c.from.indexOf(names[n]) >= 0 || names[n].indexOf(c.from) >= 0)) return c;
+      }
+    }
+    return null;
+  }
+  function parseReply(raw,g,responder){
+    if(typeof window.monoGcParseAiReplyWithQuote === 'function'){
+      try{ return window.monoGcParseAiReplyWithQuote(raw,g,responder); }catch(e){}
+    }
+    var text = String(raw || '').trim();
+    var marker = text.match(/^\s*(?:\[(?:reply|quote)\s*[:：]\s*([^|\]\n]{1,40})\s*\|\s*([^\]]{1,160})\]|【(?:引用|回复)\s*[:：]\s*([^|】\n]{1,40})\s*\|\s*([^】]{1,160})】)\s*/i);
+    var quoteFrom = '', quoteText = '';
+    if(marker){ quoteFrom = cleanText(marker[1] || marker[3] || ''); quoteText = cleanText(marker[2] || marker[4] || ''); text = text.slice(marker[0].length).trim(); }
+    text = text.replace(/\s*(?:\[(?:reply|quote)\s*[:：][^\]]+\]|【(?:引用|回复)\s*[:：][^】]+】)\s*/ig,' ').trim();
+    var matched = null;
+    if(quoteFrom || quoteText) matched = findQuote(g,quoteFrom,quoteText,responder && responder.id);
+    if(!matched) matched = latestMentionQuote(g,text,responder && responder.id);
+    var out = { content:text, mentions:[] };
+    String(text||'').replace(/@(\S+)/g,function(_,n){ out.mentions.push(n); return _; });
+    if(matched){ out.quoteFrom = matched.from; out.quoteText = matched.text; out.quoteMsgIdx = matched.idx; }
+    return out;
+  }
+  window.monoGcParseAiReplyWithQuote = parseReply;
+
+  function buildContext(g){
+    var visible = [];
+    try{ visible = (g.messages || []).filter(function(m){ return m && !m._hiddenContext && !m._systemNote && !m._recalled; }).slice(-36); }catch(e){}
+    var lines = visible.map(function(m){
+      var name = senderNameOf(g,m);
+      var role = (m.role === 'user') ? '用户' : '角色';
+      return '[' + role + '｜' + name + '] ' + msgTextOf(m);
+    }).filter(function(x){ return cleanText(x); });
+    var bodies = visible.map(function(m){ return cleanText(msgTextOf(m)); }).filter(Boolean);
+    var lastMsg = visible[visible.length-1] || null;
+    var lastLine = lines[lines.length-1] || '';
+    var lastText = bodies[bodies.length-1] || '';
+    var lastSpeaker = lastMsg ? senderNameOf(g,lastMsg) : '';
+    var beforeLast = visible[visible.length-2] || null;
+    var beforeLastSpeaker = beforeLast ? senderNameOf(g,beforeLast) : '';
+    var shortTail = bodies.slice(-3).filter(function(x){ return x.length <= 8; }).length;
+    var quiet = !lastText || shortTail >= 2 || /^(嗯|哦|好|行|知道了|晚安|早|哈哈|笑死|？|\?|。|…|\.\.\.)$/.test(lastText);
+    var question = /[？?]|为什么|怎么|谁|哪|要不要|可以吗|怎么办|怎么了/i.test(lastText);
+    var topicWords = bodies.slice(-5).join(' ').replace(/[，。！？、,.!?~～…]/g,' ').split(/\s+/).filter(function(w){ return w && w.length >= 2; }).slice(-18).join('、') || '（按最近聊天判断）';
+    var speakerFlow = visible.slice(-10).map(function(m){ return senderNameOf(g,m) + '：' + cleanText(msgTextOf(m)).slice(0,36); }).join('\n') || '（暂无）';
+    return {
+      transcript: lines.join('\n') || '（暂无记录）',
+      speakerFlow: speakerFlow,
+      lastLine: lastLine || '（暂无）',
+      lastText: lastText,
+      lastSpeaker: lastSpeaker || '（未知）',
+      beforeLastSpeaker: beforeLastSpeaker || '（无）',
+      quiet: quiet,
+      question: question,
+      topicWords: topicWords,
+      noRepeat: bodies.slice(-16).map(function(x){ return x.slice(0,48); }).join('\n') || '（暂无）'
+    };
+  }
+  function toneHint(responder,ctx){
+    var p = String((responder && responder.persona) || '');
+    var h = [];
+    if(/冷|高冷|寡言|少话|沉默|淡漠|不爱说/i.test(p)) h.push('按人设少说也可以，不需要为了群聊存在感硬接很多。');
+    if(/话多|自来熟|外向|活泼/i.test(p)) h.push('可以比别人更主动一点，但必须接着当前话题，不要突然另开一桌。');
+    if(ctx.question) h.push('上一句像问题：先回应这个问题，再决定是否补一句。');
+    if(ctx.quiet) h.push('最近有点停顿：优先顺着刚才的话尾补一句；只有特别符合人设和上下文时才开新话题。');
+    return h.join('\n') || '按人设接住上一句，不用刻意制造效果。';
+  }
+  function buildProgressInstruction(ctx){
+    var s = [];
+    s.push('【连贯与低频主动要求】');
+    s.push('A. 你必须清楚每句话是谁说的：记录格式是[用户/角色｜名字] 内容。回复前先判断上一句是谁说、在对谁说、当前大家还在聊什么。');
+    s.push('B. 默认延续当前话题。先接住【上一句】或【最近发言顺序】里的具体对象/关键词/情绪，再说下一句。');
+    s.push('C. 主动开新话题要低频。只有当前话题明显停住、用户/角色没有提出需要回应的问题、且新话题符合你的人设和当下场景时才可以开。');
+    s.push('D. 开新话题不能空降，必须和上一句有自然过渡；如果没有自然过渡，就继续当前话题或少说一句。');
+    s.push('E. 不要使用固定话题库，也不要为了“日常感”硬塞无关生活小事。日常感来自角色本人会注意到什么、正在发生什么、群里关系是什么。');
+    s.push('F. 不要复读。最近已经说过的意思不要换皮再说；可以回应、补充、问一句、沉默式短回，但要让对话更连贯。');
+    s.push('G. 不要预设冲突、和解、暧昧、剧情推进或任何固定方向；只按人设和上下文自然反应。');
+    return s.join('\n');
+  }
+
+  async function patchedFetch(g,responder,count){
+    var cfg = (typeof apiConfig !== 'undefined') ? apiConfig : window.apiConfig;
+    if(!cfg || !cfg.url || !cfg.key || !cfg.model) return [];
+    var members = (g.memberIds || []).map(function(mid){ return getPersonas().find(function(p){ return String(p.id) === String(mid); }); }).filter(Boolean);
+    var userIdentity = {name:'用户'};
+    try{ if(typeof window.monoResolveUserIdentityProfile === 'function') userIdentity = window.monoResolveUserIdentityProfile(responder) || userIdentity; else if(typeof monoResolveUserIdentityProfile === 'function') userIdentity = monoResolveUserIdentityProfile(responder) || userIdentity; }catch(e){}
+    var roomMode = 'different_people';
+    try{ if(typeof window.monoResolveGroupUserIdentityMode === 'function') roomMode = window.monoResolveGroupUserIdentityMode(g); else if(typeof monoResolveGroupUserIdentityMode === 'function') roomMode = monoResolveGroupUserIdentityMode(g); }catch(e){}
+    var roomModeInstruction = roomMode === 'same_person'
+      ? '【群聊里的用户身份规则】不同 userMaskId 代表同一个真实用户，但每个角色仍只按照自己连接到的用户面具设定、称呼、昵称与记忆来理解和称呼用户。若世界关系图已经把不同用户面具作为不同节点建立关系，则以世界关系图为最高优先级，必须把那些节点视为不同人物。'
+      : '【群聊里的用户身份规则】不同 userMaskId 代表不同的人。不同面具的称呼、头像、记忆、理解必须彼此隔离，不能混淆。';
+    var ctx = buildContext(g);
+    var transcript = ctx.transcript || '（暂无记录）';
+    var wbInjection = '';
+    try{ if(typeof window.buildWorldBookInjection === 'function') wbInjection = window.buildWorldBookInjection(transcript,responder.id) || ''; else if(typeof buildWorldBookInjection === 'function') wbInjection = buildWorldBookInjection(transcript,responder.id) || ''; }catch(e){}
+    var memoryContext = '';
+    try{
+      if(g.settings && g.settings.charMemoryShare && g.settings.charMemoryShare[responder.id]){
+        var charHistory = (responder.history || []).slice(-18).map(function(m){ return (m.role === 'user' ? (userIdentity.name || '用户') : responder.name) + ': ' + (m.content || ''); }).join('\n');
+        if(charHistory) memoryContext = '\n【你与' + (userIdentity.name || '用户') + '的私聊记忆（仅你知道，别硬提）】\n' + charHistory + '\n';
+      }
+    }catch(e){}
+    var otherMembers = members.filter(function(m){ return String(m.id) !== String(responder.id); }).map(function(m){ return m.name; }).join('、');
+    var memberNames = members.map(function(m){ return m.name; });
+    var relInject = '';
+    try{ if(typeof window._mwBuildRelInjectForChar === 'function') relInject = window._mwBuildRelInjectForChar(responder.name,memberNames,true) || ''; else if(typeof _mwBuildRelInjectForChar === 'function') relInject = _mwBuildRelInjectForChar(responder.name,memberNames,true) || ''; }catch(e){}
+    var quoteHints = recentQuoteCandidates(g,responder.id).slice(0,10).map(function(c){ return c.from + '｜' + c.text.slice(0,72); }).join('\n');
+    var countInstruction = count <= 1 ? '只发1条消息，不使用###分隔符。' : ('最多发' + count + '条消息，用###分隔。min/max 是角色习惯参考：平时接近min；被点名、情绪强、话题很贴你时才自然多发，但不要为了凑条数硬说。');
+    var personaText = (responder.persona || '') + ' ' + wbInjection;
+    var langOverride = '';
+    if(/日语回覆|日本语回覆|用日语|用日本语|以日语|以日本语|日语.*回覆|日文回覆|用日文|以日文|Japanese.*reply|speak.*Japanese|日语回复/i.test(personaText)) langOverride='\n【语言设定：强制】角色人设要求你必须全程使用日语（日本语）回复。';
+    else if(/韓语回覆|韓文回覆|用韓语|用韓文|以韓语|以韓文|Korean.*reply|speak.*Korean|한국어로|用韩语|以韩语|韩语回复/i.test(personaText)) langOverride='\n【语言设定：强制】角色人设要求你必须全程使用韩语（한국어）回复。';
+    else if(/英语回覆|英文回覆|用英语|用英文|以英语|以英文|English.*reply|speak.*English|英语回复/i.test(personaText)) langOverride='\n【语言设定：强制】角色人设要求你必须全程使用英语（English）回复。';
+    var groupUserName = userIdentity.name || '用户';
+    try{ if(typeof window.monoGroupUserName === 'function') groupUserName = window.monoGroupUserName(g) || groupUserName; else if(typeof monoGroupUserName === 'function') groupUserName = monoGroupUserName(g) || groupUserName; }catch(e){}
+    var sysPrompt = `${typeof LANG_SYSTEM_PREFIX !== 'undefined' ? LANG_SYSTEM_PREFIX : ''}${typeof STYLE_INSTRUCTIONS !== 'undefined' ? STYLE_INSTRUCTIONS : ''}
+你是「${responder.name}」。人设：${responder.persona || ''}。${langOverride}
+当前场景：群聊「${g.name || '群聊'}」。
+群成员：${members.map(function(m){return m.name;}).join('、')}、${groupUserName}（用户）。
+其他角色：${otherMembers || '（无）'}。
+${roomModeInstruction}
+${wbInjection}${memoryContext}${relInject}
+【完整群聊记录（最近36条，已标明谁说的）】
+${transcript}
+【最近发言顺序（用来判断谁在回复谁）】
+${ctx.speakerFlow || '（暂无）'}
+【当前话题线索】
+${ctx.topicWords || '（按最近聊天判断）'}
+【上一句是谁说的】
+${ctx.lastSpeaker || '（未知）'}
+【最近可引用消息】
+${quoteHints || '（暂无）'}
+【近期已经聊过，禁止换皮复读】
+${ctx.noRepeat || '（暂无）'}
+【上一句】
+${ctx.lastLine || '（暂无）'}
+【你的本轮语气提示】
+${toneHint(responder,ctx)}
+【现在轮到你「${responder.name}」发言】
+${countInstruction}
+【群聊自然度规则】
+1. 先看清楚【上一句是谁说的】和【最近发言顺序】，再决定你是在回用户、回某个角色，还是只是顺着群聊补一句。
+2. 默认不要换话题。除非当前话题已经明显停住，或你的角色人设非常自然地想到相关内容，否则继续接当前话题。
+3. 主动发起话题必须低频、贴人设、贴上下文；不能为了活跃群聊突然空降一个无关内容。
+4. 日常感不是固定题材，不要硬塞某类日常话题。只写这个角色在当前聊天里会自然说的话。
+5. 角色必须贴人设：发言长短、语气、主动程度、是否接别人话，都由这个角色本身和当前上下文决定。
+6. 少解释、少总结、少端水。不要用“我理解/确实如此/你说得对/总结一下”这种AI味开头。
+7. 不要复读别人刚表达过的意思。每条消息都要和当前对话有明确连接。
+8. 如果你@某人并回复对方刚才的话，消息开头必须用隐藏引用：[reply:发送者名字|被回复的原文短句]。原文必须来自【最近可引用消息】，不要编。
+9. 除隐藏引用外，不要输出JSON、编号、括号解释、自己名字前缀。
+10. 红包极低频；没有明确生日、新年、庆祝、请客语境，不要主动提。
+${buildProgressInstruction(ctx)}
+${typeof BUILTIN_WB !== 'undefined' ? BUILTIN_WB : ''}`;
+    try{
+      var response = await fetch(`${String(cfg.url).replace(/\/$/, '')}/chat/completions`,{
+        method:'POST',
+        headers:{ 'Authorization':`Bearer ${cfg.key}`, 'Content-Type':'application/json' },
+        body:JSON.stringify({
+          model: cfg.model,
+          messages:[ {role:'system',content:sysPrompt}, {role:'user',content:'先判断上一句是谁说的、当前还在聊什么，再按人设自然接一句。主动开新话题要低频且必须顺着上下文；不要空降话题，不要复读。只输出角色消息本身。'} ],
+          temperature: Math.max(0.88, Number(responder.temperature || 1.03)),
+          top_p: 0.94,
+          presence_penalty: 0.28,
+          frequency_penalty: 0.52
+        })
+      });
+      if(!response.ok) return [];
+      var data = await response.json();
+      var raw = ((data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '').trim();
+      var namePrefix = new RegExp('^' + escReg(responder.name||'') + '[：:] *');
+      var pieces = raw.split('###').map(function(s){ return s.trim().replace(namePrefix,'').replace(/^[-•]\s*/,'').trim(); }).filter(Boolean).slice(0,count);
+      var out = [];
+      pieces.forEach(function(p){
+        var parsed = parseReply(p,g,responder);
+        if(!parsed.content) return;
+        if(tooSimilarToRecent(g,parsed.content)) return;
+        if(out.some(function(x){ return similarity(parsed.content,parseReply(x,g,responder).content) >= 0.78; })) return;
+        out.push(p);
+      });
+      if(!out.length && pieces.length) out.push(pieces[0]);
+      return out.slice(0,count);
+    }catch(e){
+      console.warn('[mono gc context lowtopic v9] fetch failed', e);
+      try{ if(typeof window._showApiErrorToast === 'function') window._showApiErrorToast('群聊 AI 回复失败'); else if(typeof _showApiErrorToast === 'function') _showApiErrorToast('群聊 AI 回复失败'); }catch(_){}
+      return [];
+    }
+  }
+
+  async function patchedTrigger(){
+    var g = getCurrentGroup();
+    if(!g) return;
+    var cfg = (typeof apiConfig !== 'undefined') ? apiConfig : window.apiConfig;
+    if(!cfg || !cfg.url || !cfg.key || !cfg.model){ alert('请先配置API'); return; }
+    var members = (g.memberIds || []).map(function(mid){ return getPersonas().find(function(p){ return String(p.id) === String(mid); }); }).filter(Boolean);
+    if(!members.length) return;
+    var lastVisible = (g.messages || []).slice().reverse().find(function(m){ return m && !m._hiddenContext && !m._systemNote; });
+    var lastUserMsg = (g.messages || []).slice().reverse().find(function(m){ return m && m.role === 'user' && !m._hiddenContext && !m._systemNote; });
+    var userContent = msgTextOf(lastUserMsg || lastVisible || {});
+    var responders = chooseResponders(g,members,lastUserMsg || lastVisible,userContent);
+    var typing = document.getElementById('gcTypingArea');
+    if(typing) typing.style.display = 'flex';
+    for(var r=0;r<responders.length;r++){
+      var responder = responders[r];
+      try{
+        var minCount = Math.max(1, responder.min回复Count || responder.minReplyCount || 1);
+        var maxCount = Math.max(minCount, responder.max回复Count || responder.maxReplyCount || 2);
+        var mentioned = String(userContent||'').indexOf('@' + (responder.name || '')) >= 0;
+        var tension = /(吵|生气|烦|讨厌|冷战|误会|不理|算了|随便|滚|气死)/i.test(userContent||'');
+        var heat = mentioned ? 0.32 : 0.11;
+        if(!tension && /[？?]|为什么|怎么|谁|哪|要不要|可以吗|怎么办|救命|笑死|哈哈|大家|你们|一起|来不来|去不去/i.test(userContent||'')) heat += 0.12;
+        if(tension) heat = Math.min(heat, 0.18);
+        var msgCount = minCount;
+        for(var mc=minCount+1; mc<=maxCount; mc++){
+          if(Math.random() < heat / (mc - minCount + 1)) msgCount = mc;
+        }
+        await new Promise(function(res){ setTimeout(res, 420 + Math.random()*760); });
+        var replies = await patchedFetch(g,responder,msgCount);
+        if(!replies || !replies.length) continue;
+        for(var i=0;i<replies.length;i++){
+          var parsed = parseReply(replies[i],g,responder);
+          if(!parsed.content) continue;
+          var msg = { role: responder.id, content: parsed.content, mentions: parsed.mentions || [], timestamp: Date.now() };
+          if(parsed.quoteText){ msg.quoteFrom = parsed.quoteFrom; msg.quoteText = parsed.quoteText; msg.quoteMsgIdx = parsed.quoteMsgIdx; }
+          g.messages.push(msg);
+          (g.messages || []).forEach(function(gm){ if(gm.role === 'user' && !gm._readByChar) gm._readByChar = true; });
+          try{ if(typeof window.saveGroups === 'function') window.saveGroups(); else if(typeof saveGroups === 'function') saveGroups(); else if(typeof saveData === 'function') saveData(); }catch(e){}
+          try{ if(typeof window.renderGroupMessages === 'function') window.renderGroupMessages(g); else if(typeof renderGroupMessages === 'function') renderGroupMessages(g); }catch(e){}
+          try{ if(g.notificationEnabled !== false && typeof window.showGroupNotification === 'function') window.showGroupNotification(g,responder,parsed.content); else if(g.notificationEnabled !== false && typeof showGroupNotification === 'function') showGroupNotification(g,responder,parsed.content); }catch(e){}
+          if(i === 0){
+            await new Promise(function(res){ setTimeout(res, 620 + Math.random()*1050); });
+            try{ if(typeof window.gcRoleSendRedEnvelope === 'function') await window.gcRoleSendRedEnvelope(g,responder); else if(typeof gcRoleSendRedEnvelope === 'function') await gcRoleSendRedEnvelope(g,responder); }catch(e){}
+          }
+          if(i < replies.length-1) await new Promise(function(res){ setTimeout(res, 320 + Math.random()*560); });
+        }
+      }catch(e){
+        console.warn('[mono gc coherent daily trigger] responder failed', responder && responder.name, e);
+        try{ if(typeof window._showApiErrorToast === 'function') window._showApiErrorToast('群聊 · ' + ((responder && responder.name) || '') + ' 回复失败', e); else if(typeof _showApiErrorToast === 'function') _showApiErrorToast('群聊回复失败'); }catch(_){}
+      }
+    }
+    if(typing) typing.style.display = 'none';
+  }
+
+  window.gcFetchAiReplies = patchedFetch;
+  try{ gcFetchAiReplies = patchedFetch; }catch(e){}
+  window.gcFetchAi回复 = async function(g,responder,userContent,isContinuation){ var arr = await patchedFetch(g,responder,1); return arr[0] || null; };
+  try{ gcFetchAi回复 = window.gcFetchAi回复; }catch(e){}
+  window.triggerGcAuto回复 = patchedTrigger;
+  try{ triggerGcAuto回复 = patchedTrigger; }catch(e){}
+})();
+</script>
+

@@ -25712,7 +25712,7 @@ function monoBuildOneShotRichMessagePrompt(p) {
 - 这些特殊消息必须少量、自然、符合人设和当前语境；不要每轮都发。
 - 不能为了发卡片随便编造过去事实。只能把它当成本轮聊天里角色“现在决定发送”的消息。
 - 转账/亲密付/外卖只有在真的适合哄人、请客、照顾、补偿、撒娇或推进关系时才发。
-- 截图只有在用户要求截图，或角色自然说“我发你看/截图给你看/群里有人说了”时才发。
+- 截图默认禁止发送；只有用户本轮明确要求“截图/截屏/聊天截图/screenshot”时才允许发送。角色自己说“我发你看/截图给你看/群里有人说了”不能作为触发理由。
 - 文字图只有在用户明确想看文字图/配图/小卡片，或当前剧情非常适合发一张带字图片时才发。
 - 一轮最多 1 个特殊消息标签；表情包 [sticker:编号] 可以和文字同时出现，但不要和大型卡片同时乱发。
 `;
@@ -25747,18 +25747,41 @@ function monoMakeTextImageDataUrl(text, caption) {
 }
 function monoMakeMiniChatScreenshotDataUrl(title, rawMessages, personaName) {
   const esc = function(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
-  const W = 720, rowH = 92, H = Math.max(420, 110 + Math.min(rawMessages.length || 0, 7) * rowH + 50);
-  const msgs = (rawMessages || []).slice(0, 7);
-  const rows = msgs.map(function(m, i) {
+  const wrap = function(txt, maxChars) {
+    txt = String(txt || '').replace(/\s+/g, ' ').trim();
+    const out = [];
+    let line = '';
+    Array.from(txt).forEach(function(ch){
+      line += ch;
+      if (line.length >= maxChars) { out.push(line); line = ''; }
+    });
+    if (line) out.push(line);
+    return (out.length ? out : ['']).slice(0, 3);
+  };
+  const msgs = (rawMessages || []).slice(0, 7).map(function(m){
+    const lines = wrap(m && m.text, 18);
+    const h = Math.max(58, 30 + lines.length * 25);
+    return Object.assign({}, m || {}, { _lines: lines, _h: h });
+  });
+  let y = 116;
+  const rows = msgs.map(function(m) {
     const isRight = !!m.isRight;
-    const y = 116 + i * rowH;
-    const text = esc(String(m.text || '').slice(0, 42));
+    const bubbleH = m._h;
+    const bubbleW = 430;
     const sender = esc(String(m.sender || (isRight ? personaName : '对方')).slice(0, 8));
+    const lineSvg = (m._lines || ['']).map(function(l, j){
+      const x = isRight ? 184 : 120;
+      return '<tspan x="' + x + '" dy="' + (j === 0 ? 0 : 25) + '">' + esc(l) + '</tspan>';
+    }).join('');
+    const currentY = y;
+    y += bubbleH + 38;
     if (isRight) {
-      return '<circle cx="660" cy="' + (y+26) + '" r="24" fill="#78c25a"/><text x="660" y="' + (y+33) + '" text-anchor="middle" font-size="13" fill="#fff">' + esc((personaName||'我').slice(0,2)) + '</text><rect x="160" y="' + y + '" width="470" height="54" rx="14" fill="#95ec69"/><text x="184" y="' + (y+35) + '" font-size="22" fill="#161616" font-family="-apple-system,BlinkMacSystemFont,PingFang SC,Arial">' + text + '</text>';
+      const rectX = 630 - bubbleW;
+      return '<circle cx="660" cy="' + (currentY+26) + '" r="24" fill="#78c25a"/><text x="660" y="' + (currentY+33) + '" text-anchor="middle" font-size="13" fill="#fff">' + esc((personaName||'我').slice(0,2)) + '</text><rect x="' + rectX + '" y="' + currentY + '" width="' + bubbleW + '" height="' + bubbleH + '" rx="16" fill="#95ec69"/><text x="184" y="' + (currentY+35) + '" font-size="21" fill="#161616" font-family="-apple-system,BlinkMacSystemFont,PingFang SC,Arial">' + lineSvg + '</text>';
     }
-    return '<circle cx="60" cy="' + (y+26) + '" r="24" fill="#b8b8b8"/><text x="60" y="' + (y+33) + '" text-anchor="middle" font-size="13" fill="#fff">' + sender.slice(0,2) + '</text><text x="96" y="' + (y-5) + '" font-size="15" fill="#777">' + sender + '</text><rect x="96" y="' + y + '" width="470" height="54" rx="14" fill="#fff"/><text x="120" y="' + (y+35) + '" font-size="22" fill="#161616" font-family="-apple-system,BlinkMacSystemFont,PingFang SC,Arial">' + text + '</text>';
+    return '<circle cx="60" cy="' + (currentY+26) + '" r="24" fill="#b8b8b8"/><text x="60" y="' + (currentY+33) + '" text-anchor="middle" font-size="13" fill="#fff">' + sender.slice(0,2) + '</text><text x="96" y="' + (currentY-5) + '" font-size="15" fill="#777">' + sender + '</text><rect x="96" y="' + currentY + '" width="' + bubbleW + '" height="' + bubbleH + '" rx="16" fill="#fff"/><text x="120" y="' + (currentY+35) + '" font-size="21" fill="#161616" font-family="-apple-system,BlinkMacSystemFont,PingFang SC,Arial">' + lineSvg + '</text>';
   }).join('');
+  const H = Math.max(420, y + 28);
   const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="720" height="' + H + '" viewBox="0 0 720 ' + H + '"><rect width="720" height="' + H + '" fill="#ededed"/><rect width="720" height="84" fill="#f7f7f7"/><text x="360" y="54" text-anchor="middle" font-size="28" font-weight="600" fill="#111" font-family="-apple-system,BlinkMacSystemFont,PingFang SC,Arial">' + esc(title || '聊天截图') + '</text>' + rows + '</svg>';
   return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
 }
@@ -25792,6 +25815,10 @@ function monoCleanFakeRichMessageText(s) {
 }
 function monoPushOneShotRichCards(p, cards, personaName, userName) {
   if (!p || !Array.isArray(cards) || !cards.length) return false;
+  const _lastUserForScreenshot = (Array.isArray(p.history) ? p.history.slice().reverse().find(function(m){ return m && m.role === 'user' && !m._hiddenContext; }) : null);
+  const _allowScreenshotCard = (typeof monoLooksLikeScreenshotRequestText === 'function') ? monoLooksLikeScreenshotRequestText(_lastUserForScreenshot && _lastUserForScreenshot.content) : false;
+  cards = cards.filter(function(c){ return !c || c.type !== 'screenshot' || _allowScreenshotCard; });
+  if (!cards.length) return false;
   let pushed = false;
   cards.forEach(function(card) {
     const d = card.data || {};
@@ -27345,7 +27372,7 @@ function monoRefreshUserIdentityUi() {
     if (typeof updateProfilePreview === 'function') updateProfilePreview();
   } catch(e) {}
   try {
-    if (typeof renderMessages === 'function') renderMessages();
+    if (typeof renderMessages === 'function') renderMessages({ forceScrollToBottom: true });
   } catch(e) {}
   try {
     if (typeof renderGroupList === 'function') renderGroupList();
@@ -28373,14 +28400,200 @@ function closeContextMenu() {
   const m = document.getElementById('ctxMenu');
   if (m) m.remove();
 }
+
+/* ===== Mono quote display hard-fix: keep rich/special message references as compact previews, never raw hidden text ===== */
+function monoQuoteIconHtml(q) {
+  q = q || {};
+  var text = String(q.displayContent || q.previewContent || q.preview || q.content || '');
+  var type = String(q.msgType || '').trim();
+  var cls = 'fa-quote-left', color = '#999';
+  if (type === 'location_card' || q.locationData || /^\s*📍/.test(text) || /^\s*\[定位分享\]/.test(text)) { cls = 'fa-location-dot'; color = '#22b66b'; }
+  else if (type === 'sticker' || /\[表情包/.test(text)) { cls = 'fa-face-smile'; color = '#f0a03a'; }
+  else if (type === 'image' || /\[(?:图片|文字图|聊天截图)/.test(text) || q._isChatScreenshot) { cls = 'fa-image'; color = '#6b8fce'; }
+  else if (type === 'voice' || /\[语音消息/.test(text)) { cls = 'fa-microphone-lines'; color = '#5aa878'; }
+  else if (type === 'transfer' || /\[转账消息/.test(text)) { cls = 'fa-yen-sign'; color = '#f0a000'; }
+  else if (type === 'takeout_card' || /\[外卖卡片/.test(text)) { cls = 'fa-bag-shopping'; color = '#777'; }
+  else if (type === 'call' || /\[通话记录/.test(text)) { cls = 'fa-phone'; color = '#34c759'; }
+  else if (/forwarded/.test(type) || /\[转发内容/.test(text)) { cls = 'fa-share'; color = '#888'; }
+  else if (/truth_dare/.test(type) || /真心话大冒险/.test(text)) { cls = 'fa-dice'; color = '#d088aa'; }
+  return '<i class="fas ' + cls + '" style="color:' + color + ';margin-right:4px;flex-shrink:0;"></i>';
+}
+function monoNormalizeQuoteText(raw) {
+  raw = String(raw == null ? '' : raw).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+  if (!raw) return '';
+  if (/^\[定位分享\]/.test(raw)) {
+    var title = (raw.match(/标题\/地标：([^；。]+)/) || [,''])[1].trim();
+    var addr = (raw.match(/地址\/位置：([^；。]+)/) || [,''])[1].trim();
+    var tag = (raw.match(/地址便签：([^；。]+)/) || [,''])[1].trim();
+    return '📍 ' + (tag ? '[' + tag + '] ' : '') + (title || '定位分享') + (addr && addr !== title ? ' · ' + addr : '');
+  }
+  raw = raw
+    .replace(/^\s*【[^】]*(?:给角色读取|角色信息|隐藏信息|system|系统)[^】]*】\s*/ig, '')
+    .replace(/^\s*这是聊天里真实发送过的.*$/ig, '')
+    .replace(/^\s*\[(?:reply|quote|引用|回复|reference)\s*[:：|]\s*/i, '')
+    .replace(/\]\s*$/g, '')
+    .trim();
+  return raw;
+}
+function monoGetQuoteDisplayText(msg) {
+  msg = msg || {};
+  try {
+    if (msg.msgType === 'location_card' || msg.locationData) {
+      var loc = (typeof _normalizeLocationData === 'function') ? _normalizeLocationData(msg.locationData || {}, msg.role) : (msg.locationData || {});
+      var title = String(loc.title || loc.landmarkName || loc.address || '定位分享').trim();
+      var addr = String(loc.address || loc.note || '').trim();
+      var tag = String(loc.addressLabel || '').trim();
+      return '📍 ' + (tag ? '[' + tag + '] ' : '') + title + (addr && addr !== title ? ' · ' + addr : '');
+    }
+    if (msg.msgType === 'sticker') return '[表情包' + (msg.caption ? '：' + msg.caption : '') + ']';
+    if (msg.msgType === 'image') return '[' + (msg._isChatScreenshot ? '聊天截图' : (msg.imageSimulated ? '文字图' : '图片')) + (((msg.imageUiDescHidden && !msg.imageSimulated) ? '' : (msg.imageDesc ? '：' + msg.imageDesc : (msg.imageCaption ? '：' + msg.imageCaption : '')))) + ']';
+    if (msg.msgType === 'voice') return '[语音消息' + (msg.transcript ? '：' + msg.transcript : (msg.content ? '：' + msg.content : '')) + ']';
+    if (msg.msgType === 'transfer') {
+      var td = msg.transferData || msg.transfer || {};
+      var amount = td.amount || msg.transferAmt || msg.amount || '';
+      return '[转账消息' + (amount ? '：¥' + amount : '') + ']';
+    }
+    if (msg.msgType === 'takeout_card') {
+      var tk = msg.takeoutData || msg.takeout || {};
+      return '[外卖卡片' + (tk.shop ? '：' + tk.shop : '') + ']';
+    }
+    if (msg.msgType === 'call') return '[通话记录' + (msg.connected === false ? '：未接通' : '') + ']';
+    if (/forwarded/.test(String(msg.msgType||''))) return '[转发内容]';
+    if (msg.msgType === 'order_notify') return '[订单通知]';
+    if (msg.msgType === 'pay_request') return '[付款请求]';
+    if (msg.msgType === 'receive_notify') return '[收款通知]';
+    if (/truth_dare/.test(String(msg.msgType||''))) return '[真心话大冒险]';
+    if (msg.msgType === 'intimate_invite') return '[亲密付邀请]';
+    if (msg.msgType === 'intimate_topup_request') return '[亲密付增值请求]';
+  } catch(e) {}
+  var raw = String(msg.displayContent || msg.previewContent || msg.preview || msg.content || '').trim();
+  return monoNormalizeQuoteText(raw);
+}
+function monoQuotePreviewText(msgOrQuote) {
+  var q = msgOrQuote || {};
+  var text = q.displayContent || q.previewContent || q.preview || '';
+  if (!text) text = monoGetQuoteDisplayText(q);
+  return String(text || '').trim();
+}
+function monoBuildQuotePayload(msg) {
+  msg = msg || {};
+  var display = monoGetQuoteDisplayText(msg);
+  var q = {
+    role: msg.role || '',
+    content: display || monoNormalizeQuoteText(msg.content || ''),
+    displayContent: display,
+    previewContent: display,
+    msgType: msg.msgType || '',
+    senderName: msg.senderName || msg.authorName || '',
+    index: msg.index
+  };
+  ['locationData','caption','imageDesc','imageCaption','transcript','duration','_isChatScreenshot'].forEach(function(k){ if (msg[k] != null) q[k] = (typeof msg[k] === 'object' ? JSON.parse(JSON.stringify(msg[k])) : msg[k]); });
+  if (msg.imageUiDescHidden) q.imageUiDescHidden = true;
+  if (msg.imageSimulated) q.imageSimulated = !!msg.imageSimulated;
+  return q;
+}
+function monoStrip回复DirectiveFromContent(raw) {
+  raw = String(raw == null ? '' : raw);
+  var out = { content: raw, quoteText: '' };
+  var m = raw.match(/^\s*[\[【](?:reply|quote|引用|回复|reference|引用信息)\s*[:：|]\s*([\s\S]{1,800}?)[\]】]\s*/i);
+  if (m) {
+    out.quoteText = monoNormalizeQuoteText(String(m[1] || '').replace(/\s+/g, ' ').trim()).slice(0, 160);
+    out.content = raw.slice(m[0].length).trim();
+  }
+  return out;
+}
+
+function monoReplyComparableText(raw) {
+  return String(raw == null ? '' : raw)
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;|\u00a0/g, ' ')
+    .replace(/[\s\r\n\t]+/g, '')
+    .replace(/["“”'‘’`·。！？!?，,、；;：:（）()\[\]【】<>《》…~～_\-—=+*#]/g, '')
+    .toLowerCase();
+}
+function monoReplyTextLongEnough(raw) {
+  var s = monoReplyComparableText(raw);
+  if (/^[\u4e00-\u9fff]{4,}$/.test(s)) return true;
+  return s.length >= 6;
+}
+function monoReplyGetCandidateText(m) {
+  if (!m) return '';
+  var parts = [];
+  try { if (typeof monoGetQuoteDisplayText === 'function') parts.push(monoGetQuoteDisplayText(m)); } catch(e) {}
+  ['displayContent','previewContent','content','imageDesc','imageCaption','caption','transcript'].forEach(function(k){ if (m[k]) parts.push(String(m[k])); });
+  return parts.join(' ');
+}
+function monoGetTrailingUserMessagesBefore(persona, msg) {
+  if (!persona || !Array.isArray(persona.history)) return [];
+  var hist = persona.history;
+  var idx = hist.indexOf(msg);
+  if (idx < 0 && msg && msg.index != null && hist[msg.index] === msg) idx = msg.index;
+  var end = idx >= 0 ? idx : hist.length;
+  var out = [];
+  for (var i = end - 1; i >= 0; i--) {
+    var h = hist[i];
+    if (!h || h.role !== 'user') break;
+    out.unshift(Object.assign({ index: i }, h));
+  }
+  return out;
+}
+function monoFindValidReplyQuoteTarget(fragment, persona, msg) {
+  var frag = String(fragment || '').trim();
+  var f = monoReplyComparableText(frag);
+  if (!monoReplyTextLongEnough(frag)) return null;
+  var candidates = monoGetTrailingUserMessagesBefore(persona, msg);
+  // 只有用户连续发了多条不同消息时，角色的 [reply:...] 才有效，避免角色乱判断引用对象。
+  if (candidates.length < 2) return null;
+  for (var i = candidates.length - 1; i >= 0; i--) {
+    var c = candidates[i];
+    var t = monoReplyComparableText(monoReplyGetCandidateText(c));
+    if (!t) continue;
+    if (t.indexOf(f) !== -1 || f.indexOf(t) !== -1) return c;
+  }
+  return null;
+}
+
+function monoApply回复DirectiveToMessage(msg, persona) {
+  if (!msg || typeof msg !== 'object') return msg;
+  if (msg._replyDirectiveCleaned) return msg;
+  var parsed = monoStrip回复DirectiveFromContent(msg.content || '');
+  if (parsed.quoteText) {
+    msg.content = parsed.content || '';
+    if (!msg.quote) {
+      var target = (typeof monoFindValidReplyQuoteTarget === 'function') ? monoFindValidReplyQuoteTarget(parsed.quoteText, persona, msg) : null;
+      if (target) {
+        var author = (typeof userProfile !== 'undefined' && userProfile.name) ? userProfile.name : '你';
+        try {
+          var effectiveUser = (typeof monoResolveUserIdentityProfile === 'function') ? monoResolveUserIdentityProfile(persona || null, { message: target, maskId: target.userMaskId || '' }) : null;
+          if (effectiveUser && effectiveUser.name) author = effectiveUser.name;
+        } catch(e) {}
+        msg.quote = (typeof monoBuildQuotePayload === 'function') ? monoBuildQuotePayload(Object.assign({}, target, { senderName: author })) : { role:'user', content: parsed.quoteText, displayContent: parsed.quoteText, previewContent: parsed.quoteText, msgType:'', senderName: author };
+        msg.quote.senderName = author;
+      }
+      // 未匹配到真实且足够近的用户消息时，只移除 [reply:...] 指令，不生成引用块。
+    }
+  }
+  msg._replyDirectiveCleaned = true;
+  return msg;
+}
+function monoLooksLikeScreenshotRequestText(raw) {
+  var s = String(raw || '').toLowerCase();
+  return /(截图|截屏|聊天记录图|聊天截图|screenshot|screen\s*shot|发.*图.*看|截.*给我看|给我.*截图)/i.test(s);
+}
+
 function setQuoteMsg(idx, msg) {
-  currentQuoteMsg = { role: msg.role, content: msg.content, index: idx };
+  const p = personas.find(x => x.id == currentId);
+  msg = msg || {};
+  const effectiveUser = monoResolveUserIdentityProfile(p || null, { message: msg, maskId: msg && msg.userMaskId ? msg.userMaskId : '' });
+  const author = msg.role === 'user' ? (effectiveUser.name || userProfile.name || '你') : (p ? p.name : '角色');
+  const quoteDisplay = (typeof monoGetQuoteDisplayText === 'function') ? monoGetQuoteDisplayText(msg) : String(msg.content || '');
+  const payload = (typeof monoBuildQuotePayload === 'function') ? monoBuildQuotePayload(Object.assign({}, msg, { index: idx, senderName: author })) : { role: msg.role, content: quoteDisplay, index: idx, senderName: author };
+  payload.senderName = author;
+  currentQuoteMsg = payload;
   const preview = document.getElementById('quotePreview');
   const previewText = document.getElementById('quotePreviewText');
-  const p = personas.find(x => x.id == currentId);
-  const effectiveUser = monoResolveUserIdentityProfile(p || null, { message: msg, maskId: msg && msg.userMaskId ? msg.userMaskId : '' });
-  const author = msg.role === 'user' ? (effectiveUser.name || userProfile.name) : (p ? p.name : '');
-  previewText.textContent = `${author}：${msg.content.slice(0, 40)}${msg.content.length > 40 ? '…' : ''}`;
+  const shortText = quoteDisplay || String(msg.content || '');
+  previewText.textContent = `${author}：${shortText.slice(0, 40)}${shortText.length > 40 ? '…' : ''}`;
   preview.classList.add('show');
   document.getElementById('userInput').focus();
 }
@@ -30125,6 +30338,8 @@ function _getOfflineMergedSettings() {
 function _buildOfflineSessionMemoryPayload(session, personaName, userName, maxSummaryItems) {
   if (!session || !Array.isArray(session.entries) || !session.entries.length) return null;
   var limit = Math.max(1, Math.min(8, Number(maxSummaryItems) || 4));
+  var pName = personaName || '角色';
+  var uName = userName || '你';
   var recentSummaries = Array.isArray(session.memorySummaries)
     ? session.memorySummaries.slice(-limit).map(function(item) {
         if (!item || !item.content) return null;
@@ -30135,7 +30350,19 @@ function _buildOfflineSessionMemoryPayload(session, personaName, userName, maxSu
         return !!(item && item.content);
       })
     : [];
+  var overview = '【线下剧情】' + (session.title || '线下互动') + '（共' + session.entries.length + '段）';
+  if (recentSummaries.length) {
+    overview += '\n\n【阶段总结】\n' + recentSummaries.map(function(item, idx) {
+      return '第' + (idx + 1) + '段：' + (item.content || '');
+    }).join('\n\n');
+  } else {
+    var rawEntries = session.entries.slice(-12).map(function(e) {
+      return (e.role === 'user' ? uName : pName) + '：' + String(e.content || '').trim();
+    }).filter(Boolean).join('\n');
+    if (rawEntries) overview += '\n\n【最近线下互动记录】\n' + rawEntries;
+  }
   return {
+    overview: overview,
     recentSummaries: recentSummaries
   };
 }
@@ -30154,6 +30381,14 @@ function _upsertOfflineSessionMemoryForPersona(session, p, userName) {
     }
     return beforeLen !== p.memoryCore.length || beforeJson !== JSON.stringify(p.memoryCore);
   }
+  p.memoryCore.push({
+    content: payload.overview || '',
+    date: new Date(session.updatedAt || Date.now()).toLocaleDateString('zh-CN'),
+    source: '线下剧情 · ' + (session.title || '线下互动'),
+    auto: true,
+    _offlineSessionId: session.id,
+    _offlineMemoryType: 'overview'
+  });
   payload.recentSummaries.forEach(function(item, idx) {
     p.memoryCore.push({
       content: item.content || '',
@@ -30373,6 +30608,11 @@ function renderMessages(opts) {
   const p = personas.find(x => x.id == currentId);
   const box = document.getElementById('chatBox');
   if (!p || !box) return;
+  const _monoPrevScrollHeight = box.scrollHeight || 0;
+  const _monoPrevScrollTop = box.scrollTop || 0;
+  const _monoPrevClientHeight = box.clientHeight || 0;
+  const _monoPrevBottomGap = Math.max(0, _monoPrevScrollHeight - _monoPrevScrollTop - _monoPrevClientHeight);
+  const _monoWasNearChatBottom = !!opts.forceScrollToBottom || _monoPrevScrollHeight === 0 || _monoPrevBottomGap < 120;
   if (_chatRenderPersonaId !== String(p.id) || !_chatRenderVisibleCount) {
     _resetChatRenderWindow(p.id);
   }
@@ -30396,9 +30636,10 @@ function renderMessages(opts) {
     const _personaLangCode = typeof _detectPersonaLang === 'function' ? _detectPersonaLang(p) : '';
     // Hidden context messages — injected into AI system prompt but never shown in UI
     if (m._transferContext || m._systemNote || m._hiddenContext) return '';
+    if (typeof monoApply回复DirectiveToMessage === 'function') monoApply回复DirectiveToMessage(m, p);
     const msgContent = _safeMsgText(m.content);
     const recalledContent = _safeMsgText(m._recalledContent);
-    const quoteContent = m.quote ? _safeMsgText(m.quote.content) : '';
+    const quoteContent = m.quote ? _safeMsgText((typeof monoQuotePreviewText === 'function' ? monoQuotePreviewText(m.quote) : m.quote.content)) : '';
     const isUser = m.role === 'user';
     const isSelected = selectedMsgIndices.has(idx);
     const effectiveUserIdentity = monoResolveUserIdentityProfile(p, { message: m, maskId: m.userMaskId || '' });
@@ -30659,25 +30900,30 @@ function renderMessages(opts) {
     const _fontColorStyle = isUser
       ? (p.bubbleUserFontColor ? ' style="color:' + p.bubbleUserFontColor + '"' : '')
       : (p.bubbleAiFontColor  ? ' style="color:' + p.bubbleAiFontColor  + '"' : '');
-    // ── 处理 [reply:原文] 引用指令，转为引用气泡 ──
+    // ── 处理 [reply:原文] 引用指令：必须匹配真实的近期连续用户消息，否则只清除指令 ──
     let displayContent = _splitChatBubbleLines(msgContent.replace(/\\n/g, '\n'), 14).replace(/\n/g, '<br>');
     if (!isUser && displayContent) {
-      const replyMatch = displayContent.match(/^\[reply:([\s\S]*?)\]\s*/);
+      const replyMatch = displayContent.match(/^\[reply:([\s\S]*?)\]\s*/i);
       if (replyMatch) {
-        const quotedText = replyMatch[1].trim().slice(0, 60);
+        const rawQuotedText = replyMatch[1].replace(/<br\s*\/?/ig, ' ').trim();
         displayContent = displayContent.replace(replyMatch[0], '').trim();
-        if (!m.quote && quotedText) {
-          // 注入临时引用块到 quoteHtml（不修改 m.quote 避免污染存储）
-          const existingQuoteHtml = `<div class="quote-block" style="border-left:3px solid #ccc;padding:4px 8px;background:rgba(0,0,0,0.04);border-radius:6px;font-size:11px;color:#888;margin-bottom:4px;">${_formatChatBubbleHtml(quotedText)}${quotedText.length>=60?'…':''}</div>`;
-          // Prepend to quoteHtml below
-          displayContent = '\x00QUOTED\x00' + existingQuoteHtml + '\x00ENDQUOTED\x00' + displayContent;
+        if (!m.quote && rawQuotedText && typeof monoFindValidReplyQuoteTarget === 'function') {
+          const targetQuoteMsg = monoFindValidReplyQuoteTarget(rawQuotedText, p, m);
+          if (targetQuoteMsg) {
+            const quotedText = (typeof monoGetQuoteDisplayText === 'function' ? monoGetQuoteDisplayText(targetQuoteMsg) : rawQuotedText).slice(0, 60);
+            const qIcon = (typeof monoQuoteIconHtml === 'function') ? monoQuoteIconHtml(targetQuoteMsg) : '';
+            const existingQuoteHtml = `<div class="quote-block" style="display:flex;align-items:center;gap:4px;max-width:100%;box-sizing:border-box;overflow:hidden;">${qIcon}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_formatChatBubbleHtml(quotedText)}${quotedText.length>=60?'…':''}</span></div>`;
+            displayContent = '\x00QUOTED\x00' + existingQuoteHtml + '\x00ENDQUOTED\x00' + displayContent;
+          }
         }
       }
     }
     let quoteHtml = '';
     if (m.quote) {
-      const qAuthor = m.quote.role === 'user' ? (effectiveUserIdentity.name || userProfile.name) : p.name;
-      quoteHtml = `<div class="quote-block">${_formatChatBubbleHtml(qAuthor + '：' + quoteContent.slice(0,50))}${quoteContent.length>50?'…':''}</div>`;
+      const qAuthor = m.quote.senderName || (m.quote.role === 'user' ? (effectiveUserIdentity.name || userProfile.name || '你') : (p.name || '角色'));
+      const qPreview = (quoteContent || '').slice(0, 80);
+      const qIcon = (typeof monoQuoteIconHtml === 'function') ? monoQuoteIconHtml(m.quote) : '';
+      quoteHtml = `<div class="quote-block" style="display:flex;align-items:center;gap:4px;max-width:100%;box-sizing:border-box;overflow:hidden;">${qIcon}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_formatChatBubbleHtml(qAuthor + '：' + qPreview)}${quoteContent.length>80?'…':''}</span></div>`;
     }
     // Extract prepended quote block from displayContent if present
     let prependedQuoteHtml = '';
@@ -30975,8 +31221,11 @@ function renderMessages(opts) {
   })();
   if (opts.preserveScrollPosition) {
     box.scrollTop = Math.max(0, box.scrollHeight - (opts.oldScrollHeight || 0) + (opts.oldScrollTop || 0));
-  } else {
+  } else if (opts.forceScrollToBottom || opts.scrollToBottom || _monoWasNearChatBottom) {
     box.scrollTop = box.scrollHeight;
+  } else {
+    // 用户正在查看较早消息时，普通重渲染不要把位置强行拉回最新消息。
+    box.scrollTop = Math.min(_monoPrevScrollTop, Math.max(0, box.scrollHeight - box.clientHeight));
   }
   _initLazyChatMedia(box);
   initMessageLongPress();
@@ -31110,7 +31359,7 @@ async function sendMessage() {
   const resolvedUserIdentity = monoResolveUserIdentityProfile(p);
   const newMsg = { role: 'user', content: text, timestamp: Date.now(), userMaskId: resolvedUserIdentity.maskId || '' };
   if (currentQuoteMsg) {
-    newMsg.quote = { role: currentQuoteMsg.role, content: currentQuoteMsg.content };
+    newMsg.quote = (typeof monoBuildQuotePayload === 'function') ? monoBuildQuotePayload(currentQuoteMsg) : { role: currentQuoteMsg.role, content: currentQuoteMsg.content };
   }
   // 确保 history 已加载（防止 history 是 __hist_ref__ 字符串）
   if (!Array.isArray(p.history)) {
@@ -45705,12 +45954,12 @@ ${_buildPersonaIdentityPrompt(p)}
 8.5. 默认消息风格是短句分开发，尽量不要用逗号和句号；问号、感叹号、省略号可以保留来表达情绪。除非你的人设或世界书明确要求别的格式，否则都按这个默认风格来写；如果一句话明显过长，就主动拆成两条或多条，用 "###" 分隔。
 8.6. 不要总是用反问来推进对话，尽量少用“是……还是……”“要不要……”“有没有……”这种句式；能直接表达情绪、判断或态度时，就直接说。
 9. 【线下连续性】如果你的记忆里存在近期线下互动、线下剧情总结、见面时发生过的事，你必须把它们当作真实已发生事件来理解当前私聊。只要用户提到相关情绪、约定、场景或延续性话题，你都要能自然接住，绝不能表现得像完全忘记了线下发生过什么。
-10. 【引用回复】此功能仅限以下情况使用：当用户连续发送了多条内容不同的消息时，你可以选择性地引用其中某一条来回复，格式为 \`[reply:原文片段]\` 放在该条消息开头，例如：\`[reply:你说不想出门]\` 那也陪你宅着。
+10. 【引用回复】默认不要使用。只有当用户刚刚连续发送了2条或更多条内容不同的消息，并且你必须点名回应其中某一条时，才允许在第一条回复开头使用 \`[reply:原文片段]\`。
    重要规则：
-   - 只有在用户发了多条不同内容的消息时，才考虑是否引用，而且不是每次都要引用
+   - 原文片段必须从用户刚刚连续发送的消息中逐字截取，不能概括、改写、脑补或引用旧消息
    - 如果用户只发了一条消息，绝对不要使用引用
+   - 如果你不确定该引用对应哪一条真实用户消息，绝对不要使用引用
    - 每次回复中最多引用一次，不能重复引用同一句用户的话
-   - 是否引用由你自主判断，取决于是否真的需要指明你在回应哪条消息
    - 大部分情况下不需要引用，直接自然回复即可
 11. 【自刻记忆】当发生了里程碑式的事件（如第一次表白、确认关系、解开误会、说了让你极度触动的话）时，你可以在回复末尾另起一行使用 \`[memory: 内容]\` 指令将这段经历永久刻入你的记忆核心。例如：\`[memory: 2025/06/01，TA第一次对我说了"我喜欢你"]\`
 12. 【消息撤回】如果你觉得有充分理由撤回你刚才说的话（如说错了、太冲动、想收回某句话），可以在下一次回复的第一条消息最前面加 \`[RECALL]\` 标签，系统会自动撤回你上一条消息。例如：\`[RECALL]等等，我刚才那话说重了。\` 不要频繁使用，只在真的需要的时候。
@@ -61758,6 +62007,41 @@ function _buildCallUserIdentityPrompt(identity) {
   lines.push('你必须按照这个面具的身份、称呼和气质来理解并回应对方，不能退回默认用户名。');
   return lines.join('');
 }
+function _buildCallCurrentRoomContext(persona, identity, limit) {
+  try {
+    if (!_callState || _callState.source !== 'chat') return '';
+    var livePersona = (typeof personas !== 'undefined' ? personas : []).find(function(x) { return String(x.id) === String(_callState.personaId); }) || persona || {};
+    var uName = (identity && (identity.displayName || identity.name)) || ((typeof userProfile !== 'undefined' && userProfile && userProfile.name) || '用户');
+    var pName = (livePersona && livePersona.name) || (_callState.personaName || '角色');
+    var lines = [];
+    if (typeof buildMemoryCoreContext === 'function') {
+      var mem = buildMemoryCoreContext(livePersona);
+      if (mem) lines.push('【角色核心记忆】\n' + mem);
+    }
+    if (typeof _buildOfflineSceneInjection === 'function') {
+      var offline = _buildOfflineSceneInjection(_callState.personaId);
+      if (offline) lines.push(String(offline).replace(/^\s+|\s+$/g, ''));
+    }
+    var hist = Array.isArray(livePersona.history) ? livePersona.history : [];
+    var recent = hist.filter(function(m) {
+      return m && !m._hiddenContext && !m._systemNote && !m._transferContext && m.msgType !== 'call';
+    }).slice(-(limit || 18)).map(function(m) {
+      var who = m.role === 'user' ? uName : pName;
+      var text = '';
+      if (m.msgType === 'image') text = '[图片]' + (m.imageCaption || m.content || m.textImagePrompt || '');
+      else if (m.msgType === 'voice') text = '[语音]' + (m.content || m.transcript || '');
+      else if (m.msgType === 'forwarded_post') text = '[转发动态]' + (m.content || '');
+      else if (m.msgType === 'social_share_card') text = '[社交平台转发]' + (m.content || '');
+      else text = m.content || '';
+      text = String(text || '').replace(/\s+/g, ' ').trim();
+      if (!text) return '';
+      return who + '：' + text.slice(0, 220);
+    }).filter(Boolean).join('\n');
+    if (recent) lines.push('【当前聊天室最近对话】\n' + recent);
+    if (!lines.length) return '';
+    return '\n\n# 电话必须承接当前聊天室上下文\n---\n' + lines.join('\n\n') + '\n---\n规则：语音通话不是独立新剧情，你必须记得当前聊天室刚聊过的内容、关系状态、线下记忆和未解决的话题，自然接着说。';
+  } catch(e) { return ''; }
+}
 function _resetCallIdentitySnapshot() {
   _callState.personaSnapshot = null;
   _callState.userIdentitySnapshot = null;
@@ -61798,7 +62082,8 @@ async function startCall(source) {
       var uName = callUserIdentity.name || userProfile.name || '用户';
       var _callUProfileDesc = source === 'dating' ? _buildDatingUserProfileDesc() : '';
       var _callIdentityNote = source === 'dating' ? '你是对方的相親对象，' : '';
-      var prompt = '你是' + persona.name + '，人设：' + (persona.persona||'').slice(0,120) + '。' + _buildPersonaIdentityPrompt(persona) + _callIdentityNote + (_callUProfileDesc ? '对方資料：' + _callUProfileDesc + '。' : '') + (source === 'dating' ? '' : _buildCallUserIdentityPrompt(callUserIdentity)) + uName + '主动打电话给你。除非此刻有非常明确、强烈、合理的拒接原因（例如正在激烈争吵、明确拉黑、极度厌恶、现实危险场景），否则你通常都会接。回覆JSON：{"accept":true或false,"refuseLevel":0到100} 只返回JSON。';
+      var _startRoomContext = _buildCallCurrentRoomContext(persona, callUserIdentity, 12);
+      var prompt = '你是' + persona.name + '，人设：' + (persona.persona||'').slice(0,120) + '。' + _buildPersonaIdentityPrompt(persona) + _callIdentityNote + (_callUProfileDesc ? '对方資料：' + _callUProfileDesc + '。' : '') + (source === 'dating' ? '' : _buildCallUserIdentityPrompt(callUserIdentity)) + _startRoomContext + uName + '主动打电话给你。除非此刻有非常明确、强烈、合理的拒接原因（例如正在激烈争吵、明确拉黑、极度厌恶、现实危险场景），否则你通常都会接。回覆JSON：{"accept":true或false,"refuseLevel":0到100} 只返回JSON。';
       var resp = await fetch(_datingApiEndpoint(api), {method:'POST', headers:_datingApiHeaders(api), body:JSON.stringify(_datingApiBody(api, prompt, 30))});
       var result = JSON.parse(_datingApiText(await resp.json()).replace(/```json|```/g,'').trim());
       var refuseLevel = Math.max(0, Math.min(100, Number(result && result.refuseLevel) || 0));
@@ -61939,7 +62224,8 @@ async function _callAIGreeting() {
       var _greetLangInstruction = _greetNeedsTranslation ? '用你的母语（' + _greetLangCode + '）口语化说一句接电话开场白' : '口语化简体中文说一句接电话开场白';
       var _greetTranslationNote = _greetNeedsTranslation ? '，并在下一行附上简体中文翻译，格式：「译文：[内容]」' : '';
       var _callDirection = _callState.initiator === 'persona' ? '你刚刚主动打电话给了' + uName : uName + '刚刚主动打电话给你';
-      var prompt = '你是「' + persona.name + '」，人设：' + (persona.persona||'').slice(0,150) + '。' + _buildPersonaIdentityPrompt(persona) + _greetIdentityNote + (_greetUProfileDesc ? '对方資料：' + _greetUProfileDesc + '。' : '') + (_callState.source === 'dating' ? '' : _buildCallUserIdentityPrompt(callUserIdentity)) + _greetLangOv + _callDirection + '，现在电话已经接通，' + _greetLangInstruction + '，符合你的性格，1句话，不加标点。绝对不能提到自己是AI。' + _greetTranslationNote;
+      var _greetRoomContext = _buildCallCurrentRoomContext(persona, callUserIdentity, 16);
+      var prompt = '你是「' + persona.name + '」，人设：' + (persona.persona||'').slice(0,150) + '。' + _buildPersonaIdentityPrompt(persona) + _greetIdentityNote + (_greetUProfileDesc ? '对方資料：' + _greetUProfileDesc + '。' : '') + (_callState.source === 'dating' ? '' : _buildCallUserIdentityPrompt(callUserIdentity)) + _greetRoomContext + _greetLangOv + _callDirection + '，现在电话已经接通，' + _greetLangInstruction + '，符合你的性格，1句话，不加标点。绝对不能提到自己是AI。' + _greetTranslationNote;
       var _gApiUrl = (api.url || '').replace(/\/$/, '');
       var _gIsAnt = typeof _isAnthropicApi === 'function' ? _isAnthropicApi(api) : _gApiUrl.includes('anthropic');
       var _gResp, _gData;
@@ -62010,7 +62296,8 @@ async function _callAIReply(userText) {
         ? '用你的母语（' + _replyLangCode + '）口语化回应，每条回复末尾另起一行附简体中文翻译，格式：「译文：[内容]」。回复1-2句话。'
         : '用你的性格自然口语地回应，1-2句，不加动作描写。';
       var _initiatorLine = _callState.initiator === 'persona' ? '这通电话是你主动打给对方的。' : '这通电话是对方主动打给你的。';
-      var sys = '你是「' + persona.name + '」，人设：' + (persona.persona||'').slice(0,200) + '。' + _buildPersonaIdentityPrompt(persona) + _replyIdentityNote + (_callState.source === 'dating' ? '' : _buildCallUserIdentityPrompt(callUserIdentity)) + _replyLangOv + '你正在和' + uName + '电话聊天。' + _initiatorLine + _replyLangNote;
+      var _replyRoomContext = _buildCallCurrentRoomContext(persona, callUserIdentity, 20);
+      var sys = '你是「' + persona.name + '」，人设：' + (persona.persona||'').slice(0,200) + '。' + _buildPersonaIdentityPrompt(persona) + _replyIdentityNote + (_callState.source === 'dating' ? '' : _buildCallUserIdentityPrompt(callUserIdentity)) + _replyRoomContext + _replyLangOv + '你正在和' + uName + '电话聊天。' + _initiatorLine + _replyLangNote;
       // Use standard API endpoint directly (not dating wrapper) for faster response
       var _callApiUrl = (api.url || '').replace(/\/$/, '');
       var isAnt = typeof _isAnthropicApi === 'function' ? _isAnthropicApi(api) : _callApiUrl.includes('anthropic');
@@ -106069,57 +106356,26 @@ function _csDesiredScreenshotCount(userText, targetHint, recentChat, isUserReque
 
 // ── 如果 AI 只给了 1 张，但本次适合多张，就把内容自然拆/续成 2-3 张 ──────────────
 function _csEnsureMultipleScreenshots(shots, desiredCount, p, targetHint) {
-  shots = Array.isArray(shots) ? shots.slice(0, 3) : [];
+  // 修复：不再为了凑 2-3 张截图而编造“没截完 / 这一段也能说明情况”等续图文案。
+  // 如果 AI 只返回 1 张，就只显示 1 张；只有 AI 明确返回了多张真实 messages 时才显示多张。
+  shots = Array.isArray(shots) ? shots.filter(function(shot) {
+    return shot && Array.isArray(shot.messages) && shot.messages.length > 0;
+  }).slice(0, 3) : [];
   desiredCount = Math.max(1, Math.min(3, desiredCount || 1));
-  if (shots.length >= desiredCount) return shots.slice(0, desiredCount);
-  if (shots.length === 0) return shots;
-  var base = shots[0];
-  var title = base.title || String(targetHint || '聊天记录') || '聊天记录';
-  var msgs = Array.isArray(base.messages) ? base.messages.slice() : [];
-  var lastTime = '18:40';
-  try { lastTime = (msgs[msgs.length - 1] && msgs[msgs.length - 1].time) || lastTime; } catch(e) {}
-  function plusTime(t, add) {
-    var m = String(t || '18:40').match(/(\d{1,2}):(\d{2})/);
-    var d = new Date();
-    d.setHours(m ? Number(m[1]) : 18, m ? Number(m[2]) : 40, 0, 0);
-    d = new Date(d.getTime() + add * 60000);
-    return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
-  }
-  var other = '对方';
-  try {
-    var left = msgs.find(function(x){ return x && x.isRight === false && x.sender; });
-    other = left ? left.sender : (title || other);
-  } catch(e) {}
-  while (shots.length < desiredCount) {
-    var idx = shots.length + 1;
-    var start = plusTime(lastTime, idx * 2);
-    var moreMsgs = [
-      { sender: other, isRight: false, text: idx === 2 ? '后面还有一句，我刚刚没截完。' : '还有一点补充。', time: start },
-      { sender: p.name || '我', isRight: true, text: idx === 2 ? '嗯，我只把能看的部分发出去。' : '知道，我不会发太完整。', time: plusTime(start, 1) },
-      { sender: other, isRight: false, text: idx === 2 ? '那你截这一段就可以。' : '这一段也能说明情况。', time: plusTime(start, 2) },
-      { sender: p.name || '我', isRight: true, text: idx === 2 ? '好，我分两张发。' : '好，最后一张。', time: plusTime(start, 3) }
-    ];
-    shots.push({
-      title: title,
-      desc: (base.desc || '聊天截图') + '（续 ' + idx + '）',
-      caption: '',
-      sourceType: (base.sourceType || 'generated') + '_continued',
-      messages: moreMsgs
-    });
-  }
-  return shots.slice(0, desiredCount);
+  return shots.slice(0, Math.min(shots.length, desiredCount));
 }
 
 // 用户明确要求看截图时的强兜底：不要轻易拒绝，API 返回 send:false 或格式不完整时，也尽量生成多张合理截图。
 function _csMakeFallbackUserRequestShot(p, targetHint, recentChat, desiredCount) {
+  // 修复：截图兜底只能截取已有上下文，不再凭空生成“我没截完 / 截这一段”等模板对话。
   var userName = (typeof userProfile !== 'undefined') ? (userProfile.name || '用户') : '用户';
   desiredCount = Math.max(1, Math.min(3, desiredCount || 1));
-  var target = String(targetHint || '').trim();
-  if (!target) target = '最近聊天';
-  target = target.replace(/^(和|跟|看|发|截图|聊天记录|微信|一下|给我|给你)+/g, '').trim() || '最近聊天';
+  var target = String(targetHint || '').trim() || '最近聊天';
+  target = target.replace(/^(和|跟|看|发|截图|截屏|聊天记录|微信|一下|给我|给你)+/g, '').trim() || '最近聊天';
   var title = target;
   if (/群|group/i.test(target)) title = target.indexOf('群') >= 0 ? target : '群聊';
   if (title.length > 18) title = title.slice(0, 18);
+
   var now = new Date();
   function t(minus) {
     var d = new Date(now.getTime() - minus * 60000);
@@ -106127,53 +106383,47 @@ function _csMakeFallbackUserRequestShot(p, targetHint, recentChat, desiredCount)
     var mm = String(d.getMinutes()).padStart(2, '0');
     return hh + ':' + mm;
   }
-  var other = title === '最近聊天' ? '联系人' : title;
-  var topic = '刚才说的那件事';
+  function cleanText(x) {
+    return String(x || '')
+      .replace(/\[(?:reply|quote|引用|screenshot|chat_screenshot|image|img|voice|transfer|redpacket)[^\]]*\]/gi, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+  var raw = [];
   try {
-    var lastUser = (Array.isArray(p.history) ? p.history : []).slice().reverse().find(function(m) { return m.role === 'user' && m.content; });
-    if (lastUser && lastUser.content) topic = String(lastUser.content).replace(/发|截图|聊天记录|微信|给我看看|给我看|可以吗|吗|么/g, '').trim().slice(0, 18) || topic;
+    if (Array.isArray(recentChat)) raw = recentChat.slice(-8);
+    else if (Array.isArray(p && p.history)) raw = p.history.slice(-12);
   } catch(e) {}
-  var shots = [{
+
+  var usable = raw.filter(function(m) {
+    if (!m || m._hiddenContext || m._systemNote || m._csScreenshotMemory) return false;
+    var text = cleanText(m.content || m.text || m.message || '');
+    if (!text) return false;
+    if (/^(发|截|截图|截屏|给我看|给我看看|看截图)/.test(text) && text.length < 18) return false;
+    return true;
+  }).slice(-5);
+
+  if (!usable.length) return [];
+
+  var total = usable.length;
+  var messages = usable.map(function(m, idx) {
+    var role = m.role || (m.isRight ? 'user' : 'assistant');
+    var isRight = role === 'user';
+    return {
+      sender: isRight ? userName : ((p && p.name) || '对方'),
+      isRight: isRight,
+      text: cleanText(m.content || m.text || m.message || '').slice(0, 120),
+      time: m.time || t(total - idx)
+    };
+  });
+
+  return [{
     title: title,
-    desc: '按用户要求分享的聊天截图',
-    caption: desiredCount > 1 ? '我分几张截给你看。' : '我截一小段给你看。',
-    sourceType: 'generated_fallback_user_request',
-    messages: [
-      { sender: other, isRight: false, text: '你刚刚说的那个，我有点懂了。', time: t(12) },
-      { sender: p.name || '我', isRight: true, text: '嗯，我晚点再确认一下。', time: t(11) },
-      { sender: other, isRight: false, text: '别整段发出去，截重点就好。', time: t(10) },
-      { sender: p.name || '我', isRight: true, text: '知道，我只发一小段。', time: t(9) },
-      { sender: other, isRight: false, text: '那就行，别太明显。', time: t(8) }
-    ]
-  }];
-  if (desiredCount >= 2) {
-    shots.push({
-      title: title,
-      desc: '按用户要求分享的聊天截图（续 2）',
-      caption: '',
-      sourceType: 'generated_fallback_user_request_continued',
-      messages: [
-        { sender: other, isRight: false, text: '还有后面这句，你看这个就懂了。', time: t(7) },
-        { sender: p.name || '我', isRight: true, text: '我看到了，所以才觉得有点奇怪。', time: t(6) },
-        { sender: other, isRight: false, text: '对，就是这个意思。', time: t(5) },
-        { sender: p.name || '我', isRight: true, text: '那我只给他看这一段。', time: t(4) }
-      ]
-    });
-  }
-  if (desiredCount >= 3) {
-    shots.push({
-      title: title,
-      desc: '按用户要求分享的聊天截图（续 3）',
-      caption: '',
-      sourceType: 'generated_fallback_user_request_continued',
-      messages: [
-        { sender: other, isRight: false, text: '最后补一句，别让人误会。', time: t(3) },
-        { sender: p.name || '我', isRight: true, text: '嗯，我会讲清楚。', time: t(2) },
-        { sender: other, isRight: false, text: '好，那就这样。', time: t(1) }
-      ]
-    });
-  }
-  return shots.slice(0, desiredCount);
+    desc: '按用户要求截取的已有聊天内容',
+    caption: '',
+    sourceType: 'context_excerpt_fallback_user_request',
+    messages: messages
+  }].slice(0, desiredCount);
 }
 
 function _csRememberSentScreenshots(p, shots, opts) {
@@ -110724,6 +110974,192 @@ body.mono-fwd-modal-open {
   setTimeout(function(){ restoreStableProfile(); restoreStableMasks(); }, 500);
   setTimeout(function(){ restoreStableProfile(); restoreStableMasks(); }, 1600);
 })();
+
+/* === USER PROFILE + USER MASK PERSISTENCE DIRECT FIX V4 ===
+   修复点：主程序使用顶层 let userProfile / let userMasks，不能只写 window.userProfile/window.userMasks。
+   这里在同一个 script 作用域内直接读写真实变量，并把文字资料、头像、面具资料分别写入稳定快照 + IndexedDB。 */
+(function(){
+  if (window.__monoUserIdentityDirectFixV4) return;
+  window.__monoUserIdentityDirectFixV4 = true;
+  var PROFILE_KEY = 'mono_user_profile_stable_v1';
+  var AVATAR_KEY  = 'mono_user_avatar_stable_v1';
+  var MASKS_KEY   = 'mono_user_masks_stable_v1';
+  function rawStore(){ return window._monoRawLocalStorage || window.localStorage; }
+  function isDataImage(v){ return typeof v === 'string' && v.indexOf('data:image') === 0 && v.length > 50; }
+  function readJson(key, fallback){
+    var txt = null;
+    try { txt = rawStore().getItem(key); } catch(e) {}
+    if (!txt) { try { txt = localStorage.getItem(key); } catch(e) {} }
+    if (!txt) return fallback;
+    try { return JSON.parse(txt); } catch(e) { return fallback; }
+  }
+  function writeJson(key, value){
+    var txt = '';
+    try { txt = JSON.stringify(value); } catch(e) { return; }
+    try { rawStore().setItem(key, txt); } catch(e) {}
+    try { localStorage.setItem(key, txt); } catch(e) {}
+  }
+  function readString(key){
+    try { return rawStore().getItem(key) || localStorage.getItem(key) || ''; } catch(e) { return ''; }
+  }
+  function writeString(key, value){
+    if (!value) return;
+    try { rawStore().setItem(key, value); } catch(e) {}
+    try { localStorage.setItem(key, value); } catch(e) {}
+  }
+  async function blobGet(key){
+    try { if (window._monoIdbBlobGet) return await window._monoIdbBlobGet(key); } catch(e) {}
+    return '';
+  }
+  async function blobSet(key, value){
+    try { if (window._monoIdbBlobSet && value) await window._monoIdbBlobSet(key, value); } catch(e) {}
+  }
+  function normalizeProfileDirect(p){
+    try { return monoNormalizeUserProfile(p || {}); }
+    catch(e) {
+      var src = p || {};
+      return {
+        name: String(src.name || '用户'), bio: String(src.bio || ''), gender: String(src.gender || ''), avatar: String(src.avatar || ''),
+        momentsNickname: String(src.momentsNickname || src.name || '用户'), momentsSignature: String(src.momentsSignature || ''), momentsBanner: String(src.momentsBanner || ''),
+        momentsFollowersCustom: src.momentsFollowersCustom == null ? '' : String(src.momentsFollowersCustom),
+        momentsFollowingCustom: src.momentsFollowingCustom == null ? '' : String(src.momentsFollowingCustom)
+      };
+    }
+  }
+  function profileTextOnly(p){
+    var n = normalizeProfileDirect(p || {});
+    return {
+      name: n.name, bio: n.bio, gender: n.gender, avatar: '',
+      momentsNickname: n.momentsNickname || '', momentsSignature: n.momentsSignature || '', momentsBanner: n.momentsBanner || '',
+      momentsFollowersCustom: n.momentsFollowersCustom == null ? '' : n.momentsFollowersCustom,
+      momentsFollowingCustom: n.momentsFollowingCustom == null ? '' : n.momentsFollowingCustom
+    };
+  }
+  async function saveProfileDirect(profile){
+    var n = normalizeProfileDirect(profile || (typeof userProfile !== 'undefined' ? userProfile : {}));
+    try { userProfile = Object.assign({}, n); } catch(e) {}
+    writeJson('mono_user_profile', Object.assign({}, profileTextOnly(n), { avatar: isDataImage(n.avatar) ? n.avatar : '' }));
+    writeJson(PROFILE_KEY, { version: 4, updatedAt: Date.now(), profile: profileTextOnly(n), avatar: isDataImage(n.avatar) ? n.avatar : '' });
+    if (isDataImage(n.avatar)) {
+      writeString(AVATAR_KEY, n.avatar);
+      await blobSet('user_avatar', n.avatar);
+    }
+    try { if (typeof monoRefreshUserIdentityUi === 'function') monoRefreshUserIdentityUi(); } catch(e) {}
+    return n;
+  }
+  async function restoreProfileDirect(){
+    var current = (typeof userProfile !== 'undefined' && userProfile) ? userProfile : {};
+    var rawProfile = readJson('mono_user_profile', {});
+    var snap = readJson(PROFILE_KEY, null);
+    var stableProfile = snap && snap.profile ? snap.profile : {};
+    var base = Object.assign({}, current || {});
+    // raw / stable 里的非空字段覆盖默认值，避免启动时默认“用户”把真实资料冲掉
+    [rawProfile, stableProfile].forEach(function(src){
+      src = src || {};
+      Object.keys(src).forEach(function(k){
+        if (k === 'avatar') return;
+        var v = src[k];
+        if (v == null) return;
+        if (typeof v === 'string' && !v.trim()) return;
+        base[k] = v;
+      });
+    });
+    var av = '';
+    try { av = await blobGet('user_avatar'); } catch(e) {}
+    if (!isDataImage(av)) av = readString(AVATAR_KEY) || (snap && snap.avatar) || (rawProfile && rawProfile.avatar) || (current && current.avatar) || '';
+    if (isDataImage(av)) base.avatar = av;
+    var n = normalizeProfileDirect(base);
+    try { userProfile = Object.assign({}, n); } catch(e) {}
+    await saveProfileDirect(n);
+    try { var a = document.getElementById('profileAvatarPreview'); if (a && isDataImage(n.avatar)) a.src = n.avatar; } catch(e) {}
+    try { var b = document.getElementById('profilePreviewAvatar'); if (b && isDataImage(n.avatar)) b.src = n.avatar; } catch(e) {}
+  }
+  function normalizeMaskDirect(m){
+    try { return monoNormalizeUserMask(m || {}); }
+    catch(e) { return Object.assign({ id: 'mask_' + Date.now(), name: '未命名面具', avatar: '', bio: '', personaSpec: '', hasCustomAvatar: false }, m || {}); }
+  }
+  async function saveMasksDirect(list){
+    var masks = Array.isArray(list) ? list : ((typeof userMasks !== 'undefined' && Array.isArray(userMasks)) ? userMasks : []);
+    var full = [];
+    for (var i = 0; i < masks.length; i++) {
+      var m = normalizeMaskDirect(masks[i]);
+      if (m && m.id && isDataImage(m.avatar)) {
+        m.hasCustomAvatar = true;
+        try { await blobSet((typeof monoUserMaskAvatarBlobKey === 'function') ? monoUserMaskAvatarBlobKey(m.id) : ('user_mask_avatar_' + m.id), m.avatar); } catch(e) {}
+      }
+      full.push(m);
+    }
+    try { userMasks = full; } catch(e) {}
+    var slim = full.map(function(m){
+      var x = Object.assign({}, m);
+      if (x.hasCustomAvatar && isDataImage(x.avatar)) x.avatar = '';
+      return x;
+    });
+    writeJson('mono_user_masks', slim);
+    writeJson('mono_user_masks_backup_v11', slim);
+    writeJson(MASKS_KEY, { version: 4, updatedAt: Date.now(), masks: full });
+    try { if (typeof monoRefreshUserIdentityUi === 'function') monoRefreshUserIdentityUi(); } catch(e) {}
+    return full;
+  }
+  async function restoreMasksDirect(){
+    var current = (typeof userMasks !== 'undefined' && Array.isArray(userMasks)) ? userMasks : [];
+    var raw = readJson('mono_user_masks', []);
+    var backup = readJson('mono_user_masks_backup_v11', []);
+    var snap = readJson(MASKS_KEY, null);
+    var all = [];
+    [current, raw, backup, (snap && Array.isArray(snap.masks) ? snap.masks : [])].forEach(function(arr){
+      if (Array.isArray(arr)) arr.forEach(function(m){ if (m && m.id) all.push(m); });
+    });
+    var byId = {};
+    all.forEach(function(m){
+      var id = String(m.id || '');
+      if (!id) return;
+      byId[id] = Object.assign({}, byId[id] || {}, m);
+    });
+    var ids = Object.keys(byId);
+    var out = [];
+    for (var i = 0; i < ids.length; i++) {
+      var id = ids[i];
+      var m = normalizeMaskDirect(byId[id]);
+      var key = (typeof monoUserMaskAvatarBlobKey === 'function') ? monoUserMaskAvatarBlobKey(m.id) : ('user_mask_avatar_' + m.id);
+      var av = await blobGet(key);
+      if (!isDataImage(av) && isDataImage(byId[id].avatar)) av = byId[id].avatar;
+      if (isDataImage(av)) { m.avatar = av; m.hasCustomAvatar = true; }
+      out.push(m);
+    }
+    if (out.length || all.length) await saveMasksDirect(out);
+  }
+  // 直接包住真实函数名，而不是只改 window 属性。
+  try {
+    var _oldPersistDirect = monoPersistUserProfile;
+    monoPersistUserProfile = async function(profile, opts){
+      var res = await _oldPersistDirect.apply(this, arguments);
+      try { await saveProfileDirect(res || profile || userProfile || {}); } catch(e) {}
+      return res;
+    };
+    window.monoPersistUserProfile = monoPersistUserProfile;
+  } catch(e) {}
+  try {
+    var _oldSaveMasksDirect = monoSaveUserMasks;
+    monoSaveUserMasks = function(nextMasks){
+      var r = _oldSaveMasksDirect.apply(this, arguments);
+      saveMasksDirect((typeof userMasks !== 'undefined' && Array.isArray(userMasks)) ? userMasks : nextMasks).catch(function(){});
+      return r;
+    };
+    window.monoSaveUserMasks = monoSaveUserMasks;
+  } catch(e) {}
+  function runRestore(){ restoreProfileDirect().then(restoreMasksDirect).catch(function(){}); }
+  if (window._monoDBReady) runRestore();
+  else {
+    window._monoBootFns = window._monoBootFns || [];
+    window._monoBootFns.push(runRestore);
+  }
+  setTimeout(runRestore, 0);
+  setTimeout(runRestore, 700);
+  setTimeout(runRestore, 2200);
+  window.monoForceRestoreUserIdentityV4 = runRestore;
+})();
+
 </script>
 
 </html>

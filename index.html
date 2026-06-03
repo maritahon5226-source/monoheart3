@@ -46182,9 +46182,8 @@ ${monoOneShotChatInstruction()}${_monoOneShotStickerPack.prompt || ''}${monoBuil
           }
         }
         if (userMsgCount > 0 && userMsgCount - lastAutoUserMsgCountEnd >= interval) {
-          if (!monoOneShotChatEnabled() && typeof monoAuxFeaturesEnabled === 'function' && monoAuxFeaturesEnabled()) {
-            generateAutoSummary(p, false).catch(e => console.warn('[AutoSummary] error:', e));
-          }
+          // 自动核心记忆总结不应被“一次聊天包/副API开关”拦截；只要角色开启并达到轮数就触发。
+          generateAutoSummary(p, false).catch(e => console.warn('[AutoSummary] error:', e));
         }
       }
     } catch(asErr) { console.warn('[AutoSummary] hook error:', asErr); }
@@ -98013,8 +98012,9 @@ executeClearChatHistory = function() {
 
 generateAutoSummary = async function(p, isManual, opts) {
   opts = opts || {};
-  if (!p || !_hasUsableApiConfig(apiConfig)) {
-    if (isManual) alert('请先配置 API 才能生成总结。');
+  const summaryApi = (typeof monoGetApiForFeature === 'function') ? monoGetApiForFeature('summary') : apiConfig;
+  if (!p || !_hasUsableApiConfig(summaryApi)) {
+    if (isManual) alert('请先配置 API 或总结功能 API，才能生成总结。');
     return;
   }
   window._monoAutoSummaryLocks = window._monoAutoSummaryLocks || {};
@@ -98135,10 +98135,10 @@ generateAutoSummary = async function(p, isManual, opts) {
       + '6. 重点保留：重要事件、情感变化、达成的约定、关键转折点\n'
       + '7. 已有历史总结里涉及的内容一律不重复，只聚焦这批新增内容\n'
       + '8. 只输出总结正文，不要任何标题、说明或解释文字';
-    const resp = await fetch(apiConfig.url.replace(/\/$/, '') + '/chat/completions', {
+    const resp = await fetch(summaryApi.url.replace(/\/$/, '') + '/chat/completions', {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + apiConfig.key, 'Content-Type': 'application/json' },
-      body: JSON.stringify(_applyApiModel({ messages: [{ role: 'user', content: summaryPrompt }], max_tokens: msgCount > 60 ? 1000 : msgCount > 30 ? 700 : 500, temperature: 0.55 }, apiConfig.model))
+      headers: { 'Authorization': 'Bearer ' + summaryApi.key, 'Content-Type': 'application/json' },
+      body: JSON.stringify(_applyApiModel({ messages: [{ role: 'user', content: summaryPrompt }], max_tokens: msgCount > 60 ? 1000 : msgCount > 30 ? 700 : 500, temperature: 0.55 }, summaryApi.model))
     });
     if (!resp.ok) throw new Error('API Error ' + resp.status);
     const data = await resp.json();
@@ -110550,6 +110550,43 @@ body.mono-fwd-modal-open {
 })();
 </script>
 
+
+
+<!-- MONO HOTFIX: Auto Core Memory Summary trigger restoration -->
+<script id="mono-auto-core-memory-summary-hotfix">
+(function(){
+  'use strict';
+  function userCount(p){
+    try { return (Array.isArray(p && p.history) ? p.history : []).filter(function(m){ return m && m.role === 'user'; }).length; }
+    catch(e){ return 0; }
+  }
+  function lastAutoEnd(p){
+    var items = Array.isArray(p && p.memoryCore) ? p.memoryCore : [];
+    for (var i = items.length - 1; i >= 0; i--) {
+      var it = items[i];
+      if (!it || typeof it !== 'object' || !it.auto) continue;
+      var n = parseInt(it._userMsgCountEnd, 10);
+      if (Number.isFinite(n)) return Math.max(0, n);
+    }
+    return 0;
+  }
+  window.monoCheckAndRunAutoCoreSummary = function(persona){
+    try {
+      var p = persona || (typeof currentId !== 'undefined' && Array.isArray(window.personas || personas) ? (window.personas || personas).find(function(x){ return String(x.id) === String(currentId); }) : null);
+      if (!p || !p.autoSummary) return false;
+      var interval = parseInt(p.autoSummaryInterval, 10);
+      if (!Number.isFinite(interval) || interval <= 0) interval = 20;
+      var count = userCount(p);
+      var end = lastAutoEnd(p);
+      if (count > 0 && count - end >= interval && typeof window.generateAutoSummary === 'function') {
+        window.generateAutoSummary(p, false).catch(function(e){ console.warn('[AutoCoreSummary hotfix] error:', e); });
+        return true;
+      }
+    } catch(e) { console.warn('[AutoCoreSummary hotfix] check failed:', e); }
+    return false;
+  };
+})();
+</script>
 </body>
 
 <!-- MONO FINAL FIX: Sticker library dialogs are not covered; use a real top-layer modal and direct button routing -->
@@ -111158,6 +111195,296 @@ body.mono-fwd-modal-open {
   setTimeout(runRestore, 700);
   setTimeout(runRestore, 2200);
   window.monoForceRestoreUserIdentityV4 = runRestore;
+})();
+
+
+/* === USER PROFILE + USER MASK FINAL PERSISTENCE FIX V6 ===
+   Purpose:
+   1) Default user profile text + avatar survives closing/reopening the page.
+   2) Every user mask text + avatar survives closing/reopening the page.
+   3) Avoid data loss caused by later functions saving mono_user_profile without avatar
+      or mono_user_masks with avatar removed.
+   4) Keep user profile and masks shared across multi-world mode. */
+(function(){
+  if (window.__monoUserIdentityFinalPersistenceV6) return;
+  window.__monoUserIdentityFinalPersistenceV6 = true;
+
+  var PROFILE_SNAPSHOT_KEY = 'mono_user_profile_final_snapshot_v6';
+  var PROFILE_AVATAR_KEY   = 'mono_user_profile_final_avatar_v6';
+  var MASKS_SNAPSHOT_KEY   = 'mono_user_masks_final_snapshot_v6';
+  var MASK_AVATAR_PREFIX   = 'mono_user_mask_final_avatar_v6_';
+
+  function rawLS(){ return window._monoRawLocalStorage || window.localStorage; }
+  function isDataImage(v){ return typeof v === 'string' && v.indexOf('data:image') === 0 && v.length > 50; }
+  function looksDefaultAvatar(v){ return isDataImage(v) && v.indexOf('<svg') !== -1 && v.length < 2500; }
+  function safeJsonParse(str, fallback){ try { return JSON.parse(str || ''); } catch(e) { return fallback; } }
+  function readRaw(key){
+    try { var v = rawLS().getItem(key); if (v != null) return v; } catch(e) {}
+    try { var v2 = localStorage.getItem(key); if (v2 != null) return v2; } catch(e) {}
+    return null;
+  }
+  function writeRaw(key, value){
+    if (value == null) return;
+    try { rawLS().setItem(key, value); } catch(e) {}
+    try { localStorage.setItem(key, value); } catch(e) {}
+  }
+  function readJson(key, fallback){ return safeJsonParse(readRaw(key), fallback); }
+  function writeJson(key, obj){ try { writeRaw(key, JSON.stringify(obj)); } catch(e) {} }
+  async function blobGet(key){ try { if (window._monoIdbBlobGet) return await window._monoIdbBlobGet(key); } catch(e) {} return ''; }
+  async function blobSet(key, value){ try { if (window._monoIdbBlobSet && value) await window._monoIdbBlobSet(key, value); } catch(e) {} }
+  function maskAvatarKey(id){
+    try { if (typeof monoUserMaskAvatarBlobKey === 'function') return monoUserMaskAvatarBlobKey(id); } catch(e) {}
+    return 'user_mask_avatar_' + String(id || '');
+  }
+  function normalizeProfileV6(profile){
+    try { return monoNormalizeUserProfile(profile || {}); }
+    catch(e) {
+      var p = profile || {};
+      return {
+        name: String(p.name || '用户'),
+        bio: String(p.bio || ''),
+        gender: String(p.gender || ''),
+        avatar: String(p.avatar || ''),
+        momentsNickname: String(p.momentsNickname || p.name || '用户'),
+        momentsSignature: String(p.momentsSignature || ''),
+        momentsBanner: String(p.momentsBanner || ''),
+        momentsFollowersCustom: p.momentsFollowersCustom == null ? '' : String(p.momentsFollowersCustom),
+        momentsFollowingCustom: p.momentsFollowingCustom == null ? '' : String(p.momentsFollowingCustom)
+      };
+    }
+  }
+  function profileText(profile){
+    var p = normalizeProfileV6(profile || {});
+    return {
+      name: String(p.name || '用户'),
+      bio: String(p.bio || ''),
+      gender: String(p.gender || ''),
+      avatar: '',
+      momentsNickname: String(p.momentsNickname || p.name || '用户'),
+      momentsSignature: String(p.momentsSignature || ''),
+      momentsBanner: String(p.momentsBanner || ''),
+      momentsFollowersCustom: p.momentsFollowersCustom == null ? '' : String(p.momentsFollowersCustom),
+      momentsFollowingCustom: p.momentsFollowingCustom == null ? '' : String(p.momentsFollowingCustom)
+    };
+  }
+  function nonEmptyMerge(base, src){
+    base = base || {}; src = src || {};
+    Object.keys(src).forEach(function(k){
+      if (k === 'avatar') return;
+      var v = src[k];
+      if (v == null) return;
+      if (typeof v === 'string' && !v.trim()) return;
+      base[k] = v;
+    });
+    return base;
+  }
+  async function saveProfileV6(profile, opts){
+    opts = opts || {};
+    var current = (typeof userProfile !== 'undefined' && userProfile) ? userProfile : {};
+    var p = normalizeProfileV6(Object.assign({}, current || {}, profile || {}));
+    var avatar = isDataImage(p.avatar) ? p.avatar : '';
+    if (!avatar || looksDefaultAvatar(avatar)) {
+      var oldAvatar = await blobGet('user_avatar');
+      if (isDataImage(oldAvatar) && !looksDefaultAvatar(oldAvatar)) avatar = oldAvatar;
+      if (!avatar) {
+        var storedAvatar = readRaw(PROFILE_AVATAR_KEY);
+        if (isDataImage(storedAvatar) && !looksDefaultAvatar(storedAvatar)) avatar = storedAvatar;
+      }
+    }
+    if (isDataImage(avatar)) p.avatar = avatar;
+    try { userProfile = Object.assign({}, p); } catch(e) {}
+
+    var text = profileText(p);
+    writeJson('mono_user_profile', Object.assign({}, text, { avatar: isDataImage(avatar) ? avatar : '' }));
+    writeJson(PROFILE_SNAPSHOT_KEY, { version: 6, updatedAt: Date.now(), profile: text, hasAvatar: isDataImage(avatar) });
+    if (isDataImage(avatar)) {
+      writeRaw(PROFILE_AVATAR_KEY, avatar);
+      await blobSet('user_avatar', avatar);
+    }
+    if (opts.refresh !== false) {
+      try { if (typeof monoRefreshUserIdentityUi === 'function') monoRefreshUserIdentityUi(); } catch(e) {}
+      try { if (typeof updateProfilePreview === 'function') updateProfilePreview(); } catch(e) {}
+    }
+    return p;
+  }
+  async function restoreProfileV6(){
+    var current = (typeof userProfile !== 'undefined' && userProfile) ? userProfile : {};
+    var raw = readJson('mono_user_profile', {});
+    var snap = readJson(PROFILE_SNAPSHOT_KEY, null);
+    var oldStable = readJson('mono_user_profile_stable_v1', null);
+    var oldDirect = readJson('mono_user_profile_direct_snapshot_v5', null);
+    var merged = Object.assign({}, current || {});
+    [raw, oldStable && oldStable.profile, oldDirect && oldDirect.profile, snap && snap.profile].forEach(function(src){ nonEmptyMerge(merged, src); });
+
+    var av = await blobGet('user_avatar');
+    if (!isDataImage(av) || looksDefaultAvatar(av)) av = readRaw(PROFILE_AVATAR_KEY) || '';
+    if (!isDataImage(av) && raw && isDataImage(raw.avatar)) av = raw.avatar;
+    if (!isDataImage(av) && current && isDataImage(current.avatar) && !looksDefaultAvatar(current.avatar)) av = current.avatar;
+    if (isDataImage(av)) merged.avatar = av;
+
+    var p = normalizeProfileV6(merged);
+    try { userProfile = Object.assign({}, p); } catch(e) {}
+    await saveProfileV6(p, { refresh: false });
+    try { var a = document.getElementById('profileAvatarPreview'); if (a && isDataImage(p.avatar)) a.src = p.avatar; } catch(e) {}
+    try { var b = document.getElementById('profilePreviewAvatar'); if (b && isDataImage(p.avatar)) b.src = p.avatar; } catch(e) {}
+    try { if (typeof monoRefreshUserIdentityUi === 'function') monoRefreshUserIdentityUi(); } catch(e) {}
+  }
+
+  function normalizeMaskV6(mask){
+    try { return monoNormalizeUserMask(mask || {}); }
+    catch(e) {
+      var m = mask || {};
+      return {
+        id: String(m.id || ('mask_' + Date.now() + '_' + Math.random().toString(36).slice(2,7))),
+        name: String(m.name || '未命名面具'),
+        avatar: String(m.avatar || ''),
+        hasCustomAvatar: !!m.hasCustomAvatar,
+        bio: String(m.bio || ''),
+        personaSpec: String(m.personaSpec || ''),
+        createdAt: Number(m.createdAt) || Date.now(),
+        updatedAt: Number(m.updatedAt) || Date.now()
+      };
+    }
+  }
+  function mergeMasksById(arrays){
+    var byId = {}, order = [];
+    arrays.forEach(function(arr){
+      if (!Array.isArray(arr)) return;
+      arr.forEach(function(item){
+        if (!item || !item.id) return;
+        var id = String(item.id);
+        if (!byId[id]) order.push(id);
+        byId[id] = Object.assign({}, byId[id] || {}, item);
+      });
+    });
+    return order.map(function(id){ return byId[id]; });
+  }
+  async function saveMasksV6(list, opts){
+    opts = opts || {};
+    var source = Array.isArray(list) ? list : ((typeof userMasks !== 'undefined' && Array.isArray(userMasks)) ? userMasks : []);
+    var full = [];
+    for (var i = 0; i < source.length; i++) {
+      var m = normalizeMaskV6(source[i]);
+      if (!m.id) continue;
+      if (isDataImage(m.avatar) && !looksDefaultAvatar(m.avatar)) {
+        m.hasCustomAvatar = true;
+        await blobSet(maskAvatarKey(m.id), m.avatar);
+        writeRaw(MASK_AVATAR_PREFIX + m.id, m.avatar);
+      } else {
+        var savedAv = await blobGet(maskAvatarKey(m.id));
+        if (!isDataImage(savedAv) || looksDefaultAvatar(savedAv)) savedAv = readRaw(MASK_AVATAR_PREFIX + m.id) || '';
+        if (isDataImage(savedAv) && !looksDefaultAvatar(savedAv)) {
+          m.avatar = savedAv;
+          m.hasCustomAvatar = true;
+          await blobSet(maskAvatarKey(m.id), savedAv);
+        }
+      }
+      full.push(m);
+    }
+    try { userMasks = full; } catch(e) {}
+    var slim = full.map(function(m){
+      var x = Object.assign({}, m);
+      if (isDataImage(x.avatar)) x.avatar = '';
+      return x;
+    });
+    writeJson('mono_user_masks', slim);
+    writeJson('mono_user_masks_backup_v11', slim);
+    writeJson(MASKS_SNAPSHOT_KEY, { version: 6, updatedAt: Date.now(), masks: slim });
+    if (opts.refresh !== false) {
+      try { if (typeof monoRefreshUserIdentityUi === 'function') monoRefreshUserIdentityUi(); } catch(e) {}
+      try { if (typeof monoRenderUserMasksManager === 'function') monoRenderUserMasksManager(); } catch(e) {}
+    }
+    return full;
+  }
+  async function restoreMasksV6(){
+    var current = (typeof userMasks !== 'undefined' && Array.isArray(userMasks)) ? userMasks : [];
+    var raw = readJson('mono_user_masks', []);
+    var backup = readJson('mono_user_masks_backup_v11', []);
+    var snap = readJson(MASKS_SNAPSHOT_KEY, null);
+    var oldSnap = readJson('mono_user_masks_stable_v1', null);
+    var merged = mergeMasksById([current, raw, backup, oldSnap && oldSnap.masks, snap && snap.masks]);
+    var out = [];
+    for (var i = 0; i < merged.length; i++) {
+      var m = normalizeMaskV6(merged[i]);
+      if (!m.id) continue;
+      var av = await blobGet(maskAvatarKey(m.id));
+      if (!isDataImage(av) || looksDefaultAvatar(av)) av = readRaw(MASK_AVATAR_PREFIX + m.id) || '';
+      if (!isDataImage(av) && isDataImage(merged[i].avatar)) av = merged[i].avatar;
+      if (isDataImage(av) && !looksDefaultAvatar(av)) {
+        m.avatar = av;
+        m.hasCustomAvatar = true;
+        await blobSet(maskAvatarKey(m.id), av);
+        writeRaw(MASK_AVATAR_PREFIX + m.id, av);
+      }
+      out.push(m);
+    }
+    if (out.length || merged.length) await saveMasksV6(out, { refresh: false });
+    try { if (typeof monoRefreshUserIdentityUi === 'function') monoRefreshUserIdentityUi(); } catch(e) {}
+    try { if (typeof monoRenderUserMasksManager === 'function') monoRenderUserMasksManager(); } catch(e) {}
+  }
+
+  try {
+    var oldPersist = monoPersistUserProfile;
+    if (typeof oldPersist === 'function' && !oldPersist.__monoFinalPersistenceV6) {
+      monoPersistUserProfile = async function(profile, opts){
+        var res = await oldPersist.apply(this, arguments);
+        try { await saveProfileV6(res || profile || ((typeof userProfile !== 'undefined') ? userProfile : {}), opts || {}); } catch(e) {}
+        return res;
+      };
+      monoPersistUserProfile.__monoFinalPersistenceV6 = true;
+      window.monoPersistUserProfile = monoPersistUserProfile;
+    }
+  } catch(e) {}
+  try {
+    var oldSaveMasks = monoSaveUserMasks;
+    if (typeof oldSaveMasks === 'function' && !oldSaveMasks.__monoFinalPersistenceV6) {
+      monoSaveUserMasks = function(nextMasks){
+        var r = oldSaveMasks.apply(this, arguments);
+        try { saveMasksV6((typeof userMasks !== 'undefined' && Array.isArray(userMasks)) ? userMasks : nextMasks).catch(function(){}); } catch(e) {}
+        return r;
+      };
+      monoSaveUserMasks.__monoFinalPersistenceV6 = true;
+      window.monoSaveUserMasks = monoSaveUserMasks;
+    }
+  } catch(e) {}
+  try {
+    var oldPreviewAvatar = previewProfileAvatar;
+    if (typeof oldPreviewAvatar === 'function' && !oldPreviewAvatar.__monoFinalPersistenceV6) {
+      previewProfileAvatar = function(input){
+        var r = oldPreviewAvatar.apply(this, arguments);
+        setTimeout(function(){ try { saveProfileV6((typeof userProfile !== 'undefined') ? userProfile : {}).catch(function(){}); } catch(e) {} }, 450);
+        return r;
+      };
+      previewProfileAvatar.__monoFinalPersistenceV6 = true;
+      window.previewProfileAvatar = previewProfileAvatar;
+    }
+  } catch(e) {}
+  try {
+    var oldMaskAvatarInput = monoHandleUserMaskAvatarInput;
+    if (typeof oldMaskAvatarInput === 'function' && !oldMaskAvatarInput.__monoFinalPersistenceV6) {
+      monoHandleUserMaskAvatarInput = function(input){
+        var r = oldMaskAvatarInput.apply(this, arguments);
+        setTimeout(function(){ try { saveMasksV6().catch(function(){}); } catch(e) {} }, 650);
+        return r;
+      };
+      monoHandleUserMaskAvatarInput.__monoFinalPersistenceV6 = true;
+      window.monoHandleUserMaskAvatarInput = monoHandleUserMaskAvatarInput;
+    }
+  } catch(e) {}
+
+  async function restoreAllV6(){
+    try { await restoreProfileV6(); } catch(e) {}
+    try { await restoreMasksV6(); } catch(e) {}
+  }
+  if (window._monoDBReady) restoreAllV6();
+  else {
+    window._monoBootFns = window._monoBootFns || [];
+    window._monoBootFns.push(restoreAllV6);
+  }
+  setTimeout(restoreAllV6, 0);
+  setTimeout(restoreAllV6, 800);
+  setTimeout(restoreAllV6, 2400);
+  window.monoForceRestoreUserIdentityV6 = restoreAllV6;
 })();
 
 </script>

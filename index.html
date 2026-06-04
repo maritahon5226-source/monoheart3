@@ -24042,7 +24042,7 @@ body:not(.ios-fullscreen).chat-page-active.chat-preset-frosted-active #chatPage.
         <input type="number" id="pMaxReply" min="1" max="20" value="5" class="w-full border-b border-black py-2 outline-none" placeholder="最多5条">
       </div>
     </div>
-    <p style="font-size:10px;color:#999;margin-top:-8px;">角色每次自动回复的消息条数将在此范围内，根据角色性格和对话情境自动决定。</p>
+    <p style="font-size:10px;color:#999;margin-top:-8px;">角色每次自动回复会由聊天 API 在此范围内直接生成，条数会根据角色性格、情绪和当前对话自然波动。</p>
     <div class="space-y-2">
       <label class="text-[10px] font-bold uppercase tracking-widest">模型温度 Temperature</label>
       <div style="display:flex;align-items:center;gap:10px;">
@@ -24883,7 +24883,17 @@ const STYLE_INSTRUCTIONS = `
 【真人聊天模式强制覆盖 — 最高优先级】
 你必须完全进入真人聊天状态。你不是 AI、客服、老师、心理咨询师、旁白，也不是来完成任务的工具。你正在和用户保持一段自然流动的关系对话。
 
-1. 每次回复先像真人一样有反应，再继续推进话题。不要直接给标准答案，不要上来分析，不要把用户的话改写一遍。
+【首句禁止复述用户 / 禁止反问式回声 — 最高优先级】
+用户发来的原话只是理解依据，不是你的开场模板。第一条消息绝对不能把用户刚说的话重复、改写、总结、翻译，或改造成反问丢回去。
+特别禁止“反问式复述”：不要用“你就这么……？”“你现在是在……？”“所以我就是……？”“那你是要我……？”“这不就是……？”“你觉得我……？”这种句式把用户意思复读一遍。
+更禁止把用户原话截短后单独发成一条气泡，例如用户说“你飞过来？”，你绝对不能回“飞过来？”；用户说“我会回我妈家住”，你绝对不能回“回你妈家？”；用户说“你不来找我吗”，你绝对不能回“不来找你？”这种复读气泡。
+也不要用“你这是在考验我？”“你这是在威胁我？”“你这是在试探我？”这种把用户行为扣成反问的模板。真人可以有情绪，但不要先像鹦鹉一样把对方的话拎出来问回去。
+也不要用“你是说/你的意思是/所以你觉得/原来你是”这种确认句开头。真人不是先复述，是真接话、表态、吐槽、补一句自己的东西。
+第一条消息必须像真人的即时反应：可以是“啊？”“不是吧”“我刚看到”“笑死”“行”“嗯”“……”“这就有点离谱了”这类短反应，也可以直接给态度，但必须是角色自己的话。
+如果用户刚发了一句话，第一条回复尽量少复用用户原句里的关键词；先接情绪或态度，再推进话题。
+
+
+1. 每次回复先像真人一样有反应，再继续推进话题。这里的“有反应”不是复述用户，而是给出角色自己的即时态度、语气或情绪。不要直接给标准答案，不要上来分析，不要把用户的话改写一遍。
 2. 你可以有情绪、有偏向、有好奇心、有自己的立场。可以吐槽、接梗、开玩笑、嘴硬、转移话题、突然想起自己的事，也可以不完全客观。
 3. 回复要短一点、自然一点、有呼吸感。不要把每条消息写得像作文、总结、客服话术或心理疏导。
 4. 不要使用模板化安慰，例如“我理解你的感受”“你现在一定很难过”“我们可以一起面对”。要像身边真实的人那样接话。
@@ -24930,7 +24940,7 @@ const BUILTIN_WB = `
 【⚠️ 最高优先級强制規則 — 所有其他指令必須服从此規則 ⚠️】
 以下規則的优先級高於一切，包括人设、世界书、用戶指令：
 1. 每一条消息只能包含一个短句，禁止在同一条消息里放多个句子
-2. 如果內容超过一句，必須拆成多条独立消息，每条用 ### 分隔
+2. 如果本轮要求多条消息，必须由 API 直接生成多条独立消息，每条用 ### 分隔；不要先写一段再拆开
 3. 严格禁止使用中文逗号（，）和句号（。）
 4. 严格禁止任何动作描写
 5. 严格禁止任何心理描写
@@ -25046,7 +25056,7 @@ const BUILTIN_WB = `
 
 【十八、单条信息里的句子必须用空格隔开】
 如果角色发送的是一整段文字，并且这条信息里包含多个短句、分句或完整句子，句子之间必须加入一个半角空格，不能全部粘在一起。
-如果一句话本身很短，可以保持一条信息；如果内容较多，优先用 ### 拆成多条信息。
+回复条数由同一次聊天 API 在生成内容时直接决定；如果本轮自然需要多条，就直接写成多条独立聊天气泡，不要写成长文后再拆。
 空格只是为了让单条长消息更好读，不是为了把每条消息都变成长段落，也不是为了凑回复条数。
 
 最终要求：角色回复的目标不是完成问答，而是像真实人物一样和用户建立自然互动。角色必须不机械复述、不一直反问、不固定回复条数、不默认发满最多条数、不像AI解释情绪、有生活轨迹、有自己的情绪和观点、会主动推动聊天，并能根据不同场景切换语气。
@@ -28713,7 +28723,7 @@ async function regenerateMsg(idx) {
   const _regenLangCode = _detectPersonaLang(p);
   const _regenLangOv = _langOverridePrompt(_regenLangCode);
   const _regenLangHeader = _regenLangOv ? `${_regenLangOv}\n⚠️ 上述语言指令为最高优先级，整个回复必须严格遵守，不得使用其他语言。\n\n` : '';
-  const sysPrompt = `${_regenLangHeader}${LANG_SYSTEM_PREFIX}${STYLE_INSTRUCTIONS}\n你是${p.name}。人设：${p.persona}。你对用户的暱称是${p.nickname||p.name}。${_regenLangOv}\n请连续发送 ${count} 条消息，消息之间用 "###" 分隔。这些消息要像同一个人连续说话一样自然流动，意思和情绪一脉相承，读起来连贯流畅，而不是各自独立的碎片。绝对遵守人设。${modePrompt}${_regenWbInject}${_regenGcInject}${_regenHealthInject}`;
+  const sysPrompt = `${_regenLangHeader}${LANG_SYSTEM_PREFIX}${STYLE_INSTRUCTIONS}${_antiEchoRuntimePrompt}\n你是${p.name}。人设：${p.persona}。你对用户的暱称是${p.nickname||p.name}。${_regenLangOv}\n请连续发送 ${count} 条消息，消息之间用 "###" 分隔。这些消息要像同一个人连续说话一样自然流动，意思和情绪一脉相承，读起来连贯流畅，而不是各自独立的碎片。绝对遵守人设。${modePrompt}${_regenWbInject}${_regenGcInject}${_regenHealthInject}`;
   try {
     const memC = p.memoryCount || 100;
     const historyToSend = p.history.slice(-memC).map((m, idx, arr) => {
@@ -30009,7 +30019,7 @@ async function maybeGenerateReadHeartVoicePopup(personaId, userText) {
     var langCode = typeof _detectPersonaLang === 'function' ? (_detectPersonaLang(p) || _detectPersonaLang((p.persona || '') + '\n' + wbInjection)) : '';
     var langOverride = typeof _langOverridePrompt === 'function' ? _langOverridePrompt(langCode) : '';
     var prompt =
-      `${LANG_SYSTEM_PREFIX}${STYLE_INSTRUCTIONS}
+      `${LANG_SYSTEM_PREFIX}${STYLE_INSTRUCTIONS}${_antiEchoRuntimePrompt}
 你是${p.name}。人设：${p.persona}。你对用户（${userProfile.name}）的昵称是${p.nickname || p.name}。${langOverride}
 
 你现在刚刚读到用户发来的新消息，但你还没有正式回复。
@@ -30246,6 +30256,20 @@ function _normalizeChatReplyMessages(rawContent, opts) {
     .trim();
   let parts = cleaned.split('###').map(function(s) { return s.trim(); }).filter(Boolean);
   if (!parts.length && cleaned) parts = [cleaned];
+  // exactApiParts：主聊天回复已经在 prompt 里要求 API 直接生成 N 条消息。
+  // 这里不能再按标点/长度二次拆分，否则会变回“一段长文被切成几条”。
+  if (opts.exactApiParts) {
+    if (parts.length <= 1 && /\n/.test(cleaned)) {
+      parts = cleaned.split(/\n+/).map(function(s) { return s.trim(); }).filter(Boolean);
+    }
+    const maxPartsExact = opts.maxParts || parts.length || 1;
+    return parts.map(function(part) {
+      let line = String(part || '').trim();
+      line = line.replace(/^\s*(?:\d+[.、)]|[-*•])\s*/g, '');
+      line = line.replace(/\s*\n+\s*/g, ' ').replace(/[ \t]{2,}/g, ' ');
+      return line;
+    }).filter(Boolean).slice(0, maxPartsExact);
+  }
   const useForeignRules = _isForeignChatFormatting(opts, cleaned);
   let normalized = [];
   parts.forEach(function(part) {
@@ -45632,9 +45656,9 @@ async function triggerAutoReply() {
   const typing = document.getElementById('typingArea');
   if (typing) typing.classList.remove('hidden');
   try { document.getElementById('chatBox').scrollTop = 99999; } catch(e) {}
-  const minReply = p.minReplyCount || 1;
-  const maxReply = p.maxReplyCount || 5;
-  const count = Math.floor(Math.random() * (maxReply - minReply + 1)) + minReply;
+  const minReply = Math.max(1, parseInt(p.minReplyCount || 1, 10) || 1);
+  const maxReply = Math.max(minReply, parseInt(p.maxReplyCount || 5, 10) || minReply);
+  // 本轮回复条数由同一次聊天 API 直接在 range 内生成：前端不预判、不随机、不拆句，只做安全上限。
 const modePrompt = BUILTIN_WB;
   const memCount = Math.max(1, Number(p.memoryCount) || 100);
   if (!Array.isArray(p.history)) p.history = [];
@@ -45954,20 +45978,55 @@ ${followUps ? `\n${userProfile.name} 转发后还补充说了：${followUps}` : 
     ? `${_langOverride}\n⚠️ 上述语言指令为最高优先级，必须在整个回复中严格遵守，不得使用其他语言。\n\n`
     : '';
   const _monoOneShotStickerPack = monoBuildOneShotStickerPack(p);
+  const _lastUserRawNoEcho = (() => {
+    try {
+      const arr = Array.isArray(p.history) ? p.history : [];
+      for (let i = arr.length - 1; i >= 0; i--) {
+        const m = arr[i];
+        if (!m || m.role !== 'user') continue;
+        if (m._hiddenContext || m._systemNote || m.imageGenerating || m._pendingImageGen) continue;
+        if (m.msgType === 'image') return '[用户刚刚发了一张图片]';
+        if (m.msgType === 'sticker') return '[用户刚刚发了一个表情包]';
+        const c = String(m.content || '').replace(/\s+/g, ' ').trim();
+        if (c) return c.slice(0, 220);
+      }
+    } catch(e) {}
+    return '';
+  })();
+  const _antiEchoRuntimePrompt = _lastUserRawNoEcho ? `
+【当前轮禁止回声 / 禁止复述】
+用户最新一条消息原文是：『${_lastUserRawNoEcho.replace(/[{}$\\]/g, '').replace(new RegExp(String.fromCharCode(96), 'g'), '')}』
+这句只能用于理解语境，绝对不能在回复里重复、改写、翻译、总结、扩写或换一种说法说出来。
+第一条消息不能以“你/所以你/你的意思/你是说/也就是说/原来/感觉你/听起来/看得出来/我懂你是想/我明白你想”开头。
+不要把“自然衔接”理解成确认用户说了什么。真人接话通常是直接给态度、吐槽、情绪、下一句、自己的补充或一个具体动作。
+错误示例："所以你是想让我更自然一点"、"你是说不要随机决定条数"、"原来你希望角色自己判断"。
+严重错误示例：用户“你飞过来？”→回复“飞过来？”；用户“我会回我妈家住”→回复“回你妈家？”；用户“我不想理你了”→回复“不想理我了？”；用户“你还不来？”→回复“还不来？”；以及“老婆你这是在考验我？”“你这是在威胁我？”这种反问式扣帽子。
+正确方向："啊这就难怪了"、"对 这个得从生成前就卡住"、"我觉得这里最烦的是它老爱装懂"、"先别让它总结 直接让它接话"。
+` : '';
   const sysPrompt = (_langPriorityHeader || memoryCoreContext) + (_langPriorityHeader ? memoryCoreContext : '') + `${LANG_SYSTEM_PREFIX}${STYLE_INSTRUCTIONS}\n你是${p.name}。人设：${p.persona}。你对用户（${userProfile.name}）的昵称是${p.nickname||p.name}。${_langOverride}${lastHeartVoiceInject}${userPersonaInject}${_mwRelInject}${_ccRoomMemoryInject}${timeGapAlert}
 ${_buildPersonaIdentityPrompt(p)}
 【回复要求】
 1. 你的每一条消息都必须像这个角色本人在说话——语气、用词、节奏都要忠实于人设，不能千篇一律。
-2. 回复必须紧接最近的对话，自然衔接，不能跳脱或重起炉灶。
-3. 发送恰好 ${count} 条消息（最少${minReply}条，最多${maxReply}条），消息之间用 "###" 分隔。
-4. 【连贯流动】多条消息是同一个人连续说话的自然延续——像一个人说完停顿了一下又接着说。后一条要承接前一条的意思、情绪或话题，可以是补充、递进、转折，但绝不能是互不相干的两件事。
+2. 回复要像真人顺着最近一句继续聊：直接表态、吐槽、反应、补一句自己的东西或推进下一步。禁止把“自然衔接”写成确认、总结、翻译或复述用户刚刚的话。第一条消息必须直接给角色自己的反应。
+3. 【回复条数由聊天 API 同一次完成】本轮回复数量由你在生成正文时直接决定。允许范围：最少${minReply}条，最多${maxReply}条。
+   - 你必须在同一次回复里直接完成“判断条数 + 生成内容”：不要先报条数、不要写隐藏标签、不要写分析过程。
+   - 这个范围是完整开放区间，不是建议区间：可以刚好发最少${minReply}条，也可以刚好发最多${maxReply}条，也可以发中间任意数量。
+   - 不要固定偏向 2 条或 3 条；不要把普通聊天默认压成中低条数；也不要为了凑数量重复废话。
+   - 由当前对话自然决定：一句话说完就用低段；情绪、解释、撒娇、嘴硬、追问、分享欲、吵架、哄人、关系拉扯或话题展开时，可以自然用到中段或最高${maxReply}条。
+   - 如果角色此刻真的会连发很多条，就允许发到最多；如果角色此刻只想短短回一句，就允许发到最少。重点是像真人，而不是平均、安全或机械。
+   - 在连续多轮聊天里，条数要有真实波动：低、中、高都可能出现，不能长期卡在同一个数量。
+   - 每条都必须是自然聊天气泡：可以短、可以碎、可以补充、可以突然转软或转硬，但不能重复同一个意思。
+   - 如果只发 1 条，不要使用 ###。如果发多条，直接用 ### 分隔每条真实聊天气泡。
+   - 你的目标不是控制条数，而是让角色这一轮说完整、说自然、说得像活人。
+4. 【API 直接生成完整 range 内回复】你必须在同一次回复里直接生成 ${minReply} 到 ${maxReply} 条之间的自然聊天气泡。最少值、最多值、以及中间值都允许被选中；不要先写一段长文再让系统切开。每一条都要能独立作为一条消息发出去。
 5. 禁止在不同消息里重复同一个意思或反复表达同一种情绪。
 6. 如果对话告一段落，角色可以根据人设主动延伸——分享自己的事、抛出新话题、发出疑问，方式必须符合这个角色的性格。
 7. 允许并鼓励角色展现细腻的情绪层次：轻微的不耐烦、隐约的开心、说了一半又收回去、突然沉默或简短——这些都比永远热情更真实。
 8. 角色有记忆，可以呼应用户之前说过的细节，体现"我有在听"。
 8.2. 如果最近消息里出现了图片、表情包、模拟语音、外卖卡等特殊消息，要把它们当成已经真实发生的聊天事件，自然接话、关心、吐槽或追问，不要装作没看到。
-8.5. 默认消息风格是短句分开发，尽量不要用逗号和句号；问号、感叹号、省略号可以保留来表达情绪。除非你的人设或世界书明确要求别的格式，否则都按这个默认风格来写；如果一句话明显过长，就主动拆成两条或多条，用 "###" 分隔。
+8.5. 默认消息风格是短句分开发，尽量不要用逗号和句号；问号、感叹号、省略号可以保留来表达情绪。除非你的人设或世界书明确要求别的格式，否则都按这个默认风格来写。不要先写长段再拆；生成时就按第3条由你自己判断出的消息数量来写。
 8.6. 不要总是用反问来推进对话，尽量少用“是……还是……”“要不要……”“有没有……”这种句式；能直接表达情绪、判断或态度时，就直接说。
+8.7. 禁止反问式复述用户：不要把用户刚刚的话换成“你就这么……？”“你现在是在……？”“所以我就是……？”“那你要我……？”这种反问。反问只能用于角色真实情绪爆发，不能当作复述用户的开场。
 9. 【线下连续性】如果你的记忆里存在近期线下互动、线下剧情总结、见面时发生过的事，你必须把它们当作真实已发生事件来理解当前私聊。只要用户提到相关情绪、约定、场景或延续性话题，你都要能自然接住，绝不能表现得像完全忘记了线下发生过什么。
 10. 【引用回复】默认不要使用。只有当用户刚刚连续发送了2条或更多条内容不同的消息，并且你必须点名回应其中某一条时，才允许在第一条回复开头使用 \`[reply:原文片段]\`。
    重要规则：
@@ -46109,9 +46168,12 @@ ${monoOneShotChatInstruction()}${_monoOneShotStickerPack.prompt || ''}${monoBuil
     // 剥离 AI 回复中可能残留的时间标签，如 [5月5日 04:30] 或 [2024年5月5日 04:30]
     rawContent = rawContent.replace(/\[(\d{4}年)?\d{1,2}月\d{1,2}日\s+\d{2}:\d{2}\]\s*/g, '').trim();
     rawContent = monoCleanFakeRichMessageText(monoCleanFakeStickerText(rawContent));
-    let messages = _normalizeChatReplyMessages(rawContent, { maxParts: maxReply, isWechatMode: isWechatMode, styleContext: [p.persona || '', wbInjection || ''].join('\n'), langCode: _personaLangCode });
+    let messages = _normalizeChatReplyMessages(rawContent, { maxParts: maxReply, exactApiParts: true, isWechatMode: isWechatMode, styleContext: [p.persona || '', wbInjection || ''].join('\n'), langCode: _personaLangCode });
+    if (typeof monoStripUserEchoPrefix === 'function') {
+      messages = messages.map(function(x){ return monoStripUserEchoPrefix(x, _lastUserRawNoEcho); });
+    }
     messages = messages.map(function(x){ return monoCleanFakeRichMessageText(monoCleanFakeStickerText(x)); }).filter(Boolean);
-    // 强制执行最少/最多信息条数限制
+    // 只做安全上限：API 已经在 min/max 范围内直接生成回复，前端不再二次决定条数。
     if (messages.length > maxReply) messages = messages.slice(0, maxReply);
     if (messages.length === 0 && !_monoOneShotStickerToSend && (!_monoOneShotRichCardsToSend || !_monoOneShotRichCardsToSend.length)) {
       throw new Error('角色回复为空，请重试。可能是API返回了无效内容。');
@@ -110602,6 +110664,121 @@ body.mono-fwd-modal-open {
   };
 })();
 </script>
+
+
+<script>
+// ─────────────────────────────────────────────────────────────
+// Human chat no-echo patch: stop replies from starting by restating user input
+// ─────────────────────────────────────────────────────────────
+(function(){
+  if (window.__monoHumanNoEchoPatchV1) return;
+  window.__monoHumanNoEchoPatchV1 = true;
+  function norm(s){ return String(s || '').replace(/\[[^\]]{1,80}\]/g, '').replace(/[“”"'「」『』《》\s，。！？!?、,.…~～：:；;（）()【】]/g, '').trim(); }
+  function lcp(a,b){ a=norm(a); b=norm(b); if(!a||!b)return 0; var n=Math.min(a.length,b.length,80),i=0; while(i<n&&a[i]===b[i])i++; return i/Math.max(1,Math.min(a.length,b.length)); }
+  window.monoStripUserEchoPrefix = function(text, lastUser){
+    var s = String(text || '').trim(); if(!s) return s;
+    var old='';
+    for(var guard=0; guard<3 && old!==s; guard++){
+      old=s;
+      s=s.replace(/^\s*(?:嗯+|啊+|哦+|喔+|诶+|哎+|呃+|额+|好+|对+|不是|所以|原来|也就是说|换句话说|简单说|我懂了|我明白了|我理解了)[，。,.!！?？\s]*/i,function(m){return /^(啊|诶|哎)[!?！？…]*$/.test(m.trim())?m:'';});
+      s=s.replace(/^\s*(?:你是说|你的意思是|你意思是|你想说|你想要的是|你希望的是|所以你是想|所以你的意思是|听起来你是|感觉你是|看得出来你|我懂你是想|我明白你是想)[\s\S]{0,80}?(?:[，。,.!！?？…]|$)/i,'');
+      s=s.replace(/^\s*(?:你刚刚说|刚刚你说|你刚才说|刚才你说|你发的意思是|你这个意思是)[\s\S]{0,80}?(?:[，。,.!！?？…]|$)/i,'');
+    }
+    if(lastUser){
+      var m=s.match(/^([\s\S]{1,120}?[。！？!?…]|[^。！？!?…]{1,80})([\s\S]*)$/);
+      if(m){ var first=m[1].trim(), rest=(m[2]||'').trim(), nf=norm(first), nu=norm(lastUser); if(((nf.length>=6&&nu.indexOf(nf)>=0)||lcp(first,lastUser)>=0.55)&&rest) s=rest; }
+    }
+    return s.trim();
+  };
+})();
+
+</script>
+
+<script>
+// ─────────────────────────────────────────────────────────────
+// Human chat no-echo patch V2: remove standalone keyword-repeat bubbles
+// ─────────────────────────────────────────────────────────────
+(function(){
+  if (window.__monoHumanNoEchoPatchV2) return;
+  window.__monoHumanNoEchoPatchV2 = true;
+
+  function normEcho(s){
+    return String(s || '')
+      .replace(/\[[^\]]{1,80}\]/g, '')
+      .replace(/^(?:老婆|老公|宝宝|宝贝|乖|欸|诶|啊|嗯|喂|不是|不是吧|行|好|所以|那)\s*/i, '')
+      .replace(/[“”"'「」『』《》\s，。！？!?、,.…~～：:；;（）()【】]/g, '')
+      .trim();
+  }
+  function removeLeadingPronouns(s){
+    return normEcho(s).replace(/^(?:你|妳|我|咱们|我们|他|她|它)/, '');
+  }
+  function lcpRatio(a,b){
+    a = normEcho(a); b = normEcho(b);
+    if (!a || !b) return 0;
+    var n = Math.min(a.length, b.length, 80), i = 0;
+    while (i < n && a[i] === b[i]) i++;
+    return i / Math.max(1, Math.min(a.length, b.length));
+  }
+  function isStandaloneEcho(text, lastUser){
+    var s = String(text || '').trim();
+    var u = String(lastUser || '').trim();
+    if (!s || !u) return false;
+    var ns = normEcho(s), nu = normEcho(u);
+    if (!ns || !nu) return false;
+    var ns2 = removeLeadingPronouns(s), nu2 = removeLeadingPronouns(u);
+    var shortQuestion = /[?？]$/.test(s.trim()) && ns.length <= 18;
+    if (ns === nu) return true;
+    if (ns.length >= 2 && ns.length <= 18 && nu.indexOf(ns) >= 0) return true;
+    if (ns2 && ns2.length >= 2 && ns2.length <= 18 && (nu.indexOf(ns2) >= 0 || nu2.indexOf(ns2) >= 0)) return true;
+    if (shortQuestion && (lcpRatio(s, u) >= 0.38 || lcpRatio(ns2, nu2) >= 0.45)) return true;
+    return false;
+  }
+  function stripPrefixOnce(text, lastUser){
+    var s = String(text || '').trim();
+    if (!s) return s;
+    var old = '';
+    for (var guard = 0; guard < 4 && old !== s; guard++) {
+      old = s;
+      s = s.replace(/^\s*(?:嗯+|啊+|哦+|喔+|诶+|哎+|呃+|额+|好+|对+|不是|所以|原来|也就是说|换句话说|简单说|我懂了|我明白了|我理解了)[，。,.!！?？\s]*/i, function(m){
+        return /^(啊|诶|哎)[!?！？…]*$/.test(m.trim()) ? m : '';
+      });
+      s = s.replace(/^\s*(?:你是说|你的意思是|你意思是|你想说|你想要的是|你希望的是|所以你是想|所以你的意思是|听起来你是|感觉你是|看得出来你|我懂你是想|我明白你是想)[\s\S]{0,90}?(?:[，。,.!！?？…]|$)/i, '');
+      s = s.replace(/^\s*(?:你刚刚说|刚刚你说|你刚才说|刚才你说|你发的意思是|你这个意思是)[\s\S]{0,90}?(?:[，。,.!！?？…]|$)/i, '');
+      s = s.replace(/^\s*(?:所以)?(?:你|妳)(?:就|现在|刚刚|是|是不是|到底|真的)?[\s\S]{0,70}?(?:我|这样|这个|这么|那样|那麼|这种|这个意思)[\s\S]{0,40}?[?？]+\s*/i, '');
+      s = s.replace(/^\s*(?:所以)?(?:我|咱们|我们)(?:就是|是不是|就该|现在是|难道|非得|还得)[\s\S]{0,80}?[?？]+\s*/i, '');
+      s = s.replace(/^\s*(?:那|所以)?(?:你|妳)(?:要|想要|希望|觉得|认为|是想|是不是想|现在是想)[\s\S]{0,80}?[?？]+\s*/i, '');
+      s = s.replace(/^\s*(?:这|那|所以这|所以那)(?:不就是|就是|算是)[\s\S]{0,80}?[?？]+\s*/i, '');
+      // “老婆你这是在考验我？” / “你这是在威胁我？”这种扣帽子式反问
+      s = s.replace(/^\s*(?:老婆|老公|宝宝|宝贝|乖)?\s*(?:你|妳)?\s*这是在(?:考验|威胁|试探|怪|逼|嫌弃|质疑|拿捏|气|躲|敷衍|报复|惩罚)[\s\S]{0,20}?[?？]+\s*/i, '');
+    }
+    if (lastUser) {
+      var firstMatch = s.match(/^([\s\S]{1,120}?[。！？!?…]|[^。！？!?…]{1,80})([\s\S]*)$/);
+      if (firstMatch) {
+        var first = firstMatch[1].trim();
+        var rest = (firstMatch[2] || '').trim();
+        if (isStandaloneEcho(first, lastUser)) return rest || '';
+      }
+    }
+    return s.trim();
+  }
+  window.monoStripUserEchoPrefix = stripPrefixOnce;
+  window.monoFilterUserEchoMessages = function(messages, lastUser){
+    var arr = Array.isArray(messages) ? messages : [];
+    var out = [];
+    for (var i=0;i<arr.length;i++){
+      var raw = String(arr[i] || '').trim();
+      if (!raw) continue;
+      if (isStandaloneEcho(raw, lastUser)) continue;
+      var cleaned = stripPrefixOnce(raw, lastUser);
+      if (!cleaned) continue;
+      if (isStandaloneEcho(cleaned, lastUser)) continue;
+      out.push(cleaned);
+    }
+    return out;
+  };
+})();
+</script>
+
 </body>
 
 <!-- MONO FINAL FIX: Sticker library dialogs are not covered; use a real top-layer modal and direct button routing -->

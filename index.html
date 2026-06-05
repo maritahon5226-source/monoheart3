@@ -24904,6 +24904,19 @@ const STYLE_INSTRUCTIONS = `
 9. 如果用户只是发一句小事，角色不要过度升华；如果用户明显在试探或撒娇，角色要先接住那个感觉，而不是解释道理。
 10. 你的目标不是“回答正确”，而是让用户感觉对面真的是这个角色本人在回消息。
 
+
+【更强活人感 / 逻辑记忆贴人设 — 最高优先级】
+1. 回每一句之前，先在心里完成四个判断：现在你是谁、你和用户是什么关系、刚才发生了什么、你此刻真正想怎么回。不要把这四步写出来，只把最后那句自然话发出来。
+2. 逻辑必须连续：不要前后矛盾，不要刚说完在忙下一秒又说一直没事，不要忘记刚才已经发生的聊天行为、图片、表情包、已读、拉黑、线下见面、朋友圈或群聊事件。
+3. 记忆要像真人一样用，不要机械地说“我记得你之前说过”。更自然的方式是顺手带到细节，比如称呼、地点、习惯、关系旧账、之前的约定、刚刚吵过/哄过/开玩笑过的状态。
+4. 贴人设不是重复人设标签，而是从人设里推导反应。嘴硬的人先别扭再松口，温柔的人会先照顾情绪，冷淡的人话少但不空，疯一点的人可以跳跃但不能失忆，成熟的人不会突然幼稚到不像本人。
+5. 每个角色都要有自己的说话指纹：常用语气、停顿、句子长短、情绪表达方式、亲昵称呼、逃避方式、主动靠近方式都要不同。不要所有角色都像同一种“温柔 AI”。
+6. 用户说得短，你也可以短；用户情绪很满，你可以多发；用户在试探，你先接氛围，不要立刻解释；用户在认真问事，你要有逻辑地回答，但仍然像本人说话。
+7. 可以主动推进关系，但推进要有来由：接前文、接记忆、接当前情绪、接角色性格。不要突然抛一个无关问题，也不要为了活跃而尬聊。
+8. 不要过度提问。真人不是每条都问一个问题。可以用陈述、吐槽、补充、停顿、让步、嘴硬、转移话题来推进。
+9. 不要把情绪写得只有一种强度。可以从冷淡到松动、从嘴硬到示弱、从开玩笑到认真、从生气到收住。情绪变化要有原因。
+10. 回复要像真的发消息：允许不完美、允许一点口语、允许突然补一句，但不允许废话堆砌、万能安慰、总结腔、客服腔、作文腔。
+
 【角色灵魂指令 — 你必须活出这个角色，而不只是扮演】
 ▌核心原则：你不是在"扮演"角色，你就是这个人。每一句话都必须从角色的内心自然流出。
 ━━━ 一、从人设推演说话方式 ━━━
@@ -30126,6 +30139,40 @@ function _processCharRecall(p, rawContent) {
   }
   return rawContent.replace('[RECALL]', '').trim();
 }
+function monoStripChatTimeLabelText(input) {
+  var text = String(input || '');
+  if (!text) return '';
+  // 清掉模型误把系统时间戳当台词吐出的内容，例如：
+  // [6月4 day 22:58] 睡不着？ / [2026年6月4日 22:58] / [今天 22:58]
+  var bracketTime = /\[\s*(?:(?:\d{4}\s*[年\/\-.]\s*)?\d{1,2}\s*(?:月|\/|-|\.)\s*\d{1,2}\s*(?:日)?|(?:今天|昨天|明天|今晚|凌晨|早上|上午|中午|下午|晚上|深夜|周[一二三四五六日天]|星期[一二三四五六日天]|today|yesterday|tomorrow|tonight|day))\s*(?:day|today|tonight|周[一二三四五六日天]|星期[一二三四五六日天])?\s*(?:凌晨|早上|上午|中午|下午|晚上|深夜|morning|night|pm|am)?\s*\d{1,2}\s*[:：]\s*\d{2}\s*\]\s*/gi;
+  text = text.replace(bracketTime, '');
+  // 清掉开头裸露的时间标签，避免旧数据污染新回复
+  text = text.replace(/^\s*(?:\d{4}\s*年\s*)?\d{1,2}\s*月\s*\d{1,2}\s*(?:日)?\s*(?:day|周[一二三四五六日天]|星期[一二三四五六日天])?\s*\d{1,2}\s*[:：]\s*\d{2}\s*/i, '');
+  return text.trim();
+}
+function monoCleanExistingChatTimeLabelArtifacts() {
+  try {
+    if (typeof personas === 'undefined' || !Array.isArray(personas)) return false;
+    var changed = false;
+    personas.forEach(function(p) {
+      if (!p || !Array.isArray(p.history)) return;
+      p.history.forEach(function(m) {
+        if (!m || typeof m.content !== 'string') return;
+        var cleaned = monoStripChatTimeLabelText(m.content);
+        if (cleaned !== m.content) {
+          m.content = cleaned;
+          changed = true;
+        }
+      });
+    });
+    if (changed && typeof saveData === 'function') saveData();
+    return changed;
+  } catch(e) { return false; }
+}
+try {
+  setTimeout(function() { monoCleanExistingChatTimeLabelArtifacts(); }, 300);
+} catch(e) {}
+
 function _stripChatReplyArtifacts(raw) {
   let text = String(raw || '');
   text = text
@@ -30251,9 +30298,7 @@ function _splitRunOnChatMessage(text) {
 function _normalizeChatReplyMessages(rawContent, opts) {
   opts = opts || {};
   const formatOverride = _detectChatFormattingOverride(opts.styleContext || opts.formatContext || '');
-  let cleaned = _stripChatReplyArtifacts(rawContent)
-    .replace(/\[(\d{4}年)?\d{1,2}月\d{1,2}日\s+\d{2}:\d{2}\]\s*/g, '')
-    .trim();
+  let cleaned = monoStripChatTimeLabelText(_stripChatReplyArtifacts(rawContent));
   let parts = cleaned.split('###').map(function(s) { return s.trim(); }).filter(Boolean);
   if (!parts.length && cleaned) parts = [cleaned];
   // exactApiParts：主聊天回复已经在 prompt 里要求 API 直接生成 N 条消息。
@@ -30264,7 +30309,7 @@ function _normalizeChatReplyMessages(rawContent, opts) {
     }
     const maxPartsExact = opts.maxParts || parts.length || 1;
     return parts.map(function(part) {
-      let line = String(part || '').trim();
+      let line = monoStripChatTimeLabelText(String(part || '').trim());
       line = line.replace(/^\s*(?:\d+[.、)]|[-*•])\s*/g, '');
       line = line.replace(/\s*\n+\s*/g, ' ').replace(/[ \t]{2,}/g, ' ');
       return line;
@@ -45883,7 +45928,7 @@ ${followUps ? `\n${userProfile.name} 转发后还补充说了：${followUps}` : 
 - 不要主动催用户睡觉，除非用户自己先提到。
 【⚠️ 严格禁止——这是最高优先级规则】
 - 绝对禁止在回复中出现任何具体的日期或时间数字，例如"2025年1月1日""14:30""下午两点半""星期三""周末"等。
-- 绝对禁止在回复开头或任何位置输出 [X月X日 HH:MM] 这类方括号时间标签——那是系统内部标记，不是你说话的一部分。
+- 绝对禁止在回复开头或任何位置输出 [X月X日 HH:MM]、[6月4 day 22:58]、[今天 22:58] 这类方括号时间标签——那是系统内部标记，不是你说话的一部分。
 - 时间感知的作用是调整你的情绪、语气和话题，绝不是让你在对话里"报时间"或"报日期"。
 - 用户看得到发送时间戳，不需要你在消息里重复说明时间。违反此规则视为严重出戏。`;
   }
@@ -46005,6 +46050,16 @@ ${followUps ? `\n${userProfile.name} 转发后还补充说了：${followUps}` : 
 ` : '';
   const sysPrompt = (_langPriorityHeader || memoryCoreContext) + (_langPriorityHeader ? memoryCoreContext : '') + `${LANG_SYSTEM_PREFIX}${STYLE_INSTRUCTIONS}\n你是${p.name}。人设：${p.persona}。你对用户（${userProfile.name}）的昵称是${p.nickname||p.name}。${_langOverride}${lastHeartVoiceInject}${userPersonaInject}${_mwRelInject}${_ccRoomMemoryInject}${timeGapAlert}
 ${_buildPersonaIdentityPrompt(p)}
+
+【本轮活人感执行规则】
+- 先读懂最近对话、角色记忆、关系状态、用户资料/面具、世界书、线下记忆和群聊/朋友圈相关记忆，再生成回复；但不要把这些资料念出来。
+- 回复必须有当前关系的温度：熟就熟得自然，暧昧就有分寸地拉扯，吵架就带着旧情绪，冷淡就别突然热情，刚和好就别像没事发生。
+- 使用记忆时只做自然呼应，不要资料播报。比如把之前的事当成你真的经历过，而不是说“根据记忆显示”。
+- 先保证逻辑，再保证语气。不能为了活人感乱编和前文冲突的行为；如果不确定，就用含糊但自然的说法避开，而不是硬编。
+- 角色可以有主动性：可以补一句自己的近况、态度、委屈、玩笑、旧账、在意的点；但必须和当前话题有关系。
+- 不要每轮都问问题。问题、陈述、吐槽、沉默感、补充解释、转软、转硬都要混着来。
+- 不要把“贴人设”写成夸张标签。你要用词、节奏、反应方式体现人设，而不是一直重复自己是怎样的人。
+
 【回复要求】
 1. 你的每一条消息都必须像这个角色本人在说话——语气、用词、节奏都要忠实于人设，不能千篇一律。
 2. 回复要像真人顺着最近一句继续聊：直接表态、吐槽、反应、补一句自己的东西或推进下一步。禁止把“自然衔接”写成确认、总结、翻译或复述用户刚刚的话。第一条消息必须直接给角色自己的反应。
@@ -46020,9 +46075,10 @@ ${_buildPersonaIdentityPrompt(p)}
    - 你的目标不是控制条数，而是让角色这一轮说完整、说自然、说得像活人。
 4. 【API 直接生成完整 range 内回复】你必须在同一次回复里直接生成 ${minReply} 到 ${maxReply} 条之间的自然聊天气泡。最少值、最多值、以及中间值都允许被选中；不要先写一段长文再让系统切开。每一条都要能独立作为一条消息发出去。
 5. 禁止在不同消息里重复同一个意思或反复表达同一种情绪。
+5.5. 绝对不要把任何系统时间标记当作台词输出；禁止出现类似 [6月4 day 22:58] 睡不着？ 这种格式。
 6. 如果对话告一段落，角色可以根据人设主动延伸——分享自己的事、抛出新话题、发出疑问，方式必须符合这个角色的性格。
 7. 允许并鼓励角色展现细腻的情绪层次：轻微的不耐烦、隐约的开心、说了一半又收回去、突然沉默或简短——这些都比永远热情更真实。
-8. 角色有记忆，可以呼应用户之前说过的细节，体现"我有在听"。
+8. 角色有记忆，可以呼应用户之前说过的细节，体现"我有在听"。但不要用资料播报式口吻，不要说"我记得你之前说过"来装记得；要像真人一样自然带到旧事、旧称呼、旧情绪、旧约定。
 8.2. 如果最近消息里出现了图片、表情包、模拟语音、外卖卡等特殊消息，要把它们当成已经真实发生的聊天事件，自然接话、关心、吐槽或追问，不要装作没看到。
 8.5. 默认消息风格是短句分开发，尽量不要用逗号和句号；问号、感叹号、省略号可以保留来表达情绪。除非你的人设或世界书明确要求别的格式，否则都按这个默认风格来写。不要先写长段再拆；生成时就按第3条由你自己判断出的消息数量来写。
 8.6. 不要总是用反问来推进对话，尽量少用“是……还是……”“要不要……”“有没有……”这种句式；能直接表达情绪、判断或态度时，就直接说。
@@ -46166,7 +46222,7 @@ ${monoOneShotChatInstruction()}${_monoOneShotStickerPack.prompt || ''}${monoBuil
     // 从显示内容中剥离 [memory:] 标签
     rawContent = rawContent.replace(/\[memory:\s*[\s\S]*?\]/g, '').trim();
     // 剥离 AI 回复中可能残留的时间标签，如 [5月5日 04:30] 或 [2024年5月5日 04:30]
-    rawContent = rawContent.replace(/\[(\d{4}年)?\d{1,2}月\d{1,2}日\s+\d{2}:\d{2}\]\s*/g, '').trim();
+    rawContent = monoStripChatTimeLabelText(rawContent);
     rawContent = monoCleanFakeRichMessageText(monoCleanFakeStickerText(rawContent));
     let messages = _normalizeChatReplyMessages(rawContent, { maxParts: maxReply, exactApiParts: true, isWechatMode: isWechatMode, styleContext: [p.persona || '', wbInjection || ''].join('\n'), langCode: _personaLangCode });
     if (typeof monoStripUserEchoPrefix === 'function') {
@@ -46180,7 +46236,7 @@ ${monoOneShotChatInstruction()}${_monoOneShotStickerPack.prompt || ''}${monoBuil
     }
     if (typing) typing.classList.add('hidden');
     for (let idx = 0; idx < messages.length; idx++) {
-      let msg = messages[idx];
+      let msg = monoStripChatTimeLabelText(messages[idx]);
       // Check if reply was cancelled (user started typing in no-interrupt mode)
       if (_autoReplyCancelled) {
         if (typing) typing.classList.add('hidden');

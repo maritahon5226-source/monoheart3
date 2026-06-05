@@ -110835,6 +110835,411 @@ body.mono-fwd-modal-open {
 })();
 </script>
 
+<script id="mono-offline-blackbox-context-sync-v20260605">
+(function(){
+  'use strict';
+  if (window.__monoOfflineBlackboxContextSync_v20260605) return;
+  window.__monoOfflineBlackboxContextSync_v20260605 = true;
+
+  function _mbbStr(v){ return (v == null ? '' : String(v)); }
+  function _mbbTrim(v, n){ v = _mbbStr(v).replace(/\s+/g,' ').trim(); return n && v.length > n ? v.slice(0,n) + '…' : v; }
+  function _mbbNowDate(){ var d = new Date(); return d.getFullYear() + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + String(d.getDate()).padStart(2,'0') + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); }
+  function _mbbPersonas(){ return Array.isArray(window.personas) ? window.personas : []; }
+  function _mbbPersonaById(id){ return _mbbPersonas().find(function(p){ return String(p && p.id) === String(id); }); }
+  function _mbbActiveApi(){
+    try { if (typeof window._getCurrentActiveApiConfig === 'function') { var a = window._getCurrentActiveApiConfig(); if (a && a.url && a.key && a.model) return a; } } catch(e) {}
+    return (window.apiConfig && window.apiConfig.url && window.apiConfig.key && window.apiConfig.model) ? window.apiConfig : null;
+  }
+  function _mbbMemoryBlock(p){
+    var out = [];
+    try {
+      if (typeof window.buildMemoryCoreContext === 'function') {
+        var b = window.buildMemoryCoreContext(p);
+        if (b) out.push(b);
+      }
+    } catch(e) {}
+    try {
+      var mem = Array.isArray(p.memoryCore) ? p.memoryCore.slice(-12) : [];
+      if (mem.length) {
+        out.push('【核心记忆】\n' + mem.map(function(m,i){
+          var c = typeof m === 'string' ? m : (m && (m.content || m.text || m.note || m.memory)) || '';
+          return (i+1) + '. ' + _mbbTrim(c, 220);
+        }).filter(Boolean).join('\n'));
+      }
+    } catch(e) {}
+    return out.filter(Boolean).join('\n\n');
+  }
+  function _mbbRelationBlock(p){
+    var out = [];
+    try { if (typeof window._mwBuildRelInjectForChar === 'function') { var r = window._mwBuildRelInjectForChar(p.name, null, false); if (r) out.push(r); } } catch(e) {}
+    try {
+      var fields = ['relationship','relation','relationshipStatus','relationStatus','relationLabel','userRelation','userRelationship','loverStatus','loveStatus','coupleStatus'];
+      fields.forEach(function(k){ if (p && p[k]) out.push(k + '：' + _mbbTrim(p[k], 250)); });
+    } catch(e) {}
+    return out.filter(Boolean).join('\n');
+  }
+  function _mbbRecentChatBlock(p, maxN){
+    try {
+      var h = Array.isArray(p.history) ? p.history : [];
+      return h.slice(-(maxN || 18)).filter(function(m){ return m && m.content && !m._hiddenContext && !m._transferContext; }).map(function(m){
+        var name = m.role === 'user' ? '用户' : (p.name || '角色');
+        return name + '：' + _mbbTrim(m.content, 260);
+      }).join('\n');
+    } catch(e) { return ''; }
+  }
+  function _mbbOfflineEntriesBlock(){
+    try {
+      if (!window._offlineState || !window._offlineState.sessions) return '';
+      var sid = window._offlineState.personaId;
+      var list = window._offlineState.sessions[String(sid)] || window._offlineState.sessions[sid] || [];
+      var idx = window._offlineState.currentSessionIdx || 0;
+      var session = list[idx] || (typeof window._getCurrentSession === 'function' ? window._getCurrentSession() : null);
+      if (!session || !Array.isArray(session.entries)) return '';
+      return session.entries.slice(-24).map(function(e){
+        var who = e.role === 'user' ? '用户' : '角色';
+        return who + '：' + _mbbTrim(e.content, 420);
+      }).join('\n');
+    } catch(e) { return ''; }
+  }
+  function _mbbContinuityBlock(p){
+    var parts = [];
+    parts.push('【线下连续性强制补丁】');
+    parts.push('你必须把“本次线下剧情全部内容”和最近一轮用户输入当成已经发生的事实，不允许重置场景。');
+    parts.push('如果前文已经点好、买好、拿到、走到、坐下、进门、亲过、吵过、答应过，下一轮必须承接这个状态，绝对不要重新从选择/下单/第一次见面开始。');
+    parts.push('如果用户说“送进来/拿过来/继续/然后呢”，意思是要求你承接上一句动作，不是重新询问或重新规划。');
+    parts.push('角色和用户的关系必须以人设、关系图、核心记忆、最近聊天为准；如果已经是恋人/情侣/老婆/老公/在一起，就不要写成“他不确定用户是不是喜欢他”。');
+    var rel = p ? _mbbRelationBlock(p) : '';
+    var mem = p ? _mbbMemoryBlock(p) : '';
+    var chat = p ? _mbbRecentChatBlock(p, 16) : '';
+    var off = _mbbOfflineEntriesBlock();
+    if (rel) parts.push('\n【关系状态参考】\n' + rel);
+    if (mem) parts.push('\n【角色核心记忆参考】\n' + mem);
+    if (chat) parts.push('\n【最近聊天室对话参考】\n' + chat);
+    if (off) parts.push('\n【当前线下会话最近内容，必须优先承接】\n' + off);
+    return parts.join('\n');
+  }
+
+  var _origOfflineApiRequest = window._offlineApiRequest;
+  if (typeof _origOfflineApiRequest === 'function' && !_origOfflineApiRequest.__monoContextWrapped) {
+    var _wrappedOfflineApiRequest = async function(api, messages, maxTokens, temperature){
+      try {
+        var joined = Array.isArray(messages) ? messages.map(function(m){ return _mbbStr(m && m.content).slice(0, 600); }).join('\n') : '';
+        var isOfflineGen = /线下|見面|见面|沉浸式|剧情|offline/i.test(joined) && window._offlineState && window._offlineState.personaId;
+        if (isOfflineGen && !/线下连续性强制补丁/.test(joined)) {
+          var p = _mbbPersonaById(window._offlineState.personaId);
+          var add = _mbbContinuityBlock(p);
+          if (Array.isArray(messages)) {
+            messages = messages.slice();
+            messages.unshift({ role: 'system', content: add });
+          }
+        }
+      } catch(e) {}
+      return _origOfflineApiRequest.call(this, api, messages, maxTokens, temperature);
+    };
+    _wrappedOfflineApiRequest.__monoContextWrapped = true;
+    window._offlineApiRequest = _wrappedOfflineApiRequest;
+  }
+
+  function _mbbParseLines(content){
+    var rawLines = _mbbStr(content).split(/\n+/).map(function(s){ return s.trim(); }).filter(Boolean);
+    var lines = [];
+    rawLines.forEach(function(raw){
+      var type = 'normal';
+      if (/收到[:：]/.test(raw)) type = 'received';
+      else if (/第一反应[:：]|反应[:：]/.test(raw)) type = 'reaction';
+      else if (/内心独白[:：]|內心独白[:：]|心声[:：]|想法[:：]/.test(raw)) type = 'note';
+      else if (/删除[:：]|刪除[:：]/.test(raw)) type = 'deleted';
+      else if (/犹豫[:：]|猶豫[:：]/.test(raw)) type = 'reaction';
+      else if (/实际送出[:：]|實際送出[:：]/.test(raw)) type = 'sent';
+      else if (/送出后感受[:：]|送出後感受[:：]|备注[:：]|備註[:：]/.test(raw)) type = 'note';
+      lines.push({ text: raw, type: type });
+    });
+    return lines;
+  }
+  async function _mbbCallText(api, messages, maxTokens, temperature){
+    if (!api || !api.url || !api.key || !api.model) return '';
+    if (typeof window._offlineApiRequest === 'function') {
+      try { var rr = await window._offlineApiRequest(api, messages, maxTokens || 900, temperature == null ? 0.85 : temperature); return (rr && rr.text) ? rr.text : ''; } catch(e) {}
+    }
+    var base = _mbbStr(api.url).replace(/\/+$/,'');
+    var endpoint = base.endsWith('/chat/completions') ? base : (base.endsWith('/v1') ? base + '/chat/completions' : base + '/v1/chat/completions');
+    try {
+      var res = await fetch(endpoint, { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + api.key }, body: JSON.stringify({ model: api.model, messages: messages, max_tokens: maxTokens || 900, temperature: temperature == null ? 0.85 : temperature }) });
+      if (!res.ok) return '';
+      var data = await res.json();
+      return data && data.choices && data.choices[0] && data.choices[0].message ? _mbbStr(data.choices[0].message.content).trim() : '';
+    } catch(e) { return ''; }
+  }
+  function _mbbBuildThoughtPrompt(p, userMsg, charReply){
+    var rel = _mbbRelationBlock(p);
+    var mem = _mbbMemoryBlock(p);
+    var recent = _mbbRecentChatBlock(p, 20);
+    var personaText = _mbbStr(p.persona || '') + (p.scenario ? '\n场景：' + p.scenario : '');
+    var name = p.name || '角色';
+    var system = [
+      '你是黑盒子心声记录系统。你不是重新编剧情，而是根据真实聊天上下文，生成角色「' + name + '」在刚才那一轮回复前后的内心活动。',
+      '必须读取人设、关系、核心记忆、最近聊天。心声必须贴角色本人，不能像通用模板。',
+      '如果关系/记忆/聊天已经表明角色和用户是恋人、情侣、夫妻、暧昧对象或已经在一起，绝对不能写成“他不确定用户是不是喜欢他”；要按既定关系去想，例如占有欲、依赖、吃醋、别扭、安心、怕失去、嘴硬等。',
+      '不要把用户当陌生人，不要忘记刚刚发生的上一句，不要无视角色最终已经发出的回复。',
+      '输出格式固定，每行一个条目：',
+      '[HH:MM:SS] 收到：「用户原话」',
+      '[HH:MM:SS] 第一反应：（角色瞬间真实反应）',
+      '[HH:MM:SS] 内心独白：（结合人设、关系、记忆的真实想法）',
+      '[HH:MM:SS] 删除：「打了又删的话」',
+      '[HH:MM:SS] 犹豫：（为什么这么回）',
+      '[HH:MM:SS] 实际送出：「必须和角色最终回复一致」',
+      '[HH:MM:SS] 送出后感受：（发出去后的真实心理）',
+      '[HH:MM:SS] 备注：（不会说出口的深层心思）',
+      '只输出记录本身，不要解释。'
+    ].join('\n');
+    var user = [
+      '【角色人设】\n' + personaText.slice(0, 5000),
+      rel ? '【关系状态/关系图】\n' + rel : '',
+      mem ? '【核心记忆】\n' + mem : '',
+      recent ? '【最近聊天上下文】\n' + recent : '',
+      '【本轮用户消息】\n' + userMsg,
+      '【本轮角色最终回复】\n' + charReply,
+      '请生成这一轮黑盒子心声记录。'
+    ].filter(Boolean).join('\n\n');
+    return [{ role:'system', content: system }, { role:'user', content: user }];
+  }
+
+  window.generateBbThoughtRecord = async function(charId, userMsg, charReply){
+    try {
+      if (typeof window.isBbRecordEnabled === 'function' && !window.isBbRecordEnabled(charId)) return;
+      var p = _mbbPersonaById(charId);
+      if (!p) return;
+      var api = _mbbActiveApi();
+      if (!api) return;
+      userMsg = _mbbStr(userMsg || '…').trim();
+      charReply = _mbbStr(charReply || '…').trim();
+      if (!charReply) return;
+      var all = (typeof window.getBbRecords === 'function') ? window.getBbRecords() : JSON.parse(localStorage.getItem('mono_blackbox_records') || '{}');
+      var arr = all[String(charId)] || all[charId] || [];
+      var dup = arr.some(function(r){ return _mbbTrim(r && r.userMsg, 180) === _mbbTrim(userMsg, 180) && _mbbTrim(r && (r.char回复 || r.charReply), 180) === _mbbTrim(charReply, 180); });
+      if (dup) return;
+      var content = await _mbbCallText(api, _mbbBuildThoughtPrompt(p, userMsg, charReply), 1100, 0.88);
+      if (!content) return;
+      var lines = _mbbParseLines(content);
+      if (!lines.length) return;
+      var record = { date: _mbbNowDate(), userMsg: userMsg, char回复: charReply, lines: lines, timestamp: Date.now(), autoSynced: true };
+      if (!all[String(charId)] && all[charId]) all[String(charId)] = all[charId];
+      if (!all[String(charId)]) all[String(charId)] = [];
+      all[String(charId)].push(record);
+      if (typeof window.saveBbRecords === 'function') window.saveBbRecords(all); else localStorage.setItem('mono_blackbox_records', JSON.stringify(all));
+      try { if (typeof window.renderBbRecords === 'function' && String(window.bbCurrentCharId) === String(charId)) window.renderBbRecords(); } catch(e) {}
+    } catch(e) { console.warn('[blackbox sync] failed', e); }
+  };
+
+  var _bbSyncLocks = {};
+  function _mbbFindLatestPair(p){
+    var h = Array.isArray(p.history) ? p.history : [];
+    var aiIdx = -1;
+    for (var i = h.length - 1; i >= 0; i--) {
+      if (h[i] && h[i].role === 'assistant' && _mbbStr(h[i].content).trim()) { aiIdx = i; break; }
+    }
+    if (aiIdx < 0) return null;
+    var user = '';
+    for (var j = aiIdx - 1; j >= 0; j--) {
+      if (h[j] && h[j].role === 'user' && _mbbStr(h[j].content).trim()) { user = h[j].content; break; }
+    }
+    return { idx: aiIdx, userMsg: user || '…', charReply: h[aiIdx].content || '' };
+  }
+  function _mbbAutoSyncBlackbox(){
+    try {
+      if (typeof window.isBbRecordEnabled !== 'function') return;
+      var lastMap = {};
+      try { lastMap = JSON.parse(localStorage.getItem('mono_blackbox_auto_last_sig_v4') || '{}') || {}; } catch(e) {}
+      _mbbPersonas().forEach(function(p){
+        if (!p || !p.id || !window.isBbRecordEnabled(p.id)) return;
+        if (_bbSyncLocks[String(p.id)]) return;
+        var pair = _mbbFindLatestPair(p);
+        if (!pair || !pair.charReply) return;
+        var sig = pair.idx + '|' + _mbbTrim(pair.userMsg, 80) + '|' + _mbbTrim(pair.charReply, 80);
+        if (lastMap[String(p.id)] === sig) return;
+        lastMap[String(p.id)] = sig;
+        localStorage.setItem('mono_blackbox_auto_last_sig_v4', JSON.stringify(lastMap));
+        _bbSyncLocks[String(p.id)] = true;
+        Promise.resolve(window.generateBbThoughtRecord(p.id, pair.userMsg, pair.charReply)).finally(function(){ delete _bbSyncLocks[String(p.id)]; });
+      });
+    } catch(e) {}
+  }
+  window.monoAutoSyncBlackboxThoughts = _mbbAutoSyncBlackbox;
+  if (typeof window.saveData === 'function' && !window.saveData.__monoBbSyncWrapped) {
+    var _origSaveData = window.saveData;
+    var _wrappedSaveData = function(){
+      var ret = _origSaveData.apply(this, arguments);
+      setTimeout(_mbbAutoSyncBlackbox, 350);
+      return ret;
+    };
+    _wrappedSaveData.__monoBbSyncWrapped = true;
+    window.saveData = _wrappedSaveData;
+  }
+  setInterval(_mbbAutoSyncBlackbox, 3500);
+  setTimeout(_mbbAutoSyncBlackbox, 1200);
+})();
+</script>
+
+
+
+<script id="mono-offline-if-blackbox-probability-v20260605">
+(function(){
+  'use strict';
+  if (window.__monoOfflineIfBlackboxProbability_v20260605) return;
+  window.__monoOfflineIfBlackboxProbability_v20260605 = true;
+
+  function s(v){ return v == null ? '' : String(v); }
+  function trim(v,n){ v = s(v).replace(/\s+/g,' ').trim(); return n && v.length > n ? v.slice(0,n)+'…' : v; }
+  function personas(){ return Array.isArray(window.personas) ? window.personas : []; }
+  function personaById(id){ return personas().find(function(p){ return String(p && p.id) === String(id); }); }
+  function isIfLineText(t){
+    t = s(t).toLowerCase();
+    return /(if\s*线|if线|if\s*line|if世界|平行线|平行世界|假设线|支线剧情|if剧情|if\s*剧情|if route|alternate route|parallel route)/i.test(t);
+  }
+  function recentOfflineEntries(){
+    try {
+      if (!window._offlineState || !window._offlineState.sessions) return '';
+      var sid = window._offlineState.personaId;
+      var list = window._offlineState.sessions[String(sid)] || window._offlineState.sessions[sid] || [];
+      var idx = window._offlineState.currentSessionIdx || 0;
+      var session = list[idx] || (typeof window._getCurrentSession === 'function' ? window._getCurrentSession() : null);
+      if (!session || !Array.isArray(session.entries)) return '';
+      return session.entries.slice(-24).map(function(e){
+        var who = e.role === 'user' ? '用户' : '角色';
+        return who + '：' + trim(e.content, 420);
+      }).join('\n');
+    } catch(e) { return ''; }
+  }
+  function memoryBlock(p){
+    var out = [];
+    try {
+      var mem = Array.isArray(p && p.memoryCore) ? p.memoryCore.slice(-10) : [];
+      if (mem.length) out.push(mem.map(function(m,i){
+        var c = typeof m === 'string' ? m : (m && (m.content || m.text || m.note || m.memory)) || '';
+        return (i+1) + '. ' + trim(c, 220);
+      }).filter(Boolean).join('\n'));
+    } catch(e) {}
+    return out.filter(Boolean).join('\n');
+  }
+  function relationBlock(p){
+    var out = [];
+    try { if (typeof window._mwBuildRelInjectForChar === 'function') { var r = window._mwBuildRelInjectForChar(p && p.name, null, false); if (r) out.push(r); } } catch(e) {}
+    try {
+      ['relationship','relation','relationshipStatus','relationStatus','relationLabel','userRelation','userRelationship','loverStatus','loveStatus','coupleStatus'].forEach(function(k){ if (p && p[k]) out.push(k + '：' + trim(p[k],250)); });
+    } catch(e) {}
+    return out.filter(Boolean).join('\n');
+  }
+  function recentChatBlock(p){
+    try {
+      var h = Array.isArray(p && p.history) ? p.history : [];
+      return h.slice(-14).filter(function(m){ return m && m.content && !m._hiddenContext && !m._transferContext; }).map(function(m){
+        var who = m.role === 'user' ? '用户' : ((p && p.name) || '角色');
+        return who + '：' + trim(m.content,240);
+      }).join('\n');
+    } catch(e) { return ''; }
+  }
+  function buildOfflineContinuityV2(p, joined){
+    var ifLine = isIfLineText(joined) || isIfLineText(recentOfflineEntries());
+    var parts = [];
+    parts.push('【线下连续性强制补丁 v2】');
+    parts.push('必须承认本次线下会话里上一句已经发生，不允许重置场景、动作、物品和地点。');
+    parts.push('如果前文已经点好、买好、拿到、走到、坐下、进门、答应过，下一轮必须直接承接，不要重新下单、重新选择、重新认识。');
+    parts.push('用户说“送进来/拿过来/继续/然后呢/就这样”时，是要求承接上一句动作，不是让你重新规划。');
+    if (ifLine) {
+      parts.push('【IF线隔离规则】当前是 IF线/支线/平行剧情时，不要注入现实聊天室最近聊天关系，不要把现实线的恋人/冷战/暧昧/已婚关系强行带进 IF 线。');
+      parts.push('IF线只使用：角色基础人设、当前IF线已经发生的内容、当前线下会话里的设定。关系进展必须以这条IF线内发生过的内容为准。');
+    } else {
+      parts.push('非IF线时，角色关系可以参考现实聊天关系、关系图和核心记忆；如果已经是恋人/情侣/老婆/老公/在一起，不要写成陌生或不确定喜欢。');
+      var rel = relationBlock(p), chat = recentChatBlock(p);
+      if (rel) parts.push('\n【现实关系状态参考】\n' + rel);
+      if (chat) parts.push('\n【最近聊天室对话参考】\n' + chat);
+    }
+    var mem = memoryBlock(p), off = recentOfflineEntries();
+    if (mem && !ifLine) parts.push('\n【核心记忆参考】\n' + mem);
+    if (off) parts.push('\n【当前线下会话最近内容，最高优先级】\n' + off);
+    return parts.join('\n');
+  }
+
+  var prevOfflineRequest = window._offlineApiRequest;
+  if (typeof prevOfflineRequest === 'function' && !prevOfflineRequest.__monoIfContextWrapped) {
+    var wrappedOffline = async function(api, messages, maxTokens, temperature){
+      try {
+        var joined = Array.isArray(messages) ? messages.map(function(m){ return s(m && m.content).slice(0,800); }).join('\n') : '';
+        var isOffline = /线下|見面|见面|沉浸式|剧情|offline|if线|if\s*line/i.test(joined) && window._offlineState && window._offlineState.personaId;
+        if (isOffline && !/线下连续性强制补丁/.test(joined)) {
+          var p = personaById(window._offlineState.personaId);
+          messages = Array.isArray(messages) ? messages.slice() : [];
+          messages.unshift({ role:'system', content: buildOfflineContinuityV2(p, joined) });
+        }
+      } catch(e) {}
+      return prevOfflineRequest.call(this, api, messages, maxTokens, temperature);
+    };
+    wrappedOffline.__monoIfContextWrapped = true;
+    window._offlineApiRequest = wrappedOffline;
+  }
+
+  function hash01(text){
+    text = s(text); var h = 2166136261;
+    for (var i=0;i<text.length;i++){ h ^= text.charCodeAt(i); h += (h<<1)+(h<<4)+(h<<7)+(h<<8)+(h<<24); }
+    return ((h >>> 0) % 10000) / 10000;
+  }
+  function blackboxScore(userMsg, charReply){
+    var t = (s(userMsg) + '\n' + s(charReply)).toLowerCase();
+    var score = 0;
+    if (/(喜欢|爱你|想你|在一起|恋人|老婆|老公|亲|抱|吻|吃醋|占有|分手|回家住|离开|不要你|冷战|生气|哭|难过|委屈|道歉|对不起|原谅|解释|误会|坦白|承认|约定|答应|害怕失去|威胁|考验|试探|求你|留下|别走|睡不着|想见|见面|送进来|蛋糕|礼物|惊喜)/i.test(t)) score += 2;
+    if (/[！？?!]{2,}|…|\.\.\./.test(t)) score += 1;
+    if (s(userMsg).length > 35 || s(charReply).length > 90) score += 1;
+    if (/(但是|可是|突然|其实|算了|没事|随便|你变了|你不懂|我以为|我怕|我只是|你知道吗)/i.test(t)) score += 1;
+    return score;
+  }
+  function shouldAutoBlackbox(charId, userMsg, charReply){
+    try {
+      if (window.__bbManualGenUntil && Date.now() < window.__bbManualGenUntil) return true;
+      var score = blackboxScore(userMsg, charReply);
+      var timeMap = JSON.parse(localStorage.getItem('mono_blackbox_auto_gate_time_v1') || '{}') || {};
+      var last = Number(timeMap[String(charId)] || 0);
+      // 中等偏高频率：不是每句都刷，但有情绪/关系进展时要比较容易出现心声。
+      // score >= 4：强进展/强情绪，几乎大概率生成；score 3：明显有内容，偏高概率；score 2：轻微推进，中等概率；普通闲聊保留小概率。
+      var cooldown = score >= 4 ? 16000 : score >= 3 ? 26000 : score >= 2 ? 42000 : 85000;
+      if (Date.now() - last < cooldown) return false;
+      var probability = score >= 4 ? 0.88 : score >= 3 ? 0.74 : score >= 2 ? 0.52 : 0.18;
+      var roll = Math.random ? Math.random() : hash01(String(Date.now()) + userMsg + charReply);
+      var ok = roll < probability;
+      if (ok) {
+        timeMap[String(charId)] = Date.now();
+        localStorage.setItem('mono_blackbox_auto_gate_time_v1', JSON.stringify(timeMap));
+      }
+      return ok;
+    } catch(e) { return false; }
+  }
+
+  if (typeof window.generateBbThoughtRecord === 'function' && !window.generateBbThoughtRecord.__monoProbabilityWrapped) {
+    var oldGenerateBbThoughtRecord = window.generateBbThoughtRecord;
+    var newGenerateBbThoughtRecord = async function(charId, userMsg, charReply){
+      if (!(window.__bbManualGenUntil && Date.now() < window.__bbManualGenUntil)) {
+        if (!shouldAutoBlackbox(charId, userMsg, charReply)) return;
+      }
+      return oldGenerateBbThoughtRecord.apply(this, arguments);
+    };
+    newGenerateBbThoughtRecord.__monoProbabilityWrapped = true;
+    window.generateBbThoughtRecord = newGenerateBbThoughtRecord;
+  }
+  ['refreshBbLatest','regenerateBbRecord'].forEach(function(fn){
+    try {
+      if (typeof window[fn] === 'function' && !window[fn].__monoManualFlagWrapped) {
+        var old = window[fn];
+        window[fn] = function(){
+          window.__bbManualGenUntil = Date.now() + 8000;
+          try { return old.apply(this, arguments); }
+          finally { setTimeout(function(){ if (window.__bbManualGenUntil && Date.now() > window.__bbManualGenUntil) window.__bbManualGenUntil = 0; }, 9000); }
+        };
+        window[fn].__monoManualFlagWrapped = true;
+      }
+    } catch(e) {}
+  });
+})();
+</script>
+
 </body>
 
 <!-- MONO FINAL FIX: Sticker library dialogs are not covered; use a real top-layer modal and direct button routing -->

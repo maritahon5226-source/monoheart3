@@ -29600,10 +29600,11 @@ function renderContactList() {
   list.innerHTML = personas.map(p => {
     const lastMsg = _getChatListPreviewText(p);
     const isPinned = (window._pinnedChatId == p.id);
+    const _pidJs = String(p.id == null ? '' : p.id).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
     if (_bulkSelectMode) {
       // 多选模式：显示勾选框
       const isChecked = _bulkSelected.has(String(p.id));
-      return `<div class="contact-item" style="position:relative;background:${isChecked ? '#f0f4ff' : '#fff'};" onclick="toggleBulkSelectPersona(${p.id})">
+      return `<div class="contact-item" style="position:relative;background:${isChecked ? '#f0f4ff' : '#fff'};" onclick="toggleBulkSelectPersona('${_pidJs}')">
         <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;cursor:pointer;">
           <div style="flex-shrink:0;width:22px;height:22px;border-radius:50%;border:2px solid ${isChecked ? '#1a1a1a' : '#ccc'};background:${isChecked ? '#1a1a1a' : '#fff'};display:flex;align-items:center;justify-content:center;transition:all 0.15s;">
             ${isChecked ? '<i class="fas fa-check" style="font-size:10px;color:#fff;"></i>' : ''}
@@ -29617,7 +29618,7 @@ function renderContactList() {
       </div>`;
     }
     return `<div class="contact-item ${currentId==p.id?'active':''}" style="position:relative;">
-      <div onclick="selectPersona(${p.id}); toggleContactsDrawer()" style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;cursor:pointer;">
+      <div onclick="selectPersona('${_pidJs}'); toggleContactsDrawer()" style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;cursor:pointer;">
         <img src="${p.avatar}" class="contact-avatar">
         <div class="flex-1 min-w-0">
           <div class="contact-name">${p.name}${isPinned ? ' <span style="font-size:9px;color:#7c83ff;font-weight:700;letter-spacing:1px;">置顶</span>' : ''}</div>

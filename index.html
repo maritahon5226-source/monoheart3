@@ -723,10 +723,11 @@ self.addEventListener('notificationclick', e => {
     'mono_custom_widgets_v1','mono_widget_photos_v1','mono_widget_multi_photos_v1',
     'mono_custom_image_widget_v1','mono_hidden_regular_widgets_v1',
     'mono_spotify_widget_text_v1','mono_multiworld_enabled','mono_multiworld_worlds',
-    'mono_multiworld_active','mono_voice_lang',
-    'mono_user_profile','mono_user_masks','mono_couple_space_v1'  // 用户资料、用户面具与情侣空间跨世界共享，永不加世界前缀
+    'mono_multiworld_active','mono_voice_lang'
+    // 注意：用户资料、用户面具、情侣空间、关系图都必须跟随当前世界隔离，
+    // 不允许放入共享 key，否则两个世界会共用同一份人物资料。
   ]);
-  const _MW_SHARED_PREFIXES = ['mono_icon_', 'mono_rel_map_', 'mono_mw_'];
+  const _MW_SHARED_PREFIXES = ['mono_icon_', 'mono_mw_'];
   function _mwTransformKey(key) {
     if (!key || !key.startsWith('mono_')) return key;
     if (_MW_SHARED_KEYS.has(key)) return key;

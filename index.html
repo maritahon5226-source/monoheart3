@@ -723,11 +723,10 @@ self.addEventListener('notificationclick', e => {
     'mono_custom_widgets_v1','mono_widget_photos_v1','mono_widget_multi_photos_v1',
     'mono_custom_image_widget_v1','mono_hidden_regular_widgets_v1',
     'mono_spotify_widget_text_v1','mono_multiworld_enabled','mono_multiworld_worlds',
-    'mono_multiworld_active','mono_voice_lang'
-    // 注意：用户资料、用户面具、情侣空间、关系图都必须跟随当前世界隔离，
-    // 不允许放入共享 key，否则两个世界会共用同一份人物资料。
+    'mono_multiworld_active','mono_voice_lang',
+    'mono_user_profile','mono_user_masks','mono_couple_space_v1'  // 用户资料、用户面具与情侣空间跨世界共享，永不加世界前缀
   ]);
-  const _MW_SHARED_PREFIXES = ['mono_icon_', 'mono_mw_'];
+  const _MW_SHARED_PREFIXES = ['mono_icon_', 'mono_rel_map_', 'mono_mw_'];
   function _mwTransformKey(key) {
     if (!key || !key.startsWith('mono_')) return key;
     if (_MW_SHARED_KEYS.has(key)) return key;
@@ -29626,7 +29625,7 @@ function renderContactList() {
           <div class="contact-sub">${lastMsg}</div>
         </div>
       </div>
-      <button onclick="openDirectChatRoom(${p.id})" title="直接进入聊天室" style="flex-shrink:0;background:none;border:1px solid #333;border-radius:12px;color:#aaa;font-size:9px;font-weight:700;letter-spacing:0.5px;padding:3px 8px;cursor:pointer;font-family:inherit;transition:all 0.15s;white-space:nowrap;" onmouseover="this.style.background='#1a1a1a';this.style.color='#fff'" onmouseout="this.style.background='none';this.style.color='#aaa'">进入</button>
+      <button onclick="openDirectChatRoom('${monoJsSingleQuote(p.id)}')" title="直接进入聊天室" style="flex-shrink:0;background:none;border:1px solid #333;border-radius:12px;color:#aaa;font-size:9px;font-weight:700;letter-spacing:0.5px;padding:3px 8px;cursor:pointer;font-family:inherit;transition:all 0.15s;white-space:nowrap;" onmouseover="this.style.background='#1a1a1a';this.style.color='#fff'" onmouseout="this.style.background='none';this.style.color='#aaa'">进入</button>
     </div>`;
   }).join('');
   try { renderRolePhoneDrawer(); } catch(e) {}
@@ -29675,6 +29674,13 @@ function openDirectChatRoom(id) {
     var chatBox = document.getElementById('chatBox');
     if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
   }, 100);
+}
+function monoJsSingleQuote(value) {
+  return String(value == null ? '' : value)
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/\r/g, '\\r')
+    .replace(/\n/g, '\\n');
 }
 function selectPersona(id) {
   currentId = id;
@@ -34828,8 +34834,12 @@ function mwGetCharOptions() {
   } catch(e) {}
   // 所有角色
   try {
-    const ps = JSON.parse(localStorage.getItem('mono_personas') || '[]');
-    ps.forEach(p => { if (p.name) chars.push({ id: p.id || p.name, name: p.name, avatar: p.avatar || '', isUser: false, userKind: 'persona' }); });
+    const ps = (typeof personas !== 'undefined' && Array.isArray(personas))
+      ? personas
+      : JSON.parse(localStorage.getItem('mono_personas') || '[]');
+    (ps || []).forEach(function(p) {
+      if (p && p.name) chars.push({ id: p.id || p.name, name: p.name, avatar: p.avatar || '', isUser: false, userKind: 'persona' });
+    });
   } catch(e) {}
   monoGetRoleNpcOptions().forEach(function(npcOpt) {
     if (!npcOpt || !npcOpt.name) return;
@@ -36162,7 +36172,7 @@ function _buildMomentsHome() {
   const personaChips = personas.map(function(p) {
     const meta = getMomentsProfileMeta('persona', p.id);
     const pStats = _getMomentsStats('persona', p.id);
-    return `<div class="moments-persona-chip" onclick="openMomentsProfile('persona', ${p.id})">
+    return `<div class="moments-persona-chip" onclick="openMomentsProfile('persona', '${monoJsSingleQuote(p.id)}')">
       <div class="moments-persona-chip-head">
         <img src="${meta.avatar}">
         <div>
@@ -37567,7 +37577,7 @@ function _showMomentsPersonaPickerModal() {
   sheet.style.cssText = 'background:#fff;border-radius:18px 18px 0 0;width:100%;max-width:480px;padding:20px 16px 32px;box-sizing:border-box;max-height:70vh;display:flex;flex-direction:column;';
   let listHtml = personas.map(p => {
     const av = p.avatar ? `<img src="${p.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : `<i class="fas fa-user" style="font-size:18px;color:#bbb;"></i>`;
-    return `<div onclick="_confirmMomentsPersona(${p.id})" style="display:flex;align-items:center;gap:12px;padding:10px 8px;border-radius:10px;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background=''">`
+    return `<div onclick="_confirmMomentsPersona('${monoJsSingleQuote(p.id)}')" style="display:flex;align-items:center;gap:12px;padding:10px 8px;border-radius:10px;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background=''">`
       + `<div style="width:40px;height:40px;border-radius:50%;overflow:hidden;background:#eee;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${av}</div>`
       + `<div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:600;color:#1a1a1a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.momentsNickname || p.name}</div>`
       + `<div style="font-size:11px;color:#999;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(p.persona||'').substring(0,40)}${(p.persona||'').length>40?'…':''}</div></div>`
@@ -37666,7 +37676,7 @@ function renderDiaryTabs() {
   let html = `<div class="diary-tab ${userTabActive ? 'active' : ''}" data-tab="user" onclick="switchDiaryTab('user')">我的日记</div>`;
   personas.forEach(p => {
     const active = currentDiaryTab == p.id;
-    html += `<div class="diary-tab ${active ? 'active' : ''}" data-tab="${p.id}" onclick="switchDiaryTab(${p.id})">${p.name}</div>`;
+    html += `<div class="diary-tab ${active ? 'active' : ''}" data-tab="${p.id}" onclick="switchDiaryTab('${monoJsSingleQuote(p.id)}')">${p.name}</div>`;
   });
   bar.innerHTML = html;
   const writeBtn = document.getElementById('diaryWriteBtn');
@@ -38007,7 +38017,7 @@ function openFwdPersonaModal(postData) {
   _fwdPayload = postData;
   const list = document.getElementById('fwdPersonaList');
   list.innerHTML = personas.map(p => `
-    <div class="fwd-persona-item" onclick="doForwardToPersona(${p.id})">
+    <div class="fwd-persona-item" onclick="doForwardToPersona('${monoJsSingleQuote(p.id)}')">
       <img src="${p.avatar}" alt="${p.name}">
       <div>
         <div class="fwd-persona-item-name">${p.name}</div>
@@ -38457,7 +38467,7 @@ function openPersonaForumModal() {
   if (!currentSectionId) { alert('请先选择论坛板块！'); return; }
   const list = document.getElementById('personaForumPersonaList');
   list.innerHTML = personas.map(p => `
-    <div class="persona-forum-persona-item" onclick="generatePersonaForumPost(${p.id})">
+    <div class="persona-forum-persona-item" onclick="generatePersonaForumPost('${monoJsSingleQuote(p.id)}')">
       <img src="${p.avatar || ''}" alt="${p.name}" onerror="this.src=''">
       <div>
         <div class="persona-forum-persona-item-name">${p.name}</div>
@@ -51445,6 +51455,20 @@ function renderDreamPage() {
   // Update archive count
   updateDreamArchiveCount();
 }
+function dreamGetChars() {
+  try {
+    if (typeof personas !== 'undefined' && Array.isArray(personas) && personas.length) return personas;
+  } catch(e) {}
+  try {
+    if (Array.isArray(window.personas) && window.personas.length) return window.personas;
+  } catch(e2) {}
+  try {
+    const stored = localStorage.getItem('mono_personas');
+    const parsed = stored ? JSON.parse(stored) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch(e3) {}
+  return [];
+}
 // (Dream background settings functions removed)
 function spawnDreamParticles() {
   const container = document.getElementById('dreamParticles');
@@ -51466,12 +51490,7 @@ function spawnDreamParticles() {
 function renderDreamFileList() {
   const list = document.getElementById('dreamFileList');
   if (!list) return;
-  // Get characters from the main chat app
-  let chars = [];
-  try {
-    const stored = localStorage.getItem('mono_personas');
-    if (stored) chars = JSON.parse(stored);
-  } catch(e) {}
+  const chars = dreamGetChars();
   if (!chars || chars.length === 0) {
     list.innerHTML = '<div style="padding:20px;text-align:center;font-size:9px;color:rgba(255,255,255,0.25);">请先在聊天软件里添加角色</div>';
     return;
@@ -51490,11 +51509,7 @@ function selectDreamChar(idx) {
   document.querySelectorAll('.seolei-file-item').forEach((el, i) => {
     el.classList.toggle('active', i === idx);
   });
-  let chars = [];
-  try {
-    const stored = localStorage.getItem('mono_personas');
-    if (stored) chars = JSON.parse(stored);
-  } catch(e) {}
+  const chars = dreamGetChars();
   const char = chars[idx];
   if (!char) return;
   dreamSelectedChar = char;
@@ -51994,7 +52009,7 @@ function renderNotifCenter() {
           <img src="${p.avatar}" class="notif-toggle-avatar">
           <span class="notif-toggle-name">${p.name}</span>
         </div>
-        <div class="notif-toggle-switch ${enabled ? 'on' : ''}" onclick="toggleNotifForChar(${p.id}, this)">
+        <div class="notif-toggle-switch ${enabled ? 'on' : ''}" onclick="toggleNotifForChar('${monoJsSingleQuote(p.id)}', this)">
           <div class="notif-toggle-*****"></div>
         </div>
       </div>`;
@@ -54986,7 +55001,7 @@ function renderIgStories() {
       ? `<img src="${avatarSrc}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.parentNode.innerHTML='<span style=\\'font-size:20px;font-weight:700;color:#888;\\'>${(p.name||'?')[0]}</span>'">`
       : `<span style="font-size:20px;font-weight:700;color:#888;">${(p.name||'?')[0]}</span>`;
     return `
-      <div class="ig-story-item ig-char-item" onclick="openIgStory(${p.id})">
+      <div class="ig-story-item ig-char-item" onclick="openIgStory('${monoJsSingleQuote(p.id)}')">
         <div class="ig-story-ring${seen ? ' seen' : ''}">
           <div class="ig-story-inner">${inner}</div>
         </div>
@@ -55343,7 +55358,7 @@ function _renderCharBar() {
     const avatarHtml = p.avatar
       ? `<img src="${p.avatar}" onerror="this.style.display='none'">`
       : `<span style="width:22px;height:22px;border-radius:50%;background:#ddd;display:inline-block;line-height:22px;text-align:center;font-size:9px;">${(p.name||'?')[0]}</span>`;
-    return `<div class="loc-char-chip ${active ? 'active' : ''}" onclick="selectLocChar(${p.id})">
+    return `<div class="loc-char-chip ${active ? 'active' : ''}" onclick="selectLocChar('${monoJsSingleQuote(p.id)}')">
       ${avatarHtml}
       <span>${p.name}</span>
     </div>`;
@@ -55378,7 +55393,7 @@ function openLocSettingsModal() {
           <span style="font-size:11px;font-weight:700;color:#1a1a1a;min-width:48px;flex-shrink:0;">${p.name}</span>
           <input type="text" class="loc-region-text-input" id="locCharRegion_${p.id}"
             value="${locCharRegions[p.id] || ''}" placeholder="例：韓国·首爾"/>
-          <button class="loc-input-btn" style="font-size:9px;padding:5px 8px;" onclick="saveCharRegion(${p.id})">保存</button>
+          <button class="loc-input-btn" style="font-size:9px;padding:5px 8px;" onclick="saveCharRegion('${monoJsSingleQuote(p.id)}')">保存</button>
         </div>`;
       }).join('');
   }
@@ -55828,7 +55843,7 @@ function openLocBindModal() {
           <option value="couple" ${already?.type==='couple'?'selected':''}>情侶</option>
           <option value="friend" ${already?.type==='friend'?'selected':''}>朋友</option>
         </select>
-        <button class="loc-rel-btn" onclick="applyLocBind(${p.id})" style="font-size:9px;">设定</button>
+        <button class="loc-rel-btn" onclick="applyLocBind('${monoJsSingleQuote(p.id)}')" style="font-size:9px;">设定</button>
       </div>`;
     }).join('');
   }
@@ -56675,8 +56690,8 @@ function renderMusicCharSelector() {
   sel.innerHTML = personas.map(p => {
     const isSelected = musicState.invitedCharId == p.id;
     const avatar = p.avatar
-      ? `<img class="music-char-chip-avatar${isSelected?' selected':''}" src="${p.avatar}" onclick="inviteMusicChar(${p.id})">`
-      : `<div class="music-char-chip-avatar-placeholder${isSelected?' selected':''}" onclick="inviteMusicChar(${p.id})">${(p.name||'?')[0]}</div>`;
+      ? `<img class="music-char-chip-avatar${isSelected?' selected':''}" src="${p.avatar}" onclick="inviteMusicChar('${monoJsSingleQuote(p.id)}')">`
+      : `<div class="music-char-chip-avatar-placeholder${isSelected?' selected':''}" onclick="inviteMusicChar('${monoJsSingleQuote(p.id)}')">${(p.name||'?')[0]}</div>`;
     return `<div class="music-char-chip">
       ${avatar}
       <div class="music-char-chip-name">${p.name}</div>
@@ -56869,7 +56884,7 @@ function shareMusicToChar(track) {
       const avatarHtml = p.avatar
         ? `<img src="${p.avatar}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid #e0e0e0;">`
         : `<div style="width:36px;height:36px;border-radius:50%;background:#ddd;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;">${(p.name||'?')[0]}</div>`;
-      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;cursor:pointer;border-bottom:1px solid #f0f0f0;" onclick="confirmShareMusic(${p.id})">
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;cursor:pointer;border-bottom:1px solid #f0f0f0;" onclick="confirmShareMusic('${monoJsSingleQuote(p.id)}')">
         ${avatarHtml}
         <div style="font-size:13px;font-weight:600;">${p.name}</div>
       </div>`;
@@ -57398,7 +57413,7 @@ function showTaskCharSelect(callback) {
   _taskPendingClaimCharCallback = callback;
   const list = document.getElementById('taskCharSelectList');
   list.innerHTML = personas.map(p => `
-    <div class="task-char-select-item" onclick="selectTaskClaimChar(${p.id})">
+    <div class="task-char-select-item" onclick="selectTaskClaimChar('${monoJsSingleQuote(p.id)}')">
       <img src="${p.avatar}" alt="">
       <div class="task-char-select-item-name">${escapeHtml(p.name)}</div>
     </div>
@@ -58137,7 +58152,7 @@ function renderTaskCharBar() {
   }
   bar.innerHTML = personas.map(p => {
     const active = p.id == taskCurrentCharId;
-    return `<div class="task-char-pill${active ? ' active' : ''}" onclick="switchTaskChar(${p.id})">
+    return `<div class="task-char-pill${active ? ' active' : ''}" onclick="switchTaskChar('${monoJsSingleQuote(p.id)}')">
       <img src="${p.avatar}" alt="">
       <span>${escapeHtml(p.name)}</span>
     </div>`;
@@ -59698,7 +59713,13 @@ function datingShowSave() {
 }
 // ── Persona helpers ──
 function _getDatingPersonas() {
-  try { return JSON.parse(localStorage.getItem('mono_personas') || '[]'); } catch(e) { return []; }
+  try {
+    if (typeof personas !== 'undefined' && Array.isArray(personas) && personas.length) return personas;
+  } catch(e) {}
+  try {
+    if (Array.isArray(window.personas) && window.personas.length) return window.personas;
+  } catch(e2) {}
+  try { return JSON.parse(localStorage.getItem('mono_personas') || '[]'); } catch(e3) { return []; }
 }
 function _getPersonaById(pid) {
   return _getDatingPersonas().find(function(p){ return String(p.id) === String(pid); }) || null;
@@ -67328,7 +67349,7 @@ function openPetPartnerSelect() {
     const avatarHtml = p.avatar
       ? '<img class="pet-partner-row-avatar" src="' + p.avatar + '">'
       : '<div class="pet-partner-row-avatar" style="background:#ddd;display:flex;align-items:center;justify-content:center;font-size:16px;">' + (p.name||'?')[0] + '</div>';
-    return '<div class="pet-partner-row" onclick="petSelectPartner(' + p.id + ')">'
+    return '<div class="pet-partner-row" onclick="petSelectPartner(\'' + monoJsSingleQuote(p.id) + '\')">'
       + avatarHtml
       + '<div class="pet-partner-row-name">' + p.name + '</div>'
       + '<div class="pet-partner-row-badge">' + (coRaisesOther ? '共养中其他寵物' : '') + '</div>'
@@ -83772,8 +83793,11 @@ function dwDeleteState(id) {
   delete _dwRuntime[id];
 }
 function dwPersonas() {
+  try {
+    if (typeof personas !== 'undefined' && Array.isArray(personas) && personas.length) return personas;
+  } catch(e) {}
   if (Array.isArray(window.personas) && window.personas.length) return window.personas;
-  try { return JSON.parse(localStorage.getItem('mono_personas') || '[]'); } catch(e) { return []; }
+  try { return JSON.parse(localStorage.getItem('mono_personas') || '[]'); } catch(e2) { return []; }
 }
 function dwFindPersona(pid) {
   if (!pid) return null;
@@ -90175,9 +90199,15 @@ window.addEventListener('load', function() {
   }
   function olGetPersonasSafe() {
     try {
-      if (typeof getPersonas === 'function') return getPersonas() || [];
+      if (typeof personas !== 'undefined' && Array.isArray(personas) && personas.length) return personas;
     } catch(e) {}
-    try { return JSON.parse(localStorage.getItem('mono_personas') || '[]'); } catch(e) { return []; }
+    try {
+      if (Array.isArray(window.personas) && window.personas.length) return window.personas;
+    } catch(e2) {}
+    try {
+      if (typeof getPersonas === 'function') return getPersonas() || [];
+    } catch(e3) {}
+    try { return JSON.parse(localStorage.getItem('mono_personas') || '[]'); } catch(e4) { return []; }
   }
   function olGetAdultChildren() {
     const out = [];
@@ -94237,10 +94267,15 @@ function csApplyImportedState(nextState) {
 }
 function csGetPersonas() {
   try {
+    if (typeof personas !== 'undefined' && Array.isArray(personas) && personas.length) return personas;
+  } catch(e) {}
+  try {
+    if (Array.isArray(window.personas) && window.personas.length) return window.personas;
+  } catch(e0) {}
+  try {
     var stored = JSON.parse(localStorage.getItem('mono_personas') || '[]');
     if (Array.isArray(stored) && stored.length) return stored;
   } catch(e) {}
-  if (typeof personas !== 'undefined' && Array.isArray(personas) && personas.length) return personas;
   try {
     var fallback = JSON.parse(localStorage.getItem('mono_personas') || '[]');
     return Array.isArray(fallback) ? fallback : [];
@@ -96755,7 +96790,7 @@ function diaryOpenAiModal() {
     document.getElementById('diaryAiStatus').textContent = '';
     grid.innerHTML = ps.map(p => {
       const av = p.avatar || '';
-      return `<div class="diary-char-option" data-pid="${p.id}" onclick="diarySelectChar(this,${p.id})">
+      return `<div class="diary-char-option" data-pid="${p.id}" onclick="diarySelectChar(this,'${monoJsSingleQuote(p.id)}')">
         <img class="diary-char-avatar" src="${av}" onerror="this.style.background='#ddd'">
         <div class="diary-char-name">${_escHtml(p.name)}</div>
       </div>`;
@@ -98725,7 +98760,7 @@ function monoImportPersonaPackage(event) {
       if (!data) throw new Error('文件内容为空或格式无效');
       const settings = data.settings || {};
       const meta = data.meta || {};
-      const newId = Date.now();
+      const newId = 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
       const newPersona = Object.assign({
         id: newId,
         name: settings.name || meta.name || '导入角色',
@@ -99301,7 +99336,7 @@ if (document.readyState === 'loading') {
   function monoBuildImportedPersona(data) {
     const settings = data.settings || {};
     const meta = data.meta || {};
-    const newId = Date.now();
+    const newId = 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
     const name = settings.name || meta.name || '导入角色';
     const persona = Object.assign({
       id: newId,
@@ -101822,11 +101857,11 @@ if (document.readyState === 'loading') {
     try { return (typeof monoRolePhoneEsc === 'function') ? monoRolePhoneEsc(v) : String(v == null ? '' : v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
     catch(e){ return String(v == null ? '' : v); }
   }
-  function _roleNpcPersonaId(ownerId, npcId){ return 'roleNpcPersona_' + String(ownerId || '0').replace(/\D/g,'') + '_' + String(npcId || '').replace(/\D/g,'').slice(-10); }
-  function _nextNumericPersonaId(list){
-    var max = 0;
-    (list || []).forEach(function(p){ var n = parseInt(p && p.id, 10); if (!isNaN(n) && n > max) max = n; });
-    return max + 1 + Math.floor(Math.random() * 999);
+  function _roleNpcPersonaId(ownerId, npcId){
+    return 'roleNpcPersona_' + String(ownerId || '0').replace(/[^\w-]+/g,'_') + '_' + String(npcId || '').replace(/[^\w-]+/g,'_');
+  }
+  function _nextNumericPersonaId(){
+    return 'roleNpcPersona_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
   }
   function _loadPersonasSafe(){
     try { return JSON.parse(localStorage.getItem('mono_personas') || '[]') || []; } catch(e) { return []; }
@@ -101862,7 +101897,7 @@ if (document.readyState === 'loading') {
     var list = _loadPersonasSafe();
     var idx = list.findIndex(function(p){ return p && String(p._roleNpcId || '') === String(npc.id); });
     var old = idx >= 0 ? list[idx] : null;
-    var id = old && old.id ? old.id : _nextNumericPersonaId(list);
+    var id = old && old.id ? old.id : _nextNumericPersonaId();
     var histKey = 'mono_hist_' + id;
     var directHist = [];
     try { directHist = JSON.parse(localStorage.getItem(histKey) || '[]') || []; } catch(e) { directHist = []; }
@@ -101974,14 +102009,16 @@ if (document.readyState === 'loading') {
     try { return (typeof monoRolePhoneEsc === 'function') ? monoRolePhoneEsc(v) : String(v == null ? '' : v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
     catch(e){ return String(v == null ? '' : v); }
   }
-  function loadPersonas(){ try { return JSON.parse(localStorage.getItem('mono_personas') || '[]') || []; } catch(e){ return []; } }
+  function loadPersonas(){
+    try { if (typeof personas !== 'undefined' && Array.isArray(personas)) return personas; } catch(e){}
+    try { return JSON.parse(localStorage.getItem('mono_personas') || '[]') || []; } catch(e){ return []; }
+  }
   function savePersonas(list){
     try { localStorage.setItem('mono_personas', JSON.stringify(list || [])); } catch(e) {}
     try { if (typeof personas !== 'undefined' && Array.isArray(personas)) { personas.length = 0; (list || []).forEach(function(p){ personas.push(p); }); } } catch(e) {}
   }
-  function nextPersonaId(list){
-    var max=0; (list||[]).forEach(function(p){ var n=parseInt(p&&p.id,10); if(!isNaN(n)&&n>max) max=n; });
-    return max + 1 + Math.floor(Math.random()*999);
+  function nextPersonaId(){
+    return 'roleNpcPersona_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
   }
   function userMaskNodeId(maskId){ return '__user_mask__:' + String(maskId || ''); }
   function roleNpcNodeId(npcId){
@@ -102099,7 +102136,7 @@ if (document.readyState === 'loading') {
     var list = loadPersonas();
     var idx = list.findIndex(function(p){ return p && String(p._roleNpcId || '') === String(npc.id); });
     var old = idx >= 0 ? list[idx] : null;
-    var id = old && old.id ? old.id : nextPersonaId(list);
+    var id = old && old.id ? old.id : nextPersonaId();
     var histKey = 'mono_hist_' + id;
     var directHist = [];
     try { directHist = JSON.parse(localStorage.getItem(histKey) || '[]') || []; } catch(e) { directHist = []; }
@@ -109014,7 +109051,7 @@ body.mono-fwd-modal-open {
         var name = safeHtml(p.name || '未命名角色');
         var subRaw = safeText(p.persona || '');
         var sub = safeHtml(subRaw.slice(0, 22) + (subRaw.length > 22 ? '…' : ''));
-        return '<div class="fwd-persona-item" onclick="doForwardToPersona('+ Number(p.id) +')">'
+        return '<div class="fwd-persona-item" onclick="doForwardToPersona(\'' + monoJsSingleQuote(p.id) + '\')">'
           + '<img src="'+ avatar +'" alt="'+ name +'" onerror="this.style.opacity=.25">'
           + '<div><div class="fwd-persona-item-name">'+ name +'</div>'
           + '<div class="fwd-persona-item-sub">'+ sub +'</div></div></div>';

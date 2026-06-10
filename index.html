@@ -22365,10 +22365,10 @@ body:not(.ios-fullscreen).chat-page-active.chat-preset-frosted-active #chatPage.
       <h3 class="text-sm font-bold uppercase tracking-widest mb-3"><i class="fas fa-database" style="margin-right:6px;"></i>数据管理</h3>
       <p style="font-size:10px;color:#999;margin-bottom:12px;">导出所有数据为 JSON 文件备份，或从备份文件导入恢复数据</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <button onclick="exportAllData()" class="action-btn" style="flex:1;min-width:120px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;padding:10px 16px;">
+        <button type="button" onclick="exportAllData();return false;" class="action-btn" style="flex:1;min-width:120px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;padding:10px 16px;">
           <i class="fas fa-download"></i> 导出数据
         </button>
-        <button onclick="document.getElementById('importFileInput').click()" class="action-btn" style="flex:1;min-width:120px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;padding:10px 16px;background:#fff;color:#1a1a1a;border:2px solid #1a1a1a;">
+        <button type="button" onclick="document.getElementById('importFileInput').click();return false;" class="action-btn" style="flex:1;min-width:120px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;padding:10px 16px;background:#fff;color:#1a1a1a;border:2px solid #1a1a1a;">
           <i class="fas fa-upload"></i> 导入数据
         </button>
         <input type="file" id="importFileInput" hidden accept=".json" onchange="importAllData(this)">
@@ -22382,8 +22382,8 @@ body:not(.ios-fullscreen).chat-page-active.chat-preset-frosted-active #chatPage.
         <p style="font-size:12px;color:#666;margin-bottom:12px;">导入将覆盖当前所有数据，此操作无法撤销！</p>
         <div id="importPreviewContent" style="background:#f8f8f8;border-radius:8px;padding:12px;margin-bottom:16px;font-size:11px;max-height:200px;overflow-y:auto;"></div>
         <div style="display:flex;gap:10px;">
-          <button onclick="cancelImport()" style="flex:1;padding:10px;border-radius:10px;border:1px solid #ddd;background:#f5f5f5;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">取消</button>
-          <button onclick="confirmImport()" style="flex:1;padding:10px;border-radius:10px;border:none;background:#1a1a1a;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">确认导入</button>
+          <button type="button" onclick="cancelImport();return false;" style="flex:1;padding:10px;border-radius:10px;border:1px solid #ddd;background:#f5f5f5;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">取消</button>
+          <button type="button" onclick="confirmImport();return false;" style="flex:1;padding:10px;border-radius:10px;border:none;background:#1a1a1a;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">确认导入</button>
         </div>
       </div>
     </div>

@@ -112005,11 +112005,27 @@ body.mono-fwd-modal-open {
     }
     return null;
   }
+  function resolveBbTurnExtra(persona, userMsg, charReply, extra){
+    var next = (extra && typeof extra === 'object') ? Object.assign({}, extra) : {};
+    var hasAssistantTs = Number(next.assistantTs) || 0;
+    var replyParts = arr(next.replyParts);
+    if (persona) {
+      var bundle = findImmediateTurnBbBundle(persona, false) || findLatestTurnBbBundle(persona, false) || null;
+      if (bundle && norm(bundle.userText) === norm(userMsg) && norm(bundle.replyText) === norm(charReply)) {
+        if (!hasAssistantTs) next.assistantTs = bundle.assistantTs;
+        if (!(Number(next.userTs) || 0)) next.userTs = bundle.userTs;
+        if (!replyParts.length) next.replyParts = arr(bundle.replyParts);
+        if (!next.sourceType) next.sourceType = (bundle.assistantCount > 1 ? 'auto-chat-turn' : 'auto-chat');
+      }
+    }
+    return next;
+  }
 
   var __monoBbPendingMap = window.__monoBbPendingMap = window.__monoBbPendingMap || {};
   var __monoBbAutoSeenMap = window.__monoBbAutoSeenMap = window.__monoBbAutoSeenMap || {};
   var __monoBbAutoRunMap = window.__monoBbAutoRunMap = window.__monoBbAutoRunMap || {};
   var __monoBbTurnSigMap = window.__monoBbTurnSigMap = window.__monoBbTurnSigMap || {};
+  var __monoBbAutoScanTimer = window.__monoBbAutoScanTimer = window.__monoBbAutoScanTimer || null;
   var __monoBbAutoFreshWindowMs = 2 * 60 * 1000;
   function buildBbTurnSignature(charId, userMsg, charReply, extra){
     var replyParts = arr(extra && extra.replyParts);
@@ -112182,6 +112198,7 @@ body.mono-fwd-modal-open {
     if (!apiConfig || !apiConfig.url || !apiConfig.key || !apiConfig.model) return;
     userMsg = trim(userMsg) || '…';
     charReply = trim(charReply) || '…';
+    extra = resolveBbTurnExtra(persona, userMsg, charReply, extra);
     var turnSig = buildBbTurnSignature(charId, userMsg, charReply, extra);
     if (hasRecentBbTurnSignature(turnSig)) return;
     markRecentBbTurnSignature(turnSig);
@@ -112352,7 +112369,9 @@ body.mono-fwd-modal-open {
   }
   function scheduleBbAutoScan(delay){
     delay = Number(delay) || 0;
-    setTimeout(function(){
+    if (__monoBbAutoScanTimer) clearTimeout(__monoBbAutoScanTimer);
+    __monoBbAutoScanTimer = setTimeout(function(){
+      __monoBbAutoScanTimer = null;
       try { scanAllBbAuto(); } catch(e) { console.warn('BB auto scan error:', e); }
     }, Math.max(0, delay));
   }
@@ -112361,9 +112380,7 @@ body.mono-fwd-modal-open {
     var oldSaveData = saveData;
     saveData = function(){
       var result = oldSaveData.apply(this, arguments);
-      scheduleBbAutoScan(120);
-      scheduleBbAutoScan(900);
-      scheduleBbAutoScan(2200);
+      scheduleBbAutoScan(650);
       return result;
     };
     saveData.__monoBbAutoHooked = true;
@@ -112373,7 +112390,7 @@ body.mono-fwd-modal-open {
     var oldRenderMessages = renderMessages;
     renderMessages = function(){
       var result = oldRenderMessages.apply(this, arguments);
-      scheduleBbAutoScan(280);
+      scheduleBbAutoScan(520);
       return result;
     };
     renderMessages.__monoBbAutoHooked = true;
@@ -112391,8 +112408,8 @@ body.mono-fwd-modal-open {
       }
     } catch(e) {}
   }
-  setInterval(function(){ scheduleBbAutoScan(0); }, 3200);
-  scheduleBbAutoScan(800);
+  setInterval(function(){ scheduleBbAutoScan(120); }, 12000);
+  scheduleBbAutoScan(900);
 
   window._buildFullSessionContext = function(session, p, uName){
     var entries = arr(session && session.entries);

@@ -250,7 +250,7 @@ async function bgGenerateAndNotify() {
       const minReply = p.minReplyCount || 1;
       const maxReply = p.maxReplyCount || 3;
       const count = Math.floor(Math.random() * (maxReply - minReply + 1)) + minReply;
-      const prompt = '你是' + p.name + '，人设：' + (p.persona || '').substring(0, 500) + '。现在时间是' + timeStr + '，时段：' + _period + '。' + (_timeSince ? '【时间感知】' + _timeSince + '，请根据时间流逝选择合适的话题。' : '') + '你现在主动给用户发消息。发送恰好 ' + count + ' 条消息，消息之间用 "###" 分隔，多条要连贯自然。内容需与对话记录和时间流逝逻辑连贯。只返回信息内容本身。\n最近对话：\n' + (recentChat || '(暂无)');
+      const prompt = '你是' + p.name + '，人设：' + (p.persona || '').substring(0, 500) + '。现在时间是' + timeStr + '，时段：' + _period + '。' + (_timeSince ? '【时间感知软参考】' + _timeSince + '。这只是背景参考，不要机械提用户多久没回、刚上线或你等了多久；是否提及由人设、关系和当前话题自然决定。' : '') + '你现在主动给用户发消息。发送恰好 ' + count + ' 条消息，消息之间用 "###" 分隔，多条要连贯自然。内容需与对话记录和当前时间自然连贯，但不要强制播报时间差。只返回信息内容本身。\n最近对话：\n' + (recentChat || '(暂无)');
       try {
         const reply = (await swChatCompletion(apiCfg.url, apiCfg.key, apiCfg.model, [{role:'user',content:prompt}]) || '').trim().replace(/^["'"]|["'"]$/g, '');
         if (!reply) continue;
@@ -20306,6 +20306,62 @@ body:not(.ios-fullscreen).chat-page-active.chat-preset-frosted-active #chatPage.
 }
 </style>
 
+
+<style id="mono-typing-dots-horizontal-fix">
+/* 2026-06-11 hotfix: keep the main chat "role is replying" three-dot indicator horizontal.
+   The short-bubble patch makes normal bubbles fit-content and allows aggressive wrapping;
+   typing indicator is a UI control, so it must be isolated from text-bubble wrapping rules. */
+#typingArea .typing-box,
+#chatPage #typingArea .typing-box,
+#chatPage.bubble-preset-frosted #typingArea .typing-box,
+#chatPage.chat-theme-frosted #typingArea .typing-box,
+#chatPage.chat-theme-frosted:not(.bubble-preset-wechat):not(.bubble-preset-imessage):not(.bubble-preset-line):not(.bubble-preset-retro):not(.bubble-preset-oshiglow):not(.bubble-preset-journal) #typingArea .typing-box {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  width: auto !important;
+  min-width: 38px !important;
+  max-width: none !important;
+  box-sizing: border-box !important;
+  white-space: nowrap !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  writing-mode: horizontal-tb !important;
+  text-orientation: mixed !important;
+  padding: 9px 11px !important;
+}
+#typingArea .typing-box .dot,
+#chatPage #typingArea .typing-box .dot,
+#chatPage.bubble-preset-frosted #typingArea .typing-box .dot,
+#chatPage.chat-theme-frosted #typingArea .typing-box .dot {
+  display: inline-block !important;
+  flex: 0 0 5px !important;
+  width: 5px !important;
+  height: 5px !important;
+  min-width: 5px !important;
+  min-height: 5px !important;
+  max-width: 5px !important;
+  max-height: 5px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 0 !important;
+  border-radius: 999px !important;
+  writing-mode: horizontal-tb !important;
+}
+#typingArea .msg-row.ai,
+#chatPage #typingArea .msg-row.ai {
+  align-items: flex-start !important;
+}
+#typingArea .msg-row.ai .msg-content,
+#chatPage #typingArea .msg-row.ai .msg-content {
+  width: auto !important;
+  max-width: none !important;
+}
+</style>
+
 </head>
 <body>
 <!-- In-App Notification Toast -->
@@ -25519,7 +25575,7 @@ async function generateAutoSummary(p, isManual) {
     const chatLines = targetMsgs.map(m => {
       const speaker = m.role === 'user' ? userName : p.name;
       // 截断过长单条消息，避免把原文整段带入
-      const content = (m.content || '').substring(0, 300);
+      const content = (typeof monoMessageText === 'function' ? monoMessageText(m, p) : (m.content || '')).substring(0, 600);
       return `${speaker}：${content}`;
     }).join('\n');
     if (!chatLines.trim()) {
@@ -37710,7 +37766,7 @@ function renderDiary() {
     const pid = currentDiaryTab;
     const p = personas.find(x => x.id == pid);
     filtered = diaryData.filter(item => {
-      if (item.authorType === 'persona' && item.personaId == pid) return true;
+      if (item.authorType === 'persona' && String(item.personaId) === String(pid)) return true;
       if (!item.authorType && p && item.author && item.author.includes(p.name)) return true;
       return false;
     });
@@ -45887,73 +45943,40 @@ ${followUps ? `\n${userProfile.name} 转发后还补充说了：${followUps}` : 
       const d = Math.round(m / 1440);
       return d === 1 ? '整整 1 天' : `${d} 天`;
     }
-    // ── 间隔感知 + 情绪指令 ──
+    // ── 间隔软参考：AI知道时间流逝，但不强制提及 ──
     let _gapBlock = '';
     if (_silenceMin >= 5) {
       const _readableGap = _minToReadable(_silenceMin);
       const _lastRef = _lastChatTimeStr ? `（上次聊天：${_lastChatTimeStr}）` : '';
-      if (_silenceMin < 20) {
-        // 5–20 分钟：极短停顿，几乎无感知，但可以有极细微的流露
-        _gapBlock = `
-【沉默感知】间隔：约 ${_silenceMin} 分钟${_lastRef}
-这只是一个短暂的停顿，你不需要特意表现。但如果话题或语境自然衔接，可以用最细微的方式流露"等了一小下"的感觉。绝大多数情况下直接接着聊即可。`;
-      } else if (_silenceMin < 60) {
-        // 20–60 分钟：轻度停顿，可以有非常轻微的情绪体现，但不是必须
-        _gapBlock = `
-【沉默感知 · 轻微停顿】间隔：约 ${_silenceMin} 分钟${_lastRef}
-对话停顿了一会儿。这是完全正常的——人们有自己的生活节奏，这种停顿无需特别处理。
-你可以若无其事地接着聊，也可以用非常自然的方式轻微流露出"停了一下"的感觉，但完全不提也很正常。禁止刻意追问或抱怨。`;
-      } else if (_silenceMin < 240) {
-        // 1–4 小时：正常的生活节奏，不必强调，轻微感知即可
-        _gapBlock = `
-【沉默感知 · 正常停顿】间隔：${_readableGap}${_lastRef}
-停顿了一两个小时，这在日常生活中非常普通——工作、学习、吃饭、休息都会占用时间。
-你不需要特别强调这段时间，更不要抱怨或追问"你去哪了"。可以自然地接着聊，语气和平时一样。
-只有在话题或语境真的需要时，才可以轻描淡写地提一句，例如"刚在忙"这类简短衔接。`;
-      } else if (_silenceMin < 360) {
-        // 4–6 小时：较长停顿，但仍属正常范围
-        _gapBlock = `
-【沉默感知 · 较长停顿】间隔：${_readableGap}${_lastRef}
-停顿了好几个小时，用户可能有事忙或者在休息。这是正常的，你有自己的生活，不会一直守着手机。
-回复时语气自然，可以轻微地体现出"停了一段时间"，但不要抱怨、追问或者显得委屈。正常衔接对话即可。`;
-      } else if (_silenceMin < 1440) {
-        // 6–24 小时：大半天到一天，情绪有所体现但不过激
-        _gapBlock = `
-【沉默感知 · 明显停顿】间隔：${_readableGap}${_lastRef}
-沉默了${_readableGap}，这是一段较长的时间。你可以自然地感知到这段时间的流逝，但要根据你的人设来决定如何回应——不是所有性格的人都会大惊小怪。
-情绪参考（根据你的人设选一个方向，不要混搭）：
-- 随性型：接着聊，语气和平时差不多，也许随口一提
-- 担心型：轻描淡写地问一下对方是不是在忙
-- 冷淡型：语气比平时稍平，话少一点
-- 调侃型：轻松一句带过，如"这才想起来找我"
-⚠️ 禁止：长篇追问、歇斯底里地抱怨、或者热情得像什么都没发生。`;
-      } else {
-        // 超过 1 天：强情绪，必须有明确反应
-        const _days2 = Math.round(_silenceMin / 1440);
-        _gapBlock = `
-【沉默感知 · 必须有明确情绪反应】间隔：消失了 ${_days2} 天${_lastRef}
-用户已经 ${_days2} 天没有出现了。这是很长的沉默，对你来说不可能无感——无论你的人设是冷漠、黏人、温柔还是傲娇，${_days2} 天的消失都会留下痕迹。
-你的第一条回复**必须**有明确的、符合人设的情绪反应，不能绕过这件事直接继续聊别的。
-情绪参考：
-- 担心型："你消失了这么久，我还以为……算了，你没事就好"
-- 委屈型："${_days2}天，${_days2}天你才回来……"（可以不说天数，但情绪要到位）
-- 冷淡型：话很少，语气很平，等用户主动解释
-- 傲娇型：表面不在乎，"哦，你还知道回来"，但内心松了口气
-- 愤怒型（如果人设允许）：直接表达不满
-⚠️ 强制要求：第一条消息必须体现出"你知道TA消失了很久"，然后再自然过渡到对话内容。不能直接聊别的，那是不真实的。`;
-      }
+      const _userReturnHint = _currentUserMsg && /刚回来|剛回來|忙完|好久没回|好久沒回|不好意思.*没回|不好意思.*沒回|刚下课|剛下課|刚放学|剛放學|刚醒|剛醒|刚到家|剛到家|回来了|回來了|才看到|刚看到|剛看到/.test(String(_currentUserMsg.content || ''));
+      let _gapLevel = '短暂停顿';
+      if (_silenceMin >= 1440) _gapLevel = '很久没聊';
+      else if (_silenceMin >= 360) _gapLevel = '明显停顿';
+      else if (_silenceMin >= 60) _gapLevel = '正常生活间隔';
+      else if (_silenceMin >= 20) _gapLevel = '轻微停顿';
+      _gapBlock = `
+【对话间隔软参考】间隔：${_readableGap}${_lastRef}
+- 你可以知道用户上次发消息时间、距离上次对话过去多久、用户可能刚重新进入页面，以及你主观上等待了多久。
+- 这些信息只是 API 生成回复时的背景参考，不是必须提及的内容。
+- 不要机械地每次说“你终于回来了”“你多久没回我”“我等你好久”“你刚刚上线了”等查岗式内容。
+- 是否提到等待、想念、担心、抱怨、吃醋，要根据角色人设、性格、关系状态、角色记忆、当前话题、对话氛围和间隔长度自然判断。
+- 如果当前话题和时间间隔无关，就自然继续聊天，不要强行把时间间隔变成主要话题。
+- 如果用户主动说自己刚回来/刚忙完/很久没回，或者角色性格本身很黏人、敏感、缺乏安全感、爱吃醋，才可以偶尔自然提及；提及时也要像真人说话，不要像系统播报具体时长。
+- 本轮参考级别：${_gapLevel}；用户是否主动解释离开：${_userReturnHint ? '是' : '否'}。`;
     }
     timeContext = `\n\n# 时间感知（Time Awareness）
 ▶ 当前时间：${_dateStr} ${_timeStr}（${_dayStr} · ${_period}${_isWeekend ? ' · 周末' : ' · 工作日'}）${_gapBlock}
 【时间锚点规则】
 - 当前时间是唯一的"现在"，历史消息里的日期都是"过去"，你必须活在 ${_dateStr} ${_timeStr} 这个时间点。
-- 历史消息的时间标签若显示是几天前，那就是几天前发生的事，你的状态和情绪应该随时间流逝而变化。
+- 历史消息的时间标签若显示是几天前，那就是几天前发生的事；这可以作为状态变化的参考，但不等于你必须在回复里提起用户离开多久。
+- 用户上次发消息时间、距离上次回复多久、刚刚上线/重新进入、角色等待了多久，都只是软参考，不是强制话题。
+- 是否提及等待、想念、担心、抱怨或吃醋，要由你根据角色人设、关系、记忆、当前聊天内容和气氛自然决定。
 - 语气、话题必须和当前时段（${_period}）自然吻合，严禁时间矛盾。
 - 不要主动催用户睡觉，除非用户自己先提到。
 【⚠️ 严格禁止——这是最高优先级规则】
 - 绝对禁止在回复中出现任何具体的日期或时间数字，例如"2025年1月1日""14:30""下午两点半""星期三""周末"等。
 - 绝对禁止在回复开头或任何位置输出 [X月X日 HH:MM]、[6月4 day 22:58]、[今天 22:58] 这类方括号时间标签——那是系统内部标记，不是你说话的一部分。
-- 时间感知的作用是调整你的情绪、语气和话题，绝不是让你在对话里"报时间"或"报日期"。
+- 时间感知的作用是调整你的情绪、语气和话题，绝不是让你在对话里"报时间"、"报日期"或机械播报用户多久没回复。
 - 用户看得到发送时间戳，不需要你在消息里重复说明时间。违反此规则视为严重出戏。`;
   }
   // World Book injection - match keywords from recent conversation
@@ -52533,8 +52556,8 @@ async function triggerAutoMessage(personaId) {
   const minAutoReply = p.minReplyCount || 1;
   const maxAutoReply = p.maxReplyCount || 3;
   const autoMsgCount = Math.floor(Math.random() * (maxAutoReply - minAutoReply + 1)) + minAutoReply;
-  const _timeSinceCtx = _timeSinceLastChat ? `\n【时间感知】${_timeSinceLastChat}，请根据这段时间的流逝，自然地选择合适的话题和语气——间隔短可以接着上次的话题继续，间隔长则可以从新的生活片段开始。` : '';
-  const prompt = `${LANG_SYSTEM_PREFIX}${STYLE_INSTRUCTIONS}\n你是${p.name}，人设：${p.persona}。你对用戶（${userProfile.name}）的暱称是${p.nickname||p.name}。${_aLangOv}\n现在时間是${timeStr}，时段：${_aPeriod}。${_timeSinceCtx}\n你现在主动给${userProfile.name}发消息。\n\n【主动发消息的要求】\n1. 根据你的人设性格，自然地发起这条消息——可以是忽然想到什么想分享、对之前对话的后续想法、你生活中发生的小事、或者就是单纯想聊聊。\n2. 消息要有你独特的语气，不要总是"嗯嗯在干嘛"这种万能开场，要有角色自己的味道。\n3. 发送恰好 ${autoMsgCount} 条消息，消息之间用 "###" 分隔。\n4. 多条消息要连贯自然，像同一个人连续说话，后一条承接前一条。\n5. 根据当前时间（${timeStr}）和时段（${_aPeriod}）调整语气和话题，符合这个时段真实的生活状态。\n6. 内容必须与最近对话记录和时间流逝逻辑连贯——如果刚刚聊过某件事就不要假装完全不知道，如果隔了很久就不要假装刚才还在聊。\n7. 如果你们最近发生过已开启记忆的线下互动，你必须把那些线下剧情也当成真实已发生的经历来承接，线上内容要与线下时间线逻辑一致。\n8. 默认风格是短句分开发，尽量不要用逗号和句号；问号、感叹号、省略号可以保留来表达情绪。只有当你的人设或世界书明确要求别的格式时，才覆盖这个默认风格。\n9. 不要加引号，只返回消息内容本身。${BUILTIN_WB}${_autoMsgWbInject}${_autoMsgOfflineInject}\n\n【最近对话记录】\n${recentChat || '(暫無对话记录)'}`;
+  const _timeSinceCtx = _timeSinceLastChat ? `\n【时间感知软参考】${_timeSinceLastChat}。这只是背景参考，用来判断现在的生活节奏和话题，不是必须提及的内容。不要机械地说用户多久没回、刚上线或你等了多久；是否自然提及由角色人设、关系、记忆和当前话题决定。` : '';
+  const prompt = `${LANG_SYSTEM_PREFIX}${STYLE_INSTRUCTIONS}\n你是${p.name}，人设：${p.persona}。你对用戶（${userProfile.name}）的暱称是${p.nickname||p.name}。${_aLangOv}\n现在时間是${timeStr}，时段：${_aPeriod}。${_timeSinceCtx}\n你现在主动给${userProfile.name}发消息。\n\n【主动发消息的要求】\n1. 根据你的人设性格，自然地发起这条消息——可以是忽然想到什么想分享、对之前对话的后续想法、你生活中发生的小事、或者就是单纯想聊聊。\n2. 消息要有你独特的语气，不要总是"嗯嗯在干嘛"这种万能开场，要有角色自己的味道。\n3. 发送恰好 ${autoMsgCount} 条消息，消息之间用 "###" 分隔。\n4. 多条消息要连贯自然，像同一个人连续说话，后一条承接前一条。\n5. 根据当前时间（${timeStr}）和时段（${_aPeriod}）调整语气和话题，符合这个时段真实的生活状态。\n6. 内容要与最近对话记录和当前时间自然连贯；时间间隔只是软参考，不要强制提“多久没聊 / 刚上线 / 等了多久”。如果当前话题无关，就像真人一样自然开启或继续话题。\n7. 如果你们最近发生过已开启记忆的线下互动，你必须把那些线下剧情也当成真实已发生的经历来承接，线上内容要与线下时间线逻辑一致。\n8. 默认风格是短句分开发，尽量不要用逗号和句号；问号、感叹号、省略号可以保留来表达情绪。只有当你的人设或世界书明确要求别的格式时，才覆盖这个默认风格。\n9. 不要加引号，只返回消息内容本身。${BUILTIN_WB}${_autoMsgWbInject}${_autoMsgOfflineInject}\n\n【最近对话记录】\n${recentChat || '(暫無对话记录)'}`;
   try {
     const r = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, {
       method: 'POST',
@@ -63952,6 +63975,7 @@ var _offlineState = {
   settings: {
     saveToMemory: true,
     locationShare: false,
+    offlineTimeAwarenessByPersona: {},
     bgmMode: false,
     heartVoiceGenerate: true,
     heartVoicePopup: true,
@@ -63967,6 +63991,106 @@ const OFFLINE_STYLE_PROMPTS = [
   '日常轻松，语气自然，节奏明快，像普通日常生活',
   '紧张刺激，节奏快，冲突感，情感濃烈'
 ];
+// ── 线下模式：实时设备时间上下文（防止默认误判成夜晚/睡前） ──
+function _monoBuildOfflineCurrentTimeContext(isIfLine, p, session) {
+  try {
+    if (typeof _monoIsOfflineTimeAwarenessEnabled === 'function' && !_monoIsOfflineTimeAwarenessEnabled(p, session)) {
+      return (typeof _monoBuildOfflinePlotTimeContextRule === 'function') ? _monoBuildOfflinePlotTimeContextRule(isIfLine) : '';
+    }
+    var now = new Date();
+    var hour = now.getHours();
+    var period = '白天';
+    if (hour >= 5 && hour < 11) period = '早上';
+    else if (hour >= 11 && hour < 14) period = '中午';
+    else if (hour >= 14 && hour < 18) period = '下午';
+    else if (hour >= 18 && hour < 23) period = '晚上';
+    else period = '深夜';
+    var dateStr = now.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+    var timeStr = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+    var weekdayStr = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'][now.getDay()] || '';
+    return [
+      '【线下当前真实时间 · 最高优先级】',
+      '现在日期：' + dateStr + '（' + weekdayStr + '）',
+      '现在时间：' + timeStr,
+      '当前时间段：' + period,
+      '',
+      '【线下时间感知规则】',
+      '1. 线下模式不是固定夜晚场景，也不是默认睡前/深夜剧情；每次生成回复前都必须以这里的当前真实时间为准。',
+      '2. 角色的开场、问候语、动作、环境光线、生活细节都要符合当前时间段。',
+      '3. 不要根据旧聊天、旧记忆、世界书、剧情氛围、人设关键词自行把现在改成晚上、深夜、睡前。',
+      '4. 如果世界书或旧记忆里出现“夜晚、晚上、房间昏暗、睡前、晚安、这么晚了、该睡了”等内容，只能当作过去情境或风格参考，不能覆盖当前真实时间。',
+      '5. 除非用户本轮明确说“今晚、昨晚、明天早上、睡前、晚安”等，否则不要主动把当前场景写成夜晚/睡前。',
+      '6. 如果当前是早上/中午/下午/白天，角色不能开口就说“晚上好”“这么晚了”“该睡了”“晚安”。',
+      isIfLine ? '7. If线/平行世界可以保留世界观设定；若该世界不使用现代日期，也必须至少用当前时间段来决定日夜、光线与场景氛围。' : '',
+      '',
+      '【规则型世界书 · 现实时间同步】',
+      '所有普通线下互动默认跟随用户设备当前时间；角色不能凭空假设现在是晚上。如果不知道具体时间，应通过当前环境自然观察，而不是强行进入夜晚场景。'
+    ].filter(Boolean).join('\n');
+  } catch(e) {
+    return '【线下时间规则】无法读取线下时间设置时，不要强行默认晚上、睡前或深夜；优先跟随用户在线下剧情中的时间指令。';
+  }
+}
+
+
+// ── 线下时间感知：按当前角色单独开关，不再全局强制注入 ──
+function _monoGetOfflinePersonaKey(p, session) {
+  try {
+    if (p && p.id != null) return String(p.id);
+    if (session && session.personaId != null) return String(session.personaId);
+    if (_offlineState && _offlineState.personaId != null) return String(_offlineState.personaId);
+  } catch(e) {}
+  return '';
+}
+function _monoGetOfflineTimeAwarenessMap() {
+  try {
+    if (!_offlineState.settings) _offlineState.settings = {};
+    if (!_offlineState.settings.offlineTimeAwarenessByPersona || typeof _offlineState.settings.offlineTimeAwarenessByPersona !== 'object') {
+      _offlineState.settings.offlineTimeAwarenessByPersona = {};
+    }
+    return _offlineState.settings.offlineTimeAwarenessByPersona;
+  } catch(e) { return {}; }
+}
+function _monoIsOfflineTimeAwarenessEnabled(p, session) {
+  try {
+    var key = _monoGetOfflinePersonaKey(p, session);
+    if (!key) return false;
+    var map = _monoGetOfflineTimeAwarenessMap();
+    return !!map[key];
+  } catch(e) { return false; }
+}
+function toggleOfflinePersonaTimeAwareness() {
+  try {
+    var key = _monoGetOfflinePersonaKey(null, null);
+    if (!key) return;
+    var map = _monoGetOfflineTimeAwarenessMap();
+    map[key] = !map[key];
+    _offlineState.settings.offlineTimeAwarenessByPersona = map;
+    _persistOfflineSettings();
+    _syncOfflineSettingsUI();
+  } catch(e) {}
+}
+function _monoBuildOfflinePlotTimeContextRule(isIfLine) {
+  return [
+    '【线下时间规则 · 当前角色未开启线下时间感知】',
+    '该角色本轮不会读取或注入用户设备的真实日期、星期、具体时间或现实时间段。',
+    '时间判断必须优先依据：用户在线下剧情里的明确时间要求、用户本轮输入、两人的互动内容、当前线下存档已经发生的剧情、If线世界观设定。',
+    '如果用户写了“今晚、昨晚、早上、下午、放学后、睡前”等，严格跟随用户给出的剧情时间。',
+    '如果用户没有给出时间，不要强行套用现实设备时间；也不要机械默认成晚上、深夜或睡前。',
+    isIfLine ? 'If线/平行世界的日夜与时间逻辑，以该世界观和用户剧情指令为准。' : '',
+    '世界书可以作为背景参考，但不能压过用户本轮在线下剧情里给出的时间指令。'
+  ].filter(Boolean).join('\n');
+}
+function _monoBuildOfflineEmptySceneHint(p, session, isIfLine) {
+  if (_monoIsOfflineTimeAwarenessEnabled(p, session)) {
+    return isIfLine
+      ? '（刚开始；自由选择一个符合当前真实时间段的见面情境开始，不要默认夜晚/睡前）'
+      : '（刚开始见面；开场必须符合当前真实时间段，不要默认夜晚/睡前）';
+  }
+  return isIfLine
+    ? '（刚开始；按用户填写的世界观、人物设定和剧情时间要求选择开场；若用户未指定时间，不要强行套用现实时间，也不要机械默认夜晚/睡前）'
+    : '（刚开始见面；按用户在线下输入、角色互动和剧情设定判断时间；若用户未指定时间，不要强行套用现实时间，也不要机械默认夜晚/睡前）';
+}
+
 const OFFLINE_MODE_CONFIG_DEFAULTS = {
   long: { styleText: '', targetWords: 140, autoSummaryEvery: 12 },
   short: { styleText: '', targetWords: 70, autoSummaryEvery: 16 }
@@ -64039,6 +64163,7 @@ function _normalizeOfflineSettings(settings) {
   next.heartVoiceGenerate = mergedOfflineHeartVoice;
   next.heartVoicePopup = mergedOfflineHeartVoice;
   next.worldBookEntries = next.worldBookEntries && typeof next.worldBookEntries === 'object' ? next.worldBookEntries : {};
+  next.offlineTimeAwarenessByPersona = next.offlineTimeAwarenessByPersona && typeof next.offlineTimeAwarenessByPersona === 'object' ? next.offlineTimeAwarenessByPersona : {};
   next.theme = next.theme || 'dark';
   next.narrativePov = (function(raw) {
     raw = String(raw || 'mixed').toLowerCase();
@@ -65170,6 +65295,7 @@ function _getIfLineSystemPrompt(p, session) {
   var styleNote = modeConfig.styleText || fallbackStyleNote;
   var targetWords = _offlineClampNumber(modeConfig.targetWords, isShort ? 70 : 140, 20, 5000);
   var wordRule = _buildOfflineWordTargetRule(targetWords, isShort);
+  var offlineTimeContext = (typeof _monoBuildOfflineCurrentTimeContext === 'function') ? _monoBuildOfflineCurrentTimeContext(true, p, session) : '';
   var worldBlock = [
     s.worldSetting   ? '【世界】' + s.worldSetting : '',
     s.charPersona    ? '【' + charName + '】' + s.charPersona : '',
@@ -65282,6 +65408,9 @@ function _getIfLineSystemPrompt(p, session) {
     '你的存在、思维、语言、行动，全部根植于以下设定的世界之中。',
     '⚠ 用户填写的世界观与人物设定是绝对权威——你必须100%忠于这些设定，不得自行替换、忽略或偏离。',
     '',
+    '═══ 线下时间规则（按当前角色开关决定）═══',
+    offlineTimeContext,
+    '',
     '═══ 世界设定（用户亲自设定，绝对遵从）═══',
     worldBlock || '一个独特的平行世界。',
     '',
@@ -65383,6 +65512,9 @@ async function _generateOfflineResponse(session) {
     var styleNote = modeConfig.styleText || fallbackStyleNote;
     var targetWords = _offlineClampNumber(modeConfig.targetWords, isShort ? 70 : 140, 20, 5000);
     var wordRule = _buildOfflineWordTargetRule(targetWords, isShort);
+    var offlineCurrentTimeContext = (typeof _monoBuildOfflineCurrentTimeContext === 'function') ? _monoBuildOfflineCurrentTimeContext(false, p, session) : '';
+    var offlineEmptySceneHint = (typeof _monoBuildOfflineEmptySceneHint === 'function') ? _monoBuildOfflineEmptySceneHint(p, session, false) : '（刚开始见面）';
+    var offlineIfEmptySceneHint = (typeof _monoBuildOfflineEmptySceneHint === 'function') ? _monoBuildOfflineEmptySceneHint(p, session, true) : '（刚开始）';
     var autoSummaryEvery = _offlineClampNumber(modeConfig.autoSummaryEvery, isShort ? 16 : 12, 0, 500);
     session.modeConfig = _cloneOfflineModeConfig(isShort ? 'short' : 'long', modeConfig);
     var locationNote = (isShort && _offlineState.settings.locationShare) ? '如果角色要移动到用戶位置，要真实描述路上的时間花费（如「二十分钟后到」）和途中的狀況。' : '';
@@ -65434,6 +65566,7 @@ async function _generateOfflineResponse(session) {
           '你是「' + p.name + '」，人设：' + (p.persona || '').slice(0, 200) + '。',
           '你和「' + uName + '」正在进行线下（见面）互动。',
           '这是短线下模式：像真实见面的日常互动，语言自然简短，有动作描写但简短不誇张。',
+          offlineCurrentTimeContext,
           
           locationNote,
           offlineWbInjection,
@@ -65455,11 +65588,12 @@ async function _generateOfflineResponse(session) {
           '',
           '【最近线上聊天背景】\n' + (recentChat || '（暂无记录）'),
           '',
-          '【本次线下剧情全部内容（完整记忆）】\n' + (recentEntries || '（刚开始见面）')
+          '【本次线下剧情全部内容（完整记忆）】\n' + (recentEntries || offlineEmptySceneHint)
         ].filter(Boolean).join('\n')
       : [
           '你是「' + p.name + '」，人设：' + (p.persona || '').slice(0, 200) + '。',
           '你和「' + uName + '」正在进行一段线下沉浸式敘事剧情，像小说一样细膩描写。',
+          offlineCurrentTimeContext,
           (typeof _monoGetOfflineLongPromptRule === 'function')
             ? _monoGetOfflineLongPromptRule()
             : '模式：长篇敘事——用第三人称或混合视角，详细描写场景、氛围、角色的动作、表情、心理感受。',
@@ -65481,7 +65615,7 @@ async function _generateOfflineResponse(session) {
           '',
           '【最近线上聊天背景（用于了解关系和情境）】\n' + (recentChat || '（暂无记录）'),
           '',
-          '【本次线下剧情全部内容（完整记忆）】\n' + (recentEntries || '（刚开始，自由选择一个合适的见面情境开始）')
+          '【本次线下剧情全部内容（完整记忆）】\n' + (recentEntries || offlineIfEmptySceneHint)
         ].filter(Boolean).join('\n');
     var userMsg = session.entries.length > 0 && session.entries[session.entries.length-1].role === 'user'
       ? session.entries[session.entries.length-1].content
@@ -65795,6 +65929,10 @@ function _syncOfflineSettingsUI() {
     var el = document.getElementById(ids[i]);
     if (el) el.classList.toggle('on', !!_offlineState.settings[k]);
   });
+  var timeAwareEl = document.getElementById('offlineToggleTimeAwareness');
+  if (timeAwareEl) timeAwareEl.classList.toggle('on', (typeof _monoIsOfflineTimeAwarenessEnabled === 'function') ? _monoIsOfflineTimeAwarenessEnabled(null, null) : false);
+  var timeAwareValueEl = document.getElementById('offlineTimeAwarenessValue');
+  if (timeAwareValueEl) timeAwareValueEl.textContent = ((typeof _monoIsOfflineTimeAwarenessEnabled === 'function') && _monoIsOfflineTimeAwarenessEnabled(null, null)) ? '开启：该角色线下会跟随设备当前真实时间' : '关闭：该角色线下只按剧情内容和用户指令判断时间';
   var narrativePovEl = document.getElementById('monoOfflineNarrativePov');
   if (narrativePovEl) narrativePovEl.value = (_offlineState.settings && _offlineState.settings.narrativePov) || 'mixed';
   var styleEl = document.getElementById('offlineStyleValue');
@@ -66437,6 +66575,13 @@ window.addEventListener('beforeunload', function() {
           <div class="offline-setting-value">角色会花时間在路上</div>
         </div>
         <div class="offline-toggle" id="offlineToggleLocation"></div>
+      </div>
+      <div class="offline-setting-row" onclick="toggleOfflinePersonaTimeAwareness()">
+        <div>
+          <div class="offline-setting-label">线下时间感知（当前角色）</div>
+          <div class="offline-setting-value" id="offlineTimeAwarenessValue">关闭：该角色线下只按剧情内容和用户指令判断时间</div>
+        </div>
+        <div class="offline-toggle" id="offlineToggleTimeAwareness"></div>
       </div>
       <div class="offline-setting-row" onclick="toggleOfflineSetting('bgmMode')">
         <div>
@@ -96302,8 +96447,8 @@ function _getDiaryEntries(ownerId) {
   if (ownerId === 'user') {
     return data.filter(d => d.authorType === 'user' || (!d.authorType && d.author && typeof userProfile !== 'undefined' && d.author.includes(userProfile.name)));
   } else {
-    const pid = parseInt(ownerId);
-    return data.filter(d => d.authorType === 'persona' && d.personaId == pid);
+    const pid = String(ownerId);
+    return data.filter(d => d.authorType === 'persona' && String(d.personaId) === pid);
   }
 }
 
@@ -110906,6 +111051,1010 @@ body.mono-fwd-modal-open {
 })();
 </script>
 
+
+<!-- MONO HOTFIX 2026-06-11: chat split / mask avatar / quote width / transfer / heart voice / forum JSON -->
+<style id="mono-hotfix-20260611-style">
+#chatPage .msg-content {
+  display: flex !important;
+  flex-direction: column !important;
+  width: fit-content !important;
+  max-width: min(76%, calc(100% - 54px)) !important;
+  min-width: 0 !important;
+  flex: 0 1 auto !important;
+  box-sizing: border-box !important;
+}
+#chatPage .msg-row.user .msg-content { align-items: flex-end !important; margin-left: auto !important; }
+#chatPage .msg-row.ai .msg-content { align-items: flex-start !important; margin-right: auto !important; }
+#chatPage .bubble,
+#chatPage .bubble-ai,
+#chatPage .bubble-user {
+  display: inline-block !important;
+  width: fit-content !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  white-space: normal !important;
+}
+#chatPage .msg-row.user .bubble { text-align: left !important; }
+#chatPage .quote-block {
+  display: inline-flex !important;
+  width: fit-content !important;
+  max-width: min(260px, 100%) !important;
+  align-self: flex-end !important;
+  flex: 0 1 auto !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+#chatPage .msg-row.ai .quote-block { align-self: flex-start !important; }
+#chatPage .quote-block span,
+#chatPage .quote-block div { min-width: 0 !important; max-width: 100% !important; }
+#chatPage .bubble-transfer {
+  width: min(236px, 100%) !important;
+  min-width: min(160px, 100%) !important;
+  max-width: 236px !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+#chatPage .msg-row.ai .bubble-transfer { align-self: flex-start !important; }
+#chatPage .msg-row.user .bubble-transfer { align-self: flex-end !important; }
+#chatPage .bubble-transfer-header,
+#chatPage .bubble-transfer-note {
+  min-width: 0 !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+}
+#chatPage .bubble-transfer-amount { white-space: nowrap !important; }
+@supports not (width: fit-content) {
+  #chatPage .msg-content { width: auto !important; }
+  #chatPage .bubble { display: inline-flex !important; flex-direction: column !important; }
+}
+</style>
+<script id="mono-hotfix-20260611-script">
+(function(){
+  'use strict';
+  if (window.__monoHotfix20260611Installed) return;
+  window.__monoHotfix20260611Installed = true;
+
+  function _hfText(v) {
+    if (v == null) return '';
+    if (typeof v === 'string') return v;
+    try { return JSON.stringify(v); } catch(e) { return String(v); }
+  }
+  function _hfTrimFence(s) {
+    return _hfText(s).trim()
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```$/i, '')
+      .trim();
+  }
+  function _hfBalancedObject(raw, startAt) {
+    var s = _hfText(raw);
+    var start = typeof startAt === 'number' ? s.indexOf('{', startAt) : s.indexOf('{');
+    if (start < 0) return '';
+    var depth = 0, inStr = false, esc = false;
+    for (var i = start; i < s.length; i++) {
+      var ch = s[i];
+      if (inStr) {
+        if (esc) { esc = false; continue; }
+        if (ch === '\\') { esc = true; continue; }
+        if (ch === '"') inStr = false;
+        continue;
+      }
+      if (ch === '"') { inStr = true; continue; }
+      if (ch === '{') depth++;
+      if (ch === '}') {
+        depth--;
+        if (depth === 0) return s.slice(start, i + 1);
+      }
+    }
+    return '';
+  }
+  function _hfParseJsonLoose(text) {
+    var s = _hfTrimFence(text);
+    try { return JSON.parse(s); } catch(e) {}
+    var obj = _hfBalancedObject(s);
+    if (obj) return JSON.parse(obj);
+    throw new Error('Invalid JSON');
+  }
+  function _hfHasHeartKeys(obj) {
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return false;
+    var keys = Object.keys(obj);
+    var joined = keys.join('|').toLowerCase();
+    return /heart|inner|thought|emotion|mood|jealous|黑盒|心声|內心|内心|心跳|心情/.test(joined) ||
+      ('thoughts' in obj) || ('heartRate' in obj) || ('notificationLines' in obj) || ('心声' in obj) || ('心聲' in obj);
+  }
+  function _hfReplyFromObject(obj) {
+    if (Array.isArray(obj)) return obj.map(_hfText).join('###');
+    if (!obj || typeof obj !== 'object') return '';
+    var arrayKeys = ['messages','replies','replyParts','chatMessages','气泡','聊天','回复列表'];
+    for (var i = 0; i < arrayKeys.length; i++) {
+      var ak = arrayKeys[i];
+      if (Array.isArray(obj[ak])) return obj[ak].map(_hfText).join('###');
+    }
+    var textKeys = ['reply','content','message','text','chat','answer','回复','內容','内容','台词'];
+    for (var j = 0; j < textKeys.length; j++) {
+      var tk = textKeys[j];
+      if (typeof obj[tk] === 'string' && obj[tk].trim()) return obj[tk];
+    }
+    return '';
+  }
+  function _hfRemoveHeartJsonBlocks(input) {
+    var s = _hfText(input);
+    var out = '', cursor = 0;
+    while (cursor < s.length) {
+      var open = s.indexOf('{', cursor);
+      if (open < 0) { out += s.slice(cursor); break; }
+      var block = _hfBalancedObject(s, open);
+      if (!block) { out += s.slice(cursor); break; }
+      var close = open + block.length;
+      var remove = false, replacement = '';
+      try {
+        var obj = JSON.parse(block);
+        if (_hfHasHeartKeys(obj)) {
+          remove = true;
+          replacement = _hfReplyFromObject(obj);
+        }
+      } catch(e) {}
+      if (remove) {
+        out += s.slice(cursor, open);
+        if (replacement) out += replacement;
+        cursor = close;
+      } else {
+        out += s.slice(cursor, close);
+        cursor = close;
+      }
+    }
+    return out;
+  }
+  function monoHotfixCleanHeartVoiceLeakText(input) {
+    var s = _hfText(input);
+    if (!s) return '';
+    s = s.replace(/\[heart_voice\][\s\S]*?\[\/heart_voice\]/gi, '');
+    s = s.replace(/\[心声\][\s\S]*?\[\/心声\]/gi, '');
+    var fenced = _hfTrimFence(s);
+    try {
+      var obj = _hfParseJsonLoose(fenced);
+      if (_hfHasHeartKeys(obj)) {
+        var reply = _hfReplyFromObject(obj);
+        return monoHotfixCleanHeartVoiceLeakText(reply);
+      }
+    } catch(e) {}
+    s = _hfRemoveHeartJsonBlocks(s);
+    s = s.replace(/^\s*(?:heart_voice|inner_voice|blackbox|心声|心聲)\s*[:：].*$/gmi, '');
+    return s.replace(/\n{3,}/g, '\n\n').trim();
+  }
+  window.monoHotfixCleanHeartVoiceLeakText = monoHotfixCleanHeartVoiceLeakText;
+
+  function _hfVisualLen(str) {
+    return _hfText(str).replace(/[\u4e00-\u9fff]/g, 'xx').length;
+  }
+  function monoHotfixSplitReplyText(raw, maxParts) {
+    maxParts = Math.max(1, Math.min(parseInt(maxParts || 4, 10) || 4, 8));
+    var s = monoHotfixCleanHeartVoiceLeakText(raw);
+    if (!s) return [];
+    try {
+      var obj = _hfParseJsonLoose(s);
+      var rep = _hfReplyFromObject(obj);
+      if (rep) s = rep;
+      else if (_hfHasHeartKeys(obj)) return [];
+    } catch(e) {}
+    s = s.replace(/\r/g, '\n').replace(/\\n/g, '\n').trim();
+    var parts = s.split(/\s*#{3,}\s*/).map(function(x){ return x.trim(); }).filter(Boolean);
+    if (parts.length <= 1 && /\n/.test(s)) {
+      var lines = s.split(/\n+/).map(function(x){ return x.trim().replace(/^\s*(?:\d+[.、)]|[-*•])\s*/, ''); }).filter(Boolean);
+      if (lines.length > 1) parts = lines;
+    }
+    if (parts.length <= 1 && _hfVisualLen(parts[0] || s) > 58) {
+      var base = parts[0] || s;
+      var chunks = base.match(/[^。！？!?；;\n]+[。！？!?；;…]*/g) || [base];
+      parts = [];
+      var buf = '';
+      chunks.forEach(function(piece){
+        piece = piece.trim();
+        if (!piece) return;
+        var candidate = buf ? (buf + piece) : piece;
+        if (buf && _hfVisualLen(candidate) > 54 && parts.length < maxParts - 1) {
+          parts.push(buf.trim());
+          buf = piece;
+        } else {
+          buf = candidate;
+        }
+      });
+      if (buf.trim()) parts.push(buf.trim());
+    }
+    return parts.map(function(x){
+      return monoHotfixCleanHeartVoiceLeakText(x)
+        .replace(/^\s*(?:\d+[.、)]|[-*•])\s*/g, '')
+        .replace(/[ \t]{2,}/g, ' ')
+        .trim();
+    }).filter(Boolean).slice(0, maxParts);
+  }
+  window.monoHotfixSplitReplyText = monoHotfixSplitReplyText;
+
+  function _hfPatchGlobalFunction(name, wrapperFactory) {
+    try {
+      var original = window[name];
+      if (typeof original !== 'function' || original.__monoHotfixWrapped) return;
+      var patched = wrapperFactory(original);
+      patched.__monoHotfixWrapped = true;
+      patched.__monoHotfixOriginal = original;
+      window[name] = patched;
+      try { (0, eval)(name + ' = window[' + JSON.stringify(name) + ']'); } catch(e) {}
+    } catch(e) {}
+  }
+
+  ['_normalizeChat回复Messages', '_normalizeChatReplyMessages'].forEach(function(fnName){
+    _hfPatchGlobalFunction(fnName, function(original){
+      return function(rawContent, opts){
+        opts = opts || {};
+        var cleaned = monoHotfixCleanHeartVoiceLeakText(rawContent);
+        var result = [];
+        try { result = original.call(this, cleaned, opts) || []; } catch(e) { result = monoHotfixSplitReplyText(cleaned, opts.maxParts || 4); }
+        result = (result || []).map(monoHotfixCleanHeartVoiceLeakText).filter(Boolean);
+        if (opts && opts.exactApiParts) {
+          var maxParts = opts.maxParts || result.length || 4;
+          var fallback = monoHotfixSplitReplyText(cleaned, maxParts);
+          var oneLong = result.length <= 1 && _hfVisualLen(result[0] || '') > 58;
+          if (fallback.length > result.length || oneLong) result = fallback;
+        }
+        return result.slice(0, opts.maxParts || result.length || 4);
+      };
+    });
+  });
+
+  _hfPatchGlobalFunction('_safeMsgText', function(original){
+    return function(v){
+      if (v && typeof v === 'object' && _hfHasHeartKeys(v)) return '';
+      var text = original.call(this, v);
+      return monoHotfixCleanHeartVoiceLeakText(text);
+    };
+  });
+
+  // Make forum/diary AI JSON parsing tolerate markdown fences or short explanatory text around JSON.
+  _hfPatchGlobalFunction('safeParseJSON', function(original){
+    return function(text, fallback){
+      try { return original.call(this, text); }
+      catch(e1) {
+        try { return _hfParseJsonLoose(text); }
+        catch(e2) {
+          if (arguments.length > 1) return fallback;
+          throw e2;
+        }
+      }
+    };
+  });
+
+  // Keep custom user-mask avatars in localStorage as a fallback, so they do not disappear when IndexedDB fails or reloads too early.
+  try {
+    if (typeof monoNormalizeUserMask === 'function' && !monoNormalizeUserMask.__monoHotfixWrapped) {
+      var _oldNormalizeMask = monoNormalizeUserMask;
+      window.monoNormalizeUserMask = function(raw) {
+        var item = raw && typeof raw === 'object' ? raw : {};
+        var normalized = _oldNormalizeMask(item);
+        var id = normalized.id || item.id || ('mask_' + Date.now());
+        var backupKey = 'mono_user_mask_avatar_backup_' + id;
+        var candidate = item.avatar || item.avatarBackup || item.avatarData || '';
+        if (!(typeof monoHasDataImage === 'function' && monoHasDataImage(candidate))) {
+          try { candidate = localStorage.getItem(backupKey) || ''; } catch(e) {}
+        }
+        if (typeof monoHasDataImage === 'function' && monoHasDataImage(candidate)) {
+          normalized.avatar = candidate;
+          normalized.avatarBackup = candidate;
+          normalized.hasCustomAvatar = true;
+        }
+        return normalized;
+      };
+      window.monoNormalizeUserMask.__monoHotfixWrapped = true;
+      try { monoNormalizeUserMask = window.monoNormalizeUserMask; } catch(e) {}
+    }
+    if (typeof monoSaveUserMasks === 'function' && !monoSaveUserMasks.__monoHotfixWrapped) {
+      window.monoSaveUserMasks = function(nextMasks) {
+        userMasks = (Array.isArray(nextMasks) ? nextMasks : []).map(monoNormalizeUserMask);
+        var storable = userMasks.map(function(mask) {
+          var item = Object.assign({}, mask);
+          if (item.hasCustomAvatar && typeof monoHasDataImage === 'function' && monoHasDataImage(item.avatar)) {
+            item.avatarBackup = item.avatar;
+            try { localStorage.setItem('mono_user_mask_avatar_backup_' + item.id, item.avatar); } catch(e) {}
+          }
+          return item;
+        });
+        try {
+          var key = (typeof MONO_USER_MASKS_KEY !== 'undefined') ? MONO_USER_MASKS_KEY : 'mono_user_masks';
+          localStorage.setItem(key, JSON.stringify(storable));
+        } catch(e) {}
+        try { if (typeof monoSyncUserMaskAvatarsToIdb === 'function') monoSyncUserMaskAvatarsToIdb(userMasks).catch(function(){}); } catch(e) {}
+        try { if (typeof monoRefreshUserIdentityUi === 'function') monoRefreshUserIdentityUi(); } catch(e) {}
+      };
+      window.monoSaveUserMasks.__monoHotfixWrapped = true;
+      try { monoSaveUserMasks = window.monoSaveUserMasks; } catch(e) {}
+    }
+  } catch(e) {}
+
+  // Persona id can be a string for newly-created roles. Force string matching when opening forum generation from role picker.
+  _hfPatchGlobalFunction('generatePersonaForumPost', function(original){
+    return function(personaId){
+      var pid = String(personaId == null ? '' : personaId);
+      try {
+        if (Array.isArray(personas)) {
+          var p = personas.find(function(x){ return String(x.id) === pid; });
+          if (!p && typeof alert === 'function') alert('没有找到这个新角色，请先保存角色资料后再生成帖子。');
+        }
+      } catch(e) {}
+      return original.call(this, pid);
+    };
+  });
+
+  function _hfCleanExistingHeartVoiceLeaks() {
+    try {
+      if (!Array.isArray(personas)) return;
+      var changed = false;
+      personas.forEach(function(p){
+        if (!p || !Array.isArray(p.history)) return;
+        var next = [];
+        p.history.forEach(function(m){
+          if (!m || m.msgType) { next.push(m); return; }
+          if (m.role === 'assistant' && typeof m.content === 'string') {
+            var cleaned = monoHotfixCleanHeartVoiceLeakText(m.content);
+            if (!cleaned && m.content.trim()) { changed = true; return; }
+            if (cleaned !== m.content) { m.content = cleaned; changed = true; }
+          }
+          next.push(m);
+        });
+        if (next.length !== p.history.length) { p.history = next; changed = true; }
+      });
+      if (changed) {
+        try { if (typeof saveData === 'function') saveData(); } catch(e) {}
+        try { if (typeof renderMessages === 'function') renderMessages({ preserveScroll: true }); } catch(e) {}
+      }
+    } catch(e) {}
+  }
+  setTimeout(_hfCleanExistingHeartVoiceLeaks, 300);
+})();
+</script>
+
+<script id="mono-character-isolation-hotfix-v7">
+(function(){
+  'use strict';
+  if (window.__monoCharacterIsolationHotfixV7) return;
+  window.__monoCharacterIsolationHotfixV7 = true;
+
+  function asStr(v){ return String(v == null ? '' : v); }
+  function trim(v){ return asStr(v).trim(); }
+  function esc(s){
+    return asStr(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+  function getPersonasSafe(){
+    try { if (typeof personas !== 'undefined' && Array.isArray(personas)) return personas; } catch(e) {}
+    try { if (Array.isArray(window.personas)) return window.personas; } catch(e) {}
+    try { return JSON.parse(localStorage.getItem('mono_personas') || '[]'); } catch(e) { return []; }
+  }
+  function getPersonaStoreSafe(){
+    try { return JSON.parse(localStorage.getItem('mono_personas') || '[]'); } catch(e) { return []; }
+  }
+  function writePersonaStoreSafe(list){
+    try { localStorage.setItem('mono_personas', JSON.stringify(list)); } catch(e) {}
+  }
+  function getRelEntriesSafe(){
+    try { if (typeof mwGetRelEntries === 'function') return mwGetRelEntries() || []; } catch(e) {}
+    return [];
+  }
+  function relUserMaskNodeId(maskId){
+    try { if (typeof _mwRelUserMaskNodeId === 'function') return _mwRelUserMaskNodeId(maskId); } catch(e) {}
+    return '__user_mask__:' + asStr(maskId);
+  }
+  function isUserNode(nodeId){
+    var raw = asStr(nodeId);
+    try { if (typeof _mwIsUserNodeId === 'function') return _mwIsUserNodeId(raw); } catch(e) {}
+    return raw === '__user__' || raw.indexOf('__user_mask__:') === 0;
+  }
+  function resolveNodeName(nodeId, fallback){
+    try { if (typeof _mwResolveNodeName === 'function') return _mwResolveNodeName(nodeId, fallback); } catch(e) {}
+    return fallback || '';
+  }
+  function entryNodeId(entry, slot){
+    return trim(entry && entry[slot + 'Id']);
+  }
+  function entryNodeName(entry, slot){
+    var fallback = trim(entry && entry[slot]);
+    var id = entryNodeId(entry, slot);
+    return resolveNodeName(id, fallback) || fallback;
+  }
+  function getNameCountMap(){
+    var map = Object.create(null);
+    getPersonasSafe().forEach(function(p){
+      var n = trim(p && p.name);
+      if (!n) return;
+      map[n] = (map[n] || 0) + 1;
+    });
+    return map;
+  }
+  function isUniqueName(name){
+    var n = trim(name);
+    if (!n) return false;
+    return (getNameCountMap()[n] || 0) === 1;
+  }
+  function personaById(id){
+    var sid = trim(id);
+    if (!sid) return null;
+    return getPersonasSafe().find(function(p){ return p && trim(p.id) === sid; }) || null;
+  }
+  function personaByNameUnique(name){
+    var n = trim(name);
+    if (!n) return null;
+    var list = getPersonasSafe().filter(function(p){ return p && trim(p.name) === n; });
+    if (list.length === 1) return list[0];
+    try {
+      if (typeof currentId !== 'undefined' && currentId != null) {
+        var cur = list.find(function(p){ return trim(p.id) === trim(currentId); });
+        if (cur) return cur;
+      }
+    } catch(e) {}
+    var possibleIds = ['_dai_selectedCharId','_dbv_ownerId','bbCurrentCharId','currentSpyPersonaId'];
+    for (var i=0;i<possibleIds.length;i++) {
+      try {
+        var val = window[possibleIds[i]];
+        if (val != null) {
+          var hit = list.find(function(p){ return trim(p.id) === trim(val); });
+          if (hit) return hit;
+        }
+      } catch(e) {}
+    }
+    return null;
+  }
+  function resolvePersona(ref){
+    return personaById(ref) || personaByNameUnique(ref);
+  }
+  function resolveRoomPersona(room, memberName){
+    var name = trim(memberName);
+    if (!name) return null;
+    if (room && room.memberIds) {
+      var mid = '';
+      if (typeof room.memberIds === 'object') mid = room.memberIds[name] || room.memberIds[memberName] || '';
+      if (!mid && Array.isArray(room.memberIds)) {
+        var pair = room.memberIds.find(function(x){ return x && trim(x.name) === name; });
+        if (pair) mid = pair.id || pair.personaId || '';
+      }
+      var byId = personaById(mid);
+      if (byId) return byId;
+    }
+    return personaByNameUnique(name);
+  }
+  function slotMatchesPersona(entry, slot, persona){
+    if (!entry || !persona) return false;
+    var nodeId = entryNodeId(entry, slot);
+    var pid = trim(persona.id);
+    if (nodeId) return pid && nodeId === pid;
+    // Legacy entries with no id are only trusted when the character name is unique.
+    var nm = trim(persona.name);
+    return !!nm && isUniqueName(nm) && trim(entry[slot]) === nm;
+  }
+  function relMatchesPersona(entry, persona){
+    return slotMatchesPersona(entry, 'a', persona) || slotMatchesPersona(entry, 'b', persona);
+  }
+  function relMatchesPair(entry, p1, p2){
+    if (!entry || !p1 || !p2) return false;
+    return (slotMatchesPersona(entry, 'a', p1) && slotMatchesPersona(entry, 'b', p2)) ||
+           (slotMatchesPersona(entry, 'a', p2) && slotMatchesPersona(entry, 'b', p1));
+  }
+  function relMatchesNodePair(entry, aId, bId){
+    var a = trim(aId), b = trim(bId);
+    if (!a || !b) return false;
+    var ea = entryNodeId(entry, 'a') || trim(entry && entry.a);
+    var eb = entryNodeId(entry, 'b') || trim(entry && entry.b);
+    return (ea === a && eb === b) || (ea === b && eb === a);
+  }
+  function getOtherSide(entry, persona){
+    if (slotMatchesPersona(entry, 'a', persona)) return { slot:'b', id: entryNodeId(entry,'b'), name: entryNodeName(entry,'b') };
+    if (slotMatchesPersona(entry, 'b', persona)) return { slot:'a', id: entryNodeId(entry,'a'), name: entryNodeName(entry,'a') };
+    return null;
+  }
+  function userSideAllowedForPersona(entry, otherSlot, persona){
+    var nodeId = entryNodeId(entry, otherSlot);
+    if (!isUserNode(nodeId)) return true;
+    var maskNode = persona && persona.userMaskId ? relUserMaskNodeId(persona.userMaskId) : '';
+    if (maskNode) return nodeId === maskNode;
+    return nodeId === '__user__';
+  }
+  function directEntriesForPersona(persona, includeUserMaskFilter){
+    var entries = getRelEntriesSafe();
+    return entries.filter(function(e){
+      if (!relMatchesPersona(e, persona)) return false;
+      if (!includeUserMaskFilter) return true;
+      if (slotMatchesPersona(e, 'a', persona)) return userSideAllowedForPersona(e, 'b', persona);
+      if (slotMatchesPersona(e, 'b', persona)) return userSideAllowedForPersona(e, 'a', persona);
+      return false;
+    });
+  }
+  function roomMemberNames(room){ return Array.isArray(room && room.members) ? room.members.map(trim).filter(Boolean) : []; }
+  function roomMemberPersonaIds(room){
+    var ids = [];
+    roomMemberNames(room).forEach(function(name){
+      var p = resolveRoomPersona(room, name);
+      if (p && trim(p.id)) ids.push(trim(p.id));
+    });
+    return ids;
+  }
+  function normalizeExistingRoomMemberIds(room){
+    if (!room || !Array.isArray(room.members)) return false;
+    if (room.memberIds && typeof room.memberIds === 'object' && !Array.isArray(room.memberIds)) return false;
+    var map = {};
+    var ok = false;
+    room.members.forEach(function(name){
+      var p = personaByNameUnique(name);
+      if (p && p.id) { map[name] = p.id; ok = true; }
+    });
+    if (ok) { room.memberIds = map; return true; }
+    return false;
+  }
+
+  window.monoRelFixResolvePersona = resolvePersona;
+  window.monoRelFixRelMatchesPersona = relMatchesPersona;
+  window.monoRelFixRelMatchesPair = relMatchesPair;
+
+  window.mwInjectRelationshipsIntoChars = function(){
+    var entries = getRelEntriesSafe();
+    var ps = getPersonaStoreSafe();
+    ps.forEach(function(p){
+      delete p._worldRelMap;
+      delete p._worldRelRelevant;
+      var direct = entries.filter(function(e){ return relMatchesPersona(e, p); });
+      if (!direct.length) return;
+      p._worldRelRelevant = direct.map(function(e){
+        return entryNodeName(e,'a') + ' ↔ ' + entryNodeName(e,'b') + '（' + (e.label || '有关联') + '）：' + (e.detail || '');
+      }).join('\n');
+      p._worldRelMap = '【该角色直接关系】\n' + p._worldRelRelevant;
+    });
+    writePersonaStoreSafe(ps);
+    try {
+      if (typeof personas !== 'undefined' && Array.isArray(personas)) {
+        personas.forEach(function(p){
+          var updated = ps.find(function(x){ return trim(x.id) === trim(p.id); });
+          if (updated) { p._worldRelMap = updated._worldRelMap || ''; p._worldRelRelevant = updated._worldRelRelevant || ''; }
+        });
+      }
+    } catch(e) {}
+  };
+
+  window._mwBuildRelInjectForChar = function(charName, contextNames, isGroupChat){
+    var persona = resolvePersona(charName);
+    if (!persona) return '';
+    var entries = getRelEntriesSafe();
+    var myEntries = entries.filter(function(e){
+      if (!relMatchesPersona(e, persona)) return false;
+      if (slotMatchesPersona(e, 'a', persona)) return userSideAllowedForPersona(e, 'b', persona);
+      if (slotMatchesPersona(e, 'b', persona)) return userSideAllowedForPersona(e, 'a', persona);
+      return false;
+    });
+    var contextPersonas = [];
+    if (Array.isArray(contextNames)) {
+      contextNames.forEach(function(n){
+        var cp = resolvePersona(n);
+        if (cp && trim(cp.id) !== trim(persona.id) && !contextPersonas.some(function(x){return trim(x.id)===trim(cp.id);})) contextPersonas.push(cp);
+      });
+    }
+    var contextEntries = [];
+    if (isGroupChat && contextPersonas.length > 1) {
+      for (var i=0;i<contextPersonas.length;i++) {
+        for (var j=i+1;j<contextPersonas.length;j++) {
+          entries.forEach(function(e){ if (relMatchesPair(e, contextPersonas[i], contextPersonas[j])) contextEntries.push(e); });
+        }
+      }
+    }
+    if (!myEntries.length && !contextEntries.length) return '';
+    var out = '\n\n# 当前角色专属关系记忆\n---\n';
+    out += '⚠️ 以下关系只属于角色「' + (persona.name || charName) + '」本人，禁止继承其他同名/旧角色的关系、记忆、昵称或经历。\n';
+    if (myEntries.length) {
+      out += '\n## 你与其他人的直接关系\n';
+      myEntries.forEach(function(e){
+        var other = getOtherSide(e, persona) || {};
+        out += '· 你 与 ' + (other.name || '关联对象') + '：【' + (e.label || '有关联') + '】\n';
+        if (e.detail) out += '  关系详情：' + e.detail + '\n';
+      });
+    }
+    if (contextEntries.length) {
+      out += '\n## 当前场景内其他成员之间的关系\n';
+      contextEntries.forEach(function(e){
+        out += '· ' + entryNodeName(e,'a') + ' 与 ' + entryNodeName(e,'b') + '：【' + (e.label || '有关联') + '】\n';
+        if (e.detail) out += '  关系详情：' + e.detail + '\n';
+      });
+    }
+    out += '\n【隔离规则】只能使用以上与当前角色 id 直接匹配的关系；不要把世界里其他角色的旧关系当成自己的关系；不要说出“关系图/设定/id”等元词汇。\n---';
+    return out;
+  };
+
+  window._ccGetCharUserChatSummary = function(charName, maxMsgs){
+    var p = resolvePersona(charName);
+    if (!p) return '';
+    var hist = [];
+    try {
+      var raw = localStorage.getItem('mono_hist_' + p.id);
+      hist = raw ? JSON.parse(raw) : (Array.isArray(p.history) ? p.history : []);
+    } catch(e) { hist = Array.isArray(p.history) ? p.history : []; }
+    if (!Array.isArray(hist) || !hist.length) return '';
+    maxMsgs = maxMsgs || 15;
+    return hist.slice(-maxMsgs).filter(function(m){ return m && !m._hiddenContext && !m._systemNote && !m._transferContext; }).map(function(m){
+      return (m.role === 'user' ? '用户' : p.name) + '：' + asStr(m.content || '').slice(0,100);
+    }).join('\n');
+  };
+
+  window._ccBuildCharacterContext = function(name, personasArg, relEntriesArg, roomMembers, room){
+    var p = resolveRoomPersona(room, name) || resolvePersona(name);
+    var npcMeta = (!p && room && room.npcMeta && room.npcMeta[name]) ? room.npcMeta[name] : null;
+    if (!p) {
+      if (!npcMeta) return '【' + name + '】：（无人设信息；因同名角色无法安全判断，已阻止继承旧角色记忆）\n';
+      return '═══ ' + name + ' 的完整人设 ═══\n' +
+        '姓名：' + (npcMeta.name || name) + '\n身份：' + (npcMeta.identity || '当前世界中的 NPC') + '\n' +
+        (npcMeta.relationSummary || npcMeta.relationDetail ? ('关系：' + (npcMeta.relationSummary || '有关联') + (npcMeta.relationDetail ? ' — ' + npcMeta.relationDetail : '') + '\n') : '') +
+        '人设设定：\n' + (npcMeta.persona || (name + '是当前世界中的 NPC。')) + '\n═══ END ' + name + ' ═══\n';
+    }
+    var block = '═══ ' + p.name + ' 的完整人设 ═══\n';
+    block += '角色ID：' + p.id + '（内部隔离用，不要在发言中提及）\n';
+    block += '姓名：' + p.name + '\n';
+    if (p.nickname && p.nickname !== p.name) block += '昵称/自称：' + p.nickname + '\n';
+    block += '人设设定：\n' + (p.persona || '（无）') + '\n';
+    if (Array.isArray(p.memoryCore) && p.memoryCore.length) {
+      block += '\n[核心记忆 · 只属于该角色ID]\n';
+      p.memoryCore.forEach(function(item, i){
+        var content = typeof item === 'string' ? item : (item && item.content || '');
+        var date = item && typeof item === 'object' && item.date ? (' (' + item.date + ')') : '';
+        if (content) block += '  ' + (i+1) + '. ' + content + date + '\n';
+      });
+    }
+    try {
+      if (typeof buildWorldBookInjection === 'function') {
+        var wb = buildWorldBookInjection((p.persona || '') + ' ' + p.name, p.id) || '';
+        if (wb) block += '\n[世界书设定]\n' + wb + '\n';
+      }
+    } catch(e) {}
+    var entries = relEntriesArg || getRelEntriesSafe();
+    var members = Array.isArray(roomMembers) ? roomMembers : roomMemberNames(room);
+    var relBlock = '';
+    members.forEach(function(otherName){
+      if (trim(otherName) === trim(name)) return;
+      var op = resolveRoomPersona(room, otherName) || resolvePersona(otherName);
+      if (!op) return;
+      var rel = entries.find(function(e){ return relMatchesPair(e, p, op); });
+      if (rel) {
+        relBlock += '  · 与「' + op.name + '」：【' + (rel.label || '有关联') + '】' + (rel.detail ? ' — ' + rel.detail : '') + '\n';
+      } else {
+        relBlock += '  · 与「' + op.name + '」：（关系图中暂无该角色ID对应关系，请只根据双方人设保持距离感）\n';
+      }
+    });
+    if (relBlock) block += '\n[' + p.name + ' 与聊天室成员的关系及对话风格]\n' + relBlock;
+    var summary = window._ccGetCharUserChatSummary(p.id, 12);
+    if (summary) block += '\n[' + p.name + ' 近期与用户的聊天记录（只读取该角色ID）]\n' + summary + '\n';
+    block += '═══ END ' + p.name + ' ═══\n';
+    return block;
+  };
+
+  window._ccSyncMessagesToPersonaMemory = function(room, newMsgs){
+    if (!room || !Array.isArray(room.members) || !Array.isArray(newMsgs) || !newMsgs.length) return;
+    var changedRooms = false;
+    try { changedRooms = normalizeExistingRoomMemberIds(room); } catch(e) {}
+    var roomName = room.name || room.members.join(' & ');
+    var now = new Date();
+    var dateStr = now.getFullYear() + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + String(now.getDate()).padStart(2,'0') + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+    var dialogLines = newMsgs.map(function(m){ return '  ' + (m.sender || '') + '：' + (typeof _ccMessagePreviewText === 'function' ? _ccMessagePreviewText(m) : (m.content || '')); }).join('\n');
+    room.members.forEach(function(memberName){
+      var p = resolveRoomPersona(room, memberName);
+      if (!p || !p.id) return;
+      var othersStr = room.members.filter(function(m){ return trim(m) !== trim(memberName); }).join('、');
+      var hist = [];
+      try { var raw = localStorage.getItem('mono_hist_' + p.id); hist = raw ? JSON.parse(raw) : (Array.isArray(p.history) ? p.history : []); } catch(e) { hist = Array.isArray(p.history) ? p.history : []; }
+      if (!Array.isArray(hist)) hist = [];
+      hist.push({
+        role: 'user',
+        content: '【私下社交记忆 · 系统注入 · 仅属于角色ID ' + p.id + '】\n⏰ 时间：' + dateStr + '\n👥 场合：你（' + p.name + '）与 ' + othersStr + ' 在「' + roomName + '」聊天室里的私下对话\n【对话内容完整记录】\n' + dialogLines + '\n【隔离要求】这段记忆只能属于你自己，禁止被同名/新建/旧角色继承。',
+        _hiddenContext: true,
+        _ccRoomMemory: true,
+        _ccRoomId: room.id,
+        _ccPersonaId: p.id,
+        timestamp: now.getTime()
+      });
+      try { localStorage.setItem('mono_hist_' + p.id, JSON.stringify(hist)); } catch(e) {}
+      try { p.history = hist; } catch(e) {}
+    });
+    if (changedRooms) {
+      try {
+        var rooms = ccGetRooms();
+        rooms = rooms.map(function(r){ return r && r.id === room.id ? room : r; });
+        ccSaveRooms(rooms);
+      } catch(e) {}
+    }
+  };
+
+  window._ccValidateRoomMemberSelection = function(memberList, relEntries){
+    if (!memberList) return;
+    var checked = Array.prototype.slice.call(memberList.querySelectorAll('input[type=checkbox]:checked'));
+    var ids = checked.map(function(c){ return trim(c.value); }).filter(Boolean);
+    var invalidPairs = [];
+    relEntries = relEntries || getRelEntriesSafe();
+    for (var i=0;i<ids.length;i++) {
+      for (var j=i+1;j<ids.length;j++) {
+        var pa = personaById(ids[i]), pb = personaById(ids[j]);
+        var hasRel = relEntries.some(function(e){ return relMatchesPair(e, pa, pb); });
+        if (!hasRel) invalidPairs.push((pa ? pa.name : ids[i]) + ' & ' + (pb ? pb.name : ids[j]));
+      }
+    }
+    var hint = document.getElementById('ccMemberRelHint');
+    if (!hint && memberList.parentNode) {
+      hint = document.createElement('div');
+      hint.id = 'ccMemberRelHint';
+      hint.style.cssText = 'font-size:11px;padding:6px 10px;border-radius:8px;margin-top:4px;';
+      memberList.parentNode.insertBefore(hint, memberList.nextSibling);
+    }
+    if (!hint) return;
+    if (ids.length < 2) { hint.style.display = 'none'; return; }
+    hint.style.display = 'block';
+    if (invalidPairs.length) {
+      hint.style.background = '#fff3cd'; hint.style.color = '#856404';
+      hint.textContent = '⚠️ 以下组合在关系图中没有用角色ID建立关联，无法创建聊天室：' + invalidPairs.join('、');
+    } else {
+      hint.style.background = '#d4edda'; hint.style.color = '#155724';
+      hint.textContent = '✓ 所有选中角色均有关联，可以创建聊天室';
+    }
+  };
+
+  var originalOpenNewCcRoomDialog = window.openNewCcRoomDialog;
+  window.openNewCcRoomDialog = function(){
+    try {
+      if (typeof ccIsWorldEnabled === 'function' && !ccIsWorldEnabled()) { alert('请先在「世界设定」→「角色间聊天室」中开启此功能。'); return; }
+      var ps = getPersonasSafe();
+      if (ps.length < 2) { alert('需要至少 2 个角色才能建立聊天室。\n请先新增角色。'); return; }
+      var entries = getRelEntriesSafe();
+      var eligible = ps.filter(function(p){ return entries.some(function(e){ return relMatchesPersona(e, p); }); });
+      if (eligible.length < 2) { alert('需要先在「关系图」中为角色建立关系，才能创建角色间聊天室。'); return; }
+      var nameInput = document.getElementById('ccNewRoomName'); if (nameInput) nameInput.value = '';
+      var memberList = document.getElementById('ccNewRoomMemberList');
+      if (!memberList) { if (typeof originalOpenNewCcRoomDialog === 'function') return originalOpenNewCcRoomDialog.apply(this, arguments); return; }
+      memberList.innerHTML = eligible.map(function(c){
+        var avatarHtml = c.avatar ? '<img src="' + esc(c.avatar) + '" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;">' : '<div style="width:36px;height:36px;border-radius:50%;background:#ccc;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#666;flex-shrink:0;">' + esc((c.name||'?').charAt(0)) + '</div>';
+        var rels = entries.filter(function(e){ return relMatchesPersona(e, c); }).map(function(e){ var o = getOtherSide(e, c) || {}; return (o.name || '关联对象') + '（' + (e.label || '有关联') + '）'; });
+        var relHint = rels.length ? '<div style="font-size:10px;color:#999;margin-top:2px;">与：' + esc(rels.join('、')) + '</div>' : '';
+        return '<label style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;border:1.5px solid #f0f0f0;cursor:pointer;background:#fff;transition:border-color 0.15s;" data-cc-member-id="' + esc(c.id) + '" data-cc-member-name="' + esc(c.name) + '">' +
+          '<input type="checkbox" value="' + esc(c.id) + '" data-name="' + esc(c.name) + '" style="width:16px;height:16px;accent-color:#1a1a1a;flex-shrink:0;">' + avatarHtml +
+          '<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;color:#1a1a1a;">' + esc(c.name) + '</div>' + relHint + '</div></label>';
+      }).join('');
+      Array.prototype.slice.call(memberList.querySelectorAll('input[type=checkbox]')).forEach(function(chk){
+        chk.addEventListener('change', function(){
+          var lbl = this.closest('label');
+          if (lbl) { lbl.style.borderColor = this.checked ? '#1a1a1a' : '#f0f0f0'; lbl.style.background = this.checked ? '#f8f8f8' : '#fff'; }
+          window._ccValidateRoomMemberSelection(memberList, entries);
+        });
+      });
+      var modal = document.getElementById('ccNewRoomModal');
+      if (modal) { modal.style.display = 'flex'; modal.style.zIndex = '100020'; }
+    } catch(err) {
+      console.warn('[角色隔离] openNewCcRoomDialog fallback', err);
+      if (typeof originalOpenNewCcRoomDialog === 'function') return originalOpenNewCcRoomDialog.apply(this, arguments);
+    }
+  };
+
+  window.createNewCcRoom = function(){
+    var memberList = document.getElementById('ccNewRoomMemberList');
+    if (!memberList) return;
+    var checked = Array.prototype.slice.call(memberList.querySelectorAll('input[type=checkbox]:checked'));
+    var ids = checked.map(function(chk){ return trim(chk.value); }).filter(Boolean);
+    if (ids.length < 2) { alert('请至少选择 2 位角色。'); return; }
+    var ps = ids.map(personaById).filter(Boolean);
+    if (ps.length !== ids.length) { alert('有角色资料读取失败，请刷新后重试。'); return; }
+    var entries = getRelEntriesSafe();
+    var invalid = [];
+    for (var i=0;i<ps.length;i++) for (var j=i+1;j<ps.length;j++) {
+      if (!entries.some(function(e){ return relMatchesPair(e, ps[i], ps[j]); })) invalid.push(ps[i].name + ' 与 ' + ps[j].name);
+    }
+    if (invalid.length) { alert('以下角色组合在关系图中没有关联，无法创建聊天室：\n\n' + invalid.join('\n') + '\n\n请先在关系图中为他们建立关系。'); return; }
+    var nameInput = document.getElementById('ccNewRoomName');
+    var names = ps.map(function(p){ return p.name; });
+    var memberIds = {}; ps.forEach(function(p){ memberIds[p.name] = p.id; });
+    var room = { id:'ccroom_' + Date.now(), name:(nameInput && nameInput.value.trim()) || names.join(' & '), members:names, memberIds:memberIds, createdAt:Date.now(), dailyTurns:(typeof ccGetWorldDailyTurns === 'function' ? ccGetWorldDailyTurns() : 5), lastAutoDate:null };
+    try { var rooms = ccGetRooms(); rooms.push(room); ccSaveRooms(rooms); } catch(e) { console.warn('[角色隔离] save cc room failed', e); }
+    var modal = document.getElementById('ccNewRoomModal'); if (modal) modal.style.display = 'none';
+    try { if (typeof ccRenderRoomList === 'function') ccRenderRoomList(); } catch(e) {}
+    try { if (typeof openCcChatRoom === 'function') openCcChatRoom(room.id); } catch(e) {}
+  };
+
+  var oldOpenRoleRelationContact = window.monoOpenRoleRelationContact;
+  window.monoOpenRoleRelationContact = function(ownerPersonaId, nodeId){
+    try {
+      var owner = personaById(ownerPersonaId);
+      if (!owner) return oldOpenRoleRelationContact && oldOpenRoleRelationContact.apply(this, arguments);
+      if (isUserNode(nodeId)) { alert('用户 / 用户面具节点会作为这个角色的关系参考参与 NPC 生成，目前不会单独创建角色聊天室。'); return; }
+      if (typeof monoIsRoleNpcNodeId === 'function' && monoIsRoleNpcNodeId(nodeId)) return oldOpenRoleRelationContact && oldOpenRoleRelationContact.apply(this, arguments);
+      var target = personaById(nodeId);
+      if (!target) return;
+      var rooms = ccGetRooms();
+      var room = rooms.find(function(r){
+        var ids = roomMemberPersonaIds(r).sort();
+        return ids.length === 2 && ids[0] === [trim(owner.id), trim(target.id)].sort()[0] && ids[1] === [trim(owner.id), trim(target.id)].sort()[1];
+      });
+      if (!room) {
+        var memberIds = {}; memberIds[owner.name] = owner.id; memberIds[target.name] = target.id;
+        room = { id:'ccroom_' + Date.now() + '_' + Math.random().toString(36).slice(2,7), name:target.name, members:[owner.name, target.name], memberIds:memberIds, createdAt:Date.now(), dailyTurns:(typeof ccGetWorldDailyTurns==='function'?ccGetWorldDailyTurns():5), lastAutoDate:null };
+        rooms.push(room); ccSaveRooms(rooms);
+      }
+      if (typeof monoOpenRolePhoneRoom === 'function') monoOpenRolePhoneRoom(room.id, owner.id);
+    } catch(err) {
+      console.warn('[角色隔离] monoOpenRoleRelationContact fallback', err);
+      if (oldOpenRoleRelationContact) return oldOpenRoleRelationContact.apply(this, arguments);
+    }
+  };
+
+  try { window.mwInjectRelationshipsIntoChars(); } catch(e) {}
+  try {
+    var rooms = (typeof ccGetRooms === 'function') ? ccGetRooms() : [];
+    var changed = false;
+    rooms.forEach(function(r){ if (normalizeExistingRoomMemberIds(r)) changed = true; });
+    if (changed && typeof ccSaveRooms === 'function') ccSaveRooms(rooms);
+  } catch(e) {}
+})();
+</script>
+
+<script id="mono-character-isolation-hotfix-v8-rolephone">
+(function(){
+  'use strict';
+  if (window.__monoCharacterIsolationHotfixV8) return;
+  window.__monoCharacterIsolationHotfixV8 = true;
+  function s(v){ return String(v == null ? '' : v); }
+  function getPersonas(){
+    try { if (typeof personas !== 'undefined' && Array.isArray(personas)) return personas; } catch(e) {}
+    try { if (Array.isArray(window.personas)) return window.personas; } catch(e) {}
+    try { return JSON.parse(localStorage.getItem('mono_personas') || '[]'); } catch(e) { return []; }
+  }
+  function getById(id){ id=s(id); return getPersonas().find(function(p){ return p && s(p.id) === id; }) || null; }
+  function getByUniqueName(name){
+    name=s(name); var list=getPersonas().filter(function(p){ return p && s(p.name) === name; });
+    return list.length === 1 ? list[0] : null;
+  }
+  function getRoomMemberPersona(room, name){
+    if (room && room.memberIds && room.memberIds[name]) return getById(room.memberIds[name]);
+    return getByUniqueName(name);
+  }
+  window._ccGetParticipantOptions = function(room){
+    if (!room) return [];
+    var out = [{ id:'__cc_user__', name:(typeof _ccGetUserDisplayName==='function'?_ccGetUserDisplayName():'我'), avatar:(typeof _ccGetUserAvatar==='function'?_ccGetUserAvatar():''), senderType:'user' }];
+    (Array.isArray(room.members)?room.members:[]).forEach(function(name){
+      var p = getRoomMemberPersona(room, name);
+      out.push({ id:p && p.id ? p.id : name, name:p && p.name ? p.name : name, avatar:p && p.avatar ? p.avatar : '', senderType:'persona' });
+    });
+    return out;
+  };
+  window._ccFindParticipant = function(room, senderId){
+    var opts = window._ccGetParticipantOptions(room);
+    var found = opts.find(function(opt){ return s(opt.id) === s(senderId) || s(opt.name) === s(senderId); });
+    return found || opts[0] || { id:'__cc_user__', name:'我', avatar:'', senderType:'user' };
+  };
+  window.monoOpenCcRoomDialogFromRolePhone = function(ownerPersonaId){
+    var owner = getById(ownerPersonaId);
+    if (!owner) { try { alert('没有找到当前角色，无法新建角色聊天室。'); } catch(e) {} return; }
+    try { if (typeof openNewCcRoomDialog === 'function') openNewCcRoomDialog(); } catch(e) { console.warn('[角色隔离v8] open room dialog failed', e); return; }
+    setTimeout(function(){
+      var modal = document.getElementById('ccNewRoomModal');
+      var list = document.getElementById('ccNewRoomMemberList');
+      if (modal) { modal.style.zIndex = '100020'; modal.style.display = 'flex'; }
+      if (!list) return;
+      var inputs = Array.prototype.slice.call(list.querySelectorAll('input[type=checkbox]'));
+      var ownerInput = inputs.find(function(chk){ return s(chk.value) === s(owner.id) || s(chk.getAttribute('data-name')) === s(owner.name); });
+      if (!ownerInput) { try { alert('这个角色暂时不能创建角色聊天室。请先在关系图里给该角色和另一位角色建立关系。'); } catch(e) {} return; }
+      ownerInput.checked = true;
+      ownerInput.disabled = true;
+      ownerInput.setAttribute('data-role-phone-owner','1');
+      var label = ownerInput.closest('label');
+      if (label) { label.style.borderColor = '#1a1a1a'; label.style.background = '#f4f4f4'; }
+      try { if (typeof _ccValidateRoomMemberSelection === 'function') _ccValidateRoomMemberSelection(list, (typeof mwGetRelEntries==='function'?mwGetRelEntries():[])); } catch(e) {}
+    }, 30);
+  };
+})();
+</script>
+
+<!-- mono-time-awareness-soft-reference-v4 -->
+<script>
+
+/* ================================================================
+ * V7 hotfix: 通话/信息记忆同步
+ * - 通话结束后生成可读通话摘要，写入角色 memoryCore
+ * - 普通聊天/自动总结/最近聊天读取 call 消息时，能读取通话摘要而不是只看到“语音通话xx秒”
+ * - 按角色 id 保存，不跨角色、不跨用户面具
+ * ================================================================ */
+(function(){
+  function _v7Text(x){ return String(x == null ? '' : x); }
+  function _v7StripSpokenTranslation(text) {
+    try { if (typeof _stripSpokenTranslation === 'function') return _stripSpokenTranslation(text); } catch(e) {}
+    return _v7Text(text).replace(/\n?[「"]?译文[:：][\s\S]+?[」"]?\s*$/g, '').trim();
+  }
+  function _v7UserName(identity, fallback) {
+    try { if (typeof monoGetResolvedUserDisplayName === 'function') return monoGetResolvedUserDisplayName(identity, fallback || '用户'); } catch(e) {}
+    return (identity && (identity.displayName || identity.name)) || fallback || '用户';
+  }
+  function _v7ResolveUserIdentity(persona, msg) {
+    try {
+      if (typeof _resolveCallUserIdentity === 'function') {
+        return _resolveCallUserIdentity(persona || null, {
+          message: msg || {},
+          maskId: (msg && msg.userMaskId) || '',
+          source: (msg && msg.source) || 'chat',
+          userName: (msg && msg.userDisplayName) || ''
+        });
+      }
+    } catch(e) {}
+    try { return typeof userProfile !== 'undefined' ? userProfile : { name:'用户' }; } catch(e) { return { name:'用户' }; }
+  }
+  window.monoBuildCallMemoryText = function(msg, persona, userIdentityOrName) {
+    if (!msg || msg.msgType !== 'call') return '';
+    var pName = (persona && persona.name) || (msg.personaName || '角色');
+    var identity = (typeof userIdentityOrName === 'object' && userIdentityOrName) ? userIdentityOrName : _v7ResolveUserIdentity(persona, msg);
+    var uName = typeof userIdentityOrName === 'string' ? userIdentityOrName : _v7UserName(identity, msg.userDisplayName || '用户');
+    var direction = msg.initiator === 'persona'
+      ? pName + '主动打电话给' + uName
+      : uName + '主动打电话给' + pName;
+    if (!msg.connected) return '[通话记录] ' + direction + '，但没有接通。';
+    var sec = Math.max(0, Math.round(Number(msg.duration) || 0));
+    var duration = sec ? ('通话时长约' + (sec >= 60 ? (Math.floor(sec/60) + '分' + (sec%60) + '秒') : (sec + '秒')) + '。') : '通话已接通。';
+    var callMsgs = Array.isArray(msg.callMsgs) ? msg.callMsgs : [];
+    var transcript = callMsgs.slice(-16).map(function(item){
+      if (!item) return '';
+      var speaker = item.role === 'user' ? uName : pName;
+      var content = _v7StripSpokenTranslation(item.content || item.transcript || '').replace(/\s+/g, ' ').trim();
+      if (!content) return '';
+      return speaker + '：' + content.slice(0, 140);
+    }).filter(Boolean).join('\n');
+    return '[通话记录] ' + direction + '。' + duration + (transcript ? '\n电话里真实聊到：\n' + transcript : '');
+  };
+
+  window._buildCallHistorySummary = function(msg, personaOrName, userIdentityOrName) {
+    var persona = personaOrName && typeof personaOrName === 'object' ? personaOrName : { name: personaOrName || (msg && msg.personaName) || '角色' };
+    return window.monoBuildCallMemoryText(msg, persona, userIdentityOrName);
+  };
+
+  window._persistCallMemorySummary = function(persona, msgObj, userIdentityOrName) {
+    try {
+      if (!persona || !msgObj || msgObj.msgType !== 'call' || !msgObj.connected) return;
+      persona.memoryCore = Array.isArray(persona.memoryCore) ? persona.memoryCore : [];
+      var now = new Date(msgObj.timestamp || msgObj.ts || Date.now());
+      var dateStr = now.getFullYear() + '/' + String(now.getMonth() + 1).padStart(2, '0') + '/' + String(now.getDate()).padStart(2, '0');
+      var summary = window.monoBuildCallMemoryText(msgObj, persona, userIdentityOrName)
+        .replace(/^\[通话记录\]\s*/, '')
+        .trim();
+      if (!summary) return;
+      var transcriptSeed = (Array.isArray(msgObj.callMsgs) ? msgObj.callMsgs : []).map(function(m){ return _v7StripSpokenTranslation(m && m.content || '').slice(0, 60); }).join('|');
+      var keyBase = [String(persona.id || ''), String(msgObj.timestamp || msgObj.ts || ''), String(msgObj.duration || ''), transcriptSeed.slice(0,160)].join('::');
+      var key = msgObj._callMemoryKey || ('call_' + Math.abs(Array.from(keyBase).reduce(function(h,ch){ return ((h * 31) + ch.charCodeAt(0)) | 0; }, 7)));
+      msgObj._callMemoryKey = key;
+      msgObj.callSummary = summary;
+      var exists = persona.memoryCore.some(function(item){ return item && typeof item === 'object' && item._callMemoryKey === key; });
+      if (!exists) {
+        persona.memoryCore.push({
+          content: dateStr + ' 通话记忆：' + summary,
+          date: dateStr,
+          auto: true,
+          source: '通话记录',
+          _callMemoryKey: key,
+          personaId: persona.id || ''
+        });
+      }
+      var limit = Math.max(20, parseInt(persona.memoryCount, 10) || 100);
+      if (persona.memoryCore.length > limit) persona.memoryCore = persona.memoryCore.slice(-limit);
+      try {
+        if (typeof currentId !== 'undefined' && String(currentId) === String(persona.id) && typeof renderMemoryCoreList === 'function') {
+          renderMemoryCoreList(persona.memoryCore);
+        }
+      } catch(e) {}
+    } catch(e) { console.warn('[call memory sync]', e); }
+  };
+
+  var _oldMonoMessageText = (typeof monoMessageText === 'function') ? monoMessageText : null;
+  window.monoMessageText = function(message, persona) {
+    try {
+      if (message && message.msgType === 'call') {
+        return window.monoBuildCallMemoryText(message, persona || {}, _v7ResolveUserIdentity(persona || {}, message));
+      }
+    } catch(e) {}
+    return _oldMonoMessageText ? _oldMonoMessageText(message, persona) : _v7Text(message && message.content).trim();
+  };
+})();
+
+</script>
 </body>
 
 <!-- MONO FINAL FIX: Sticker library dialogs are not covered; use a real top-layer modal and direct button routing -->

@@ -27783,7 +27783,8 @@ function _forumRecentPersonaPosts(personaId, limit) {
     const posts = Array.isArray(forumData[secId]) ? forumData[secId] : [];
     posts.forEach(function(post) {
       if (!post) return;
-      if (String(post.personaId) === pid || (post.realAuthor && String(post.realAuthor) === personaName)) {
+      // v8: 只按唯一角色 id 判断最近发帖，避免新建同名/相似名角色继承旧角色论坛记录。
+      if (String(post.personaId || '') === pid) {
         all.push(post);
       }
     });
@@ -37034,7 +37035,7 @@ async function postMomentsCommentReply(itemId, cIdx, commentAuthor) {
       const _rLang = _detectPersonaLang(persona);
       const _rLangOv = _langOverridePrompt(_rLang);
       const recentChat = persona.history ? persona.history.slice(-20).map(m => m.role === 'user' ? userProfile.name + '：' + (m.content || '') : persona.name + '：' + (m.content || '')).join('\n') : '';
-      const prompt = `${LANG_SYSTEM_PREFIX}你是${persona.name}，人设：${persona.persona}。
+      const prompt = `${LANG_SYSTEM_PREFIX}你是${persona.name}，人设：${_monoForumPersonaProfileV8(persona)}。
 与${userProfile.name}的近期聊天记录（供参考）：
 ${recentChat || '（暂无）'}
 朋友圈动态内容："${item.content || ''}"
@@ -37080,7 +37081,7 @@ async function generatePersonaReplyToComment(persona, postContent, commenterName
     const threadCtx = Array.isArray(allComments) && allComments.length > 1
       ? '\n评论区所有留言：\n' + allComments.slice(-8).map(c => `${c.author || ''}：${c.content || c.text || ''}`).join('\n')
       : '';
-    const prompt = `${LANG_SYSTEM_PREFIX}你是${persona.name}，人设：${persona.persona}。
+    const prompt = `${LANG_SYSTEM_PREFIX}你是${persona.name}，人设：${_monoForumPersonaProfileV8(persona)}。
 与${userProfile.name}的近期聊天记录（供参考）：
 ${recentChat || '（暂无）'}
 你在朋友圈发了："${postContent}"${threadCtx}
@@ -38517,6 +38518,165 @@ async function updateForum() {
     alert(`论坛内容更新成功！共生成 ${aiPosts.length} 个帖子${preservedPosts.length > 0 ? '，并已保留原有的 ' + preservedPosts.length + ' 个非AI帖子' : ''}`);
   } catch(e) { alert("生成失败: " + e.message); }
 }
+
+// ===== Mono v8: robust persona forum post generation for newly-created characters =====
+function _monoForumTextV8(v) {
+  if (v == null) return '';
+  if (typeof v === 'string') return v;
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+  try { return JSON.stringify(v); } catch(e) { return String(v); }
+}
+function _monoForumPickV8(obj, keys) {
+  if (!obj || typeof obj !== 'object') return '';
+  for (var i = 0; i < keys.length; i++) {
+    var k = keys[i];
+    if (obj[k] != null && _monoForumTextV8(obj[k]).trim()) return obj[k];
+  }
+  return '';
+}
+function _monoForumBalancedJsonObjectV8(raw) {
+  var s = _monoForumTextV8(raw).trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'");
+  try { return JSON.parse(s); } catch(e) {}
+  var start = s.indexOf('{');
+  if (start < 0) return null;
+  var depth = 0, inStr = false, esc = false;
+  for (var i = start; i < s.length; i++) {
+    var ch = s[i];
+    if (inStr) {
+      if (esc) { esc = false; continue; }
+      if (ch === '\\') { esc = true; continue; }
+      if (ch === '"') inStr = false;
+      continue;
+    }
+    if (ch === '"') { inStr = true; continue; }
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) {
+        var candidate = s.slice(start, i + 1);
+        try { return JSON.parse(candidate); } catch(e2) { return null; }
+      }
+    }
+  }
+  return null;
+}
+function _monoForumPersonaProfileV8(persona) {
+  persona = persona || {};
+  var parts = [];
+  ['persona','profile','description','character','setting','background','personality','traits','story','memory','bio'].forEach(function(k){
+    var val = persona[k];
+    if (Array.isArray(val)) val = val.join('、');
+    if (val && typeof val === 'object') val = _monoForumTextV8(val);
+    val = _monoForumTextV8(val).trim();
+    if (val && parts.indexOf(val) < 0) parts.push(val);
+  });
+  if (!parts.length && persona.name) parts.push('角色名字：' + persona.name + '。请根据这个角色的名字、语气和当前论坛板块自由发挥。');
+  return parts.join('\n').slice(0, 1200) || '暂无详细人设，请根据当前板块自由发挥，但必须保持像真人发帖。';
+}
+function _monoForumClipContext(contextBlock, maxLen) {
+  var s = _monoForumTextV8(contextBlock).replace(/\n{3,}/g, '\n\n').trim();
+  maxLen = maxLen || 1600;
+  if (s.length <= maxLen) return s;
+  return s.slice(0, Math.floor(maxLen * 0.55)) + '\n……（中间资料已省略，避免生成格式被截断）……\n' + s.slice(-Math.floor(maxLen * 0.45));
+}
+function _monoForumNormalizeCommentV8(item, idx) {
+  if (typeof item === 'string') return { npcName: '网友' + (idx + 1), content: item.trim() };
+  item = item && typeof item === 'object' ? item : {};
+  var name = _monoForumPickV8(item, ['npcName','name','author','nickname','user','username','网友昵称','昵称','评论者','用户名']) || ('网友' + (idx + 1));
+  var content = _monoForumPickV8(item, ['content','comment','text','message','body','评论内容','内容','留言']);
+  return { npcName: _monoForumTextV8(name).trim() || ('网友' + (idx + 1)), content: _monoForumTextV8(content).trim() };
+}
+function _monoForumNormalizeReplyV8(item, idx, comments) {
+  if (typeof item === 'string') return { replyToNpcName: comments[idx % Math.max(comments.length, 1)] && comments[idx % Math.max(comments.length, 1)].npcName || '网友1', content: item.trim() };
+  item = item && typeof item === 'object' ? item : {};
+  var to = _monoForumPickV8(item, ['replyToNpcName','replyTo','to','target','author','被回复的网友昵称','回复对象','回复给','对象']);
+  var content = _monoForumPickV8(item, ['content','reply','text','message','body','回复内容','内容']);
+  if (!to && comments.length) to = comments[idx % comments.length].npcName;
+  return { replyToNpcName: _monoForumTextV8(to).trim(), content: _monoForumTextV8(content).trim() };
+}
+function _monoForumDefaultCommentsV8(persona, sectionName, count) {
+  var name = (persona && persona.name) || '楼主';
+  var pool = [
+    '这个说法还挺真实的，我好像也遇到过类似情况。',
+    '楼主可以再展开讲讲吗，感觉背后还有故事。',
+    '先蹲一下后续，这个话题有点戳到我。',
+    '我理解你的点，但也可能是想太多了。',
+    '这个板块终于有一点像真人生活的帖子了。',
+    '如果是我的话可能会直接先观察几天。',
+    '有点好奇' + name + '后来怎么处理的。'
+  ];
+  var n = Math.max(3, count || 4);
+  var arr = [];
+  for (var i = 0; i < n; i++) arr.push({ npcName: '网友' + (i + 1), content: pool[i % pool.length] });
+  return arr;
+}
+function _monoForumParsePersonaPostResult(raw, persona, npcCount) {
+  var obj = null;
+  try { obj = safeParseJSON(raw, null); } catch(e) {}
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) obj = _monoForumBalancedJsonObjectV8(raw);
+  if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+    obj = obj.post || obj.data || obj.result || obj.output || obj;
+    var title = _monoForumPickV8(obj, ['title','postTitle','标题','帖子标题','题目']);
+    var content = _monoForumPickV8(obj, ['content','body','text','postContent','正文','帖子正文','内容']);
+    var commentsRaw = _monoForumPickV8(obj, ['npcComments','comments','commentList','网友评论','评论','楼层评论','npc_comments']);
+    var repliesRaw = _monoForumPickV8(obj, ['personaReplies','replies','replyList','角色回复NPC','角色回复','回复','persona_replies']);
+    var comments = Array.isArray(commentsRaw) ? commentsRaw.map(_monoForumNormalizeCommentV8).filter(function(c){ return c.content; }) : [];
+    var replies = Array.isArray(repliesRaw) ? repliesRaw.map(function(r, i){ return _monoForumNormalizeReplyV8(r, i, comments); }).filter(function(r){ return r.content; }) : [];
+    if (title && content) {
+      if (!comments.length) comments = _monoForumDefaultCommentsV8(persona, '', npcCount);
+      if (!replies.length && comments.length) {
+        replies = comments.slice(0, Math.min(2, comments.length)).map(function(c, i){
+          return { replyToNpcName: c.npcName, content: i === 0 ? '我也是这样想了一会儿才来发帖的，不然一直憋着有点难受。' : '嗯嗯，我懂你的意思，所以才想听听不同人的看法。' };
+        });
+      }
+      return { title: _monoForumTextV8(title).trim().slice(0, 30), content: _monoForumTextV8(content).trim(), npcComments: comments, personaReplies: replies };
+    }
+  }
+  // Non-JSON fallback: use the model's prose instead of treating it as total failure.
+  var s = _monoForumTextV8(raw).replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
+  var titleMatch = s.match(/(?:标题|title|帖子标题)\s*[:：]\s*([^\n]+)/i);
+  var contentMatch = s.match(/(?:正文|content|帖子正文|内容)\s*[:：]\s*([\s\S]+)/i);
+  var title = titleMatch ? titleMatch[1].trim() : '';
+  var content = contentMatch ? contentMatch[1].trim() : '';
+  if (!title || !content) {
+    var lines = s.split(/\n+/).map(function(x){ return x.replace(/^[-*•\d.、\s]+/, '').trim(); }).filter(Boolean);
+    if (!title && lines.length) title = lines[0].replace(/^标题[:：]?\s*/, '').slice(0, 30);
+    if (!content && lines.length > 1) content = lines.slice(1).join('\n').replace(/^(正文|内容)[:：]?\s*/, '').trim();
+  }
+  content = content.replace(/\{[\s\S]*$/, '').trim();
+  if (title && content && content.length >= 20) {
+    return { title: title.slice(0, 30), content: content.slice(0, 320), npcComments: _monoForumDefaultCommentsV8(persona, '', npcCount), personaReplies: [] };
+  }
+  return null;
+}
+function _monoForumFallbackPersonaPost(persona, section, isAnonymous, npcCount, raw) {
+  var name = (persona && persona.name) || '这个角色';
+  var profile = _monoForumPersonaProfileV8(persona);
+  var secName = (section && section.name) || '论坛';
+  var rawText = _monoForumTextV8(raw).replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
+  var titlePool = ['突然想问问大家', '这件事有人懂吗', '今天有点想记录一下', '关于' + secName + '的小问题', '有时候真的会这样'];
+  var title = titlePool[Math.floor(Math.random() * titlePool.length)];
+  var content = rawText.length >= 40 ? rawText.slice(0, 220) : '';
+  if (!content) {
+    content = '刚刚刷到这个板块的时候，突然想到自己最近也有一点类似的感受。' +
+      '可能是因为' + profile.slice(0, 42).replace(/\n/g, '，') + '，所以对这类事情会比较在意。' +
+      '也说不上是什么大事，就是想听听大家会怎么想。';
+  }
+  var comments = _monoForumDefaultCommentsV8(persona, secName, npcCount);
+  return {
+    title: title.slice(0, 30),
+    content: content,
+    npcComments: comments,
+    personaReplies: comments.slice(0, 2).map(function(c, i){
+      return { replyToNpcName: c.npcName, content: i === 0 ? '看到你这样说我稍微安心一点，原来不是只有我会这样想。' : '对，我也是卡在这个点上，所以才想发出来问问。' };
+    })
+  };
+}
+
 // ===================== 角色匿名发帖 (论坛) =====================
 function openPersonaForumModal() {
   if (!personas || personas.length === 0) { alert('请先创建角色！'); return; }
@@ -38627,12 +38787,12 @@ async function generatePersonaForumPost(personaId) {
       const retryNote = attempt === 0
         ? ''
         : '\n【重试要求】你上一版和旧帖太像了。这一次必须明显换题材、换切入口、换事件，不要做同义改写。';
-      const prompt = `${LANG_SYSTEM_PREFIX}你是${persona.name}，人设：${persona.persona}。
+      const prompt = `${LANG_SYSTEM_PREFIX}你是${persona.name}，人设：${_monoForumPersonaProfileV8(persona)}。
 你即将在论坛（板块：${cs.name}，说明：${cs.desc || cs.name}）以${isAnonymous ? '"匿名"' : '"实名"'}身份发帖。
 以下资料只是可选灵感，不是必须使用，更不是唯一主题来源。不要每次都写用户、聊天室或最近私聊内容；如果适合，也可以少量参考角色与角色之间的聊天室互动。
 优先创作方向：${selectedTopicDirection}
 你的近期言行/心情素材（仅供灵感，按你的视角改写融入，不要直接引用原文）：
-${contextBlock || '（暂无，请根据人设自由发挥）'}
+${_monoForumClipContext(contextBlock, 1600) || '（暂无，请根据人设自由发挥）'}
 ${avoidanceNotes ? '【你最近已经发过的帖子，请避开这些主题、切口、措辞，不要重复】\n' + avoidanceNotes : ''}
 ⚠️ 重要提醒：上述背景资料中所有内容都是从你「${persona.name}」的视角出发的，帖子内容必须完全以你自己的第一人称视角来写，绝对不能以对话对象或其他人的视角来写。${retryNote}
 任务：生成完整的帖子发布场景，包含帖子本身、其他网友的评论、以及你对部分评论的回复。
@@ -38656,14 +38816,14 @@ ${avoidanceNotes ? '【你最近已经发过的帖子，请避开这些主题、
   ]
 }
 只返回JSON。`;
-      lastRaw = await _forumApiFetch(prompt, 2000);
-      const parsed = safeParseJSON(lastRaw);
+      lastRaw = await _forumApiFetch(prompt, 3200);
+      const parsed = _monoForumParsePersonaPostResult(lastRaw, persona, npcCount);
       if (!parsed || !parsed.title || !parsed.content) continue;
-      if (_forumTooSimilarToRecent(persona.id, parsed.title, parsed.content)) continue;
+      if (_forumTooSimilarToRecent(persona.id, parsed.title, parsed.content) && attempt < 2) continue;
       result = parsed;
       break;
     }
-    if (!result || !result.title || !result.content) throw new Error('生成内容格式错误或与旧帖重复');
+    if (!result || !result.title || !result.content) result = _monoForumFallbackPersonaPost(persona, cs, isAnonymous, npcCount, lastRaw);
     // ── Step 2：构建帖子数据（一次性填入所有评论和回复） ──
     const npcComments = Array.isArray(result.npcComments) ? result.npcComments : [];
     const personaReplies = Array.isArray(result.personaReplies) ? result.personaReplies : [];
@@ -38729,7 +38889,7 @@ async function _generatePersonaAnonForumReplyToUserComment(sectionId, postId, co
     _showForumCommentTyping(postId, commentIdx, 'comment');
     const allComments = (targetPost.comments || []).filter((_, i) => i !== commentIdx)
       .slice(-6).map(c => `${c.author}：${c.content}`).join('\n');
-    const prompt = `${LANG_SYSTEM_PREFIX}你是${persona.name}，人设：${persona.persona}。
+    const prompt = `${LANG_SYSTEM_PREFIX}你是${persona.name}，人设：${_monoForumPersonaProfileV8(persona)}。
 你以"匿名"身份在论坛发了这个帖子：
 标题：${targetPost.title}
 内容：${targetPost.content}
@@ -38790,7 +38950,7 @@ async function _generatePersonaAnonForumReplyToUserReply(sectionId, postId, comm
     }
     // 判断是否是角色自己的匿名评论在被回复
     const isPersonaOwnComment = commentAuthor === '匿名' && comment && comment.isPersonaComment;
-    const prompt = `${LANG_SYSTEM_PREFIX}你是${persona.name}，人设：${persona.persona}。
+    const prompt = `${LANG_SYSTEM_PREFIX}你是${persona.name}，人设：${_monoForumPersonaProfileV8(persona)}。
 你以"匿名"身份在论坛发了这个帖子：
 标题：${targetPost.title}
 ${isPersonaOwnComment
@@ -38839,7 +38999,7 @@ async function _generatePersonaForumReplyToUserCommentPublic(sectionId, postId, 
     _showForumCommentTyping(postId, commentIdx, 'comment');
     const allComments = (targetPost.comments || []).filter((_, i) => i !== commentIdx)
       .slice(-6).map(c => `${c.author}：${c.content}`).join('\n');
-    const prompt = `${LANG_SYSTEM_PREFIX}你是${persona.name}，人设：${persona.persona}。
+    const prompt = `${LANG_SYSTEM_PREFIX}你是${persona.name}，人设：${_monoForumPersonaProfileV8(persona)}。
 你刚刚以自己的身份在论坛发了这个帖子，论坛里的人都知道发帖者就是你本人。
 标题：${targetPost.title}
 内容：${targetPost.content}
@@ -38897,7 +39057,7 @@ async function _generatePersonaForumReplyToUserReplyPublic(sectionId, postId, co
         replyChain += `【${r.author}】回复【${r.replyTo || ''}】：${r.content}\n`;
       });
     }
-    const prompt = `${LANG_SYSTEM_PREFIX}你是${persona.name}，人设：${persona.persona}。
+    const prompt = `${LANG_SYSTEM_PREFIX}你是${persona.name}，人设：${_monoForumPersonaProfileV8(persona)}。
 你以自己的身份在论坛发了这个帖子，大家都知道发帖者就是你本人。
 标题：${targetPost.title}
 内容：${targetPost.content}
@@ -113774,6 +113934,368 @@ body.mono-fwd-modal-open {
   };
   try { _buildFullSessionContext = window._buildFullSessionContext; } catch(e) {}
 })();
+
+
+/* === USER MASK AVATAR HARD PERSISTENCE + EXPORT/IMPORT FIX V9 ===
+   Fixes: user mask avatars disappearing after closing/reopening the web page.
+   Strategy:
+   - Treat uploaded mask avatars as real persistent data, not temporary UI state.
+   - Save each custom mask avatar in 4 places: mask object, raw shared avatar bank, per-mask raw key, IndexedDB blob.
+   - Never let generated letter avatars overwrite a previously saved custom avatar.
+   - Export/import full mask avatars through monoExportUserMasksWithAvatars(). */
+(function(){
+  if (window.__monoUserMaskAvatarHardPersistV9) return;
+  window.__monoUserMaskAvatarHardPersistV9 = true;
+
+  var BANK_KEY = 'monoUserMaskAvatarBankV9';          // intentionally not mono_* to avoid multi-world key rewriting
+  var PER_KEY_PREFIX = 'monoUserMaskAvatarV9_';       // intentionally not mono_* to avoid multi-world key rewriting
+  var SAVED_AT_KEY = 'monoUserMaskAvatarSavedAtV9';
+
+  function rawLS(){
+    try { return window._monoRawLocalStorage || window.localStorage; } catch(e) { return window.localStorage; }
+  }
+  function isDataImage(v){ return typeof v === 'string' && /^data:image\//i.test(v) && v.length > 50; }
+  function safeParse(txt, fallback){ try { return JSON.parse(txt || ''); } catch(e) { return fallback; } }
+  function readRaw(key){
+    try { var a = rawLS().getItem(key); if (a != null) return a; } catch(e) {}
+    try { var b = window.localStorage.getItem(key); if (b != null) return b; } catch(e) {}
+    return '';
+  }
+  function writeRaw(key, val){
+    if (val == null) return false;
+    var ok = false;
+    try { rawLS().setItem(key, val); ok = true; } catch(e) {}
+    try { window.localStorage.setItem(key, val); ok = true; } catch(e) {}
+    return ok;
+  }
+  function removeRaw(key){
+    try { rawLS().removeItem(key); } catch(e) {}
+    try { window.localStorage.removeItem(key); } catch(e) {}
+  }
+  function decodeDataUrlText(dataUrl){
+    try {
+      var comma = String(dataUrl || '').indexOf(',');
+      if (comma < 0) return '';
+      var meta = dataUrl.slice(0, comma).toLowerCase();
+      var body = dataUrl.slice(comma + 1);
+      if (meta.indexOf(';base64') >= 0) return decodeURIComponent(escape(atob(body)));
+      return decodeURIComponent(body);
+    } catch(e) { return ''; }
+  }
+  function isGeneratedLetterAvatar(v){
+    if (!isDataImage(v)) return false;
+    if (/^data:image\/gif/i.test(v) && v.length < 200) return true;
+    if (/^data:image\/svg\+xml/i.test(v)) {
+      var txt = decodeDataUrlText(v);
+      if (!txt && v.length < 5000) return true;
+      if (/<svg[\s>]/i.test(txt) && /<rect\b/i.test(txt) && /<text\b/i.test(txt) && /font-size="?90/i.test(txt)) return true;
+      if (/<svg[\s>]/i.test(txt) && /text-anchor="middle"/i.test(txt) && /width="?200/i.test(txt)) return true;
+    }
+    return false;
+  }
+  function isRealCustomAvatar(v){ return isDataImage(v) && !isGeneratedLetterAvatar(v); }
+  function maskKey(id){
+    try { if (typeof monoUserMaskAvatarBlobKey === 'function') return monoUserMaskAvatarBlobKey(id); } catch(e) {}
+    return 'user_mask_avatar_' + String(id || '');
+  }
+  async function idbGet(key){ try { if (window._monoIdbBlobGet) return await window._monoIdbBlobGet(key); } catch(e) {} return ''; }
+  async function idbSet(key, value){ try { if (window._monoIdbBlobSet && value) await window._monoIdbBlobSet(key, value); } catch(e) {} }
+  async function idbDel(key){ try { if (window._monoIdbBlobDel) await window._monoIdbBlobDel(key); } catch(e) {} }
+
+  function readBank(){
+    var bank = safeParse(readRaw(BANK_KEY), null);
+    if (!bank || typeof bank !== 'object') bank = { version: 9, updatedAt: 0, avatars: {} };
+    if (!bank.avatars || typeof bank.avatars !== 'object') bank.avatars = {};
+    return bank;
+  }
+  function writeBank(bank){
+    bank = bank && typeof bank === 'object' ? bank : { avatars: {} };
+    bank.version = 9;
+    bank.updatedAt = Date.now();
+    if (!bank.avatars || typeof bank.avatars !== 'object') bank.avatars = {};
+    writeRaw(BANK_KEY, JSON.stringify(bank));
+    writeRaw(SAVED_AT_KEY, String(bank.updatedAt));
+  }
+  function getBankAvatar(id){
+    id = String(id || '');
+    if (!id) return '';
+    var per = readRaw(PER_KEY_PREFIX + id);
+    if (isRealCustomAvatar(per)) return per;
+    var bank = readBank();
+    var av = bank.avatars[id] || '';
+    return isRealCustomAvatar(av) ? av : '';
+  }
+  function saveBankAvatar(id, avatar){
+    id = String(id || '');
+    if (!id || !isRealCustomAvatar(avatar)) return false;
+    var bank = readBank();
+    bank.avatars[id] = avatar;
+    writeBank(bank);
+    writeRaw(PER_KEY_PREFIX + id, avatar);
+    idbSet(maskKey(id), avatar);
+    return true;
+  }
+  function deleteBankAvatar(id){
+    id = String(id || '');
+    if (!id) return;
+    var bank = readBank();
+    try { delete bank.avatars[id]; } catch(e) {}
+    writeBank(bank);
+    removeRaw(PER_KEY_PREFIX + id);
+    idbDel(maskKey(id));
+  }
+
+  function parseMaskListFromStorage(value){
+    var parsed = safeParse(value, []);
+    if (Array.isArray(parsed)) return parsed;
+    if (parsed && Array.isArray(parsed.masks)) return parsed.masks;
+    return [];
+  }
+  function collectMaskSources(){
+    var out = [];
+    function add(arr){ if (Array.isArray(arr)) arr.forEach(function(x){ if (x && typeof x === 'object') out.push(x); }); }
+    try { if (typeof userMasks !== 'undefined' && Array.isArray(userMasks)) add(userMasks); } catch(e) {}
+    try { if (Array.isArray(window.userMasks)) add(window.userMasks); } catch(e) {}
+    ['mono_user_masks','mono_user_masks_backup_v11','mono_user_masks_final_snapshot_v6','mono_user_masks_stable_v5','mono_user_masks_stable_v1'].forEach(function(key){
+      add(parseMaskListFromStorage(readRaw(key)));
+    });
+    return out;
+  }
+  function basicNormalize(mask){
+    var raw = mask && typeof mask === 'object' ? Object.assign({}, mask) : {};
+    var id = raw.id || ('mask_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8));
+    var name = String(raw.name || '未命名面具').trim() || '未命名面具';
+    var avatar = String(raw.avatar || raw.customAvatarData || '');
+    var bankAvatar = getBankAvatar(id);
+    if (isRealCustomAvatar(avatar)) {
+      saveBankAvatar(id, avatar);
+    } else if (isRealCustomAvatar(bankAvatar)) {
+      avatar = bankAvatar;
+    } else if (!isDataImage(avatar) || isGeneratedLetterAvatar(avatar)) {
+      try { avatar = typeof makeUserAvatar === 'function' ? makeUserAvatar(name) : avatar; } catch(e) {}
+    }
+    return {
+      id: id,
+      name: name,
+      avatar: avatar,
+      hasCustomAvatar: isRealCustomAvatar(avatar) || !!raw.hasCustomAvatar,
+      bio: String(raw.bio || ''),
+      personaSpec: String(raw.personaSpec || ''),
+      createdAt: Number(raw.createdAt) || Date.now(),
+      updatedAt: Number(raw.updatedAt) || Date.now()
+    };
+  }
+  function normalizeMaskHard(mask){
+    var norm;
+    try {
+      // Use the original normalizer for shape, then repair avatar with hard persistence.
+      if (typeof window.__monoOriginalNormalizeUserMaskV9 === 'function') norm = window.__monoOriginalNormalizeUserMaskV9(mask || {});
+      else if (typeof monoNormalizeUserMask === 'function' && monoNormalizeUserMask !== normalizeMaskHard) norm = monoNormalizeUserMask(mask || {});
+    } catch(e) {}
+    norm = Object.assign({}, basicNormalize(mask || {}), norm || {});
+    var id = norm.id || (mask && mask.id) || ('mask_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8));
+    var rawAvatar = mask && isRealCustomAvatar(mask.avatar) ? mask.avatar : '';
+    var customData = mask && isRealCustomAvatar(mask.customAvatarData) ? mask.customAvatarData : '';
+    var bankAvatar = getBankAvatar(id);
+    if (rawAvatar) norm.avatar = rawAvatar;
+    else if (customData) norm.avatar = customData;
+    else if (isRealCustomAvatar(bankAvatar)) norm.avatar = bankAvatar;
+    else if (!isRealCustomAvatar(norm.avatar)) {
+      try { norm.avatar = typeof makeUserAvatar === 'function' ? makeUserAvatar(norm.name || '面') : norm.avatar; } catch(e) {}
+    }
+    norm.id = id;
+    norm.hasCustomAvatar = isRealCustomAvatar(norm.avatar) || !!(mask && mask.hasCustomAvatar && getBankAvatar(id));
+    if (isRealCustomAvatar(norm.avatar)) saveBankAvatar(id, norm.avatar);
+    return norm;
+  }
+
+  // Save a full copy when possible. If quota fails, save slim metadata but keep avatars in bank/per-key/IDB.
+  function saveMasksFull(list, opts){
+    opts = opts || {};
+    var src = Array.isArray(list) ? list : collectMaskSources();
+    var byId = {}, order = [];
+    src.forEach(function(item){
+      if (!item || typeof item !== 'object') return;
+      var m = normalizeMaskHard(item);
+      var id = String(m.id || '');
+      if (!id) return;
+      if (!byId[id]) order.push(id);
+      var old = byId[id] || {};
+      // Never replace a real custom avatar with a generated avatar.
+      if (isRealCustomAvatar(old.avatar) && !isRealCustomAvatar(m.avatar)) m.avatar = old.avatar;
+      byId[id] = Object.assign({}, old, m);
+    });
+    var full = order.map(function(id){ return normalizeMaskHard(byId[id]); });
+    try { userMasks = full; } catch(e) {}
+    try { window.userMasks = full; } catch(e) {}
+    full.forEach(function(m){ if (isRealCustomAvatar(m.avatar)) saveBankAvatar(m.id, m.avatar); });
+
+    var fullJson = JSON.stringify(full);
+    var slim = full.map(function(m){
+      var x = Object.assign({}, m);
+      if (isRealCustomAvatar(x.avatar)) x.customAvatarSaved = true;
+      // Keep the avatar in mono_user_masks first. If quota fails, fallback below strips it.
+      return x;
+    });
+    var slimNoAvatar = full.map(function(m){
+      var x = Object.assign({}, m);
+      if (isDataImage(x.avatar)) x.avatar = '';
+      if (isRealCustomAvatar(m.avatar)) x.customAvatarSaved = true;
+      return x;
+    });
+    var wroteFull = false;
+    try { writeRaw('mono_user_masks', fullJson); wroteFull = true; } catch(e) { wroteFull = false; }
+    try { writeRaw('mono_user_masks_backup_v11', fullJson); } catch(e) {}
+    if (!wroteFull) {
+      var slimJson = JSON.stringify(slimNoAvatar);
+      writeRaw('mono_user_masks', slimJson);
+      writeRaw('mono_user_masks_backup_v11', slimJson);
+    }
+    try { writeRaw('mono_user_masks_saved_at_v11', String(Date.now())); } catch(e) {}
+    try { writeRaw('mono_user_masks_full_export_shadow_v9', JSON.stringify(slim)); } catch(e) {}
+    if (opts.refresh !== false) {
+      try { if (typeof monoRenderUserMasksManager === 'function') monoRenderUserMasksManager(); } catch(e) {}
+      try { if (typeof monoRenderUserMaskOptions === 'function') monoRenderUserMaskOptions(); } catch(e) {}
+      try { if (typeof monoRefreshUserIdentityUi === 'function') monoRefreshUserIdentityUi(); } catch(e) {}
+    }
+    return full;
+  }
+
+  async function hydrateMasksFromIdb(opts){
+    opts = opts || {};
+    var src = collectMaskSources();
+    var changed = false;
+    for (var i = 0; i < src.length; i++) {
+      var id = src[i] && src[i].id;
+      if (!id) continue;
+      var currentAvatar = src[i].avatar;
+      if (isRealCustomAvatar(currentAvatar)) { saveBankAvatar(id, currentAvatar); continue; }
+      var av = getBankAvatar(id);
+      if (!isRealCustomAvatar(av)) av = await idbGet(maskKey(id));
+      if (isRealCustomAvatar(av)) { src[i].avatar = av; src[i].hasCustomAvatar = true; saveBankAvatar(id, av); changed = true; }
+    }
+    var saved = saveMasksFull(src, { refresh: opts.refresh !== false });
+    return saved;
+  }
+
+  // Preserve originals once, then replace with hard-persistence versions.
+  try { if (typeof monoNormalizeUserMask === 'function' && !window.__monoOriginalNormalizeUserMaskV9) window.__monoOriginalNormalizeUserMaskV9 = monoNormalizeUserMask; } catch(e) {}
+  try {
+    monoNormalizeUserMask = normalizeMaskHard;
+    window.monoNormalizeUserMask = normalizeMaskHard;
+  } catch(e) {}
+  try {
+    monoLoadUserMasks = function(){ return saveMasksFull(collectMaskSources(), { refresh: false }); };
+    window.monoLoadUserMasks = monoLoadUserMasks;
+  } catch(e) {}
+  try {
+    monoSaveUserMasks = function(nextMasks){ return saveMasksFull(nextMasks, { refresh: true }); };
+    window.monoSaveUserMasks = monoSaveUserMasks;
+  } catch(e) {}
+  try {
+    monoGetUserMask = function(maskId){
+      if (!maskId) return null;
+      var list = (typeof userMasks !== 'undefined' && Array.isArray(userMasks)) ? userMasks : saveMasksFull(collectMaskSources(), { refresh: false });
+      var found = null;
+      for (var i = 0; i < list.length; i++) if (String(list[i].id) === String(maskId)) { found = normalizeMaskHard(list[i]); break; }
+      if (found && !isRealCustomAvatar(found.avatar)) {
+        var av = getBankAvatar(found.id);
+        if (isRealCustomAvatar(av)) { found.avatar = av; found.hasCustomAvatar = true; }
+      }
+      return found;
+    };
+    window.monoGetUserMask = monoGetUserMask;
+  } catch(e) {}
+  try {
+    monoSyncUserMaskAvatarsToIdb = async function(masks){
+      var list = Array.isArray(masks) ? masks : ((typeof userMasks !== 'undefined' && Array.isArray(userMasks)) ? userMasks : []);
+      for (var i = 0; i < list.length; i++) {
+        var m = normalizeMaskHard(list[i]);
+        if (isRealCustomAvatar(m.avatar)) { saveBankAvatar(m.id, m.avatar); await idbSet(maskKey(m.id), m.avatar); }
+      }
+    };
+    window.monoSyncUserMaskAvatarsToIdb = monoSyncUserMaskAvatarsToIdb;
+  } catch(e) {}
+  try {
+    monoRestoreUserMaskAvatarsFromIdb = function(){ hydrateMasksFromIdb({ refresh: true }); };
+    window.monoRestoreUserMaskAvatarsFromIdb = monoRestoreUserMaskAvatarsFromIdb;
+  } catch(e) {}
+  try {
+    monoExportUserMasksWithAvatars = async function(){
+      var full = await hydrateMasksFromIdb({ refresh: false });
+      var out = [];
+      for (var i = 0; i < full.length; i++) {
+        var m = normalizeMaskHard(full[i]);
+        var av = isRealCustomAvatar(m.avatar) ? m.avatar : getBankAvatar(m.id);
+        if (!isRealCustomAvatar(av)) av = await idbGet(maskKey(m.id));
+        if (isRealCustomAvatar(av)) { m.avatar = av; m.hasCustomAvatar = true; m.customAvatarData = av; saveBankAvatar(m.id, av); }
+        out.push(m);
+      }
+      return out;
+    };
+    window.monoExportUserMasksWithAvatars = monoExportUserMasksWithAvatars;
+  } catch(e) {}
+  try {
+    monoHandleUserMaskAvatarInput = function(input){
+      if (!input || !input.files || !input.files[0]) return;
+      var pendingId = '';
+      try { pendingId = String(_monoPendingUserMaskAvatarId || ''); } catch(e) {}
+      if (!pendingId) return;
+      var file = input.files[0];
+      var reader = new FileReader();
+      reader.onload = async function(ev){
+        var dataUrl = ev && ev.target ? ev.target.result : '';
+        try { if (typeof compressImage === 'function') dataUrl = await compressImage(dataUrl, 360, 0.88); } catch(e) {}
+        if (!isRealCustomAvatar(dataUrl)) return;
+        saveBankAvatar(pendingId, dataUrl);
+        var current = (typeof userMasks !== 'undefined' && Array.isArray(userMasks)) ? userMasks.slice() : saveMasksFull(collectMaskSources(), { refresh: false });
+        var next = current.map(function(item){
+          if (String(item.id) !== String(pendingId)) return item;
+          return Object.assign({}, item, { avatar: dataUrl, customAvatarData: dataUrl, hasCustomAvatar: true, updatedAt: Date.now() });
+        });
+        saveMasksFull(next, { refresh: true });
+        try { _monoPendingUserMaskAvatarId = ''; } catch(e) {}
+        try { input.value = ''; } catch(e) {}
+        try { if (typeof monoRestoreFullscreenAfterFilePicker === 'function') monoRestoreFullscreenAfterFilePicker('user-mask-avatar-picked-v9', 260); } catch(e) {}
+      };
+      reader.readAsDataURL(file);
+    };
+    window.monoHandleUserMaskAvatarInput = monoHandleUserMaskAvatarInput;
+  } catch(e) {}
+  try {
+    var oldDeleteMaskV9 = typeof monoDeleteUserMask === 'function' ? monoDeleteUserMask : null;
+    monoDeleteUserMask = async function(maskId){
+      var id = String(maskId || '');
+      if (oldDeleteMaskV9) await oldDeleteMaskV9.apply(this, arguments);
+      deleteBankAvatar(id);
+      saveMasksFull(collectMaskSources().filter(function(m){ return String(m.id) !== id; }), { refresh: true });
+    };
+    window.monoDeleteUserMask = monoDeleteUserMask;
+  } catch(e) {}
+
+  // Export/import helper used by older backup wrappers if present.
+  window.monoGetUserMaskAvatarBankV9 = async function(){
+    await hydrateMasksFromIdb({ refresh: false });
+    return readBank();
+  };
+  window.monoApplyUserMaskAvatarBankV9 = async function(bank){
+    if (bank && bank.avatars && typeof bank.avatars === 'object') {
+      Object.keys(bank.avatars).forEach(function(id){ if (isRealCustomAvatar(bank.avatars[id])) saveBankAvatar(id, bank.avatars[id]); });
+    }
+    await hydrateMasksFromIdb({ refresh: true });
+  };
+
+  function bootHydrate(){ hydrateMasksFromIdb({ refresh: true }); }
+  if (window._monoDBReady) setTimeout(bootHydrate, 0);
+  else {
+    window._monoBootFns = window._monoBootFns || [];
+    window._monoBootFns.push(bootHydrate);
+  }
+  setTimeout(bootHydrate, 350);
+  setTimeout(bootHydrate, 1200);
+  setTimeout(bootHydrate, 3000);
+})();
+
 </script>
 
 </html>

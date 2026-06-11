@@ -38677,151 +38677,6 @@ function _monoForumFallbackPersonaPost(persona, section, isAnonymous, npcCount, 
   };
 }
 
-
-// ===== Mono v10: higher token budget + truncated JSON repair for persona forum generation =====
-function _monoForumCleanRawV10(raw) {
-  return _monoForumTextV8(raw)
-    .replace(/^\s*```(?:json)?\s*/i, '')
-    .replace(/\s*```\s*$/i, '')
-    .replace(/```(?:json)?/gi, '')
-    .replace(/```/g, '')
-    .replace(/[“”]/g, '"')
-    .replace(/[‘’]/g, "'")
-    .trim();
-}
-function _monoForumParseJsonLooseV10(raw) {
-  var s = _monoForumCleanRawV10(raw);
-  if (!s) return null;
-  try { return JSON.parse(s); } catch(e) {}
-  var start = s.indexOf('{');
-  if (start < 0) return null;
-  var cut = s.slice(start);
-  var stack = [];
-  var inStr = false, esc = false, lastSafe = -1;
-  for (var i = 0; i < cut.length; i++) {
-    var ch = cut[i];
-    if (inStr) {
-      if (esc) { esc = false; continue; }
-      if (ch === '\\') { esc = true; continue; }
-      if (ch === '"') inStr = false;
-      continue;
-    }
-    if (ch === '"') { inStr = true; continue; }
-    if (ch === '{' || ch === '[') stack.push(ch);
-    else if (ch === '}' || ch === ']') {
-      var need = ch === '}' ? '{' : '[';
-      if (stack.length && stack[stack.length - 1] === need) stack.pop();
-      if (!stack.length && ch === '}') lastSafe = i;
-    }
-  }
-  var candidates = [];
-  if (lastSafe >= 0) candidates.push(cut.slice(0, lastSafe + 1));
-  var repaired = cut;
-  // If output was cut in the middle of a string, close the string first.
-  if (inStr) repaired += '"';
-  // Remove incomplete trailing property fragments and trailing commas before closing.
-  repaired = repaired
-    .replace(/,\s*"[^"\\]*(?:\\.[^"\\]*)*"\s*:\s*$/g, '')
-    .replace(/,\s*$/g, '')
-    .replace(/,\s*([}\]])/g, '$1');
-  for (var j = stack.length - 1; j >= 0; j--) repaired += stack[j] === '[' ? ']' : '}';
-  repaired = repaired.replace(/,\s*([}\]])/g, '$1');
-  candidates.push(repaired);
-  for (var c = 0; c < candidates.length; c++) {
-    try { return JSON.parse(candidates[c]); } catch(e2) {}
-  }
-  return null;
-}
-function _monoForumJsonStringFieldV10(raw, keys) {
-  var s = _monoForumCleanRawV10(raw);
-  for (var k = 0; k < keys.length; k++) {
-    var key = keys[k].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    var re = new RegExp('(?:"' + key + '"|' + key + ')\\s*[:：]\\s*"([\\s\\S]*?)(?<!\\\\)"', 'i');
-    var m = s.match(re);
-    if (m && m[1]) {
-      try { return JSON.parse('"' + m[1].replace(/"/g, '\\"') + '"'); } catch(e) { return m[1]; }
-    }
-    // Truncated string: capture until next known top-level field or end.
-    var re2 = new RegExp('(?:"' + key + '"|' + key + ')\\s*[:：]\\s*"([\\s\\S]*)$', 'i');
-    var m2 = s.match(re2);
-    if (m2 && m2[1]) {
-      var val = m2[1].split(/"\s*,\s*"(?:npcComments|comments|网友评论|评论|personaReplies|replies|角色回复|title|content|正文|帖子正文)"\s*:/i)[0];
-      return val.replace(/[,}\]]+\s*$/g, '').trim();
-    }
-  }
-  return '';
-}
-function _monoForumExtractCommentsV10(raw, npcCount) {
-  var s = _monoForumCleanRawV10(raw);
-  var arr = [];
-  var objRe = /\{[\s\S]*?(?:"npcName"|"name"|"author"|"网友昵称"|"昵称")\s*[:：]\s*"([\s\S]*?)(?<!\\)"[\s\S]*?(?:"content"|"comment"|"评论内容"|"内容")\s*[:：]\s*"([\s\S]*?)(?<!\\)"[\s\S]*?\}/gi;
-  var m;
-  while ((m = objRe.exec(s)) && arr.length < Math.max(3, npcCount || 4)) {
-    var nm = (m[1] || '').replace(/\\n/g, ' ').trim();
-    var ct = (m[2] || '').replace(/\\n/g, ' ').trim();
-    if (ct) arr.push({ npcName: nm || ('网友' + (arr.length + 1)), content: ct });
-  }
-  if (!arr.length) {
-    var lineRe = /(?:评论|comment)\s*\d*\s*[:：-]\s*([^\n]{8,80})/gi;
-    while ((m = lineRe.exec(s)) && arr.length < Math.max(3, npcCount || 4)) arr.push({ npcName: '网友' + (arr.length + 1), content: m[1].trim() });
-  }
-  return arr;
-}
-function _monoForumExtractRepliesV10(raw, comments) {
-  var s = _monoForumCleanRawV10(raw);
-  var arr = [];
-  var objRe = /\{[\s\S]*?(?:"replyToNpcName"|"replyTo"|"回复对象"|"回复给")\s*[:：]\s*"([\s\S]*?)(?<!\\)"[\s\S]*?(?:"content"|"reply"|"回复内容"|"内容")\s*[:：]\s*"([\s\S]*?)(?<!\\)"[\s\S]*?\}/gi;
-  var m;
-  while ((m = objRe.exec(s)) && arr.length < 3) {
-    var to = (m[1] || '').replace(/\\n/g, ' ').trim();
-    var ct = (m[2] || '').replace(/\\n/g, ' ').trim();
-    if (ct) arr.push({ replyToNpcName: to || (comments[0] && comments[0].npcName) || '网友1', content: ct });
-  }
-  return arr;
-}
-function _monoForumParsePersonaPostResult(raw, persona, npcCount) {
-  var obj = null;
-  try { obj = safeParseJSON(raw, null); } catch(e) {}
-  if (!obj || typeof obj !== 'object') obj = _monoForumParseJsonLooseV10(raw) || _monoForumBalancedJsonObjectV8(raw);
-  if (Array.isArray(obj)) obj = obj[0];
-  if (obj && typeof obj === 'object') {
-    obj = obj.post || obj.data || obj.result || obj.output || obj;
-    var title = _monoForumPickV8(obj, ['title','postTitle','标题','帖子标题','题目']);
-    var content = _monoForumPickV8(obj, ['content','body','text','postContent','正文','帖子正文','内容']);
-    var commentsRaw = _monoForumPickV8(obj, ['npcComments','comments','commentList','网友评论','评论','楼层评论','npc_comments']);
-    var repliesRaw = _monoForumPickV8(obj, ['personaReplies','replies','replyList','角色回复NPC','角色回复','回复','persona_replies']);
-    var comments = Array.isArray(commentsRaw) ? commentsRaw.map(_monoForumNormalizeCommentV8).filter(function(c){ return c.content; }) : [];
-    var replies = Array.isArray(repliesRaw) ? repliesRaw.map(function(r, i){ return _monoForumNormalizeReplyV8(r, i, comments); }).filter(function(r){ return r.content; }) : [];
-    if ((!title || !content) && raw) {
-      title = title || _monoForumJsonStringFieldV10(raw, ['title','postTitle','标题','帖子标题','题目']);
-      content = content || _monoForumJsonStringFieldV10(raw, ['content','body','text','postContent','正文','帖子正文','内容']);
-    }
-    if (!comments.length) comments = _monoForumExtractCommentsV10(raw, npcCount);
-    if (!replies.length && comments.length) replies = _monoForumExtractRepliesV10(raw, comments);
-    if (title && content) {
-      if (!comments.length) comments = _monoForumDefaultCommentsV8(persona, '', npcCount);
-      if (!replies.length && comments.length) {
-        replies = comments.slice(0, Math.min(2, comments.length)).map(function(c, i){
-          return { replyToNpcName: c.npcName, content: i === 0 ? '我也是想了挺久才发出来的，看到你这样说有点被理解到。' : '嗯，我也不是很确定，所以才想听听大家不同的看法。' };
-        });
-      }
-      return { title: _monoForumTextV8(title).trim().slice(0, 40), content: _monoForumTextV8(content).trim(), npcComments: comments, personaReplies: replies };
-    }
-  }
-  var s = _monoForumCleanRawV10(raw);
-  var title2 = _monoForumJsonStringFieldV10(s, ['title','postTitle','标题','帖子标题','题目']);
-  var content2 = _monoForumJsonStringFieldV10(s, ['content','body','text','postContent','正文','帖子正文','内容']);
-  if (!title2 || !content2) {
-    var lines = s.split(/\n+/).map(function(x){ return x.replace(/^[-*•\d.、\s]+/, '').trim(); }).filter(Boolean);
-    if (!title2 && lines.length) title2 = lines[0].replace(/^(标题|title)[:：]?\s*/i, '').slice(0, 40);
-    if (!content2 && lines.length > 1) content2 = lines.slice(1).join('\n').replace(/^(正文|内容|content)[:：]?\s*/i, '').trim();
-  }
-  if (title2 && content2 && content2.length >= 12) {
-    return { title: title2.slice(0, 40), content: content2.slice(0, 520), npcComments: _monoForumExtractCommentsV10(raw, npcCount).concat(_monoForumDefaultCommentsV8(persona, '', npcCount)).slice(0, Math.max(3, npcCount || 4)), personaReplies: [] };
-  }
-  return null;
-}
-
 // ===================== 角色匿名发帖 (论坛) =====================
 function openPersonaForumModal() {
   if (!personas || personas.length === 0) { alert('请先创建角色！'); return; }
@@ -38943,13 +38798,13 @@ ${avoidanceNotes ? '【你最近已经发过的帖子，请避开这些主题、
 任务：生成完整的帖子发布场景，包含帖子本身、其他网友的评论、以及你对部分评论的回复。
 要求：
 1. 帖子标题：吸引眼球，与板块主题相关，15字以内
-2. 帖子正文：90-180字，口语化，真实有感情，完全从你「${persona.name}」的内心视角和亲身经历出发，${isAnonymous ? '以匿名者角度叙述，不暴露真实身份' : '以你本人公开发帖的口吻叙述，让网友知道发帖者就是你'}，绝对不能从对话对象或任何其他人的视角写
+2. 帖子正文：100-200字，口语化，真实有感情，完全从你「${persona.name}」的内心视角和亲身经历出发，${isAnonymous ? '以匿名者角度叙述，不暴露真实身份' : '以你本人公开发帖的口吻叙述，让网友知道发帖者就是你'}，绝对不能从对话对象或任何其他人的视角写
 3. 题材必须足够开阔，可以来自：你自己的生活、人设背景、工作学习、兴趣、朋友关系、家庭经历、板块话题、见闻感想、尴尬小事、情绪碎片，也可以在合适时少量参考你和其他角色之间的聊天室互动。不要默认写聊天室聊天内容，也不要默认写用户；除非真的很适合，否则不要把用户当成帖子主轴。
 4. 标题和正文必须与「你最近已经发过的帖子」明显不同，不能只是换几个词。
-5. NPC评论：生成${npcCount}条不同网友的评论，昵称各异，风格多样（共鸣、追问、调侃、反驳、点赞），每条12-45字，避免过长导致JSON被截断
-6. 角色回复NPC：你对其中2条NPC评论做出回复。${isAnonymous ? '回复时要以另一个匿名路人网友的身份互动，不能暴露你是发帖人，也不能显得认识发帖者。' : '回复时直接以你自己的身份互动，默认大家知道你就是发帖者。'} 内容要符合你的人设性格和说话方式，口语化，15-45字
+5. NPC评论：生成${npcCount}条不同网友的评论，昵称各异，风格多样（共鸣、追问、调侃、反驳、点赞），每条15-60字
+6. 角色回复NPC：你对其中2~3条NPC评论做出回复。${isAnonymous ? '回复时要以另一个匿名路人网友的身份互动，不能暴露你是发帖人，也不能显得认识发帖者。' : '回复时直接以你自己的身份互动，默认大家知道你就是发帖者。'} 内容要符合你的人设性格和说话方式，口语化，20-60字
 7. 所有内容用简体中文
-严格返回JSON（不加任何说明）：
+严格返回JSON（不加任何说明，保持字段完整，不要省略结尾括号）：
 {
   "title": "帖子标题",
   "content": "帖子正文",
@@ -38961,7 +38816,7 @@ ${avoidanceNotes ? '【你最近已经发过的帖子，请避开这些主题、
   ]
 }
 只返回JSON。`;
-      lastRaw = await _forumApiFetch(prompt, 8200);
+      lastRaw = await _forumApiFetch(prompt, 5200); // v10: raise persona forum post output limit to avoid truncated JSON for new/long-profile characters
       const parsed = _monoForumParsePersonaPostResult(lastRaw, persona, npcCount);
       if (!parsed || !parsed.title || !parsed.content) continue;
       if (_forumTooSimilarToRecent(persona.id, parsed.title, parsed.content) && attempt < 2) continue;

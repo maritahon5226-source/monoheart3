@@ -243,9 +243,9 @@ async function bgGenerateAndNotify() {
       let _timeSince = '';
       if (anchorTime) {
         const diffMin = Math.floor((Date.now() - anchorTime) / 60000);
-        if (diffMin < 60) _timeSince = `距上次对话约${diffMin}分钟`;
-        else if (diffMin < 1440) _timeSince = `距上次对话约${Math.floor(diffMin/60)}小时`;
-        else _timeSince = `距上次对话已过${Math.floor(diffMin/1440)}天`;
+        if (diffMin < 60) _timeSince = '距上次对话约' + diffMin + '分钟';
+        else if (diffMin < 1440) _timeSince = '距上次对话约' + Math.floor(diffMin/60) + '小时';
+        else _timeSince = '距上次对话已过' + Math.floor(diffMin/1440) + '天';
       }
       const minReply = p.minReplyCount || 1;
       const maxReply = p.maxReplyCount || 3;
@@ -38804,7 +38804,7 @@ ${avoidanceNotes ? '【你最近已经发过的帖子，请避开这些主题、
 5. NPC评论：生成${npcCount}条不同网友的评论，昵称各异，风格多样（共鸣、追问、调侃、反驳、点赞），每条15-60字
 6. 角色回复NPC：你对其中2~3条NPC评论做出回复。${isAnonymous ? '回复时要以另一个匿名路人网友的身份互动，不能暴露你是发帖人，也不能显得认识发帖者。' : '回复时直接以你自己的身份互动，默认大家知道你就是发帖者。'} 内容要符合你的人设性格和说话方式，口语化，20-60字
 7. 所有内容用简体中文
-严格返回JSON（不加任何说明，保持字段完整，不要省略结尾括号）：
+严格返回JSON（不加任何说明）：
 {
   "title": "帖子标题",
   "content": "帖子正文",
@@ -38816,7 +38816,7 @@ ${avoidanceNotes ? '【你最近已经发过的帖子，请避开这些主题、
   ]
 }
 只返回JSON。`;
-      lastRaw = await _forumApiFetch(prompt, 5200); // v10: raise persona forum post output limit to avoid truncated JSON for new/long-profile characters
+      lastRaw = await _forumApiFetch(prompt, 3200);
       const parsed = _monoForumParsePersonaPostResult(lastRaw, persona, npcCount);
       if (!parsed || !parsed.title || !parsed.content) continue;
       if (_forumTooSimilarToRecent(persona.id, parsed.title, parsed.content) && attempt < 2) continue;
@@ -90007,8 +90007,7 @@ function iccCheckAndMaybeTrigger(inspector, contact, summary, thoughtText) {
     summary.slice(0, 500) + '\n' +
     '你的内心想法是：' + (thoughtText || '') + '\n' +
     '请判断你是否会想要直接联系「' + contact.name + '」来对峙或了解情况。' +
-    '返回JSON：{"trigger":true/false,"intensity":0~10,"reason":"一句话理由（' + lang + '，20字内）","opening":"你主动发给对方的第一句话（' + lang + '，符合你性格，15~30字）"}
-只返回JSON。';
+    '返回JSON：{"trigger":true/false,"intensity":0~10,"reason":"一句话理由（' + lang + '，20字内）","opening":"你主动发给对方的第一句话（' + lang + '，符合你性格，15~30字）"}\n只返回JSON。禁止Markdown，禁止解释，禁止在JSON前后添加任何文字。';
   rpc2CallAI(assessPrompt, function(resp) {
     try {
       var obj = _parseJsonFromText(resp, {}, 'object');
@@ -90094,36 +90093,23 @@ function iccGenerateDialogue(inspector, target, evidence, opening) {
         }).join('；') + '）';
     }
   } catch(e) {}
-  var prompt =
-    '现在模拟两个角色之间的私聊对话。
-' +
-    inspectorCtx + inspMem + '
-' +
-    targetCtx    + targetMem + '
-' +
-    '【触发原因】
-' +
-    inspector.name + ' 在查对方（用户）的手机时，发现了用户与 ' + target.name + ' 的聊天内容：
-' +
-    evidence.slice(0, 600) + '
-' +
-    '【对话规则】
-' +
-    '- ' + inspector.name + ' 是发起方，主动联系 ' + target.name + '（可能对峙、试探、质问或借口联系）
-' +
-    '- 第一条消息由 ' + inspector.name + ' 发出：' + (opening || '（请自行生成开场白）') + '
-' +
-    '- 对话要自然、符合双方性格，情绪真实，不要过于戏剧化
-' +
-    '- 生成 8~12 条消息的完整对话
-' +
-    '- 使用【' + lang + '】
-' +
-    '返回JSON数组，每条消息：
-' +
-    '[{"speaker":"' + inspector.name + '或' + target.name + '","text":"消息内容","emotion":"当前情绪（4字内，如：紧张、冷漠、委屈等）"}]
-' +
-    '只返回JSON数组。';
+  var prompt = [
+    '现在模拟两个角色之间的私聊对话。',
+    inspectorCtx + inspMem,
+    targetCtx + targetMem,
+    '【触发原因】',
+    inspector.name + ' 在查对方（用户）的手机时，发现了用户与 ' + target.name + ' 的聊天内容：',
+    evidence.slice(0, 600),
+    '【对话规则】',
+    '- ' + inspector.name + ' 是发起方，主动联系 ' + target.name + '（可能对峙、试探、质问或借口联系）',
+    '- 第一条消息由 ' + inspector.name + ' 发出：' + (opening || '（请自行生成开场白）'),
+    '- 对话要自然、符合双方性格，情绪真实，不要过于戏剧化',
+    '- 生成 8~12 条消息的完整对话',
+    '- 使用【' + lang + '】',
+    '返回JSON数组，每条消息：',
+    '[{"speaker":"' + inspector.name + '或' + target.name + '","text":"消息内容","emotion":"当前情绪（4字内，如：紧张、冷漠、委屈等）"}]',
+    '只返回JSON数组。'
+  ].join('\n');
   rpc2CallAI(prompt, function(resp) {
     try {
       var msgs = _parseJsonFromText(resp, [], 'array');
@@ -90201,13 +90187,10 @@ function iccSaveToMemory() {
     String(now.getDate()).padStart(2, '0');
   var dialogue = msgs.map(function(m) {
     return (m.speaker || '?') + '：' + (m.text || '') + (m.emotion ? '（' + m.emotion + '）' : '');
-  }).join('
-');
+  }).join('\n');
   var memContent =
-    '[角色间私聊记录 ' + dateStr + ']
-' +
-    inspector.name + ' 主动联系了 ' + target.name + '（起因：查岗时发现的聊天内容）
-' +
+    '[角色间私聊记录 ' + dateStr + ']\n' +
+    inspector.name + ' 主动联系了 ' + target.name + '（起因：查岗时发现的聊天内容）\n' +
     dialogue;
   var memEntry = { content: memContent, date: dateStr, auto: true, source: '角色间私聊' };
   /* 写入 inspector */
@@ -112215,6 +112198,336 @@ body.mono-fwd-modal-open {
 })();
 
 </script>
+<script id="mono-v11-npc-user-contact-data-safety-patch">
+// ===== MONO PATCH v11: safe NPC -> user contact sync without wiping角色/聊天室 =====
+(function(){
+  'use strict';
+  if (window.__monoV11NpcContactSafetyPatch) return;
+  window.__monoV11NpcContactSafetyPatch = true;
+
+  function now(){ return Date.now(); }
+  function esc(v){
+    return String(v == null ? '' : v)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+  function parseArr(raw){
+    try { var v = JSON.parse(raw || '[]'); return Array.isArray(v) ? v : []; } catch(e) { return []; }
+  }
+  function stringify(v){ try { return JSON.stringify(v || []); } catch(e) { return '[]'; } }
+  function rawLS(){
+    try { if (window._monoRawLocalStorage && window._monoRawLocalStorage.getItem) return window._monoRawLocalStorage; } catch(e) {}
+    return window.localStorage;
+  }
+  function getKey(key){
+    var val = null;
+    try { val = localStorage.getItem(key); } catch(e) {}
+    if ((val == null || val === '') && rawLS() && rawLS() !== localStorage) {
+      try { val = rawLS().getItem(key); } catch(e) {}
+    }
+    return val;
+  }
+  function setKey(key, value){
+    try { localStorage.setItem(key, value); } catch(e) {}
+    try { if (rawLS() && rawLS() !== localStorage) rawLS().setItem(key, value); } catch(e) {}
+    try {
+      if (typeof monoSyncKvRecord === 'function') monoSyncKvRecord(key, value);
+    } catch(e) {}
+  }
+  function nonNpcCount(list){
+    return (Array.isArray(list) ? list : []).filter(function(p){ return p && !p._roleNpcPersona && !p._roleNpcId; }).length;
+  }
+  function scoreList(list){
+    list = Array.isArray(list) ? list : [];
+    return nonNpcCount(list) * 100000 + list.length;
+  }
+  function collectPersonaCandidates(){
+    var out = [];
+    function add(label, list){
+      if (Array.isArray(list)) out.push({ label: label, list: list, score: scoreList(list) });
+    }
+    add('localStorage:mono_personas', parseArr(getKey('mono_personas')));
+    try { if (Array.isArray(window.personas)) add('window.personas', window.personas.slice()); } catch(e) {}
+    try { if (typeof personas !== 'undefined' && Array.isArray(personas)) add('global personas', personas.slice()); } catch(e) {}
+    try {
+      var active = (typeof mwGetActiveId === 'function') ? mwGetActiveId() : '';
+      if (active) add('activeWorld:' + active, parseArr(getKey('mono_mw_' + active + '_personas')));
+    } catch(e) {}
+    try {
+      var worlds = (typeof mwGetWorlds === 'function') ? mwGetWorlds() : [];
+      if (Array.isArray(worlds)) worlds.forEach(function(w){
+        if (w && w.id) add('world:' + w.id, parseArr(getKey('mono_mw_' + w.id + '_personas')));
+      });
+    } catch(e) {}
+    ['mono_personas_autobackup_latest','mono_personas_before_npc_contact_latest','mono_personas_v11_recover_latest'].forEach(function(k){
+      add('backup:' + k, parseArr(getKey(k)));
+    });
+    return out;
+  }
+  function bestPersonaList(){
+    var candidates = collectPersonaCandidates().filter(function(c){ return c && Array.isArray(c.list); });
+    candidates.sort(function(a,b){ return b.score - a.score; });
+    return candidates.length ? candidates[0].list.slice() : [];
+  }
+  function backupPersonas(reason){
+    try {
+      var base = bestPersonaList();
+      if (!base.length) return;
+      var json = stringify(base);
+      var stamp = now();
+      setKey('mono_personas_before_npc_contact_latest', json);
+      setKey('mono_personas_v11_recover_latest', json);
+      setKey('mono_personas_before_npc_contact_' + stamp, json);
+      try { console.log('[v11 NPC联络人] 已备份角色数据', reason || '', base.length); } catch(e) {}
+    } catch(e) {}
+  }
+  function mergePersonaLists(base, upsertPersona){
+    var map = Object.create(null), order = [];
+    function idOf(p){ return p && p.id != null ? String(p.id) : ''; }
+    (Array.isArray(base) ? base : []).forEach(function(p){
+      if (!p || typeof p !== 'object') return;
+      var id = idOf(p) || ('__noid_' + order.length);
+      if (!map[id]) order.push(id);
+      map[id] = Object.assign({}, map[id] || {}, p);
+    });
+    if (upsertPersona && typeof upsertPersona === 'object') {
+      // Remove older copy of the same role-NPC contact even if an old generated id changed.
+      if (upsertPersona._roleNpcId) {
+        order.slice().forEach(function(id){
+          var p = map[id];
+          if (p && String(p._roleNpcId || '') === String(upsertPersona._roleNpcId) && String(p.id || '') !== String(upsertPersona.id || '')) {
+            delete map[id];
+            order = order.filter(function(x){ return x !== id; });
+          }
+        });
+      }
+      var uid = idOf(upsertPersona) || ('roleNpcPersona_' + now() + '_' + Math.random().toString(36).slice(2,8));
+      if (!map[uid]) order.push(uid);
+      map[uid] = Object.assign({}, map[uid] || {}, upsertPersona, { id: uid });
+    }
+    return order.map(function(id){ return map[id]; }).filter(Boolean);
+  }
+  function writePersonasSafely(next, reason){
+    next = Array.isArray(next) ? next : [];
+    var before = bestPersonaList();
+    var beforeBase = nonNpcCount(before);
+    var nextBase = nonNpcCount(next);
+    // Guard: adding/removing one NPC must not delete existing real characters.
+    if (beforeBase > 0 && nextBase < beforeBase) {
+      console.warn('[v11 NPC联络人] 阻止危险写入：真实角色数量会减少', { reason: reason, beforeBase: beforeBase, nextBase: nextBase });
+      next = mergePersonaLists(before, null).map(function(p){
+        var replacement = (Array.isArray(next) ? next : []).find(function(x){ return x && p && String(x.id) === String(p.id); });
+        return replacement ? Object.assign({}, p, replacement) : p;
+      });
+      // If the NPC upsert exists in next but not in before, add it back.
+      (Array.isArray(next) ? next : []).forEach(function(x){
+        if (x && x._roleNpcId && !before.some(function(p){ return p && (String(p.id) === String(x.id) || String(p._roleNpcId || '') === String(x._roleNpcId)); })) before.push(x);
+      });
+    }
+    backupPersonas(reason || 'write');
+    var json = stringify(next);
+    setKey('mono_personas', json);
+    try {
+      var active = (typeof mwGetActiveId === 'function') ? mwGetActiveId() : '';
+      if (active) setKey('mono_mw_' + active + '_personas', json);
+    } catch(e) {}
+    try { if (Array.isArray(window.personas)) { window.personas.length = 0; next.forEach(function(p){ window.personas.push(p); }); } } catch(e) {}
+    try { if (typeof personas !== 'undefined' && Array.isArray(personas)) { personas.length = 0; next.forEach(function(p){ personas.push(p); }); } } catch(e) {}
+  }
+  function autoRestoreIfNeeded(){
+    try {
+      var cur = parseArr(getKey('mono_personas'));
+      if (cur.length && nonNpcCount(cur) > 0) return false;
+      var candidates = collectPersonaCandidates().filter(function(c){ return c.score > 0 && nonNpcCount(c.list) > 0; });
+      if (!candidates.length) return false;
+      candidates.sort(function(a,b){ return b.score - a.score; });
+      var best = candidates[0].list.slice();
+      setKey('mono_personas', stringify(best));
+      try { if (Array.isArray(window.personas)) { window.personas.length = 0; best.forEach(function(p){ window.personas.push(p); }); } } catch(e) {}
+      try { if (typeof personas !== 'undefined' && Array.isArray(personas)) { personas.length = 0; best.forEach(function(p){ personas.push(p); }); } } catch(e) {}
+      console.warn('[v11 NPC联络人] 已从备份/世界数据恢复角色列表：', candidates[0].label, best.length);
+      return true;
+    } catch(e) { return false; }
+  }
+  function toast(title, note){
+    try { if (typeof showMonoNotifToast === 'function') return showMonoNotifToast(String(title||'已完成'), String(note||''), ''); } catch(e) {}
+    try { if (typeof showToast === 'function') return showToast(String(title||'已完成') + (note ? '：' + note : ''), 2200); } catch(e) {}
+  }
+  function getPersonaById(id){
+    id = String(id || '');
+    try { if (typeof monoGetPersonaById === 'function') { var p0 = monoGetPersonaById(id); if (p0) return p0; } } catch(e) {}
+    return bestPersonaList().find(function(p){ return p && String(p.id) === id; }) || null;
+  }
+  function getNpcById(npcId){
+    try { if (typeof monoFindRoleNpcById === 'function') { var n0 = monoFindRoleNpcById(npcId); if (n0) return n0; } } catch(e) {}
+    try {
+      var store = JSON.parse(getKey('mono_role_npcs_v1') || '{}') || {};
+      var keys = Object.keys(store || {});
+      for (var i=0;i<keys.length;i++) {
+        var arr = Array.isArray(store[keys[i]]) ? store[keys[i]] : [];
+        var hit = arr.find(function(n){ return n && String(n.id) === String(npcId); });
+        if (hit) return hit;
+      }
+    } catch(e) {}
+    return null;
+  }
+  function makeRoleNpcPersonaId(ownerId, npcId, old){
+    if (old && old.id) return String(old.id);
+    return 'roleNpcPersona_' + String(ownerId || '0').replace(/[^\w-]+/g,'_') + '_' + String(npcId || '').replace(/[^\w-]+/g,'_');
+  }
+  function buildRelationContext(ownerPersona, npc){
+    ownerPersona = ownerPersona || {}; npc = npc || {};
+    var lines = [];
+    lines.push('【NPC用户联络人来源】');
+    lines.push('这个联系人原本是角色「' + (ownerPersona.name || npc.ownerPersonaName || '某角色') + '」角色微信里的 NPC，现在被用户手动添加到用户联络人。');
+    lines.push('NPC 与来源角色的关系：' + (npc.relationSummary || '有关联') + (npc.relationDetail ? ' — ' + npc.relationDetail : '')); 
+    if (npc.identity) lines.push('NPC 身份：' + npc.identity);
+    if (Array.isArray(npc.linkNotes) && npc.linkNotes.length) {
+      lines.push('NPC 其他关联：');
+      npc.linkNotes.forEach(function(link){
+        if (!link) return;
+        lines.push('· ' + (link.name || link.nodeId || '关联对象') + '｜' + (link.label || '有关联') + (link.detail ? '：' + link.detail : ''));
+      });
+    }
+    lines.push('和用户单独聊天时，要记得自己来自该角色的生活圈，但不要把自己误当成来源角色，也不要覆盖用户原本的所有角色资料。');
+    return lines.join('\n');
+  }
+  function isNpcInUserContacts(npcOrId){
+    var id = typeof npcOrId === 'object' ? String(npcOrId && npcOrId.id || '') : String(npcOrId || '');
+    if (!id) return false;
+    return bestPersonaList().some(function(p){ return p && String(p._roleNpcId || '') === id; });
+  }
+  function syncNpcToUserContact(ownerPersona, npc){
+    if (!ownerPersona || !npc || !npc.id || !npc.name) return null;
+    autoRestoreIfNeeded();
+    var base = bestPersonaList();
+    var old = base.find(function(p){ return p && String(p._roleNpcId || '') === String(npc.id); }) || null;
+    var relationContext = buildRelationContext(ownerPersona, npc);
+    var basePersona = String(npc.persona || '').trim() || (String(npc.name || 'NPC') + '是' + String(ownerPersona.name || '该角色') + '生活圈中的 NPC。身份：' + String(npc.identity || '未填写') + '。');
+    basePersona = basePersona.replace(/\n*【NPC用户联络人来源】[\s\S]*$/,'').replace(/\n*【用户联络人关系认知】[\s\S]*$/,'').trim();
+    var nextPersona = Object.assign({}, old || {}, {
+      id: makeRoleNpcPersonaId(ownerPersona.id, npc.id, old),
+      name: String(npc.name || '').trim(),
+      avatar: npc.avatar || (old && old.avatar) || '',
+      persona: basePersona + '\n\n' + relationContext,
+      memoryCore: (old && old.memoryCore) || [],
+      gender: (old && old.gender) || '',
+      userMaskId: ownerPersona.userMaskId || (old && old.userMaskId) || '',
+      _roleNpcPersona: true,
+      _roleNpcId: String(npc.id),
+      _roleNpcOwnerId: String(ownerPersona.id || npc.ownerPersonaId || ''),
+      _roleNpcOwnerName: String(ownerPersona.name || npc.ownerPersonaName || ''),
+      _roleNpcIdentity: String(npc.identity || ''),
+      _roleNpcRelationSummary: String(npc.relationSummary || ''),
+      _roleNpcRelationDetail: String(npc.relationDetail || ''),
+      _roleNpcLinkNotes: Array.isArray(npc.linkNotes) ? npc.linkNotes : [],
+      _roleNpcUserRelationContext: relationContext,
+      updatedAt: now(),
+      history: '__hist_ref__'
+    });
+    var merged = mergePersonaLists(base, nextPersona);
+    writePersonasSafely(merged, 'add-npc-user-contact');
+
+    // 同步该 NPC 联系人的私聊历史，只写 mono_hist_x，不碰聊天室/角色列表。
+    try {
+      var histKey = 'mono_hist_' + nextPersona.id;
+      var directHist = parseArr(getKey(histKey));
+      directHist = directHist.filter(function(m){ return !(m && (m._roleNpcUserRelationContext || m._roleNpcRoomMirrorId)); });
+      directHist.unshift({ role:'system', content: relationContext, _hiddenContext:true, _roleNpcUserRelationContext:true, timestamp: now() });
+      var roomId = npc.roomId || '';
+      if (!roomId && typeof monoEnsureRoleNpcRoom === 'function') {
+        try { roomId = monoEnsureRoleNpcRoom(ownerPersona, npc); } catch(e) {}
+      }
+      if (roomId && typeof ccGetHistory === 'function') {
+        try {
+          var ccHist = ccGetHistory(roomId) || [];
+          if (ccHist.length) directHist.push({
+            role:'user',
+            content:'【NPC记忆同步｜来自角色自己的联络人聊天室】\n你曾经在「' + (ownerPersona.name || '某角色') + '」的角色微信聊天室里发生过以下对话。和用户聊天时可以参考这些经历。\n' + ccHist.map(function(m){ return (m.sender || '未知') + '：' + String(m.content || m.transcript || ''); }).join('\n'),
+            _hiddenContext:true,
+            _roleNpcRoomMemory:true,
+            _roleNpcRoomMirrorId:roomId,
+            timestamp:now()
+          });
+        } catch(e) {}
+      }
+      setKey(histKey, stringify(directHist));
+    } catch(e) {}
+    return nextPersona;
+  }
+  function removeNpcUserContact(npcOrId){
+    var id = typeof npcOrId === 'object' ? String(npcOrId && npcOrId.id || '') : String(npcOrId || '');
+    if (!id) return;
+    autoRestoreIfNeeded();
+    var base = bestPersonaList();
+    var removedIds = [];
+    var next = base.filter(function(p){
+      var hit = p && String(p._roleNpcId || '') === id;
+      if (hit && p.id) removedIds.push(String(p.id));
+      return !hit;
+    });
+    backupPersonas('remove-npc-user-contact');
+    writePersonasSafely(next, 'remove-npc-user-contact');
+    removedIds.forEach(function(pid){ try { localStorage.removeItem('mono_hist_' + pid); } catch(e) {} });
+  }
+
+  // Restore immediately if a previous bad click made the list look empty but backups/world data still exist.
+  setTimeout(autoRestoreIfNeeded, 0);
+
+  window.monoSyncRoleNpcToUserContact = syncNpcToUserContact;
+  window.monoRemoveRoleNpcUserContact = removeNpcUserContact;
+  window.monoRoleNpcUserContactButtonHtml = function(ownerPersona, npc){
+    var added = isNpcInUserContacts(npc);
+    var ownerId = ownerPersona && ownerPersona.id ? String(ownerPersona.id) : '';
+    var npcId = npc && npc.id ? String(npc.id) : '';
+    return '<button type="button" class="role-phone-mini-btn" data-npc-user-contact-btn="1" data-owner-id="' + esc(ownerId) + '" data-npc-id="' + esc(npcId) + '">' + (added ? '移出用户联络人' : '加到用户联络人') + '</button>';
+  };
+  window.monoToggleRoleNpcUserContact = function(ownerPersonaId, npcId){
+    try {
+      autoRestoreIfNeeded();
+      var ownerPersona = getPersonaById(ownerPersonaId);
+      var npc = getNpcById(npcId);
+      if (!ownerPersona || !npc) { toast('没有找到 NPC 或来源角色', '请重新打开角色微信后再试'); return false; }
+      if (isNpcInUserContacts(npc.id)) {
+        removeNpcUserContact(npc.id);
+        toast('已移出用户联络人', npc.name ? ('「' + npc.name + '」已移出') : '已移出');
+      } else {
+        syncNpcToUserContact(ownerPersona, npc);
+        toast('已添加到用户联络人', npc.name ? ('「' + npc.name + '」已加入用户联络人') : '已加入');
+      }
+      try { if (typeof renderContactList === 'function') renderContactList(); } catch(e) {}
+      try { if (typeof monoRenderRolePhonePage === 'function') monoRenderRolePhonePage(); } catch(e) {}
+    } catch(err) {
+      console.error('[v11 NPC联络人安全同步失败]', err);
+      toast('添加失败', err && err.message ? err.message : '数据保护已阻止异常覆盖');
+    }
+    return false;
+  };
+
+  // Capture old inline buttons too. This prevents parent cards/forms from causing wrong navigation/refresh.
+  document.addEventListener('click', function(e){
+    var btn = e.target && e.target.closest ? e.target.closest('[data-npc-user-contact-btn="1"], .role-phone-mini-btn') : null;
+    if (!btn) return;
+    var txt = String(btn.textContent || '').replace(/\s+/g,'');
+    var handler = btn.getAttribute('onclick') || '';
+    var isNpcContact = btn.getAttribute('data-npc-user-contact-btn') === '1' || txt === '加到用户联络人' || txt === '移出用户联络人' || handler.indexOf('monoToggleRoleNpcUserContact') >= 0;
+    if (!isNpcContact) return;
+    var ownerId = btn.getAttribute('data-owner-id') || '';
+    var npcId = btn.getAttribute('data-npc-id') || '';
+    if (!ownerId || !npcId) {
+      var m = handler.match(/monoToggleRoleNpcUserContact\('([^']+)'\s*,\s*'([^']+)'\)/);
+      if (m) { ownerId = m[1]; npcId = m[2]; }
+    }
+    if (ownerId && npcId) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+      window.monoToggleRoleNpcUserContact(ownerId, npcId);
+    }
+  }, true);
+})();
+</script>
+
 </body>
 
 <!-- MONO FINAL FIX: Sticker library dialogs are not covered; use a real top-layer modal and direct button routing -->
@@ -113935,365 +114248,361 @@ body.mono-fwd-modal-open {
   try { _buildFullSessionContext = window._buildFullSessionContext; } catch(e) {}
 })();
 
-
-/* === USER MASK AVATAR HARD PERSISTENCE + EXPORT/IMPORT FIX V9 ===
-   Fixes: user mask avatars disappearing after closing/reopening the web page.
-   Strategy:
-   - Treat uploaded mask avatars as real persistent data, not temporary UI state.
-   - Save each custom mask avatar in 4 places: mask object, raw shared avatar bank, per-mask raw key, IndexedDB blob.
-   - Never let generated letter avatars overwrite a previously saved custom avatar.
-   - Export/import full mask avatars through monoExportUserMasksWithAvatars(). */
+/* === MONO v10 EMERGENCY ROLLBACK + SAFE USER MASK AVATAR PERSISTENCE ===
+   Purpose:
+   - Undo the v9 over-aggressive boot rewrite behavior by rebuilding from v8 base.
+   - Keep all existing roles/chats loaded from the normal mono_personas / mono_hist_* paths.
+   - Persist user mask avatars without overwriting masks/roles at startup.
+   - Include mask avatars in export/import without causing export/import buttons to refresh the page.
+*/
 (function(){
-  if (window.__monoUserMaskAvatarHardPersistV9) return;
-  window.__monoUserMaskAvatarHardPersistV9 = true;
+  if (window.__monoV10EmergencyDataGuardInstalled) return;
+  window.__monoV10EmergencyDataGuardInstalled = true;
 
-  var BANK_KEY = 'monoUserMaskAvatarBankV9';          // intentionally not mono_* to avoid multi-world key rewriting
-  var PER_KEY_PREFIX = 'monoUserMaskAvatarV9_';       // intentionally not mono_* to avoid multi-world key rewriting
-  var SAVED_AT_KEY = 'monoUserMaskAvatarSavedAtV9';
+  var BANK_KEY = 'mono_user_mask_avatar_bank_v10';
+  var PER_PREFIX = 'mono_user_mask_avatar_v10_';
+  var LAST_GOOD_PERSONAS = 'mono_personas_last_good_v10';
 
   function rawLS(){
     try { return window._monoRawLocalStorage || window.localStorage; } catch(e) { return window.localStorage; }
   }
+  function safeParse(text, fallback){
+    try { var v = JSON.parse(text || ''); return v == null ? fallback : v; } catch(e) { return fallback; }
+  }
+  function getAny(key){
+    try { var v = window.localStorage.getItem(key); if (v != null) return v; } catch(e) {}
+    try { var r = rawLS().getItem(key); if (r != null) return r; } catch(e) {}
+    return null;
+  }
+  function setBoth(key, value){
+    try { window.localStorage.setItem(key, value); } catch(e) {}
+    try { rawLS().setItem(key, value); } catch(e) {}
+  }
   function isDataImage(v){ return typeof v === 'string' && /^data:image\//i.test(v) && v.length > 50; }
-  function safeParse(txt, fallback){ try { return JSON.parse(txt || ''); } catch(e) { return fallback; } }
-  function readRaw(key){
-    try { var a = rawLS().getItem(key); if (a != null) return a; } catch(e) {}
-    try { var b = window.localStorage.getItem(key); if (b != null) return b; } catch(e) {}
-    return '';
-  }
-  function writeRaw(key, val){
-    if (val == null) return false;
-    var ok = false;
-    try { rawLS().setItem(key, val); ok = true; } catch(e) {}
-    try { window.localStorage.setItem(key, val); ok = true; } catch(e) {}
-    return ok;
-  }
-  function removeRaw(key){
-    try { rawLS().removeItem(key); } catch(e) {}
-    try { window.localStorage.removeItem(key); } catch(e) {}
-  }
-  function decodeDataUrlText(dataUrl){
+  function svgText(dataUrl){
     try {
-      var comma = String(dataUrl || '').indexOf(',');
-      if (comma < 0) return '';
-      var meta = dataUrl.slice(0, comma).toLowerCase();
-      var body = dataUrl.slice(comma + 1);
+      var idx = String(dataUrl || '').indexOf(',');
+      if (idx < 0) return '';
+      var meta = dataUrl.slice(0, idx).toLowerCase();
+      var body = dataUrl.slice(idx + 1);
       if (meta.indexOf(';base64') >= 0) return decodeURIComponent(escape(atob(body)));
       return decodeURIComponent(body);
     } catch(e) { return ''; }
   }
-  function isGeneratedLetterAvatar(v){
+  function looksLikeGeneratedAvatar(v){
     if (!isDataImage(v)) return false;
-    if (/^data:image\/gif/i.test(v) && v.length < 200) return true;
     if (/^data:image\/svg\+xml/i.test(v)) {
-      var txt = decodeDataUrlText(v);
-      if (!txt && v.length < 5000) return true;
-      if (/<svg[\s>]/i.test(txt) && /<rect\b/i.test(txt) && /<text\b/i.test(txt) && /font-size="?90/i.test(txt)) return true;
-      if (/<svg[\s>]/i.test(txt) && /text-anchor="middle"/i.test(txt) && /width="?200/i.test(txt)) return true;
+      var t = svgText(v);
+      if (!t && v.length < 5000) return true;
+      if (/<svg[\s>]/i.test(t) && /<text\b/i.test(t) && /text-anchor=["']middle/i.test(t)) return true;
+      if (/<svg[\s>]/i.test(t) && /font-size=["']?90/i.test(t)) return true;
     }
     return false;
   }
-  function isRealCustomAvatar(v){ return isDataImage(v) && !isGeneratedLetterAvatar(v); }
-  function maskKey(id){
-    try { if (typeof monoUserMaskAvatarBlobKey === 'function') return monoUserMaskAvatarBlobKey(id); } catch(e) {}
-    return 'user_mask_avatar_' + String(id || '');
-  }
-  async function idbGet(key){ try { if (window._monoIdbBlobGet) return await window._monoIdbBlobGet(key); } catch(e) {} return ''; }
-  async function idbSet(key, value){ try { if (window._monoIdbBlobSet && value) await window._monoIdbBlobSet(key, value); } catch(e) {} }
-  async function idbDel(key){ try { if (window._monoIdbBlobDel) await window._monoIdbBlobDel(key); } catch(e) {} }
-
+  function isRealAvatar(v){ return isDataImage(v) && !looksLikeGeneratedAvatar(v); }
   function readBank(){
-    var bank = safeParse(readRaw(BANK_KEY), null);
-    if (!bank || typeof bank !== 'object') bank = { version: 9, updatedAt: 0, avatars: {} };
-    if (!bank.avatars || typeof bank.avatars !== 'object') bank.avatars = {};
+    var bank = safeParse(getAny(BANK_KEY), {});
+    if (!bank || typeof bank !== 'object' || Array.isArray(bank)) bank = {};
     return bank;
   }
   function writeBank(bank){
-    bank = bank && typeof bank === 'object' ? bank : { avatars: {} };
-    bank.version = 9;
-    bank.updatedAt = Date.now();
-    if (!bank.avatars || typeof bank.avatars !== 'object') bank.avatars = {};
-    writeRaw(BANK_KEY, JSON.stringify(bank));
-    writeRaw(SAVED_AT_KEY, String(bank.updatedAt));
+    try { setBoth(BANK_KEY, JSON.stringify(bank || {})); } catch(e) {}
   }
-  function getBankAvatar(id){
+  function maskAvatarKey(id){
+    try { if (typeof monoUserMaskAvatarBlobKey === 'function') return monoUserMaskAvatarBlobKey(id); } catch(e) {}
+    return 'user_mask_avatar_' + String(id || '');
+  }
+  function bankGet(id){
     id = String(id || '');
     if (!id) return '';
-    var per = readRaw(PER_KEY_PREFIX + id);
-    if (isRealCustomAvatar(per)) return per;
+    var per = getAny(PER_PREFIX + id);
+    if (isRealAvatar(per)) return per;
     var bank = readBank();
-    var av = bank.avatars[id] || '';
-    return isRealCustomAvatar(av) ? av : '';
+    return isRealAvatar(bank[id]) ? bank[id] : '';
   }
-  function saveBankAvatar(id, avatar){
+  function bankSet(id, avatar){
     id = String(id || '');
-    if (!id || !isRealCustomAvatar(avatar)) return false;
+    if (!id || !isRealAvatar(avatar)) return false;
     var bank = readBank();
-    bank.avatars[id] = avatar;
+    bank[id] = avatar;
     writeBank(bank);
-    writeRaw(PER_KEY_PREFIX + id, avatar);
-    idbSet(maskKey(id), avatar);
+    try { setBoth(PER_PREFIX + id, avatar); } catch(e) {}
+    try { if (window._monoIdbBlobSet) window._monoIdbBlobSet(maskAvatarKey(id), avatar).catch(function(){}); } catch(e) {}
     return true;
   }
-  function deleteBankAvatar(id){
-    id = String(id || '');
-    if (!id) return;
-    var bank = readBank();
-    try { delete bank.avatars[id]; } catch(e) {}
-    writeBank(bank);
-    removeRaw(PER_KEY_PREFIX + id);
-    idbDel(maskKey(id));
+  async function idbGetAvatar(id){
+    try {
+      if (window._monoIdbBlobGet) {
+        var v = await window._monoIdbBlobGet(maskAvatarKey(id));
+        if (isRealAvatar(v)) return v;
+      }
+    } catch(e) {}
+    return '';
   }
-
-  function parseMaskListFromStorage(value){
-    var parsed = safeParse(value, []);
-    if (Array.isArray(parsed)) return parsed;
-    if (parsed && Array.isArray(parsed.masks)) return parsed.masks;
-    return [];
-  }
-  function collectMaskSources(){
-    var out = [];
-    function add(arr){ if (Array.isArray(arr)) arr.forEach(function(x){ if (x && typeof x === 'object') out.push(x); }); }
-    try { if (typeof userMasks !== 'undefined' && Array.isArray(userMasks)) add(userMasks); } catch(e) {}
-    try { if (Array.isArray(window.userMasks)) add(window.userMasks); } catch(e) {}
-    ['mono_user_masks','mono_user_masks_backup_v11','mono_user_masks_final_snapshot_v6','mono_user_masks_stable_v5','mono_user_masks_stable_v1'].forEach(function(key){
-      add(parseMaskListFromStorage(readRaw(key)));
-    });
+  function patchMaskObject(mask){
+    if (!mask || typeof mask !== 'object') return mask;
+    var out = Object.assign({}, mask);
+    var id = String(out.id || '');
+    var direct = isRealAvatar(out.avatar) ? out.avatar : (isRealAvatar(out.customAvatarData) ? out.customAvatarData : '');
+    if (direct) {
+      out.avatar = direct;
+      out.hasCustomAvatar = true;
+      bankSet(id, direct);
+      return out;
+    }
+    var saved = bankGet(id);
+    if (isRealAvatar(saved) && (out.hasCustomAvatar || !isRealAvatar(out.avatar))) {
+      out.avatar = saved;
+      out.hasCustomAvatar = true;
+    }
     return out;
   }
-  function basicNormalize(mask){
-    var raw = mask && typeof mask === 'object' ? Object.assign({}, mask) : {};
-    var id = raw.id || ('mask_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8));
-    var name = String(raw.name || '未命名面具').trim() || '未命名面具';
-    var avatar = String(raw.avatar || raw.customAvatarData || '');
-    var bankAvatar = getBankAvatar(id);
-    if (isRealCustomAvatar(avatar)) {
-      saveBankAvatar(id, avatar);
-    } else if (isRealCustomAvatar(bankAvatar)) {
-      avatar = bankAvatar;
-    } else if (!isDataImage(avatar) || isGeneratedLetterAvatar(avatar)) {
-      try { avatar = typeof makeUserAvatar === 'function' ? makeUserAvatar(name) : avatar; } catch(e) {}
-    }
-    return {
-      id: id,
-      name: name,
-      avatar: avatar,
-      hasCustomAvatar: isRealCustomAvatar(avatar) || !!raw.hasCustomAvatar,
-      bio: String(raw.bio || ''),
-      personaSpec: String(raw.personaSpec || ''),
-      createdAt: Number(raw.createdAt) || Date.now(),
-      updatedAt: Number(raw.updatedAt) || Date.now()
-    };
+  function patchMaskList(list){
+    return (Array.isArray(list) ? list : []).map(function(m){ return patchMaskObject(m); });
   }
-  function normalizeMaskHard(mask){
-    var norm;
-    try {
-      // Use the original normalizer for shape, then repair avatar with hard persistence.
-      if (typeof window.__monoOriginalNormalizeUserMaskV9 === 'function') norm = window.__monoOriginalNormalizeUserMaskV9(mask || {});
-      else if (typeof monoNormalizeUserMask === 'function' && monoNormalizeUserMask !== normalizeMaskHard) norm = monoNormalizeUserMask(mask || {});
-    } catch(e) {}
-    norm = Object.assign({}, basicNormalize(mask || {}), norm || {});
-    var id = norm.id || (mask && mask.id) || ('mask_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8));
-    var rawAvatar = mask && isRealCustomAvatar(mask.avatar) ? mask.avatar : '';
-    var customData = mask && isRealCustomAvatar(mask.customAvatarData) ? mask.customAvatarData : '';
-    var bankAvatar = getBankAvatar(id);
-    if (rawAvatar) norm.avatar = rawAvatar;
-    else if (customData) norm.avatar = customData;
-    else if (isRealCustomAvatar(bankAvatar)) norm.avatar = bankAvatar;
-    else if (!isRealCustomAvatar(norm.avatar)) {
-      try { norm.avatar = typeof makeUserAvatar === 'function' ? makeUserAvatar(norm.name || '面') : norm.avatar; } catch(e) {}
-    }
-    norm.id = id;
-    norm.hasCustomAvatar = isRealCustomAvatar(norm.avatar) || !!(mask && mask.hasCustomAvatar && getBankAvatar(id));
-    if (isRealCustomAvatar(norm.avatar)) saveBankAvatar(id, norm.avatar);
-    return norm;
-  }
-
-  // Save a full copy when possible. If quota fails, save slim metadata but keep avatars in bank/per-key/IDB.
-  function saveMasksFull(list, opts){
-    opts = opts || {};
-    var src = Array.isArray(list) ? list : collectMaskSources();
-    var byId = {}, order = [];
-    src.forEach(function(item){
-      if (!item || typeof item !== 'object') return;
-      var m = normalizeMaskHard(item);
-      var id = String(m.id || '');
-      if (!id) return;
-      if (!byId[id]) order.push(id);
-      var old = byId[id] || {};
-      // Never replace a real custom avatar with a generated avatar.
-      if (isRealCustomAvatar(old.avatar) && !isRealCustomAvatar(m.avatar)) m.avatar = old.avatar;
-      byId[id] = Object.assign({}, old, m);
-    });
-    var full = order.map(function(id){ return normalizeMaskHard(byId[id]); });
-    try { userMasks = full; } catch(e) {}
-    try { window.userMasks = full; } catch(e) {}
-    full.forEach(function(m){ if (isRealCustomAvatar(m.avatar)) saveBankAvatar(m.id, m.avatar); });
-
-    var fullJson = JSON.stringify(full);
-    var slim = full.map(function(m){
-      var x = Object.assign({}, m);
-      if (isRealCustomAvatar(x.avatar)) x.customAvatarSaved = true;
-      // Keep the avatar in mono_user_masks first. If quota fails, fallback below strips it.
-      return x;
-    });
-    var slimNoAvatar = full.map(function(m){
-      var x = Object.assign({}, m);
-      if (isDataImage(x.avatar)) x.avatar = '';
-      if (isRealCustomAvatar(m.avatar)) x.customAvatarSaved = true;
-      return x;
-    });
-    var wroteFull = false;
-    try { writeRaw('mono_user_masks', fullJson); wroteFull = true; } catch(e) { wroteFull = false; }
-    try { writeRaw('mono_user_masks_backup_v11', fullJson); } catch(e) {}
-    if (!wroteFull) {
-      var slimJson = JSON.stringify(slimNoAvatar);
-      writeRaw('mono_user_masks', slimJson);
-      writeRaw('mono_user_masks_backup_v11', slimJson);
-    }
-    try { writeRaw('mono_user_masks_saved_at_v11', String(Date.now())); } catch(e) {}
-    try { writeRaw('mono_user_masks_full_export_shadow_v9', JSON.stringify(slim)); } catch(e) {}
-    if (opts.refresh !== false) {
-      try { if (typeof monoRenderUserMasksManager === 'function') monoRenderUserMasksManager(); } catch(e) {}
-      try { if (typeof monoRenderUserMaskOptions === 'function') monoRenderUserMaskOptions(); } catch(e) {}
-      try { if (typeof monoRefreshUserIdentityUi === 'function') monoRefreshUserIdentityUi(); } catch(e) {}
-    }
-    return full;
-  }
-
-  async function hydrateMasksFromIdb(opts){
-    opts = opts || {};
-    var src = collectMaskSources();
+  async function hydrateMaskListAsync(list){
+    var src = Array.isArray(list) ? list.slice() : [];
     var changed = false;
     for (var i = 0; i < src.length; i++) {
-      var id = src[i] && src[i].id;
-      if (!id) continue;
-      var currentAvatar = src[i].avatar;
-      if (isRealCustomAvatar(currentAvatar)) { saveBankAvatar(id, currentAvatar); continue; }
-      var av = getBankAvatar(id);
-      if (!isRealCustomAvatar(av)) av = await idbGet(maskKey(id));
-      if (isRealCustomAvatar(av)) { src[i].avatar = av; src[i].hasCustomAvatar = true; saveBankAvatar(id, av); changed = true; }
+      var m = patchMaskObject(src[i]);
+      var id = m && m.id;
+      if (id && !isRealAvatar(m.avatar)) {
+        var av = await idbGetAvatar(id);
+        if (isRealAvatar(av)) { m.avatar = av; m.hasCustomAvatar = true; bankSet(id, av); changed = true; }
+      }
+      src[i] = m;
     }
-    var saved = saveMasksFull(src, { refresh: opts.refresh !== false });
-    return saved;
+    return { list: src, changed: changed };
   }
 
-  // Preserve originals once, then replace with hard-persistence versions.
-  try { if (typeof monoNormalizeUserMask === 'function' && !window.__monoOriginalNormalizeUserMaskV9) window.__monoOriginalNormalizeUserMaskV9 = monoNormalizeUserMask; } catch(e) {}
-  try {
-    monoNormalizeUserMask = normalizeMaskHard;
-    window.monoNormalizeUserMask = normalizeMaskHard;
-  } catch(e) {}
-  try {
-    monoLoadUserMasks = function(){ return saveMasksFull(collectMaskSources(), { refresh: false }); };
-    window.monoLoadUserMasks = monoLoadUserMasks;
-  } catch(e) {}
-  try {
-    monoSaveUserMasks = function(nextMasks){ return saveMasksFull(nextMasks, { refresh: true }); };
-    window.monoSaveUserMasks = monoSaveUserMasks;
-  } catch(e) {}
-  try {
-    monoGetUserMask = function(maskId){
-      if (!maskId) return null;
-      var list = (typeof userMasks !== 'undefined' && Array.isArray(userMasks)) ? userMasks : saveMasksFull(collectMaskSources(), { refresh: false });
-      var found = null;
-      for (var i = 0; i < list.length; i++) if (String(list[i].id) === String(maskId)) { found = normalizeMaskHard(list[i]); break; }
-      if (found && !isRealCustomAvatar(found.avatar)) {
-        var av = getBankAvatar(found.id);
-        if (isRealCustomAvatar(av)) { found.avatar = av; found.hasCustomAvatar = true; }
+  // Keep a non-destructive last-good copy of personas so one bad boot does not make the app look empty.
+  function snapshotPersonasIfGood(){
+    try {
+      var raw = getAny('mono_personas') || '[]';
+      var arr = safeParse(raw, []);
+      if (Array.isArray(arr) && arr.length) setBoth(LAST_GOOD_PERSONAS, raw);
+    } catch(e) {}
+  }
+  function restorePersonasIfAccidentallyEmpty(){
+    try {
+      var raw = getAny('mono_personas') || '[]';
+      var arr = safeParse(raw, []);
+      if (Array.isArray(arr) && arr.length) { snapshotPersonasIfGood(); return; }
+      var backup = getAny(LAST_GOOD_PERSONAS);
+      var b = safeParse(backup || '[]', []);
+      if (Array.isArray(b) && b.length) {
+        setBoth('mono_personas', backup);
+        try { personas = b; } catch(e) {}
+        try { if (typeof renderContactList === 'function') renderContactList(); } catch(e) {}
       }
-      return found;
-    };
-    window.monoGetUserMask = monoGetUserMask;
-  } catch(e) {}
+    } catch(e) {}
+  }
+  snapshotPersonasIfGood();
+  setTimeout(snapshotPersonasIfGood, 1200);
+  setTimeout(restorePersonasIfAccidentallyEmpty, 250);
+  setTimeout(restorePersonasIfAccidentallyEmpty, 1600);
+
+  // Wrap normalizer so imported avatar/customAvatarData survives normalization.
   try {
-    monoSyncUserMaskAvatarsToIdb = async function(masks){
-      var list = Array.isArray(masks) ? masks : ((typeof userMasks !== 'undefined' && Array.isArray(userMasks)) ? userMasks : []);
-      for (var i = 0; i < list.length; i++) {
-        var m = normalizeMaskHard(list[i]);
-        if (isRealCustomAvatar(m.avatar)) { saveBankAvatar(m.id, m.avatar); await idbSet(maskKey(m.id), m.avatar); }
-      }
-    };
-    window.monoSyncUserMaskAvatarsToIdb = monoSyncUserMaskAvatarsToIdb;
-  } catch(e) {}
-  try {
-    monoRestoreUserMaskAvatarsFromIdb = function(){ hydrateMasksFromIdb({ refresh: true }); };
-    window.monoRestoreUserMaskAvatarsFromIdb = monoRestoreUserMaskAvatarsFromIdb;
-  } catch(e) {}
-  try {
-    monoExportUserMasksWithAvatars = async function(){
-      var full = await hydrateMasksFromIdb({ refresh: false });
-      var out = [];
-      for (var i = 0; i < full.length; i++) {
-        var m = normalizeMaskHard(full[i]);
-        var av = isRealCustomAvatar(m.avatar) ? m.avatar : getBankAvatar(m.id);
-        if (!isRealCustomAvatar(av)) av = await idbGet(maskKey(m.id));
-        if (isRealCustomAvatar(av)) { m.avatar = av; m.hasCustomAvatar = true; m.customAvatarData = av; saveBankAvatar(m.id, av); }
-        out.push(m);
-      }
-      return out;
-    };
-    window.monoExportUserMasksWithAvatars = monoExportUserMasksWithAvatars;
-  } catch(e) {}
-  try {
-    monoHandleUserMaskAvatarInput = function(input){
-      if (!input || !input.files || !input.files[0]) return;
-      var pendingId = '';
-      try { pendingId = String(_monoPendingUserMaskAvatarId || ''); } catch(e) {}
-      if (!pendingId) return;
-      var file = input.files[0];
-      var reader = new FileReader();
-      reader.onload = async function(ev){
-        var dataUrl = ev && ev.target ? ev.target.result : '';
-        try { if (typeof compressImage === 'function') dataUrl = await compressImage(dataUrl, 360, 0.88); } catch(e) {}
-        if (!isRealCustomAvatar(dataUrl)) return;
-        saveBankAvatar(pendingId, dataUrl);
-        var current = (typeof userMasks !== 'undefined' && Array.isArray(userMasks)) ? userMasks.slice() : saveMasksFull(collectMaskSources(), { refresh: false });
-        var next = current.map(function(item){
-          if (String(item.id) !== String(pendingId)) return item;
-          return Object.assign({}, item, { avatar: dataUrl, customAvatarData: dataUrl, hasCustomAvatar: true, updatedAt: Date.now() });
-        });
-        saveMasksFull(next, { refresh: true });
-        try { _monoPendingUserMaskAvatarId = ''; } catch(e) {}
-        try { input.value = ''; } catch(e) {}
-        try { if (typeof monoRestoreFullscreenAfterFilePicker === 'function') monoRestoreFullscreenAfterFilePicker('user-mask-avatar-picked-v9', 260); } catch(e) {}
+    var oldNormalize = monoNormalizeUserMask;
+    if (typeof oldNormalize === 'function' && !oldNormalize.__monoV10SafeAvatarWrapped) {
+      var wrappedNormalize = function(raw){
+        var source = raw && typeof raw === 'object' ? Object.assign({}, raw) : raw;
+        if (source && !isRealAvatar(source.avatar) && isRealAvatar(source.customAvatarData)) source.avatar = source.customAvatarData;
+        var norm = oldNormalize.call(this, source);
+        if (source && source.id && !isRealAvatar(norm.avatar)) {
+          var saved = bankGet(source.id);
+          if (isRealAvatar(saved)) { norm.avatar = saved; norm.hasCustomAvatar = true; }
+        }
+        if (source && source.id && isRealAvatar(source.avatar)) bankSet(source.id, source.avatar);
+        return norm;
       };
-      reader.readAsDataURL(file);
-    };
-    window.monoHandleUserMaskAvatarInput = monoHandleUserMaskAvatarInput;
-  } catch(e) {}
-  try {
-    var oldDeleteMaskV9 = typeof monoDeleteUserMask === 'function' ? monoDeleteUserMask : null;
-    monoDeleteUserMask = async function(maskId){
-      var id = String(maskId || '');
-      if (oldDeleteMaskV9) await oldDeleteMaskV9.apply(this, arguments);
-      deleteBankAvatar(id);
-      saveMasksFull(collectMaskSources().filter(function(m){ return String(m.id) !== id; }), { refresh: true });
-    };
-    window.monoDeleteUserMask = monoDeleteUserMask;
-  } catch(e) {}
-
-  // Export/import helper used by older backup wrappers if present.
-  window.monoGetUserMaskAvatarBankV9 = async function(){
-    await hydrateMasksFromIdb({ refresh: false });
-    return readBank();
-  };
-  window.monoApplyUserMaskAvatarBankV9 = async function(bank){
-    if (bank && bank.avatars && typeof bank.avatars === 'object') {
-      Object.keys(bank.avatars).forEach(function(id){ if (isRealCustomAvatar(bank.avatars[id])) saveBankAvatar(id, bank.avatars[id]); });
+      wrappedNormalize.__monoV10SafeAvatarWrapped = true;
+      wrappedNormalize.__monoOriginal = oldNormalize;
+      monoNormalizeUserMask = wrappedNormalize;
+      window.monoNormalizeUserMask = wrappedNormalize;
     }
-    await hydrateMasksFromIdb({ refresh: true });
-  };
+  } catch(e) {}
 
-  function bootHydrate(){ hydrateMasksFromIdb({ refresh: true }); }
-  if (window._monoDBReady) setTimeout(bootHydrate, 0);
+  // Load masks normally, then hydrate their avatars from the safe bank. No boot-time save/rewrite.
+  try {
+    var oldLoad = monoLoadUserMasks;
+    if (typeof oldLoad === 'function' && !oldLoad.__monoV10SafeAvatarWrapped) {
+      var wrappedLoad = function(){
+        var list = oldLoad.apply(this, arguments);
+        return patchMaskList(list);
+      };
+      wrappedLoad.__monoV10SafeAvatarWrapped = true;
+      wrappedLoad.__monoOriginal = oldLoad;
+      monoLoadUserMasks = wrappedLoad;
+      window.monoLoadUserMasks = wrappedLoad;
+    }
+  } catch(e) {}
+
+  try {
+    var oldSave = monoSaveUserMasks;
+    if (typeof oldSave === 'function' && !oldSave.__monoV10SafeAvatarWrapped) {
+      var wrappedSave = function(nextMasks){
+        var incoming = patchMaskList(Array.isArray(nextMasks) ? nextMasks : []);
+        incoming.forEach(function(m){ if (m && isRealAvatar(m.avatar)) bankSet(m.id, m.avatar); });
+        var result = oldSave.call(this, incoming);
+        try {
+          var hydrated = patchMaskList((typeof userMasks !== 'undefined' && Array.isArray(userMasks)) ? userMasks : incoming);
+          try { userMasks = hydrated; } catch(e) {}
+          hydrated.forEach(function(m){ if (m && isRealAvatar(m.avatar)) bankSet(m.id, m.avatar); });
+        } catch(e) {}
+        return result;
+      };
+      wrappedSave.__monoV10SafeAvatarWrapped = true;
+      wrappedSave.__monoOriginal = oldSave;
+      monoSaveUserMasks = wrappedSave;
+      window.monoSaveUserMasks = wrappedSave;
+    }
+  } catch(e) {}
+
+  try {
+    var oldSync = monoSyncUserMaskAvatarsToIdb;
+    if (typeof oldSync === 'function' && !oldSync.__monoV10SafeAvatarWrapped) {
+      var wrappedSync = async function(masks){
+        var list = patchMaskList(Array.isArray(masks) ? masks : []);
+        list.forEach(function(m){ if (m && isRealAvatar(m.avatar)) bankSet(m.id, m.avatar); });
+        return await oldSync.call(this, list);
+      };
+      wrappedSync.__monoV10SafeAvatarWrapped = true;
+      wrappedSync.__monoOriginal = oldSync;
+      monoSyncUserMaskAvatarsToIdb = wrappedSync;
+      window.monoSyncUserMaskAvatarsToIdb = wrappedSync;
+    }
+  } catch(e) {}
+
+  try {
+    var oldRestore = monoRestoreUserMaskAvatarsFromIdb;
+    if (typeof oldRestore === 'function' && !oldRestore.__monoV10SafeAvatarWrapped) {
+      var wrappedRestore = function(){
+        var r = oldRestore.apply(this, arguments);
+        setTimeout(async function(){
+          try {
+            var current = (typeof userMasks !== 'undefined' && Array.isArray(userMasks)) ? userMasks : [];
+            var res = await hydrateMaskListAsync(current);
+            if (res.list.length) {
+              try { userMasks = res.list; } catch(e) {}
+              try { if (typeof monoRefreshUserIdentityUi === 'function') monoRefreshUserIdentityUi(); } catch(e) {}
+            }
+          } catch(e) {}
+        }, 120);
+        return r;
+      };
+      wrappedRestore.__monoV10SafeAvatarWrapped = true;
+      wrappedRestore.__monoOriginal = oldRestore;
+      monoRestoreUserMaskAvatarsFromIdb = wrappedRestore;
+      window.monoRestoreUserMaskAvatarsFromIdb = wrappedRestore;
+    }
+  } catch(e) {}
+
+  try {
+    var oldExportMasks = monoExportUserMasksWithAvatars;
+    if (typeof oldExportMasks === 'function' && !oldExportMasks.__monoV10SafeAvatarWrapped) {
+      var wrappedExportMasks = async function(){
+        var list = [];
+        try { list = await oldExportMasks.apply(this, arguments); } catch(e) {
+          try { list = (typeof userMasks !== 'undefined' && Array.isArray(userMasks)) ? userMasks.slice() : monoLoadUserMasks(); } catch(_) { list = []; }
+        }
+        var res = await hydrateMaskListAsync(patchMaskList(list));
+        return res.list.map(function(m){
+          var out = Object.assign({}, m || {});
+          if (isRealAvatar(out.avatar)) { out.hasCustomAvatar = true; out.customAvatarData = out.avatar; bankSet(out.id, out.avatar); }
+          return out;
+        });
+      };
+      wrappedExportMasks.__monoV10SafeAvatarWrapped = true;
+      wrappedExportMasks.__monoOriginal = oldExportMasks;
+      monoExportUserMasksWithAvatars = wrappedExportMasks;
+      window.monoExportUserMasksWithAvatars = wrappedExportMasks;
+    }
+  } catch(e) {}
+
+  try {
+    var oldInput = monoHandleUserMaskAvatarInput;
+    if (typeof oldInput === 'function' && !oldInput.__monoV10SafeAvatarWrapped) {
+      var wrappedInput = function(input){
+        var pending = '';
+        try { pending = String(_monoPendingUserMaskAvatarId || ''); } catch(e) {}
+        if (input && input.files && input.files[0] && pending) {
+          try {
+            var reader = new FileReader();
+            reader.onload = async function(ev){
+              var dataUrl = ev && ev.target ? ev.target.result : '';
+              try { if (typeof compressImage === 'function') dataUrl = await compressImage(dataUrl, 320, 0.86); } catch(e) {}
+              if (isRealAvatar(dataUrl)) bankSet(pending, dataUrl);
+            };
+            reader.readAsDataURL(input.files[0]);
+          } catch(e) {}
+        }
+        return oldInput.apply(this, arguments);
+      };
+      wrappedInput.__monoV10SafeAvatarWrapped = true;
+      wrappedInput.__monoOriginal = oldInput;
+      monoHandleUserMaskAvatarInput = wrappedInput;
+      window.monoHandleUserMaskAvatarInput = wrappedInput;
+    }
+  } catch(e) {}
+
+  // Hydrate current in-memory masks without saving over existing storage.
+  async function bootHydrateMasks(){
+    try {
+      var current = (typeof userMasks !== 'undefined' && Array.isArray(userMasks)) ? userMasks : (typeof monoLoadUserMasks === 'function' ? monoLoadUserMasks() : []);
+      var res = await hydrateMaskListAsync(current);
+      if (res.list.length) {
+        try { userMasks = res.list; } catch(e) {}
+        try { if (typeof monoRefreshUserIdentityUi === 'function') monoRefreshUserIdentityUi(); } catch(e) {}
+        try { if (typeof monoRenderUserMasksManager === 'function') monoRenderUserMasksManager(); } catch(e) {}
+      }
+    } catch(e) {}
+  }
+  if (window._monoDBReady) setTimeout(bootHydrateMasks, 0);
   else {
     window._monoBootFns = window._monoBootFns || [];
-    window._monoBootFns.push(bootHydrate);
+    window._monoBootFns.push(bootHydrateMasks);
   }
-  setTimeout(bootHydrate, 350);
-  setTimeout(bootHydrate, 1200);
-  setTimeout(bootHydrate, 3000);
+  setTimeout(bootHydrateMasks, 600);
+  setTimeout(bootHydrateMasks, 1800);
+
+  // Prevent import/export controls from acting like form submit buttons on some browsers/PWA shells.
+  function guardImportExportButtons(){
+    try {
+      var selectors = [
+        'button[onclick*="exportMainData"]', 'button[onclick*="exportImageAssets"]',
+        'button[onclick*="importFileInput"]', 'button[onclick*="importImageAssetsInput"]',
+        '#importConfirmModal button', '#importConfirmBtn', '#importCancelBtn',
+        '#exportMainDataBtn', '#exportImageAssetsBtn', '#importMainDataBtn', '#importImageAssetsBtn'
+      ];
+      document.querySelectorAll(selectors.join(',')).forEach(function(btn){
+        try { btn.setAttribute('type', 'button'); } catch(e) {}
+      });
+    } catch(e) {}
+  }
+  document.addEventListener('DOMContentLoaded', guardImportExportButtons);
+  setTimeout(guardImportExportButtons, 0);
+  setTimeout(guardImportExportButtons, 800);
+  document.addEventListener('submit', function(ev){
+    try {
+      var target = ev.target;
+      if (target && (target.querySelector('#importFileInput') || target.querySelector('#importExportStatus') || target.closest('#importConfirmModal'))) {
+        ev.preventDefault();
+        ev.stopPropagation();
+      }
+    } catch(e) {}
+  }, true);
+  document.addEventListener('click', function(ev){
+    try {
+      var btn = ev.target && ev.target.closest ? ev.target.closest('button') : null;
+      if (!btn) return;
+      var html = (btn.getAttribute('onclick') || '') + ' ' + (btn.id || '');
+      if (/exportMainData|exportImageAssets|importFileInput|importImageAssetsInput|importConfirm|importCancel/i.test(html)) {
+        ev.preventDefault();
+      }
+    } catch(e) {}
+  }, true);
 })();
 
 </script>

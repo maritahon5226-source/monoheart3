@@ -22427,6 +22427,10 @@ body:not(.ios-fullscreen).chat-page-active.chat-preset-frosted-active #chatPage.
         <button type="button" onclick="document.getElementById('importFileInput').click();return false;" class="action-btn" style="flex:1;min-width:120px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;padding:10px 16px;background:#fff;color:#1a1a1a;border:2px solid #1a1a1a;">
           <i class="fas fa-upload"></i> 导入数据
         </button>
+
+        <button type="button" onclick="requestPersistentStorage(event);return false;" class="action-btn" style="flex:1;min-width:180px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;padding:10px 16px;background:#111;color:#fff;border:2px solid #111;">
+          <i class="fas fa-shield-alt"></i> 请求浏览器持久保存保护
+        </button>
         <input type="file" id="importFileInput" hidden accept=".json" onchange="importAllData(this)">
       </div>
       <div id="importExportStatus" style="margin-top:10px;font-size:11px;color:#666;display:none;"></div>
@@ -112838,443 +112842,42 @@ body.mono-fwd-modal-open {
 
 
 <script>
-/* ===================== V14: 图片/头像/生成图 IndexedDB + 压缩存储补丁 =====================
-   目标：
-   1) 文字数据仍可走原有 localStorage/IDB 代理；
-   2) 头像、面具头像、生成图、背景图、自定义图标、朋友圈/论坛/日记/IG 图片等大图，不再长期塞进浏览器 raw localStorage；
-   3) 保存时自动进入 IndexedDB，并在后台尽量压缩；
-   4) 图片资源导出/导入时额外带上通用 IDB/图片键，避免跨设备丢头像/生成图。
-*/
-(function(){
-  'use strict';
-  if (window.__monoMediaStorageV14Installed) return;
-  window.__monoMediaStorageV14Installed = true;
+// ===== Persistent Storage Permission Button Patch v14 =====
+(function() {
+  if (window.__monoPersistentStoragePatchV14) return;
+  window.__monoPersistentStoragePatchV14 = true;
 
-  var MB = 1024 * 1024;
-  var MEDIA_INLINE_LIMIT = 70 * 1024;       // 超过这个大小的图片数据，不再保留 raw localStorage 副本
-  var LARGE_VALUE_LIMIT = 420 * 1024;       // 非图片但很大的值，也尽量只让 IDB 做主存储，避免 raw localStorage 爆掉
-  var COMPRESS_MIN_SIZE = 55 * 1024;        // 小于这个大小不强行压缩，避免画质反复损失
-  var MAX_COMPRESS_PER_RUN = 120;
-  var pendingCompression = new Map();
-  var internalSet = false;
+  window.requestPersistentStorage = async function requestPersistentStorage(event) {
+    if (event && event.preventDefault) event.preventDefault();
+    if (event && event.stopPropagation) event.stopPropagation();
 
-  var baseLS = window.localStorage;
-  var rawLS = window._monoRawLocalStorage || null;
-  if (!baseLS || !baseLS.getItem || !baseLS.setItem) return;
-
-  var SHARED_KEYS = new Set([
-    'mono_home_bg','mono_home_photo','mono_ios_fullscreen','mono_home_page_mode',
-    'mono_custom_font','mono_api','mono_fab_position','mono_fab_enabled',
-    'mono_iph_positions_v3','mono_iph_folders_v1','mono_extra_pages_v1',
-    'mono_custom_widgets_v1','mono_widget_photos_v1','mono_widget_multi_photos_v1',
-    'mono_custom_image_widget_v1','mono_hidden_regular_widgets_v1',
-    'mono_spotify_widget_text_v1','mono_multiworld_enabled','mono_multiworld_worlds',
-    'mono_multiworld_active','mono_voice_lang','mono_user_profile','mono_user_masks',
-    'mono_user_masks_backup_v11','mono_user_masks_saved_at_v11','mono_couple_space_v1'
-  ]);
-  var SHARED_PREFIXES = ['mono_icon_', 'mono_rel_map_', 'mono_mw_', 'mono_dr_'];
-
-  function safeStr(v){ return v == null ? '' : String(v); }
-  function hasDataImage(str){ return typeof str === 'string' && /data:image\/(?:png|jpe?g|webp|gif|bmp|avif|svg\+xml);base64,/i.test(str); }
-  function startsDataImage(str){ return typeof str === 'string' && /^data:image\/(?:png|jpe?g|webp|gif|bmp|avif|svg\+xml);base64,/i.test(str); }
-  function isCompressibleDataImage(str){ return startsDataImage(str) && !/^data:image\/(?:gif|svg\+xml|avif)/i.test(str); }
-  function shouldKeepOutOfRawStorage(value){
-    if (typeof value !== 'string') return false;
-    if (hasDataImage(value) && value.length > MEDIA_INLINE_LIMIT) return true;
-    return value.length > LARGE_VALUE_LIMIT;
-  }
-  function shouldCompressValue(value){ return typeof value === 'string' && hasDataImage(value) && value.length > COMPRESS_MIN_SIZE; }
-  function getRawItem(key){ try { return rawLS ? rawLS.getItem(key) : null; } catch(e){ return null; } }
-  function rawRemove(key){ try { if (rawLS && key) rawLS.removeItem(key); } catch(e){} }
-  function rawSetTinyMarker(key){
-    // 不写大图，只留很小的提示，方便诊断时看出该 key 已转移。
     try {
-      if (!rawLS || !key) return;
-      if (String(key).indexOf('mono_') !== 0) return;
-      if (!rawLS.getItem(key)) rawLS.setItem(key, '__mono_idb_primary_v14__');
-    } catch(e) {}
-  }
-  function logicalToActualKey(key){
-    key = safeStr(key);
-    if (!key || key.indexOf('mono_') !== 0) return key;
-    if (SHARED_KEYS.has(key)) return key;
-    for (var i=0;i<SHARED_PREFIXES.length;i++) if (key.indexOf(SHARED_PREFIXES[i]) === 0) return key;
-    var enabled = false;
-    try { enabled = getRawItem('mono_multiworld_enabled') === 'true' || baseLS.getItem('mono_multiworld_enabled') === 'true'; } catch(e) {}
-    if (!enabled) return key;
-    var active = 'world_1';
-    try { active = baseLS.getItem('mono_multiworld_active') || getRawItem('mono_multiworld_active') || 'world_1'; } catch(e) {}
-    if (key.indexOf('mono_mw_' + active + '_') === 0) return key;
-    return 'mono_mw_' + active + '_' + key.slice(5);
-  }
-  function purgeRawCopies(key){
-    var actual = logicalToActualKey(key);
-    rawRemove(actual);
-    if (actual !== key) rawRemove(key);
-  }
-  function putKvDirect(actualKey, value){
-    return new Promise(function(resolve){
-      try {
-        var db = window._idb;
-        if (!db) { resolve(false); return; }
-        var tx = db.transaction('kv', 'readwrite');
-        tx.objectStore('kv').put(value, actualKey);
-        tx.oncomplete = function(){ resolve(true); };
-        tx.onerror = function(){ resolve(false); };
-      } catch(e) { resolve(false); }
-    });
-  }
-  function readAllKvDirect(){
-    return new Promise(function(resolve){
-      var out = {};
-      try {
-        var db = window._idb;
-        if (!db) { resolve(out); return; }
-        var tx = db.transaction('kv', 'readonly');
-        tx.objectStore('kv').openCursor().onsuccess = function(ev){
-          var cur = ev.target.result;
-          if (!cur) { resolve(out); return; }
-          out[cur.key] = cur.value;
-          cur.continue();
-        };
-        tx.onerror = function(){ resolve(out); };
-      } catch(e) { resolve(out); }
-    });
-  }
-  function dataUrlToImage(dataUrl){
-    return new Promise(function(resolve, reject){
-      var img = new Image();
-      img.onload = function(){ resolve(img); };
-      img.onerror = function(){ reject(new Error('图片读取失败')); };
-      img.src = dataUrl;
-    });
-  }
-  function canvasToDataURL(canvas, type, quality){
-    return new Promise(function(resolve){
-      if (canvas.toBlob) {
-        canvas.toBlob(function(blob){
-          if (!blob) { resolve(canvas.toDataURL(type, quality)); return; }
-          var fr = new FileReader();
-          fr.onload = function(){ resolve(String(fr.result || '')); };
-          fr.onerror = function(){ resolve(canvas.toDataURL(type, quality)); };
-          fr.readAsDataURL(blob);
-        }, type, quality);
+      if (!navigator.storage || !navigator.storage.persist || !navigator.storage.persisted) {
+        alert('当前浏览器不支持持久保存权限。这个权限不能由网页强制开启，最终是否授予由浏览器决定。建议定期导出备份。');
+        return false;
+      }
+
+      const already = await navigator.storage.persisted();
+      if (already) {
+        alert('浏览器已经授予持久保存保护。这个权限不能由网页强制开启，最终是否授予由浏览器决定。');
+        return true;
+      }
+
+      const granted = await navigator.storage.persist();
+      if (granted) {
+        alert('浏览器已授予持久保存保护。这个权限不能由网页强制开启，最终是否授予由浏览器决定。');
       } else {
-        resolve(canvas.toDataURL(type, quality));
+        alert('浏览器暂时没有授予持久保存保护，建议安装为 PWA、保持常用、避免无痕模式，并定期导出备份。这个权限不能由网页强制开启，最终是否授予由浏览器决定。');
       }
-    });
-  }
-  function mediaHintMaxSize(hint){
-    hint = safeStr(hint).toLowerCase();
-    if (/avatar|mask|icon|profile|头像|面具|图标/.test(hint)) return 512;
-    if (/thumb|thumbnail|cover|封面/.test(hint)) return 720;
-    if (/bg|background|home|wallpaper|背景/.test(hint)) return 1600;
-    return 1280;
-  }
-  async function compressDataImage(dataUrl, hint){
-    if (!isCompressibleDataImage(dataUrl) || dataUrl.length < COMPRESS_MIN_SIZE) return dataUrl;
-    try {
-      var img = await dataUrlToImage(dataUrl);
-      var max = mediaHintMaxSize(hint);
-      var w = img.naturalWidth || img.width || 0;
-      var h = img.naturalHeight || img.height || 0;
-      if (!w || !h) return dataUrl;
-      var ratio = Math.min(1, max / Math.max(w, h));
-      var cw = Math.max(1, Math.round(w * ratio));
-      var ch = Math.max(1, Math.round(h * ratio));
-      var canvas = document.createElement('canvas');
-      canvas.width = cw; canvas.height = ch;
-      var ctx = canvas.getContext('2d', { alpha: true });
-      if (!ctx) return dataUrl;
-      ctx.drawImage(img, 0, 0, cw, ch);
-      var q = /avatar|mask|icon|头像|面具|图标/i.test(safeStr(hint)) ? 0.78 : 0.74;
-      var webp = await canvasToDataURL(canvas, 'image/webp', q);
-      var jpg = '';
-      if (!/^data:image\/webp/i.test(webp)) jpg = await canvasToDataURL(canvas, 'image/jpeg', q);
-      var best = /^data:image\/webp/i.test(webp) ? webp : jpg;
-      if (best && best.length > 200 && best.length < dataUrl.length * 0.92) return best;
-      return dataUrl;
-    } catch(e) { return dataUrl; }
-  }
-  async function compressObjectImages(value, hint, depth, seen){
-    if (depth > 7) return value;
-    if (typeof value === 'string') {
-      if (isCompressibleDataImage(value)) return await compressDataImage(value, hint);
-      return value;
+      return granted;
+    } catch (err) {
+      alert('请求浏览器持久保存保护失败：' + (err && err.message ? err.message : err) + '。这个权限不能由网页强制开启，最终是否授予由浏览器决定。建议定期导出备份。');
+      return false;
     }
-    if (!value || typeof value !== 'object') return value;
-    if (!seen) seen = new WeakSet();
-    if (seen.has(value)) return value;
-    seen.add(value);
-    if (Array.isArray(value)) {
-      var arrChanged = false;
-      var arr = value.slice();
-      for (var i=0;i<arr.length;i++) {
-        var next = await compressObjectImages(arr[i], hint + '[' + i + ']', depth + 1, seen);
-        if (next !== arr[i]) { arr[i] = next; arrChanged = true; }
-      }
-      return arrChanged ? arr : value;
-    }
-    var changed = false;
-    var out = Object.assign({}, value);
-    var keys = Object.keys(out);
-    for (var k=0;k<keys.length;k++) {
-      var prop = keys[k];
-      var nextVal = await compressObjectImages(out[prop], hint + '.' + prop, depth + 1, seen);
-      if (nextVal !== out[prop]) { out[prop] = nextVal; changed = true; }
-    }
-    return changed ? out : value;
-  }
-  async function compressValueString(value, keyHint){
-    if (typeof value !== 'string' || !shouldCompressValue(value)) return value;
-    if (startsDataImage(value)) return await compressDataImage(value, keyHint);
-    var first = value.trim().charAt(0);
-    if (first !== '{' && first !== '[') return value;
-    try {
-      var parsed = JSON.parse(value);
-      var compressed = await compressObjectImages(parsed, keyHint || '', 0, null);
-      if (compressed !== parsed) return JSON.stringify(compressed);
-    } catch(e) {}
-    return value;
-  }
-  function scheduleCompression(key, value){
-    if (!shouldCompressValue(value)) return;
-    var actual = logicalToActualKey(key);
-    if (pendingCompression.has(actual)) return;
-    pendingCompression.set(actual, true);
-    setTimeout(async function(){
-      try {
-        var latest = baseLS.getItem(key);
-        if (typeof latest !== 'string' || !hasDataImage(latest)) latest = value;
-        var compressed = await compressValueString(latest, key);
-        if (typeof compressed === 'string' && compressed !== latest) {
-          internalSet = true;
-          try { baseLS.setItem(key, compressed); } catch(e) {}
-          internalSet = false;
-          purgeRawCopies(key);
-          try { await putKvDirect(actual, compressed); } catch(e) {}
-        }
-      } catch(e) {}
-      finally { pendingCompression.delete(actual); }
-    }, 1200);
-  }
-
-  var wrapper = {
-    getItem: function(key){ return baseLS.getItem(key); },
-    setItem: function(key, value){
-      value = String(value);
-      var actual = logicalToActualKey(key);
-      try { baseLS.setItem(key, value); } catch(e) {
-        try { putKvDirect(actual, value); } catch(_e) {}
-      }
-      if (shouldKeepOutOfRawStorage(value)) {
-        purgeRawCopies(key);
-        rawSetTinyMarker(actual);
-      }
-      if (!internalSet) scheduleCompression(key, value);
-    },
-    removeItem: function(key){
-      var actual = logicalToActualKey(key);
-      try { baseLS.removeItem(key); } catch(e) {}
-      rawRemove(actual); if (actual !== key) rawRemove(key);
-    },
-    clear: function(){ try { baseLS.clear(); } catch(e) {} },
-    key: function(i){ return baseLS.key(i); },
-    get length(){ try { return baseLS.length; } catch(e){ return 0; } }
   };
-  try {
-    Object.defineProperty(window, 'localStorage', { get: function(){ return wrapper; }, configurable: true });
-  } catch(e) {
-    try { window.localStorage = wrapper; } catch(_e) {}
-  }
-
-  async function moveRawLargeImagesToIdb(){
-    if (!rawLS) return { moved: 0, compressed: 0 };
-    var keys = [];
-    try { for (var i=0;i<rawLS.length;i++) keys.push(rawLS.key(i)); } catch(e) {}
-    var moved = 0;
-    for (var j=0;j<keys.length;j++) {
-      var k = keys[j];
-      var v = getRawItem(k);
-      if (typeof v !== 'string' || !shouldKeepOutOfRawStorage(v)) continue;
-      try { baseLS.setItem(k, v); } catch(e) { await putKvDirect(k, v); }
-      rawRemove(k);
-      rawSetTinyMarker(k);
-      scheduleCompression(k, v);
-      moved++;
-    }
-    return { moved: moved, compressed: 0 };
-  }
-
-  async function compressExistingImagePayloads(options){
-    options = options || {};
-    var statusCb = typeof options.onProgress === 'function' ? options.onProgress : function(){};
-    var kv = await readAllKvDirect();
-    var keys = Object.keys(kv);
-    var done = 0, changed = 0, scanned = 0;
-    for (var i=0;i<keys.length && done < MAX_COMPRESS_PER_RUN;i++) {
-      var key = keys[i];
-      var val = kv[key];
-      if (typeof val !== 'string' || !shouldCompressValue(val)) continue;
-      scanned++;
-      statusCb({ scanned: scanned, changed: changed, key: key });
-      var compressed = await compressValueString(val, key);
-      if (typeof compressed === 'string' && compressed !== val) {
-        internalSet = true;
-        try { baseLS.setItem(key, compressed); } catch(e) { await putKvDirect(key, compressed); }
-        internalSet = false;
-        purgeRawCopies(key);
-        changed++;
-      } else if (shouldKeepOutOfRawStorage(val)) {
-        purgeRawCopies(key);
-      }
-      done++;
-    }
-    await moveRawLargeImagesToIdb();
-    return { scanned: scanned, changed: changed, limit: MAX_COMPRESS_PER_RUN };
-  }
-
-  async function collectBlobImageEntries(){
-    var out = {};
-    try {
-      if (!window._monoIdbBlobGetAll) return out;
-      var all = await window._monoIdbBlobGetAll();
-      Object.keys(all || {}).forEach(function(key){
-        var val = all[key];
-        if (typeof val === 'string' && startsDataImage(val)) out[key] = val;
-      });
-    } catch(e) {}
-    return out;
-  }
-  async function collectKvImagePayloads(){
-    var out = {};
-    try {
-      var kv = await readAllKvDirect();
-      Object.keys(kv).forEach(function(key){
-        var val = kv[key];
-        if (typeof val !== 'string') return;
-        if (!hasDataImage(val)) return;
-        // 只收图片相关 key，避免把整份超大聊天/世界数据重复塞满图片包。
-        if (!/(avatar|mask|photo|image|img|icon|bg|wallpaper|moment|forum|diary|instagram|story|widget|sticker|cover|头像|图片|背景|图标|封面)/i.test(key)) return;
-        out[key] = val;
-      });
-    } catch(e) {}
-    return out;
-  }
-  async function restoreGenericMediaAssets(pack){
-    var restored = 0;
-    if (!pack || typeof pack !== 'object') return 0;
-    var blobPack = pack.indexedDbMediaV14 || pack.blobImagesV14 || {};
-    if (blobPack && typeof blobPack === 'object' && window._monoIdbBlobSet) {
-      var bKeys = Object.keys(blobPack);
-      for (var i=0;i<bKeys.length;i++) {
-        var bk = bKeys[i], bv = blobPack[bk];
-        if (typeof bv === 'string' && startsDataImage(bv)) {
-          try { await window._monoIdbBlobSet(bk, bv); restored++; } catch(e) {}
-        }
-      }
-    }
-    var kvPack = pack.kvImagePayloadsV14 || {};
-    if (kvPack && typeof kvPack === 'object') {
-      var kKeys = Object.keys(kvPack);
-      for (var j=0;j<kKeys.length;j++) {
-        var kk = kKeys[j], kv = kvPack[kk];
-        if (typeof kv === 'string' && hasDataImage(kv)) {
-          internalSet = true;
-          try { baseLS.setItem(kk, kv); } catch(e) { await putKvDirect(kk, kv); }
-          internalSet = false;
-          purgeRawCopies(kk);
-          scheduleCompression(kk, kv);
-          restored++;
-        }
-      }
-    }
-    return restored;
-  }
-
-  // 包装图片资源导出：额外带上通用 IndexedDB 图片与图片相关 key。
-  try {
-    if (typeof monoBuildImageAssetBackup === 'function' && !monoBuildImageAssetBackup.__v14Wrapped) {
-      var oldBuildImageAssetBackup = monoBuildImageAssetBackup;
-      monoBuildImageAssetBackup = async function(statusEl){
-        var pack = await oldBuildImageAssetBackup(statusEl);
-        try { if (statusEl) statusEl.textContent = '正在整理通用 IndexedDB 图片资源...'; } catch(e) {}
-        if (!pack.imageAssets) pack.imageAssets = {};
-        pack.imageAssets.indexedDbMediaV14 = await collectBlobImageEntries();
-        pack.imageAssets.kvImagePayloadsV14 = await collectKvImagePayloads();
-        if (!pack._meta) pack._meta = {};
-        pack._meta.mediaStoragePolicy = 'v14_images_use_indexeddb_or_compressed_storage';
-        return pack;
-      };
-      monoBuildImageAssetBackup.__v14Wrapped = true;
-    }
-  } catch(e) {}
-
-  // 包装图片资源导入：恢复 v14 通用媒体包。
-  try {
-    if (typeof monoConfirmImportImageAssets === 'function' && !monoConfirmImportImageAssets.__v14Wrapped) {
-      var oldConfirmImageAssets = monoConfirmImportImageAssets;
-      monoConfirmImportImageAssets = async function(payload, statusEl){
-        await oldConfirmImageAssets(payload, statusEl);
-        try {
-          if (statusEl) { statusEl.style.display = 'block'; statusEl.style.color = '#666'; statusEl.textContent = '正在恢复通用图片资源...'; }
-          var raw = payload && payload.raw ? payload.raw : {};
-          var pack = raw && raw.imageAssets && typeof raw.imageAssets === 'object' ? raw.imageAssets : {};
-          var restored = await restoreGenericMediaAssets(pack);
-          if (statusEl && restored > 0) { statusEl.style.color = '#27ae60'; statusEl.textContent = '✓ 图片资源导入成功，已恢复通用媒体 ' + restored + ' 项'; }
-        } catch(e) {}
-      };
-      monoConfirmImportImageAssets.__v14Wrapped = true;
-    }
-  } catch(e) {}
-
-  function addCompressButton(){
-    try {
-      if (document.getElementById('monoMediaCompressBtnV14')) return;
-      var status = document.getElementById('importExportStatus');
-      if (!status || !status.parentNode) return;
-      var btn = document.createElement('button');
-      btn.id = 'monoMediaCompressBtnV14';
-      btn.type = 'button';
-      btn.className = 'w-full py-2.5 px-4 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 bg-white hover:bg-gray-50 transition';
-      btn.style.marginTop = '8px';
-      btn.innerHTML = '<i class="fas fa-compress-alt"></i> 压缩并迁移图片到 IndexedDB';
-      btn.onclick = async function(ev){
-        try { ev.preventDefault(); ev.stopPropagation(); } catch(e) {}
-        btn.disabled = true;
-        status.style.display = 'block';
-        status.style.color = '#666';
-        status.textContent = '正在扫描并压缩图片资源...';
-        try {
-          var moved = await moveRawLargeImagesToIdb();
-          var result = await compressExistingImagePayloads({ onProgress: function(p){ status.textContent = '正在压缩图片资源... 已扫描 ' + p.scanned + ' 项，已优化 ' + p.changed + ' 项'; } });
-          status.style.color = '#27ae60';
-          status.textContent = '✓ 图片迁移完成：raw localStorage 迁移 ' + moved.moved + ' 项，压缩优化 ' + result.changed + ' 项。建议再导出主数据和图片资源备份。';
-        } catch(err) {
-          status.style.color = '#e74c3c';
-          status.textContent = '✗ 图片迁移失败：' + (err && err.message ? err.message : err);
-        } finally { btn.disabled = false; }
-      };
-      status.parentNode.insertBefore(btn, status.nextSibling);
-    } catch(e) {}
-  }
-
-  window.monoCompressExistingImagePayloads = compressExistingImagePayloads;
-  window.monoMoveRawLargeImagesToIdb = moveRawLargeImagesToIdb;
-  window.monoMediaStorageV14Report = async function(){
-    var kv = await readAllKvDirect();
-    var totalImageChars = 0, imageKeyCount = 0;
-    Object.keys(kv).forEach(function(k){ var v = kv[k]; if (typeof v === 'string' && hasDataImage(v)) { imageKeyCount++; totalImageChars += v.length; } });
-    return { policy: 'images_use_indexeddb_or_compressed_storage_v14', imageKeyCount: imageKeyCount, approxImageBytes: Math.round(totalImageChars * 0.75) };
-  };
-
-  // 启动后只做安全迁移：把 raw localStorage 里的大图副本移走，不改业务数据结构。
-  setTimeout(function(){ moveRawLargeImagesToIdb().catch(function(){}); }, 2500);
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', addCompressButton);
-  else setTimeout(addCompressButton, 800);
 })();
-
 </script>
+
 </body>
 
 <!-- MONO FINAL FIX: Sticker library dialogs are not covered; use a real top-layer modal and direct button routing -->
@@ -115526,7 +115129,7 @@ body.mono-fwd-modal-open {
     var suggestions = [];
     if (risk.score >= 3) suggestions.push('马上导出主数据和图片资源，避免浏览器写入失败后无法恢复。');
     if ((localScan.totalBytes || 0) > 3.5 * MB) suggestions.push('localStorage 适合放文字数据，不适合长期塞大量 base64 头像/图片；大图资源建议迁移到 IndexedDB 或图片资源包。');
-    if (origin && origin.persisted === false) suggestions.push('点击“请求浏览器持久保存保护”，让浏览器尽量不要自动清理这个网页的数据。');
+    if (origin && origin.persisted === false) suggestions.push('点击“请求持久保存权限”，让浏览器尽量不要自动清理这个网页的数据。');
     suggestions.push('图片、背景、头像、表情包是最容易撑爆容量的内容；如果出现保存异常，优先清理这些资源。');
     suggestions.push('聊天记录很多时，建议定期导出主数据；大量旧通话/长文本总结也会增加占用。');
     return suggestions;
@@ -115636,17 +115239,22 @@ body.mono-fwd-modal-open {
     box.appendChild(suggestBox);
 
     var actions = el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;' });
-    var persistBtn = el('button', { type: 'button', style: 'flex:1;min-width:140px;padding:10px;border-radius:12px;border:1px solid #111;background:#111;color:#fff;font-size:12px;font-weight:700;cursor:pointer;' }, '请求浏览器持久保存保护');
+    var persistBtn = el('button', { type: 'button', style: 'flex:1;min-width:140px;padding:10px;border-radius:12px;border:1px solid #111;background:#111;color:#fff;font-size:12px;font-weight:700;cursor:pointer;' }, '请求持久保存权限');
     persistBtn.onclick = async function(ev) {
       ev.preventDefault();
       ev.stopPropagation();
       try {
         if (!(navigator.storage && navigator.storage.persist)) {
-          alert('这个浏览器不支持主动请求浏览器持久保存保护。');
+          alert('当前浏览器不支持持久保存权限。这个权限不能由网页强制开启，最终是否授予由浏览器决定。建议定期导出备份。');
+          return false;
+        }
+        var already = await navigator.storage.persisted();
+        if (already) {
+          alert('浏览器已经授予持久保存保护。这个权限不能由网页强制开启，最终是否授予由浏览器决定。');
           return false;
         }
         var ok = await navigator.storage.persist();
-        alert(ok ? '浏览器已授予或已经拥有持久保存保护，网页数据更不容易被系统自动清理。' : '浏览器暂时没有授予持久保存保护。建议添加到主屏幕/PWA、保持经常使用、避免无痕模式，并定期导出主数据和图片资源备份。');
+        alert(ok ? '浏览器已授予持久保存保护。这个权限不能由网页强制开启，最终是否授予由浏览器决定。' : '浏览器暂时没有授予持久保存保护，建议安装为 PWA、保持常用、避免无痕模式，并定期导出备份。这个权限不能由网页强制开启，最终是否授予由浏览器决定。');
       } catch (e) {
         alert('请求失败：' + (e && e.message ? e.message : e));
       }
@@ -115708,7 +115316,7 @@ body.mono-fwd-modal-open {
           if (this === localStorage && isQuota) {
             try {
               setTimeout(function(){
-                alert('保存失败：网页本地数据容量已满或接近上限。请先导出主数据/图片资源，然后清理大图片、头像、旧聊天或请求浏览器持久保存保护。');
+                alert('保存失败：网页本地数据容量已满或接近上限。请先导出主数据/图片资源，然后清理大图片、头像、旧聊天或请求持久保存权限。');
                 if (window.MonoStorageHealth && window.MonoStorageHealth.show) window.MonoStorageHealth.show();
               }, 30);
             } catch (_) {}
@@ -115759,172 +115367,3 @@ body.mono-fwd-modal-open {
 
 </script>
 <!-- /MONO STORAGE HEALTH V13 PATCH -->
-<!-- MONO PERSISTENT STORAGE PERMISSION V15 PATCH -->
-<script>
-(function(){
-  'use strict';
-  if (window.__monoPersistentStorageV15Installed) return;
-  window.__monoPersistentStorageV15Installed = true;
-
-  function fmtBytes(bytes) {
-    bytes = Number(bytes || 0);
-    if (!bytes) return '0 B';
-    var units = ['B','KB','MB','GB'];
-    var i = 0;
-    while (bytes >= 1024 && i < units.length - 1) { bytes /= 1024; i++; }
-    return bytes.toFixed(i === 0 ? 0 : 1) + ' ' + units[i];
-  }
-
-  function setStatus(html, color) {
-    try {
-      var status = document.getElementById('importExportStatus');
-      if (!status) return;
-      status.style.display = 'block';
-      status.style.color = color || '#555';
-      status.innerHTML = html;
-    } catch (_) {}
-  }
-
-  async function getStorageState() {
-    var supported = !!(navigator.storage);
-    var canPersist = !!(navigator.storage && navigator.storage.persist);
-    var canPersisted = !!(navigator.storage && navigator.storage.persisted);
-    var canEstimate = !!(navigator.storage && navigator.storage.estimate);
-    var already = false;
-    var estimate = null;
-    try { if (canPersisted) already = await navigator.storage.persisted(); } catch (_) {}
-    try { if (canEstimate) estimate = await navigator.storage.estimate(); } catch (_) {}
-    return { supported: supported, canPersist: canPersist, canPersisted: canPersisted, already: already, estimate: estimate };
-  }
-
-  window.requestMonoPersistentStorageProtection = async function requestMonoPersistentStorageProtection(ev) {
-    try {
-      if (ev && ev.preventDefault) ev.preventDefault();
-      if (ev && ev.stopPropagation) ev.stopPropagation();
-
-      var state = await getStorageState();
-      if (!state.supported || !state.canPersist) {
-        var unsupported = '当前浏览器不支持主动请求持久保存保护。建议定期导出主数据和图片资源备份。';
-        alert(unsupported);
-        setStatus('⚠️ ' + unsupported, '#b7791f');
-        return false;
-      }
-
-      if (state.already) {
-        var msgAlready = '浏览器已经授予持久保存保护，网页数据更不容易被系统自动清理。';
-        if (state.estimate && state.estimate.quota) {
-          msgAlready += '\n当前估算占用：' + fmtBytes(state.estimate.usage || 0) + ' / ' + fmtBytes(state.estimate.quota || 0);
-        }
-        alert(msgAlready);
-        setStatus('✅ 浏览器已经授予持久保存保护。仍建议定期导出备份。', '#2f855a');
-        updatePersistButton(true);
-        return true;
-      }
-
-      var granted = false;
-      try { granted = await navigator.storage.persist(); } catch (_) { granted = false; }
-
-      if (granted) {
-        alert('浏览器已授予持久保存保护，网页数据更不容易被系统自动清理。\n建议仍然定期导出主数据和图片资源备份。');
-        setStatus('✅ 浏览器已授予持久保存保护。', '#2f855a');
-        updatePersistButton(true);
-        return true;
-      }
-
-      var denied = '浏览器暂时没有授予持久保存保护。\n\n这不是数据丢失，只是说明浏览器没有给这个网页最高等级的数据保护。\n建议：\n1. 把网页添加到主屏幕 / 安装成 PWA；\n2. 经常打开和使用这个网页；\n3. 避免无痕模式；\n4. 保持设备储存空间充足；\n5. 定期导出主数据和图片资源备份。';
-      alert(denied);
-      setStatus('⚠️ 浏览器暂时没有授予持久保存保护。建议添加到主屏幕/PWA，并定期导出备份。', '#b7791f');
-      updatePersistButton(false);
-      return false;
-    } catch (e) {
-      var err = '请求持久保存保护失败：' + (e && e.message ? e.message : e);
-      alert(err);
-      setStatus('⚠️ ' + err, '#b7791f');
-      return false;
-    }
-  };
-
-  function updatePersistButton(isPersisted) {
-    try {
-      var btn = document.getElementById('monoPersistentStorageButton');
-      if (!btn) return;
-      if (isPersisted) {
-        btn.innerHTML = '<i class="fas fa-shield-alt"></i> 已开启持久保存保护';
-        btn.style.background = '#111';
-        btn.style.color = '#fff';
-      } else {
-        btn.innerHTML = '<i class="fas fa-shield-alt"></i> 请求浏览器持久保存保护';
-        btn.style.background = '#fff';
-        btn.style.color = '#1a1a1a';
-      }
-    } catch (_) {}
-  }
-
-  async function refreshPersistButtonState() {
-    try {
-      var state = await getStorageState();
-      updatePersistButton(!!state.already);
-      var note = document.getElementById('monoPersistentStorageNote');
-      if (note) {
-        if (!state.supported || !state.canPersist) {
-          note.textContent = '当前浏览器不支持主动请求持久保存保护，请定期导出备份。';
-        } else if (state.already) {
-          note.textContent = '浏览器已授予持久保存保护；仍建议定期导出主数据和图片资源。';
-        } else {
-          note.textContent = '浏览器未必会批准该权限。添加到主屏幕/PWA、经常使用、空间充足时更容易获得。';
-        }
-      }
-    } catch (_) {}
-  }
-
-  function installPersistentStorageButton() {
-    try {
-      if (document.getElementById('monoPersistentStorageButton')) { refreshPersistButtonState(); return; }
-      var status = document.getElementById('importExportStatus');
-      if (!status || !status.parentElement) return;
-      var parent = status.parentElement;
-      var wrap = parent.querySelector('div[style*="flex"]') || parent;
-
-      var btn = document.createElement('button');
-      btn.id = 'monoPersistentStorageButton';
-      btn.type = 'button';
-      btn.className = 'action-btn';
-      btn.setAttribute('style', 'flex:1;min-width:160px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;padding:10px 16px;background:#fff;color:#1a1a1a;border:2px solid #1a1a1a;');
-      btn.innerHTML = '<i class="fas fa-shield-alt"></i> 请求浏览器持久保存保护';
-      btn.addEventListener('click', window.requestMonoPersistentStorageProtection, true);
-
-      var healthBtn = document.getElementById('monoStorageHealthButton');
-      if (healthBtn && healthBtn.parentNode === wrap) {
-        wrap.insertBefore(btn, healthBtn.nextSibling);
-      } else {
-        wrap.insertBefore(btn, wrap.querySelector('input') || null);
-      }
-
-      if (!document.getElementById('monoPersistentStorageNote')) {
-        var note = document.createElement('div');
-        note.id = 'monoPersistentStorageNote';
-        note.setAttribute('style', 'margin-top:8px;font-size:10px;color:#888;line-height:1.5;');
-        note.textContent = '持久保存保护由浏览器决定是否授予；即使未授予，也可以继续使用，但建议定期导出备份。';
-        parent.insertBefore(note, status);
-      }
-      refreshPersistButtonState();
-    } catch (_) {}
-  }
-
-  window.installMonoPersistentStorageButton = installPersistentStorageButton;
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function(){
-      installPersistentStorageButton();
-      setTimeout(installPersistentStorageButton, 800);
-      setTimeout(installPersistentStorageButton, 2500);
-    });
-  } else {
-    installPersistentStorageButton();
-    setTimeout(installPersistentStorageButton, 800);
-    setTimeout(installPersistentStorageButton, 2500);
-  }
-})();
-</script>
-<!-- /MONO PERSISTENT STORAGE PERMISSION V15 PATCH -->
-

@@ -243,9 +243,9 @@ async function bgGenerateAndNotify() {
       let _timeSince = '';
       if (anchorTime) {
         const diffMin = Math.floor((Date.now() - anchorTime) / 60000);
-        if (diffMin < 60) _timeSince = '距上次对话约' + diffMin + '分钟';
-        else if (diffMin < 1440) _timeSince = '距上次对话约' + Math.floor(diffMin/60) + '小时';
-        else _timeSince = '距上次对话已过' + Math.floor(diffMin/1440) + '天';
+        if (diffMin < 60) _timeSince = `距上次对话约${diffMin}分钟`;
+        else if (diffMin < 1440) _timeSince = `距上次对话约${Math.floor(diffMin/60)}小时`;
+        else _timeSince = `距上次对话已过${Math.floor(diffMin/1440)}天`;
       }
       const minReply = p.minReplyCount || 1;
       const maxReply = p.maxReplyCount || 3;
@@ -90007,7 +90007,8 @@ function iccCheckAndMaybeTrigger(inspector, contact, summary, thoughtText) {
     summary.slice(0, 500) + '\n' +
     '你的内心想法是：' + (thoughtText || '') + '\n' +
     '请判断你是否会想要直接联系「' + contact.name + '」来对峙或了解情况。' +
-    '返回JSON：{"trigger":true/false,"intensity":0~10,"reason":"一句话理由（' + lang + '，20字内）","opening":"你主动发给对方的第一句话（' + lang + '，符合你性格，15~30字）"}\n只返回JSON。禁止Markdown，禁止解释，禁止在JSON前后添加任何文字。';
+    '返回JSON：{"trigger":true/false,"intensity":0~10,"reason":"一句话理由（' + lang + '，20字内）","opening":"你主动发给对方的第一句话（' + lang + '，符合你性格，15~30字）"}
+只返回JSON。';
   rpc2CallAI(assessPrompt, function(resp) {
     try {
       var obj = _parseJsonFromText(resp, {}, 'object');
@@ -90093,23 +90094,36 @@ function iccGenerateDialogue(inspector, target, evidence, opening) {
         }).join('；') + '）';
     }
   } catch(e) {}
-  var prompt = [
-    '现在模拟两个角色之间的私聊对话。',
-    inspectorCtx + inspMem,
-    targetCtx + targetMem,
-    '【触发原因】',
-    inspector.name + ' 在查对方（用户）的手机时，发现了用户与 ' + target.name + ' 的聊天内容：',
-    evidence.slice(0, 600),
-    '【对话规则】',
-    '- ' + inspector.name + ' 是发起方，主动联系 ' + target.name + '（可能对峙、试探、质问或借口联系）',
-    '- 第一条消息由 ' + inspector.name + ' 发出：' + (opening || '（请自行生成开场白）'),
-    '- 对话要自然、符合双方性格，情绪真实，不要过于戏剧化',
-    '- 生成 8~12 条消息的完整对话',
-    '- 使用【' + lang + '】',
-    '返回JSON数组，每条消息：',
-    '[{"speaker":"' + inspector.name + '或' + target.name + '","text":"消息内容","emotion":"当前情绪（4字内，如：紧张、冷漠、委屈等）"}]',
-    '只返回JSON数组。'
-  ].join('\n');
+  var prompt =
+    '现在模拟两个角色之间的私聊对话。
+' +
+    inspectorCtx + inspMem + '
+' +
+    targetCtx    + targetMem + '
+' +
+    '【触发原因】
+' +
+    inspector.name + ' 在查对方（用户）的手机时，发现了用户与 ' + target.name + ' 的聊天内容：
+' +
+    evidence.slice(0, 600) + '
+' +
+    '【对话规则】
+' +
+    '- ' + inspector.name + ' 是发起方，主动联系 ' + target.name + '（可能对峙、试探、质问或借口联系）
+' +
+    '- 第一条消息由 ' + inspector.name + ' 发出：' + (opening || '（请自行生成开场白）') + '
+' +
+    '- 对话要自然、符合双方性格，情绪真实，不要过于戏剧化
+' +
+    '- 生成 8~12 条消息的完整对话
+' +
+    '- 使用【' + lang + '】
+' +
+    '返回JSON数组，每条消息：
+' +
+    '[{"speaker":"' + inspector.name + '或' + target.name + '","text":"消息内容","emotion":"当前情绪（4字内，如：紧张、冷漠、委屈等）"}]
+' +
+    '只返回JSON数组。';
   rpc2CallAI(prompt, function(resp) {
     try {
       var msgs = _parseJsonFromText(resp, [], 'array');
@@ -90187,10 +90201,13 @@ function iccSaveToMemory() {
     String(now.getDate()).padStart(2, '0');
   var dialogue = msgs.map(function(m) {
     return (m.speaker || '?') + '：' + (m.text || '') + (m.emotion ? '（' + m.emotion + '）' : '');
-  }).join('\n');
+  }).join('
+');
   var memContent =
-    '[角色间私聊记录 ' + dateStr + ']\n' +
-    inspector.name + ' 主动联系了 ' + target.name + '（起因：查岗时发现的聊天内容）\n' +
+    '[角色间私聊记录 ' + dateStr + ']
+' +
+    inspector.name + ' 主动联系了 ' + target.name + '（起因：查岗时发现的聊天内容）
+' +
     dialogue;
   var memEntry = { content: memContent, date: dateStr, auto: true, source: '角色间私聊' };
   /* 写入 inspector */
@@ -112528,6 +112545,736 @@ body.mono-fwd-modal-open {
 })();
 </script>
 
+<script id="mono-v12-chat-history-no-drop-patch">
+// ===== MONO PATCH v12: append-safe chat history persistence, prevents random latest/middle message loss =====
+(function(){
+  'use strict';
+  if (window.__monoV12ChatHistoryNoDropPatch) return;
+  window.__monoV12ChatHistoryNoDropPatch = true;
+
+  var HIST_PREFIX = 'mono_hist_';
+  var LAST_GOOD_PREFIX = 'mono_hist_last_good_v12_';
+  var destructiveDepth = 0;
+  var explicitUntil = 0;
+
+  function rawLS(){
+    try { return window._monoRawLocalStorage || window.localStorage; } catch(e) { return window.localStorage; }
+  }
+  function isHistKey(k){
+    k = String(k || '');
+    return k.indexOf(HIST_PREFIX) === 0 && k.indexOf(LAST_GOOD_PREFIX) !== 0 && k.indexOf('mono_hist_snapshot_') !== 0 && k.indexOf('mono_hist_bak_') !== 0;
+  }
+  function pidFromHistKey(k){ return String(k || '').slice(HIST_PREFIX.length); }
+  function parseArr(raw){
+    try { var v = JSON.parse(raw || '[]'); return Array.isArray(v) ? v : []; } catch(e) { return []; }
+  }
+  function stringify(v){ try { return JSON.stringify(Array.isArray(v) ? v : []); } catch(e) { return '[]'; } }
+  function getStored(key, store){
+    try { var v = store && store.getItem ? store.getItem(key) : null; if (v != null) return v; } catch(e) {}
+    try { var r = rawLS(); if (r && r.getItem && r !== store) { var rv = r.getItem(key); if (rv != null) return rv; } } catch(e) {}
+    try { var lv = window.localStorage.getItem(key); if (lv != null) return lv; } catch(e) {}
+    return null;
+  }
+  function setStored(key, value, store){
+    try { if (store && store.setItem) store.setItem(key, value); } catch(e) {}
+    try { var r = rawLS(); if (r && r.setItem && r !== store) r.setItem(key, value); } catch(e) {}
+  }
+  function isExplicitDestructive(){
+    return destructiveDepth > 0 || Date.now() < explicitUntil || window.__monoAllowDestructiveChatSaveV12 === true;
+  }
+  function hash32(str){
+    str = String(str || '');
+    var h = 2166136261;
+    for (var i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h += (h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24);
+    }
+    return (h >>> 0).toString(36);
+  }
+  function msgVisibleText(m){
+    if (!m || typeof m !== 'object') return '';
+    return String(m.content || m.displayContent || m.previewContent || m.transcript || m.imageDesc || m.imageCaption || m.transferNote || m.intimateNote || '');
+  }
+  function ensureMsgIds(list, pid){
+    list = Array.isArray(list) ? list : [];
+    for (var i = 0; i < list.length; i++) {
+      var m = list[i];
+      if (!m || typeof m !== 'object') continue;
+      if (!m._monoMid) {
+        var src = [pid, m.id || '', m.role || '', m.msgType || '', m.timestamp || m.createdAt || m.time || '', msgVisibleText(m).slice(0, 500), i].join('|');
+        m._monoMid = 'm12_' + hash32(src);
+      }
+      if (!m._monoSeqV12 && m._monoSeqV12 !== 0) m._monoSeqV12 = i;
+    }
+    return list;
+  }
+  function keyFor(m, i, pid){
+    if (!m || typeof m !== 'object') return 'null_' + i;
+    if (m._monoMid) return 'mid:' + String(m._monoMid);
+    if (m.id) return 'id:' + String(m.id);
+    return 'fp:' + hash32([pid, m.role || '', m.msgType || '', m.timestamp || m.createdAt || '', msgVisibleText(m).slice(0,500), i].join('|'));
+  }
+  function timeOf(m, fallback){
+    var t = Number(m && (m.timestamp || m.createdAt || m.time || m._ts || 0));
+    return Number.isFinite(t) && t > 0 ? t : fallback;
+  }
+  function mergeHistories(existing, incoming, pid){
+    existing = ensureMsgIds((Array.isArray(existing) ? existing : []).slice(), pid);
+    incoming = ensureMsgIds((Array.isArray(incoming) ? incoming : []).slice(), pid);
+    if (!existing.length) return incoming;
+    if (!incoming.length) return existing;
+
+    var map = Object.create(null);
+    var merged = [];
+    function put(m, source, i){
+      if (!m || typeof m !== 'object') return;
+      var k = keyFor(m, i, pid);
+      if (!map[k]) {
+        var copy = Object.assign({}, m);
+        copy._monoSaveSourceV12 = source;
+        map[k] = copy;
+        merged.push(copy);
+      } else {
+        // Incoming copy should be allowed to update flags such as read/recalled/edited, but not erase richer stored fields.
+        var old = map[k];
+        Object.keys(m).forEach(function(prop){
+          var val = m[prop];
+          if (val !== undefined && val !== null && val !== '') old[prop] = val;
+        });
+        old._monoSaveSourceV12 = old._monoSaveSourceV12 === 'stored' && source === 'incoming' ? 'merged' : old._monoSaveSourceV12;
+      }
+    }
+    existing.forEach(function(m, i){ put(m, 'stored', i); });
+    incoming.forEach(function(m, i){ put(m, 'incoming', i); });
+
+    merged.sort(function(a,b){
+      var ta = timeOf(a, Number(a._monoSeqV12 || 0));
+      var tb = timeOf(b, Number(b._monoSeqV12 || 0));
+      if (ta !== tb) return ta - tb;
+      return Number(a._monoSeqV12 || 0) - Number(b._monoSeqV12 || 0);
+    });
+    for (var j = 0; j < merged.length; j++) merged[j]._monoSeqV12 = j;
+    return merged;
+  }
+  function saveLastGood(pid, arr, store){
+    if (!pid || !Array.isArray(arr) || !arr.length) return;
+    var key = LAST_GOOD_PREFIX + pid;
+    var json = stringify(arr);
+    try {
+      var old = parseArr(getStored(key, store));
+      if (old.length > arr.length && !isExplicitDestructive()) json = stringify(old);
+    } catch(e) {}
+    try { setStored(key, json, store); } catch(e) {}
+  }
+  function restoreIfMissing(pid, store){
+    var backup = parseArr(getStored(LAST_GOOD_PREFIX + pid, store));
+    if (backup.length) return backup;
+    return [];
+  }
+  function protectHistoryWrite(key, value, store){
+    if (!isHistKey(key)) return value;
+    var pid = pidFromHistKey(key);
+    var incoming = parseArr(value);
+    incoming = ensureMsgIds(incoming, pid);
+    if (isExplicitDestructive()) {
+      // Explicit user delete/regenerate/cleanup can really shrink history, but still tag IDs for future safe saves.
+      saveLastGood(pid, incoming, store);
+      return stringify(incoming);
+    }
+    var existingRaw = getStored(key, store);
+    var existing = parseArr(existingRaw);
+    if (!existing.length) existing = restoreIfMissing(pid, store);
+    var merged = mergeHistories(existing, incoming, pid);
+    if (existing.length && merged.length > incoming.length) {
+      try { console.warn('[v12 聊天记录保护] 阻止旧快照覆盖，已自动合并缺失消息：', pid, 'incoming=', incoming.length, 'stored=', existing.length, 'merged=', merged.length); } catch(e) {}
+    }
+    saveLastGood(pid, merged, store);
+    return stringify(merged);
+  }
+
+  // Guard any direct localStorage mono_hist_* writes, not only saveData().
+  try {
+    var proto = window.Storage && window.Storage.prototype;
+    if (proto && !proto.__monoV12ChatHistoryGuarded) {
+      var oldSetItem = proto.setItem;
+      var oldRemoveItem = proto.removeItem;
+      proto.setItem = function(key, value){
+        if (isHistKey(key)) value = protectHistoryWrite(String(key), String(value == null ? '[]' : value), this);
+        return oldSetItem.call(this, key, value);
+      };
+      proto.removeItem = function(key){
+        if (isHistKey(key) && !isExplicitDestructive()) {
+          var pid = pidFromHistKey(key);
+          var existing = parseArr(getStored(String(key), this));
+          if (existing.length) {
+            saveLastGood(pid, existing, this);
+            try { console.warn('[v12 聊天记录保护] 阻止非显式删除 mono_hist：', key); } catch(e) {}
+            return;
+          }
+        }
+        return oldRemoveItem.call(this, key);
+      };
+      proto.__monoV12ChatHistoryGuarded = true;
+    }
+  } catch(e) { try { console.warn('[v12 聊天记录保护] Storage guard failed:', e); } catch(_) {} }
+
+  function mergeAllInMemoryBeforeSave(){
+    if (isExplicitDestructive()) return;
+    try {
+      var list = (typeof personas !== 'undefined' && Array.isArray(personas)) ? personas : (Array.isArray(window.personas) ? window.personas : []);
+      list.forEach(function(p){
+        if (!p || p.id == null || !Array.isArray(p.history)) return;
+        var pid = String(p.id);
+        var stored = parseArr(getStored(HIST_PREFIX + pid, window.localStorage));
+        if (!stored.length) stored = restoreIfMissing(pid, window.localStorage);
+        var merged = mergeHistories(stored, p.history, pid);
+        if (merged.length > p.history.length) p.history = merged;
+        else ensureMsgIds(p.history, pid);
+      });
+    } catch(e) {}
+  }
+
+  function installSaveDataGuard(){
+    try {
+      var current = (typeof saveData === 'function') ? saveData : window.saveData;
+      if (typeof current !== 'function' || current.__monoV12ChatHistorySaveGuard) return;
+      var wrapped = function(){
+        mergeAllInMemoryBeforeSave();
+        return current.apply(this, arguments);
+      };
+      wrapped.__monoV12ChatHistorySaveGuard = true;
+      wrapped.__monoOriginal = current;
+      try { saveData = wrapped; } catch(e) {}
+      try { window.saveData = wrapped; } catch(e) {}
+    } catch(e) {}
+  }
+
+  function withDestructive(fn){
+    if (typeof fn !== 'function' || fn.__monoV12DestructiveWrapped) return fn;
+    var wrapped = function(){
+      destructiveDepth++;
+      window.__monoAllowDestructiveChatSaveV12 = true;
+      explicitUntil = Date.now() + 1500;
+      var done = false;
+      function finish(){
+        if (done) return;
+        done = true;
+        destructiveDepth = Math.max(0, destructiveDepth - 1);
+        if (destructiveDepth === 0) {
+          setTimeout(function(){
+            if (destructiveDepth === 0) window.__monoAllowDestructiveChatSaveV12 = false;
+          }, 80);
+        }
+      }
+      try {
+        var ret = fn.apply(this, arguments);
+        if (ret && typeof ret.then === 'function') ret.then(finish, finish);
+        else finish();
+        return ret;
+      } catch(err) { finish(); throw err; }
+    };
+    wrapped.__monoV12DestructiveWrapped = true;
+    wrapped.__monoOriginal = fn;
+    return wrapped;
+  }
+  window.monoV12WithDestructiveChatSave = function(fn){ return withDestructive(fn); };
+
+  function wrapNamedDestructive(name){
+    try {
+      var fn = null;
+      try { fn = window[name]; } catch(e) {}
+      if (typeof fn !== 'function') {
+        try { fn = eval('typeof ' + name + ' !== "undefined" ? ' + name + ' : null'); } catch(e) {}
+      }
+      if (typeof fn !== 'function' || fn.__monoV12DestructiveWrapped) return;
+      var wrapped = withDestructive(fn);
+      try { eval(name + ' = wrapped'); } catch(e) {}
+      try { window[name] = wrapped; } catch(e) {}
+    } catch(e) {}
+  }
+  function installDestructiveWrappers(){
+    [
+      'deleteSingleMsg',
+      'confirmMultiDelete',
+      'executeClearChatHistory',
+      'monoDeleteChatByDateRange',
+      'regenerateMsg',
+      'saveEditMsg',
+      'recallUserMsg'
+    ].forEach(wrapNamedDestructive);
+  }
+
+  function bootRepairVisibleHistories(){
+    // If a previous bad write made a current history empty while a v12 last-good exists, do not auto-clear it silently.
+    // Only restore missing/empty keys that clearly have no current messages loaded.
+    try {
+      var list = (typeof personas !== 'undefined' && Array.isArray(personas)) ? personas : (Array.isArray(window.personas) ? window.personas : []);
+      list.forEach(function(p){
+        if (!p || p.id == null) return;
+        var pid = String(p.id);
+        var key = HIST_PREFIX + pid;
+        var stored = parseArr(getStored(key, window.localStorage));
+        if (!stored.length) {
+          var bak = restoreIfMissing(pid, window.localStorage);
+          if (bak.length && (!Array.isArray(p.history) || !p.history.length)) {
+            p.history = bak;
+            try { window.localStorage.setItem(key, stringify(bak)); } catch(e) {}
+          }
+        } else {
+          saveLastGood(pid, stored, window.localStorage);
+        }
+      });
+    } catch(e) {}
+  }
+
+  installSaveDataGuard();
+  installDestructiveWrappers();
+  bootRepairVisibleHistories();
+  setTimeout(function(){ installSaveDataGuard(); installDestructiveWrappers(); bootRepairVisibleHistories(); }, 400);
+  setTimeout(function(){ installSaveDataGuard(); installDestructiveWrappers(); bootRepairVisibleHistories(); }, 1600);
+  window.addEventListener('beforeunload', function(){ try { mergeAllInMemoryBeforeSave(); } catch(e) {} });
+})();
+</script>
+
+
+<script>
+/* ===================== V14: 图片/头像/生成图 IndexedDB + 压缩存储补丁 =====================
+   目标：
+   1) 文字数据仍可走原有 localStorage/IDB 代理；
+   2) 头像、面具头像、生成图、背景图、自定义图标、朋友圈/论坛/日记/IG 图片等大图，不再长期塞进浏览器 raw localStorage；
+   3) 保存时自动进入 IndexedDB，并在后台尽量压缩；
+   4) 图片资源导出/导入时额外带上通用 IDB/图片键，避免跨设备丢头像/生成图。
+*/
+(function(){
+  'use strict';
+  if (window.__monoMediaStorageV14Installed) return;
+  window.__monoMediaStorageV14Installed = true;
+
+  var MB = 1024 * 1024;
+  var MEDIA_INLINE_LIMIT = 70 * 1024;       // 超过这个大小的图片数据，不再保留 raw localStorage 副本
+  var LARGE_VALUE_LIMIT = 420 * 1024;       // 非图片但很大的值，也尽量只让 IDB 做主存储，避免 raw localStorage 爆掉
+  var COMPRESS_MIN_SIZE = 55 * 1024;        // 小于这个大小不强行压缩，避免画质反复损失
+  var MAX_COMPRESS_PER_RUN = 120;
+  var pendingCompression = new Map();
+  var internalSet = false;
+
+  var baseLS = window.localStorage;
+  var rawLS = window._monoRawLocalStorage || null;
+  if (!baseLS || !baseLS.getItem || !baseLS.setItem) return;
+
+  var SHARED_KEYS = new Set([
+    'mono_home_bg','mono_home_photo','mono_ios_fullscreen','mono_home_page_mode',
+    'mono_custom_font','mono_api','mono_fab_position','mono_fab_enabled',
+    'mono_iph_positions_v3','mono_iph_folders_v1','mono_extra_pages_v1',
+    'mono_custom_widgets_v1','mono_widget_photos_v1','mono_widget_multi_photos_v1',
+    'mono_custom_image_widget_v1','mono_hidden_regular_widgets_v1',
+    'mono_spotify_widget_text_v1','mono_multiworld_enabled','mono_multiworld_worlds',
+    'mono_multiworld_active','mono_voice_lang','mono_user_profile','mono_user_masks',
+    'mono_user_masks_backup_v11','mono_user_masks_saved_at_v11','mono_couple_space_v1'
+  ]);
+  var SHARED_PREFIXES = ['mono_icon_', 'mono_rel_map_', 'mono_mw_', 'mono_dr_'];
+
+  function safeStr(v){ return v == null ? '' : String(v); }
+  function hasDataImage(str){ return typeof str === 'string' && /data:image\/(?:png|jpe?g|webp|gif|bmp|avif|svg\+xml);base64,/i.test(str); }
+  function startsDataImage(str){ return typeof str === 'string' && /^data:image\/(?:png|jpe?g|webp|gif|bmp|avif|svg\+xml);base64,/i.test(str); }
+  function isCompressibleDataImage(str){ return startsDataImage(str) && !/^data:image\/(?:gif|svg\+xml|avif)/i.test(str); }
+  function shouldKeepOutOfRawStorage(value){
+    if (typeof value !== 'string') return false;
+    if (hasDataImage(value) && value.length > MEDIA_INLINE_LIMIT) return true;
+    return value.length > LARGE_VALUE_LIMIT;
+  }
+  function shouldCompressValue(value){ return typeof value === 'string' && hasDataImage(value) && value.length > COMPRESS_MIN_SIZE; }
+  function getRawItem(key){ try { return rawLS ? rawLS.getItem(key) : null; } catch(e){ return null; } }
+  function rawRemove(key){ try { if (rawLS && key) rawLS.removeItem(key); } catch(e){} }
+  function rawSetTinyMarker(key){
+    // 不写大图，只留很小的提示，方便诊断时看出该 key 已转移。
+    try {
+      if (!rawLS || !key) return;
+      if (String(key).indexOf('mono_') !== 0) return;
+      if (!rawLS.getItem(key)) rawLS.setItem(key, '__mono_idb_primary_v14__');
+    } catch(e) {}
+  }
+  function logicalToActualKey(key){
+    key = safeStr(key);
+    if (!key || key.indexOf('mono_') !== 0) return key;
+    if (SHARED_KEYS.has(key)) return key;
+    for (var i=0;i<SHARED_PREFIXES.length;i++) if (key.indexOf(SHARED_PREFIXES[i]) === 0) return key;
+    var enabled = false;
+    try { enabled = getRawItem('mono_multiworld_enabled') === 'true' || baseLS.getItem('mono_multiworld_enabled') === 'true'; } catch(e) {}
+    if (!enabled) return key;
+    var active = 'world_1';
+    try { active = baseLS.getItem('mono_multiworld_active') || getRawItem('mono_multiworld_active') || 'world_1'; } catch(e) {}
+    if (key.indexOf('mono_mw_' + active + '_') === 0) return key;
+    return 'mono_mw_' + active + '_' + key.slice(5);
+  }
+  function purgeRawCopies(key){
+    var actual = logicalToActualKey(key);
+    rawRemove(actual);
+    if (actual !== key) rawRemove(key);
+  }
+  function putKvDirect(actualKey, value){
+    return new Promise(function(resolve){
+      try {
+        var db = window._idb;
+        if (!db) { resolve(false); return; }
+        var tx = db.transaction('kv', 'readwrite');
+        tx.objectStore('kv').put(value, actualKey);
+        tx.oncomplete = function(){ resolve(true); };
+        tx.onerror = function(){ resolve(false); };
+      } catch(e) { resolve(false); }
+    });
+  }
+  function readAllKvDirect(){
+    return new Promise(function(resolve){
+      var out = {};
+      try {
+        var db = window._idb;
+        if (!db) { resolve(out); return; }
+        var tx = db.transaction('kv', 'readonly');
+        tx.objectStore('kv').openCursor().onsuccess = function(ev){
+          var cur = ev.target.result;
+          if (!cur) { resolve(out); return; }
+          out[cur.key] = cur.value;
+          cur.continue();
+        };
+        tx.onerror = function(){ resolve(out); };
+      } catch(e) { resolve(out); }
+    });
+  }
+  function dataUrlToImage(dataUrl){
+    return new Promise(function(resolve, reject){
+      var img = new Image();
+      img.onload = function(){ resolve(img); };
+      img.onerror = function(){ reject(new Error('图片读取失败')); };
+      img.src = dataUrl;
+    });
+  }
+  function canvasToDataURL(canvas, type, quality){
+    return new Promise(function(resolve){
+      if (canvas.toBlob) {
+        canvas.toBlob(function(blob){
+          if (!blob) { resolve(canvas.toDataURL(type, quality)); return; }
+          var fr = new FileReader();
+          fr.onload = function(){ resolve(String(fr.result || '')); };
+          fr.onerror = function(){ resolve(canvas.toDataURL(type, quality)); };
+          fr.readAsDataURL(blob);
+        }, type, quality);
+      } else {
+        resolve(canvas.toDataURL(type, quality));
+      }
+    });
+  }
+  function mediaHintMaxSize(hint){
+    hint = safeStr(hint).toLowerCase();
+    if (/avatar|mask|icon|profile|头像|面具|图标/.test(hint)) return 512;
+    if (/thumb|thumbnail|cover|封面/.test(hint)) return 720;
+    if (/bg|background|home|wallpaper|背景/.test(hint)) return 1600;
+    return 1280;
+  }
+  async function compressDataImage(dataUrl, hint){
+    if (!isCompressibleDataImage(dataUrl) || dataUrl.length < COMPRESS_MIN_SIZE) return dataUrl;
+    try {
+      var img = await dataUrlToImage(dataUrl);
+      var max = mediaHintMaxSize(hint);
+      var w = img.naturalWidth || img.width || 0;
+      var h = img.naturalHeight || img.height || 0;
+      if (!w || !h) return dataUrl;
+      var ratio = Math.min(1, max / Math.max(w, h));
+      var cw = Math.max(1, Math.round(w * ratio));
+      var ch = Math.max(1, Math.round(h * ratio));
+      var canvas = document.createElement('canvas');
+      canvas.width = cw; canvas.height = ch;
+      var ctx = canvas.getContext('2d', { alpha: true });
+      if (!ctx) return dataUrl;
+      ctx.drawImage(img, 0, 0, cw, ch);
+      var q = /avatar|mask|icon|头像|面具|图标/i.test(safeStr(hint)) ? 0.78 : 0.74;
+      var webp = await canvasToDataURL(canvas, 'image/webp', q);
+      var jpg = '';
+      if (!/^data:image\/webp/i.test(webp)) jpg = await canvasToDataURL(canvas, 'image/jpeg', q);
+      var best = /^data:image\/webp/i.test(webp) ? webp : jpg;
+      if (best && best.length > 200 && best.length < dataUrl.length * 0.92) return best;
+      return dataUrl;
+    } catch(e) { return dataUrl; }
+  }
+  async function compressObjectImages(value, hint, depth, seen){
+    if (depth > 7) return value;
+    if (typeof value === 'string') {
+      if (isCompressibleDataImage(value)) return await compressDataImage(value, hint);
+      return value;
+    }
+    if (!value || typeof value !== 'object') return value;
+    if (!seen) seen = new WeakSet();
+    if (seen.has(value)) return value;
+    seen.add(value);
+    if (Array.isArray(value)) {
+      var arrChanged = false;
+      var arr = value.slice();
+      for (var i=0;i<arr.length;i++) {
+        var next = await compressObjectImages(arr[i], hint + '[' + i + ']', depth + 1, seen);
+        if (next !== arr[i]) { arr[i] = next; arrChanged = true; }
+      }
+      return arrChanged ? arr : value;
+    }
+    var changed = false;
+    var out = Object.assign({}, value);
+    var keys = Object.keys(out);
+    for (var k=0;k<keys.length;k++) {
+      var prop = keys[k];
+      var nextVal = await compressObjectImages(out[prop], hint + '.' + prop, depth + 1, seen);
+      if (nextVal !== out[prop]) { out[prop] = nextVal; changed = true; }
+    }
+    return changed ? out : value;
+  }
+  async function compressValueString(value, keyHint){
+    if (typeof value !== 'string' || !shouldCompressValue(value)) return value;
+    if (startsDataImage(value)) return await compressDataImage(value, keyHint);
+    var first = value.trim().charAt(0);
+    if (first !== '{' && first !== '[') return value;
+    try {
+      var parsed = JSON.parse(value);
+      var compressed = await compressObjectImages(parsed, keyHint || '', 0, null);
+      if (compressed !== parsed) return JSON.stringify(compressed);
+    } catch(e) {}
+    return value;
+  }
+  function scheduleCompression(key, value){
+    if (!shouldCompressValue(value)) return;
+    var actual = logicalToActualKey(key);
+    if (pendingCompression.has(actual)) return;
+    pendingCompression.set(actual, true);
+    setTimeout(async function(){
+      try {
+        var latest = baseLS.getItem(key);
+        if (typeof latest !== 'string' || !hasDataImage(latest)) latest = value;
+        var compressed = await compressValueString(latest, key);
+        if (typeof compressed === 'string' && compressed !== latest) {
+          internalSet = true;
+          try { baseLS.setItem(key, compressed); } catch(e) {}
+          internalSet = false;
+          purgeRawCopies(key);
+          try { await putKvDirect(actual, compressed); } catch(e) {}
+        }
+      } catch(e) {}
+      finally { pendingCompression.delete(actual); }
+    }, 1200);
+  }
+
+  var wrapper = {
+    getItem: function(key){ return baseLS.getItem(key); },
+    setItem: function(key, value){
+      value = String(value);
+      var actual = logicalToActualKey(key);
+      try { baseLS.setItem(key, value); } catch(e) {
+        try { putKvDirect(actual, value); } catch(_e) {}
+      }
+      if (shouldKeepOutOfRawStorage(value)) {
+        purgeRawCopies(key);
+        rawSetTinyMarker(actual);
+      }
+      if (!internalSet) scheduleCompression(key, value);
+    },
+    removeItem: function(key){
+      var actual = logicalToActualKey(key);
+      try { baseLS.removeItem(key); } catch(e) {}
+      rawRemove(actual); if (actual !== key) rawRemove(key);
+    },
+    clear: function(){ try { baseLS.clear(); } catch(e) {} },
+    key: function(i){ return baseLS.key(i); },
+    get length(){ try { return baseLS.length; } catch(e){ return 0; } }
+  };
+  try {
+    Object.defineProperty(window, 'localStorage', { get: function(){ return wrapper; }, configurable: true });
+  } catch(e) {
+    try { window.localStorage = wrapper; } catch(_e) {}
+  }
+
+  async function moveRawLargeImagesToIdb(){
+    if (!rawLS) return { moved: 0, compressed: 0 };
+    var keys = [];
+    try { for (var i=0;i<rawLS.length;i++) keys.push(rawLS.key(i)); } catch(e) {}
+    var moved = 0;
+    for (var j=0;j<keys.length;j++) {
+      var k = keys[j];
+      var v = getRawItem(k);
+      if (typeof v !== 'string' || !shouldKeepOutOfRawStorage(v)) continue;
+      try { baseLS.setItem(k, v); } catch(e) { await putKvDirect(k, v); }
+      rawRemove(k);
+      rawSetTinyMarker(k);
+      scheduleCompression(k, v);
+      moved++;
+    }
+    return { moved: moved, compressed: 0 };
+  }
+
+  async function compressExistingImagePayloads(options){
+    options = options || {};
+    var statusCb = typeof options.onProgress === 'function' ? options.onProgress : function(){};
+    var kv = await readAllKvDirect();
+    var keys = Object.keys(kv);
+    var done = 0, changed = 0, scanned = 0;
+    for (var i=0;i<keys.length && done < MAX_COMPRESS_PER_RUN;i++) {
+      var key = keys[i];
+      var val = kv[key];
+      if (typeof val !== 'string' || !shouldCompressValue(val)) continue;
+      scanned++;
+      statusCb({ scanned: scanned, changed: changed, key: key });
+      var compressed = await compressValueString(val, key);
+      if (typeof compressed === 'string' && compressed !== val) {
+        internalSet = true;
+        try { baseLS.setItem(key, compressed); } catch(e) { await putKvDirect(key, compressed); }
+        internalSet = false;
+        purgeRawCopies(key);
+        changed++;
+      } else if (shouldKeepOutOfRawStorage(val)) {
+        purgeRawCopies(key);
+      }
+      done++;
+    }
+    await moveRawLargeImagesToIdb();
+    return { scanned: scanned, changed: changed, limit: MAX_COMPRESS_PER_RUN };
+  }
+
+  async function collectBlobImageEntries(){
+    var out = {};
+    try {
+      if (!window._monoIdbBlobGetAll) return out;
+      var all = await window._monoIdbBlobGetAll();
+      Object.keys(all || {}).forEach(function(key){
+        var val = all[key];
+        if (typeof val === 'string' && startsDataImage(val)) out[key] = val;
+      });
+    } catch(e) {}
+    return out;
+  }
+  async function collectKvImagePayloads(){
+    var out = {};
+    try {
+      var kv = await readAllKvDirect();
+      Object.keys(kv).forEach(function(key){
+        var val = kv[key];
+        if (typeof val !== 'string') return;
+        if (!hasDataImage(val)) return;
+        // 只收图片相关 key，避免把整份超大聊天/世界数据重复塞满图片包。
+        if (!/(avatar|mask|photo|image|img|icon|bg|wallpaper|moment|forum|diary|instagram|story|widget|sticker|cover|头像|图片|背景|图标|封面)/i.test(key)) return;
+        out[key] = val;
+      });
+    } catch(e) {}
+    return out;
+  }
+  async function restoreGenericMediaAssets(pack){
+    var restored = 0;
+    if (!pack || typeof pack !== 'object') return 0;
+    var blobPack = pack.indexedDbMediaV14 || pack.blobImagesV14 || {};
+    if (blobPack && typeof blobPack === 'object' && window._monoIdbBlobSet) {
+      var bKeys = Object.keys(blobPack);
+      for (var i=0;i<bKeys.length;i++) {
+        var bk = bKeys[i], bv = blobPack[bk];
+        if (typeof bv === 'string' && startsDataImage(bv)) {
+          try { await window._monoIdbBlobSet(bk, bv); restored++; } catch(e) {}
+        }
+      }
+    }
+    var kvPack = pack.kvImagePayloadsV14 || {};
+    if (kvPack && typeof kvPack === 'object') {
+      var kKeys = Object.keys(kvPack);
+      for (var j=0;j<kKeys.length;j++) {
+        var kk = kKeys[j], kv = kvPack[kk];
+        if (typeof kv === 'string' && hasDataImage(kv)) {
+          internalSet = true;
+          try { baseLS.setItem(kk, kv); } catch(e) { await putKvDirect(kk, kv); }
+          internalSet = false;
+          purgeRawCopies(kk);
+          scheduleCompression(kk, kv);
+          restored++;
+        }
+      }
+    }
+    return restored;
+  }
+
+  // 包装图片资源导出：额外带上通用 IndexedDB 图片与图片相关 key。
+  try {
+    if (typeof monoBuildImageAssetBackup === 'function' && !monoBuildImageAssetBackup.__v14Wrapped) {
+      var oldBuildImageAssetBackup = monoBuildImageAssetBackup;
+      monoBuildImageAssetBackup = async function(statusEl){
+        var pack = await oldBuildImageAssetBackup(statusEl);
+        try { if (statusEl) statusEl.textContent = '正在整理通用 IndexedDB 图片资源...'; } catch(e) {}
+        if (!pack.imageAssets) pack.imageAssets = {};
+        pack.imageAssets.indexedDbMediaV14 = await collectBlobImageEntries();
+        pack.imageAssets.kvImagePayloadsV14 = await collectKvImagePayloads();
+        if (!pack._meta) pack._meta = {};
+        pack._meta.mediaStoragePolicy = 'v14_images_use_indexeddb_or_compressed_storage';
+        return pack;
+      };
+      monoBuildImageAssetBackup.__v14Wrapped = true;
+    }
+  } catch(e) {}
+
+  // 包装图片资源导入：恢复 v14 通用媒体包。
+  try {
+    if (typeof monoConfirmImportImageAssets === 'function' && !monoConfirmImportImageAssets.__v14Wrapped) {
+      var oldConfirmImageAssets = monoConfirmImportImageAssets;
+      monoConfirmImportImageAssets = async function(payload, statusEl){
+        await oldConfirmImageAssets(payload, statusEl);
+        try {
+          if (statusEl) { statusEl.style.display = 'block'; statusEl.style.color = '#666'; statusEl.textContent = '正在恢复通用图片资源...'; }
+          var raw = payload && payload.raw ? payload.raw : {};
+          var pack = raw && raw.imageAssets && typeof raw.imageAssets === 'object' ? raw.imageAssets : {};
+          var restored = await restoreGenericMediaAssets(pack);
+          if (statusEl && restored > 0) { statusEl.style.color = '#27ae60'; statusEl.textContent = '✓ 图片资源导入成功，已恢复通用媒体 ' + restored + ' 项'; }
+        } catch(e) {}
+      };
+      monoConfirmImportImageAssets.__v14Wrapped = true;
+    }
+  } catch(e) {}
+
+  function addCompressButton(){
+    try {
+      if (document.getElementById('monoMediaCompressBtnV14')) return;
+      var status = document.getElementById('importExportStatus');
+      if (!status || !status.parentNode) return;
+      var btn = document.createElement('button');
+      btn.id = 'monoMediaCompressBtnV14';
+      btn.type = 'button';
+      btn.className = 'w-full py-2.5 px-4 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 bg-white hover:bg-gray-50 transition';
+      btn.style.marginTop = '8px';
+      btn.innerHTML = '<i class="fas fa-compress-alt"></i> 压缩并迁移图片到 IndexedDB';
+      btn.onclick = async function(ev){
+        try { ev.preventDefault(); ev.stopPropagation(); } catch(e) {}
+        btn.disabled = true;
+        status.style.display = 'block';
+        status.style.color = '#666';
+        status.textContent = '正在扫描并压缩图片资源...';
+        try {
+          var moved = await moveRawLargeImagesToIdb();
+          var result = await compressExistingImagePayloads({ onProgress: function(p){ status.textContent = '正在压缩图片资源... 已扫描 ' + p.scanned + ' 项，已优化 ' + p.changed + ' 项'; } });
+          status.style.color = '#27ae60';
+          status.textContent = '✓ 图片迁移完成：raw localStorage 迁移 ' + moved.moved + ' 项，压缩优化 ' + result.changed + ' 项。建议再导出主数据和图片资源备份。';
+        } catch(err) {
+          status.style.color = '#e74c3c';
+          status.textContent = '✗ 图片迁移失败：' + (err && err.message ? err.message : err);
+        } finally { btn.disabled = false; }
+      };
+      status.parentNode.insertBefore(btn, status.nextSibling);
+    } catch(e) {}
+  }
+
+  window.monoCompressExistingImagePayloads = compressExistingImagePayloads;
+  window.monoMoveRawLargeImagesToIdb = moveRawLargeImagesToIdb;
+  window.monoMediaStorageV14Report = async function(){
+    var kv = await readAllKvDirect();
+    var totalImageChars = 0, imageKeyCount = 0;
+    Object.keys(kv).forEach(function(k){ var v = kv[k]; if (typeof v === 'string' && hasDataImage(v)) { imageKeyCount++; totalImageChars += v.length; } });
+    return { policy: 'images_use_indexeddb_or_compressed_storage_v14', imageKeyCount: imageKeyCount, approxImageBytes: Math.round(totalImageChars * 0.75) };
+  };
+
+  // 启动后只做安全迁移：把 raw localStorage 里的大图副本移走，不改业务数据结构。
+  setTimeout(function(){ moveRawLargeImagesToIdb().catch(function(){}); }, 2500);
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', addCompressButton);
+  else setTimeout(addCompressButton, 800);
+})();
+
+</script>
 </body>
 
 <!-- MONO FINAL FIX: Sticker library dialogs are not covered; use a real top-layer modal and direct button routing -->
@@ -114608,3 +115355,576 @@ body.mono-fwd-modal-open {
 </script>
 
 </html>
+
+
+<!-- MONO STORAGE HEALTH V13 PATCH -->
+<script>
+(function(){
+  'use strict';
+  if (window.__monoStorageHealthV13) return;
+  window.__monoStorageHealthV13 = true;
+
+  var MB = 1024 * 1024;
+  var LAST_WARNING_KEY = 'mono_storage_health_last_warning_v13';
+  var LAST_REPORT_KEY = 'mono_storage_health_last_report_v13';
+  var LOCAL_DANGER_BYTES = 4.35 * MB;
+  var LOCAL_CRITICAL_BYTES = 4.75 * MB;
+
+  function byteSize(value) {
+    try { return new Blob([String(value == null ? '' : value)]).size; }
+    catch (e) { return String(value == null ? '' : value).length * 2; }
+  }
+
+  function formatBytes(bytes) {
+    bytes = Number(bytes || 0);
+    if (bytes >= 1024 * 1024 * 1024) return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+    if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+    if (bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return bytes + ' B';
+  }
+
+  function safeJsonParse(raw, fallback) {
+    try { return JSON.parse(raw); } catch (e) { return fallback; }
+  }
+
+  function classifyKey(key) {
+    var k = String(key || '').toLowerCase();
+    if (/^mono_hist_|chat|message|conversation/.test(k)) return '聊天室记录';
+    if (/persona|character|role|npc/.test(k)) return '角色 / NPC 资料';
+    if (/mask|avatar|face|photo|image|img|asset|sticker|bg|background/.test(k)) return '图片 / 头像 / 背景资源';
+    if (/memory|summary|diary|forum|moments|post/.test(k)) return '记忆 / 日记 / 论坛 / 朋友圈';
+    if (/world|village|relationship|relation|map/.test(k)) return '世界 / 关系图数据';
+    if (/setting|config|api|pref/.test(k)) return '设置 / API 配置';
+    return '其他数据';
+  }
+
+  function scanLocalStorage() {
+    var total = 0;
+    var items = [];
+    var categories = {};
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var key = localStorage.key(i);
+        var value = localStorage.getItem(key);
+        var size = byteSize(key) + byteSize(value);
+        total += size;
+        var cat = classifyKey(key);
+        categories[cat] = (categories[cat] || 0) + size;
+        items.push({ key: key, bytes: size, category: cat });
+      }
+    } catch (e) {
+      items.push({ key: '扫描失败：' + (e && e.message ? e.message : e), bytes: 0, category: '错误' });
+    }
+    items.sort(function(a, b) { return b.bytes - a.bytes; });
+    var categoryList = Object.keys(categories).map(function(name) {
+      return { name: name, bytes: categories[name] || 0 };
+    }).sort(function(a, b) { return b.bytes - a.bytes; });
+    return { totalBytes: total, items: items, categories: categoryList, count: items.length };
+  }
+
+  async function estimateOriginStorage() {
+    var result = { supported: false, usage: 0, quota: 0, ratio: null, usageDetails: null, persisted: null };
+    try {
+      if (navigator.storage && navigator.storage.estimate) {
+        var est = await navigator.storage.estimate();
+        result.supported = true;
+        result.usage = Number(est.usage || 0);
+        result.quota = Number(est.quota || 0);
+        result.ratio = result.quota ? result.usage / result.quota : null;
+        result.usageDetails = est.usageDetails || null;
+      }
+      if (navigator.storage && navigator.storage.persisted) {
+        result.persisted = await navigator.storage.persisted();
+      }
+    } catch (e) {
+      result.error = e && e.message ? e.message : String(e);
+    }
+    return result;
+  }
+
+  async function listIndexedDatabases() {
+    var list = [];
+    try {
+      if (indexedDB && indexedDB.databases) {
+        var dbs = await indexedDB.databases();
+        list = (dbs || []).map(function(db) {
+          return { name: db.name || '(未命名)', version: db.version || '' };
+        });
+      }
+    } catch (e) {
+      list = [{ name: '无法列出 IndexedDB：' + (e && e.message ? e.message : e), version: '' }];
+    }
+    return list;
+  }
+
+  function getRiskLevel(localScan, origin) {
+    var localBytes = localScan.totalBytes || 0;
+    var ratio = origin && typeof origin.ratio === 'number' ? origin.ratio : null;
+    var score = 0;
+    var reasons = [];
+
+    if (localBytes >= LOCAL_CRITICAL_BYTES) {
+      score = Math.max(score, 4);
+      reasons.push('localStorage 已接近常见 5MB 限制，继续保存聊天/头像可能失败。');
+    } else if (localBytes >= LOCAL_DANGER_BYTES) {
+      score = Math.max(score, 3);
+      reasons.push('localStorage 已进入危险区，建议立即导出主数据并清理大图片/旧聊天。');
+    } else if (localBytes >= 3.5 * MB) {
+      score = Math.max(score, 2);
+      reasons.push('localStorage 占用偏高，后续大量聊天或头像可能增加保存失败风险。');
+    }
+
+    if (ratio != null) {
+      if (ratio >= 0.92) {
+        score = Math.max(score, 4);
+        reasons.push('浏览器分配给此网页的总存储空间已超过 92%，可能出现自动清理或写入失败。');
+      } else if (ratio >= 0.85) {
+        score = Math.max(score, 3);
+        reasons.push('网页总存储占用超过 85%，已进入高风险区。');
+      } else if (ratio >= 0.72) {
+        score = Math.max(score, 2);
+        reasons.push('网页总存储占用超过 72%，建议备份并减少大图资源。');
+      }
+    }
+
+    if (origin && origin.persisted === false) {
+      score = Math.max(score, 1);
+      reasons.push('当前网页存储未获得浏览器持久保存保护，移动端/空间不足时更容易被清理。');
+    }
+
+    var label = '安全';
+    var tone = '#2e7d32';
+    if (score === 1) { label = '注意'; tone = '#7a6a00'; }
+    if (score === 2) { label = '偏高'; tone = '#b26a00'; }
+    if (score === 3) { label = '危险'; tone = '#d84315'; }
+    if (score >= 4) { label = '严重危险'; tone = '#c62828'; }
+
+    if (!reasons.length) reasons.push('目前没有检测到明显容量风险。');
+    return { score: score, label: label, color: tone, reasons: reasons };
+  }
+
+  async function buildReport() {
+    var localScan = scanLocalStorage();
+    var origin = await estimateOriginStorage();
+    var dbs = await listIndexedDatabases();
+    var risk = getRiskLevel(localScan, origin);
+    var report = {
+      generatedAt: new Date().toISOString(),
+      userAgent: navigator.userAgent,
+      location: location.href,
+      localStorage: localScan,
+      originStorage: origin,
+      indexedDB: { databases: dbs, note: 'IndexedDB 精确逐条计算会很慢；此处以浏览器 Storage Estimate 的总用量为准。' },
+      risk: risk,
+      suggestions: buildSuggestions(localScan, origin, risk)
+    };
+    try { localStorage.setItem(LAST_REPORT_KEY, JSON.stringify({ generatedAt: report.generatedAt, risk: risk.label, localBytes: localScan.totalBytes, originUsage: origin.usage, originQuota: origin.quota })); } catch(e) {}
+    return report;
+  }
+
+  function buildSuggestions(localScan, origin, risk) {
+    var suggestions = [];
+    if (risk.score >= 3) suggestions.push('马上导出主数据和图片资源，避免浏览器写入失败后无法恢复。');
+    if ((localScan.totalBytes || 0) > 3.5 * MB) suggestions.push('localStorage 适合放文字数据，不适合长期塞大量 base64 头像/图片；大图资源建议迁移到 IndexedDB 或图片资源包。');
+    if (origin && origin.persisted === false) suggestions.push('点击“请求浏览器持久保存保护”，让浏览器尽量不要自动清理这个网页的数据。');
+    suggestions.push('图片、背景、头像、表情包是最容易撑爆容量的内容；如果出现保存异常，优先清理这些资源。');
+    suggestions.push('聊天记录很多时，建议定期导出主数据；大量旧通话/长文本总结也会增加占用。');
+    return suggestions;
+  }
+
+  function el(tag, attrs, text) {
+    var node = document.createElement(tag);
+    attrs = attrs || {};
+    Object.keys(attrs).forEach(function(k) {
+      if (k === 'style') node.setAttribute('style', attrs[k]);
+      else if (k === 'className') node.className = attrs[k];
+      else node.setAttribute(k, attrs[k]);
+    });
+    if (text != null) node.textContent = text;
+    return node;
+  }
+
+  function progressBar(percent, color) {
+    var outer = el('div', { style: 'width:100%;height:8px;background:#eee;border-radius:999px;overflow:hidden;margin:6px 0 2px;' });
+    var inner = el('div', { style: 'height:100%;width:' + Math.max(1, Math.min(100, percent || 0)).toFixed(1) + '%;background:' + color + ';border-radius:999px;' });
+    outer.appendChild(inner);
+    return outer;
+  }
+
+  function downloadJson(filename, obj) {
+    try {
+      var blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json;charset=utf-8' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); }, 800);
+    } catch (e) {
+      alert('下载诊断报告失败：' + (e && e.message ? e.message : e));
+    }
+  }
+
+  async function showModal() {
+    var old = document.getElementById('monoStorageHealthModal');
+    if (old) old.remove();
+
+    var overlay = el('div', { id: 'monoStorageHealthModal', style: 'position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:999999;display:flex;align-items:center;justify-content:center;padding:18px;box-sizing:border-box;' });
+    var box = el('div', { style: 'width:min(560px,96vw);max-height:88vh;overflow:auto;background:#fff;border-radius:22px;padding:18px;box-shadow:0 18px 60px rgba(0,0,0,.22);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#1a1a1a;' });
+    box.appendChild(el('div', { style: 'font-size:17px;font-weight:800;margin-bottom:4px;' }, '数据容量诊断'));
+    box.appendChild(el('div', { style: 'font-size:11px;color:#888;line-height:1.6;margin-bottom:12px;' }, '正在检查此网页在浏览器里的 localStorage、IndexedDB / 图片缓存总占用和自动清理风险。'));
+    var loading = el('div', { style: 'font-size:12px;color:#666;padding:14px;background:#f7f7f7;border-radius:14px;' }, '正在扫描数据容量...');
+    box.appendChild(loading);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    var report = await buildReport();
+    loading.remove();
+
+    var risk = report.risk;
+    var origin = report.originStorage || {};
+    var local = report.localStorage || {};
+    var originPercent = origin.quota ? (origin.usage / origin.quota * 100) : null;
+    var localPercent = Math.min(100, (local.totalBytes || 0) / (5 * MB) * 100);
+
+    var riskBox = el('div', { style: 'padding:12px;border-radius:16px;background:#fafafa;border:1px solid #eee;margin-bottom:12px;' });
+    riskBox.appendChild(el('div', { style: 'font-size:13px;font-weight:800;color:' + risk.color + ';margin-bottom:6px;' }, '当前风险：' + risk.label));
+    risk.reasons.forEach(function(r) { riskBox.appendChild(el('div', { style: 'font-size:11px;color:#555;line-height:1.6;margin:2px 0;' }, '• ' + r)); });
+    box.appendChild(riskBox);
+
+    var originBox = el('div', { style: 'padding:12px;border-radius:16px;border:1px solid #eee;margin-bottom:10px;' });
+    originBox.appendChild(el('div', { style: 'font-size:12px;font-weight:800;margin-bottom:6px;' }, '网页总存储占用'));
+    if (origin.supported && origin.quota) {
+      originBox.appendChild(el('div', { style: 'font-size:11px;color:#555;' }, formatBytes(origin.usage) + ' / ' + formatBytes(origin.quota) + '（' + originPercent.toFixed(1) + '%）'));
+      originBox.appendChild(progressBar(originPercent, risk.color));
+      originBox.appendChild(el('div', { style: 'font-size:10px;color:#888;margin-top:4px;' }, '持久保存保护：' + (origin.persisted ? '已开启' : '未开启或浏览器未授予')));
+    } else {
+      originBox.appendChild(el('div', { style: 'font-size:11px;color:#888;' }, '当前浏览器不支持精确查询总配额，只能估算 localStorage。'));
+    }
+    box.appendChild(originBox);
+
+    var localBox = el('div', { style: 'padding:12px;border-radius:16px;border:1px solid #eee;margin-bottom:10px;' });
+    localBox.appendChild(el('div', { style: 'font-size:12px;font-weight:800;margin-bottom:6px;' }, 'localStorage 占用'));
+    localBox.appendChild(el('div', { style: 'font-size:11px;color:#555;' }, formatBytes(local.totalBytes) + ' / 常见安全上限约 5 MB（' + localPercent.toFixed(1) + '%）'));
+    localBox.appendChild(progressBar(localPercent, local.totalBytes >= LOCAL_DANGER_BYTES ? '#d84315' : '#777'));
+    box.appendChild(localBox);
+
+    var catBox = el('div', { style: 'padding:12px;border-radius:16px;border:1px solid #eee;margin-bottom:10px;' });
+    catBox.appendChild(el('div', { style: 'font-size:12px;font-weight:800;margin-bottom:8px;' }, '主要占用分类'));
+    (local.categories || []).slice(0, 8).forEach(function(c) {
+      var row = el('div', { style: 'display:flex;justify-content:space-between;gap:10px;font-size:11px;color:#555;border-bottom:1px dashed #eee;padding:5px 0;' });
+      row.appendChild(el('span', {}, c.name));
+      row.appendChild(el('b', { style: 'white-space:nowrap;' }, formatBytes(c.bytes)));
+      catBox.appendChild(row);
+    });
+    box.appendChild(catBox);
+
+    var bigBox = el('div', { style: 'padding:12px;border-radius:16px;border:1px solid #eee;margin-bottom:10px;' });
+    bigBox.appendChild(el('div', { style: 'font-size:12px;font-weight:800;margin-bottom:8px;' }, '最大 localStorage 项目'));
+    (local.items || []).slice(0, 10).forEach(function(item) {
+      var row = el('div', { style: 'display:flex;justify-content:space-between;gap:10px;font-size:10px;color:#666;border-bottom:1px dashed #eee;padding:5px 0;' });
+      row.appendChild(el('span', { style: 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:360px;' }, item.key));
+      row.appendChild(el('b', { style: 'white-space:nowrap;' }, formatBytes(item.bytes)));
+      bigBox.appendChild(row);
+    });
+    box.appendChild(bigBox);
+
+    var suggestBox = el('div', { style: 'padding:12px;border-radius:16px;background:#f8f8f8;margin-bottom:12px;' });
+    suggestBox.appendChild(el('div', { style: 'font-size:12px;font-weight:800;margin-bottom:8px;' }, '建议'));
+    report.suggestions.forEach(function(s) { suggestBox.appendChild(el('div', { style: 'font-size:11px;color:#555;line-height:1.6;margin:3px 0;' }, '• ' + s)); });
+    box.appendChild(suggestBox);
+
+    var actions = el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;' });
+    var persistBtn = el('button', { type: 'button', style: 'flex:1;min-width:140px;padding:10px;border-radius:12px;border:1px solid #111;background:#111;color:#fff;font-size:12px;font-weight:700;cursor:pointer;' }, '请求浏览器持久保存保护');
+    persistBtn.onclick = async function(ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      try {
+        if (!(navigator.storage && navigator.storage.persist)) {
+          alert('这个浏览器不支持主动请求浏览器持久保存保护。');
+          return false;
+        }
+        var ok = await navigator.storage.persist();
+        alert(ok ? '浏览器已授予或已经拥有持久保存保护，网页数据更不容易被系统自动清理。' : '浏览器暂时没有授予持久保存保护。建议添加到主屏幕/PWA、保持经常使用、避免无痕模式，并定期导出主数据和图片资源备份。');
+      } catch (e) {
+        alert('请求失败：' + (e && e.message ? e.message : e));
+      }
+      return false;
+    };
+    var downloadBtn = el('button', { type: 'button', style: 'flex:1;min-width:140px;padding:10px;border-radius:12px;border:1px solid #111;background:#fff;color:#111;font-size:12px;font-weight:700;cursor:pointer;' }, '下载诊断报告');
+    downloadBtn.onclick = function(ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      downloadJson('mono_storage_health_' + new Date().toISOString().slice(0,10) + '.json', report);
+      return false;
+    };
+    var closeBtn = el('button', { type: 'button', style: 'flex:1;min-width:100px;padding:10px;border-radius:12px;border:1px solid #ddd;background:#f7f7f7;color:#333;font-size:12px;font-weight:700;cursor:pointer;' }, '关闭');
+    closeBtn.onclick = function(ev) { ev.preventDefault(); ev.stopPropagation(); overlay.remove(); return false; };
+    actions.appendChild(persistBtn);
+    actions.appendChild(downloadBtn);
+    actions.appendChild(closeBtn);
+    box.appendChild(actions);
+  }
+
+  function showMiniWarning(report) {
+    try {
+      var now = Date.now();
+      var last = Number(localStorage.getItem(LAST_WARNING_KEY) || 0);
+      if (now - last < 6 * 60 * 60 * 1000) return;
+      localStorage.setItem(LAST_WARNING_KEY, String(now));
+      var old = document.getElementById('monoStorageMiniWarning');
+      if (old) old.remove();
+      var div = el('div', { id: 'monoStorageMiniWarning', style: 'position:fixed;left:16px;right:16px;bottom:18px;z-index:999998;background:#fff;border:1px solid #eee;border-radius:18px;padding:12px 14px;box-shadow:0 12px 40px rgba(0,0,0,.18);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#1a1a1a;' });
+      div.appendChild(el('div', { style: 'font-size:13px;font-weight:800;color:' + report.risk.color + ';margin-bottom:4px;' }, '数据容量风险：' + report.risk.label));
+      div.appendChild(el('div', { style: 'font-size:11px;color:#666;line-height:1.5;margin-bottom:8px;' }, report.risk.reasons[0] || '建议检查数据容量。'));
+      var btns = el('div', { style: 'display:flex;gap:8px;' });
+      var check = el('button', { type:'button', style:'flex:1;padding:8px;border-radius:10px;border:none;background:#111;color:#fff;font-size:11px;font-weight:700;' }, '查看容量');
+      check.onclick = function(e){ e.preventDefault(); e.stopPropagation(); div.remove(); showModal(); return false; };
+      var close = el('button', { type:'button', style:'padding:8px 12px;border-radius:10px;border:1px solid #ddd;background:#fff;color:#333;font-size:11px;font-weight:700;' }, '忽略');
+      close.onclick = function(e){ e.preventDefault(); e.stopPropagation(); div.remove(); return false; };
+      btns.appendChild(check); btns.appendChild(close); div.appendChild(btns);
+      document.body.appendChild(div);
+    } catch (e) {}
+  }
+
+  async function autoCheck() {
+    try {
+      var report = await buildReport();
+      if (report.risk && report.risk.score >= 3) showMiniWarning(report);
+    } catch (e) {}
+  }
+
+  function installSetItemGuard() {
+    try {
+      if (Storage.prototype.__monoStorageGuardV13) return;
+      var originalSetItem = Storage.prototype.setItem;
+      Object.defineProperty(Storage.prototype, '__monoStorageGuardV13', { value: true, configurable: false });
+      Storage.prototype.setItem = function(key, value) {
+        try {
+          return originalSetItem.apply(this, arguments);
+        } catch (e) {
+          var isQuota = e && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED' || /quota/i.test(e.message || ''));
+          if (this === localStorage && isQuota) {
+            try {
+              setTimeout(function(){
+                alert('保存失败：网页本地数据容量已满或接近上限。请先导出主数据/图片资源，然后清理大图片、头像、旧聊天或请求浏览器持久保存保护。');
+                if (window.MonoStorageHealth && window.MonoStorageHealth.show) window.MonoStorageHealth.show();
+              }, 30);
+            } catch (_) {}
+            return undefined;
+          }
+          throw e;
+        }
+      };
+    } catch (e) {}
+  }
+
+  function installDataManagementButton() {
+    try {
+      if (document.getElementById('monoStorageHealthButton')) return;
+      var status = document.getElementById('importExportStatus');
+      if (!status || !status.parentElement) return;
+      var wrap = status.parentElement.querySelector('div[style*="flex"]');
+      if (!wrap) return;
+      var btn = document.createElement('button');
+      btn.id = 'monoStorageHealthButton';
+      btn.type = 'button';
+      btn.className = 'action-btn';
+      btn.setAttribute('style', 'flex:1;min-width:120px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;padding:10px 16px;background:#fff;color:#1a1a1a;border:2px solid #1a1a1a;');
+      btn.innerHTML = '<i class="fas fa-chart-pie"></i> 检查数据容量';
+      btn.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); showModal(); return false; }, true);
+      wrap.insertBefore(btn, wrap.querySelector('input') || null);
+    } catch (e) {}
+  }
+
+  window.MonoStorageHealth = {
+    scanLocalStorage: scanLocalStorage,
+    estimate: estimateOriginStorage,
+    report: buildReport,
+    show: showModal,
+    check: autoCheck,
+    formatBytes: formatBytes
+  };
+  window.checkMonoStorageCapacity = showModal;
+
+  installSetItemGuard();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function(){ installDataManagementButton(); setTimeout(autoCheck, 2500); });
+  } else {
+    installDataManagementButton();
+    setTimeout(autoCheck, 2500);
+  }
+})();
+
+</script>
+<!-- /MONO STORAGE HEALTH V13 PATCH -->
+<!-- MONO PERSISTENT STORAGE PERMISSION V15 PATCH -->
+<script>
+(function(){
+  'use strict';
+  if (window.__monoPersistentStorageV15Installed) return;
+  window.__monoPersistentStorageV15Installed = true;
+
+  function fmtBytes(bytes) {
+    bytes = Number(bytes || 0);
+    if (!bytes) return '0 B';
+    var units = ['B','KB','MB','GB'];
+    var i = 0;
+    while (bytes >= 1024 && i < units.length - 1) { bytes /= 1024; i++; }
+    return bytes.toFixed(i === 0 ? 0 : 1) + ' ' + units[i];
+  }
+
+  function setStatus(html, color) {
+    try {
+      var status = document.getElementById('importExportStatus');
+      if (!status) return;
+      status.style.display = 'block';
+      status.style.color = color || '#555';
+      status.innerHTML = html;
+    } catch (_) {}
+  }
+
+  async function getStorageState() {
+    var supported = !!(navigator.storage);
+    var canPersist = !!(navigator.storage && navigator.storage.persist);
+    var canPersisted = !!(navigator.storage && navigator.storage.persisted);
+    var canEstimate = !!(navigator.storage && navigator.storage.estimate);
+    var already = false;
+    var estimate = null;
+    try { if (canPersisted) already = await navigator.storage.persisted(); } catch (_) {}
+    try { if (canEstimate) estimate = await navigator.storage.estimate(); } catch (_) {}
+    return { supported: supported, canPersist: canPersist, canPersisted: canPersisted, already: already, estimate: estimate };
+  }
+
+  window.requestMonoPersistentStorageProtection = async function requestMonoPersistentStorageProtection(ev) {
+    try {
+      if (ev && ev.preventDefault) ev.preventDefault();
+      if (ev && ev.stopPropagation) ev.stopPropagation();
+
+      var state = await getStorageState();
+      if (!state.supported || !state.canPersist) {
+        var unsupported = '当前浏览器不支持主动请求持久保存保护。建议定期导出主数据和图片资源备份。';
+        alert(unsupported);
+        setStatus('⚠️ ' + unsupported, '#b7791f');
+        return false;
+      }
+
+      if (state.already) {
+        var msgAlready = '浏览器已经授予持久保存保护，网页数据更不容易被系统自动清理。';
+        if (state.estimate && state.estimate.quota) {
+          msgAlready += '\n当前估算占用：' + fmtBytes(state.estimate.usage || 0) + ' / ' + fmtBytes(state.estimate.quota || 0);
+        }
+        alert(msgAlready);
+        setStatus('✅ 浏览器已经授予持久保存保护。仍建议定期导出备份。', '#2f855a');
+        updatePersistButton(true);
+        return true;
+      }
+
+      var granted = false;
+      try { granted = await navigator.storage.persist(); } catch (_) { granted = false; }
+
+      if (granted) {
+        alert('浏览器已授予持久保存保护，网页数据更不容易被系统自动清理。\n建议仍然定期导出主数据和图片资源备份。');
+        setStatus('✅ 浏览器已授予持久保存保护。', '#2f855a');
+        updatePersistButton(true);
+        return true;
+      }
+
+      var denied = '浏览器暂时没有授予持久保存保护。\n\n这不是数据丢失，只是说明浏览器没有给这个网页最高等级的数据保护。\n建议：\n1. 把网页添加到主屏幕 / 安装成 PWA；\n2. 经常打开和使用这个网页；\n3. 避免无痕模式；\n4. 保持设备储存空间充足；\n5. 定期导出主数据和图片资源备份。';
+      alert(denied);
+      setStatus('⚠️ 浏览器暂时没有授予持久保存保护。建议添加到主屏幕/PWA，并定期导出备份。', '#b7791f');
+      updatePersistButton(false);
+      return false;
+    } catch (e) {
+      var err = '请求持久保存保护失败：' + (e && e.message ? e.message : e);
+      alert(err);
+      setStatus('⚠️ ' + err, '#b7791f');
+      return false;
+    }
+  };
+
+  function updatePersistButton(isPersisted) {
+    try {
+      var btn = document.getElementById('monoPersistentStorageButton');
+      if (!btn) return;
+      if (isPersisted) {
+        btn.innerHTML = '<i class="fas fa-shield-alt"></i> 已开启持久保存保护';
+        btn.style.background = '#111';
+        btn.style.color = '#fff';
+      } else {
+        btn.innerHTML = '<i class="fas fa-shield-alt"></i> 请求浏览器持久保存保护';
+        btn.style.background = '#fff';
+        btn.style.color = '#1a1a1a';
+      }
+    } catch (_) {}
+  }
+
+  async function refreshPersistButtonState() {
+    try {
+      var state = await getStorageState();
+      updatePersistButton(!!state.already);
+      var note = document.getElementById('monoPersistentStorageNote');
+      if (note) {
+        if (!state.supported || !state.canPersist) {
+          note.textContent = '当前浏览器不支持主动请求持久保存保护，请定期导出备份。';
+        } else if (state.already) {
+          note.textContent = '浏览器已授予持久保存保护；仍建议定期导出主数据和图片资源。';
+        } else {
+          note.textContent = '浏览器未必会批准该权限。添加到主屏幕/PWA、经常使用、空间充足时更容易获得。';
+        }
+      }
+    } catch (_) {}
+  }
+
+  function installPersistentStorageButton() {
+    try {
+      if (document.getElementById('monoPersistentStorageButton')) { refreshPersistButtonState(); return; }
+      var status = document.getElementById('importExportStatus');
+      if (!status || !status.parentElement) return;
+      var parent = status.parentElement;
+      var wrap = parent.querySelector('div[style*="flex"]') || parent;
+
+      var btn = document.createElement('button');
+      btn.id = 'monoPersistentStorageButton';
+      btn.type = 'button';
+      btn.className = 'action-btn';
+      btn.setAttribute('style', 'flex:1;min-width:160px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;padding:10px 16px;background:#fff;color:#1a1a1a;border:2px solid #1a1a1a;');
+      btn.innerHTML = '<i class="fas fa-shield-alt"></i> 请求浏览器持久保存保护';
+      btn.addEventListener('click', window.requestMonoPersistentStorageProtection, true);
+
+      var healthBtn = document.getElementById('monoStorageHealthButton');
+      if (healthBtn && healthBtn.parentNode === wrap) {
+        wrap.insertBefore(btn, healthBtn.nextSibling);
+      } else {
+        wrap.insertBefore(btn, wrap.querySelector('input') || null);
+      }
+
+      if (!document.getElementById('monoPersistentStorageNote')) {
+        var note = document.createElement('div');
+        note.id = 'monoPersistentStorageNote';
+        note.setAttribute('style', 'margin-top:8px;font-size:10px;color:#888;line-height:1.5;');
+        note.textContent = '持久保存保护由浏览器决定是否授予；即使未授予，也可以继续使用，但建议定期导出备份。';
+        parent.insertBefore(note, status);
+      }
+      refreshPersistButtonState();
+    } catch (_) {}
+  }
+
+  window.installMonoPersistentStorageButton = installPersistentStorageButton;
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function(){
+      installPersistentStorageButton();
+      setTimeout(installPersistentStorageButton, 800);
+      setTimeout(installPersistentStorageButton, 2500);
+    });
+  } else {
+    installPersistentStorageButton();
+    setTimeout(installPersistentStorageButton, 800);
+    setTimeout(installPersistentStorageButton, 2500);
+  }
+})();
+</script>
+<!-- /MONO PERSISTENT STORAGE PERMISSION V15 PATCH -->
+

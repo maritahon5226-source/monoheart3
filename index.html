@@ -50127,7 +50127,7 @@ async function scriptCallChatApi(messages, options) {
   var payload = {
     messages: messages,
     temperature: options && options.temperature != null ? options.temperature : 0.85,
-    max_tokens: options && options.max_tokens ? options.max_tokens : 16000,
+    max_tokens: options && options.max_tokens ? options.max_tokens : 8192,
     stream: false
   };
   if (typeof _applyApiModel === 'function') payload = _applyApiModel(payload, cfg.model);
@@ -50224,76 +50224,6 @@ function scriptParseJsonFromAi(text, fallback, preferredShape) {
   }
   return fallback;
 }
-
-function scriptCoerceCharacterList(card) {
-  card = card && typeof card === 'object' ? card : {};
-  var source = card.characters || card.characterList || card.roles || card.roleList || card.mainCharacters || card.protagonists || card.cast || card.人物 || card.角色 || card.角色列表 || card.人物表 || card.主要角色;
-  if (!source && card.data && typeof card.data === 'object') {
-    source = card.data.characters || card.data.roles || card.data.人物 || card.data.角色 || card.data.人物表;
-  }
-  if (Array.isArray(source)) return source;
-  if (source && typeof source === 'object') return Object.keys(source).map(function(k) {
-    var v = source[k];
-    if (v && typeof v === 'object') {
-      if (!v.name && !v.名字 && !v.姓名) v.name = k;
-      return v;
-    }
-    return { name: k, role: cleanTextContent(v || '重要人物') };
-  });
-  if (typeof source === 'string') {
-    var lines = source.split(/[\n；;]+/).map(function(x){ return cleanTextContent(x); }).filter(Boolean);
-    if (lines.length) {
-      return lines.slice(0, 6).map(function(line, i) {
-        var m = line.match(/^([^：:、，,\-—]{1,20})[：:、，,\-—]\s*(.*)$/);
-        return m ? { name: m[1].trim(), role: m[2].trim() || '重要人物' } : { name: '角色' + (i + 1), role: line };
-      });
-    }
-  }
-  return [];
-}
-function scriptMakeFallbackCharacter(card, idx, existingName) {
-  var title = cleanTextContent((card && card.title) || '这个故事');
-  var conflict = cleanTextContent((card && card.conflict) || '核心矛盾');
-  var baseName = idx === 0 ? '主线角色' : (existingName ? (existingName + '相关的关键人物') : '关键配角');
-  return {
-    name: baseName,
-    role: idx === 0 ? '故事核心人物' : '推动剧情的重要人物',
-    age: '',
-    appearance: '气质鲜明，容易被人记住',
-    personality: idx === 0 ? '有目标感、情绪真实、会被剧情推动改变' : '带来线索、冲突或关系转折',
-    background: '与《' + title + '》的主线有直接关系，过去经历会影响当前选择。',
-    speechStyle: '自然、有辨识度，符合当前剧情氛围',
-    goal: '推动或改变当前主线走向',
-    fear: '害怕失去重要关系或错过关键机会',
-    relationships: existingName ? ('与' + existingName + '存在直接牵连，关系会随剧情推进变化。') : ('与其他角色围绕“' + conflict + '”产生牵连。'),
-    quirk: '在紧张时会下意识观察细节',
-    secret: '有一个暂时没有完全说出口的立场或隐情'
-  };
-}
-function scriptEnsureMinimumCharacters(card) {
-  card = card && typeof card === 'object' ? card : {};
-  card.characters = Array.isArray(card.characters) ? card.characters : [];
-  card.characters = card.characters.filter(function(c){ return c && cleanTextContent(c.name); });
-  var seen = {};
-  card.characters = card.characters.map(function(c, i) {
-    var name = cleanTextContent(c.name || ('角色' + (i + 1)));
-    if (seen[name]) name = name + (i + 1);
-    seen[name] = true;
-    c.name = name;
-    return c;
-  });
-  while (card.characters.length < 2) {
-    var existing = card.characters[0] && card.characters[0].name ? card.characters[0].name : '';
-    var next = scriptMakeFallbackCharacter(card, card.characters.length, existing);
-    var base = next.name;
-    var n = 2;
-    while (seen[next.name]) { next.name = base + n; n++; }
-    seen[next.name] = true;
-    card.characters.push(next);
-  }
-  return card.characters;
-}
-
 function scriptNormalizeCard(card) {
   card = card && typeof card === 'object' ? card : {};
   card.title = cleanTextContent(card.title || '未命名剧本');
@@ -50301,25 +50231,26 @@ function scriptNormalizeCard(card) {
   card.world = cleanTextContent(card.world || '一个等待展开的世界。');
   card.worldDetail = cleanTextContent(card.worldDetail || '');
   card.conflict = cleanTextContent(card.conflict || '人物之间存在尚未解开的矛盾与牵引。');
-  card.characters = scriptCoerceCharacterList(card);
+  card.characters = Array.isArray(card.characters) ? card.characters : [];
   card.characters = card.characters.map(function(c, i) {
-    c = c && typeof c === 'object' ? c : { name: '角色' + (i + 1), role: cleanTextContent(c || '重要人物') };
+    c = c && typeof c === 'object' ? c : {};
     return {
-      name: cleanTextContent(c.name || c.名字 || c.姓名 || c.characterName || c.title || ('角色' + (i + 1))),
-      role: cleanTextContent(c.role || c.身份 || c.职业 || c.定位 || c.type || '重要人物'),
-      age: cleanTextContent(c.age || c.年龄 || ''),
-      appearance: cleanTextContent(c.appearance || c.外貌 || c.外形 || c.look || ''),
-      personality: cleanTextContent(c.personality || c.性格 || c.traits || c.特点 || ''),
-      background: cleanTextContent(c.background || c.背景 || c.backstory || c.经历 || ''),
-      speechStyle: cleanTextContent(c.speechStyle || c.speech || c.说话风格 || c.语气 || ''),
-      goal: cleanTextContent(c.goal || c.目标 || c.动机 || ''),
-      fear: cleanTextContent(c.fear || c.弱点 || c.恐惧 || ''),
-      relationships: cleanTextContent(c.relationships || c.relationship || c.关系 || ''),
-      quirk: cleanTextContent(c.quirk || c.习惯 || c.小癖好 || ''),
-      secret: cleanTextContent(c.secret || c.秘密 || '')
+      name: cleanTextContent(c.name || ('角色' + (i + 1))),
+      role: cleanTextContent(c.role || '重要人物'),
+      age: cleanTextContent(c.age || ''),
+      appearance: cleanTextContent(c.appearance || ''),
+      personality: cleanTextContent(c.personality || ''),
+      background: cleanTextContent(c.background || ''),
+      speechStyle: cleanTextContent(c.speechStyle || ''),
+      goal: cleanTextContent(c.goal || ''),
+      fear: cleanTextContent(c.fear || ''),
+      relationships: cleanTextContent(c.relationships || ''),
+      quirk: cleanTextContent(c.quirk || ''),
+      secret: cleanTextContent(c.secret || '')
     };
   }).filter(function(c) { return c.name; });
-  card.characters = scriptEnsureMinimumCharacters(card).slice(0, 6);
+  if (card.characters.length < 2) throw new Error('API 返回的角色数量不足，至少需要2个角色');
+  card.characters = card.characters.slice(0, 6);
   card.opening = cleanTextContent(card.opening || '故事开始了。');
   card.directions = Array.isArray(card.directions) ? card.directions.map(cleanTextContent).filter(Boolean).slice(0, 3) : [];
   card.chapters = Number(card.chapters) || 20;
@@ -50415,7 +50346,7 @@ async function scriptGenerate(userPrompt) {
   "ending": "HE/BE/开放结局"
 }
 要求：
-1. characters 数组必须至少包含2个可扮演角色，最多6个；就算用户描述只提到一个人，也必须补充一个与主线强相关的关键角色/配角，不允许只返回1个角色
+1. 角色至少2个，最多6个
 2. 每个角色的人设要立体丰满，有血有肉，像真实的人
 3. 角色之间的关系要复杂有张力
 4. 故事要有层次感，有起承转合
@@ -50423,12 +50354,12 @@ async function scriptGenerate(userPrompt) {
 6. 所有内容用中文
 7. 章节数建议20-25章
 8. 每个角色的说话风格要独特且有辨识度
-9. 必须输出完整、可解析、闭合的JSON；不要在JSON外写解释；不要因为内容长而截断；如果内容很多，优先保证JSON闭合、characters完整、opening/conflict完整，chapterGoals可以简短但不能缺失；允许使用紧凑JSON以节省token`;
+9. 必须输出完整、可解析、闭合的JSON；不要在JSON外写解释；不要因为内容长而截断`;
   try {
     const text = await scriptCallChatApi([
       { role: 'system', content: sysPrompt },
       { role: 'user', content: userPrompt }
-    ], { temperature: 0.9, max_tokens: 24000 });
+    ], { temperature: 0.9, max_tokens: 12000 });
     const parsed = scriptParseJsonFromAi(text, null, 'object');
     if (!parsed) throw new Error('API 返回内容不符合剧本 JSON 格式');
     scriptCurrentCard = scriptNormalizeCard(parsed);
@@ -50934,84 +50865,26 @@ function scriptAddMessage(type, charName, text, innerThought, actionDesc) {
   }
   area.appendChild(div);
   area.scrollTop = area.scrollHeight;
-  // v21: 章节推进改为软推进，不再硬切章节或强制抉择。
-  scriptMaybeAdvanceChapterSoft();
-}
-
-// ===================== Script Continuity Guard v21 =====================
-function scriptFormatStoryMessageForMemory(m, idx) {
-  if (!m) return '';
-  var n = (idx != null ? (idx + 1) + '. ' : '');
-  var txt = cleanTextContent ? cleanTextContent(m.text || '') : String(m.text || '');
-  if (!txt) return '';
-  if (m.type === 'narrator') return n + '[旁白/剧情推进] ' + txt;
-  if (m.type === 'user') {
-    var roleName = '用户角色';
-    try { if (scriptCurrentCard && scriptCurrentCard.characters && scriptCurrentCard.characters[scriptMyRole]) roleName = scriptCurrentCard.characters[scriptMyRole].name || roleName; } catch(e) {}
-    return n + '[' + roleName + '/用户输入] ' + txt;
+  // Check chapter progression
+  if (scriptMessageCount > 0 && scriptMessageCount % 12 === 0) {
+    scriptAdvanceChapter();
   }
-  var name = m.charName || '角色';
-  var action = m.action ? '（动作：' + cleanTextContent(String(m.action)) + '）' : '';
-  var thought = m.innerThought ? '（心声记录：' + cleanTextContent(String(m.innerThought)) + '）' : '';
-  return n + '[' + name + '/NPC]' + action + ' ' + txt + thought;
 }
-function scriptBuildFullStoryContinuityContext(maxChars) {
-  maxChars = maxChars || 90000;
-  var arr = Array.isArray(scriptStoryMessages) ? scriptStoryMessages : [];
-  if (!arr.length) return '';
-  var lines = arr.map(function(m, i){ return scriptFormatStoryMessageForMemory(m, i); }).filter(Boolean);
-  var full = lines.join('\n');
-  if (full.length <= maxChars) return full;
-  // 尽量保留开头设定、关键抉择和最新剧情，避免只看到最后几条导致失忆。
-  var head = lines.slice(0, 40).join('\n');
-  var decisions = (Array.isArray(scriptDecisionPoints) ? scriptDecisionPoints : []).map(function(d, i){
-    return '[关键抉择' + (i+1) + '/第' + (d.chapter || '?') + '章] ' + cleanTextContent(String(d.description || '')) + ' / 可选：' + ((d.options || []).join('、'));
-  }).filter(Boolean).join('\n');
-  var tailLines = [];
-  var used = head.length + decisions.length + 300;
-  for (var i = lines.length - 1; i >= 0; i--) {
-    if (used + lines[i].length > maxChars) break;
-    tailLines.unshift(lines[i]);
-    used += lines[i].length + 1;
-  }
-  return head + '\n\n[中段剧情因容量过大已压缩省略，但不能违反已经显示过的剧情事实；以下为关键抉择与最新剧情。]\n' + (decisions ? decisions + '\n\n' : '') + tailLines.join('\n');
-}
-function scriptBuildRecentStoryTail(count) {
-  var arr = Array.isArray(scriptStoryMessages) ? scriptStoryMessages : [];
-  return arr.slice(-(count || 12)).map(function(m, i){ return scriptFormatStoryMessageForMemory(m, arr.length - Math.min(arr.length, count || 12) + i); }).filter(Boolean).join('\n');
-}
-function scriptContinuityRulesText() {
-  return `【连续剧情最高规则】
-- 你必须把“完整剧情记录”视为已经发生的唯一正史，从第一条到最新一条都要记得，不能忘记、重写、反转或跳过。
-- 当前回合必须从最新一条剧情的直接结果继续写，先承接上一幕的人物位置、情绪、未解决问题和最后一句话，再推进新内容。
-- 章节目标只是低优先级方向参考，不能覆盖当前剧情因果；不能为了进入章节目标而突然换场、突然改关系、突然让角色知道不该知道的信息。
-- 选择按钮只能是当前场景里用户下一步可以自然做的事，不能把剧情硬切到无关地点/新章节/新事件。
-- 章节转换必须由当前剧情自然触发：先解决或承接当前冲突，再说明时间地点人物状态如何变化，最后进入下一阶段。
-- 如果当前剧情还在对话、冲突、调查或行动结果中，不要强行切章节，不要强行弹关键抉择，不要另起炉灶。
-- 任何角色的关系、记忆、承诺、秘密、已说过的话都必须前后一致。`; 
-}
-function scriptMaybeAdvanceChapterSoft() {
-  try {
-    if (!scriptCurrentCard) return;
-    var interval = 20;
-    if (scriptMessageCount > 0 && scriptMessageCount % interval === 0) {
-      scriptCurrentChapter++;
-      var label = document.getElementById('scriptChapterLabel');
-      var count = document.getElementById('scriptChapterCount');
-      var fill = document.getElementById('scriptChapterFill');
-      if (label) label.textContent = '第 ' + scriptCurrentChapter + ' 章';
-      if (count) count.textContent = '第 ' + scriptCurrentChapter + ' 章';
-      if (fill) fill.style.width = ((scriptCurrentChapter % 5) / 5 * 100) + '%';
-      // 不直接插入章节标题，不触发强制抉择。章节只作为下一轮 prompt 的方向参考，避免打断当前剧情。
-      scriptStoryHistory.push({ type: 'chapter_soft_advance', chapter: scriptCurrentChapter, at: Date.now(), note: '章节软推进：不打断当前剧情，仅供后续剧情自然衔接参考。' });
-      scriptSaveLiveSession();
-    }
-  } catch(e) { console.warn('soft chapter advance failed', e); }
-}
-
 function scriptAdvanceChapter() {
-  // v21: 章节不再硬插入标题/关键抉择，避免打断剧情。只做软推进。
-  scriptMaybeAdvanceChapterSoft();
+  scriptCurrentChapter++;
+  document.getElementById('scriptChapterLabel').textContent = '第 ' + scriptCurrentChapter + ' 章';
+  document.getElementById('scriptChapterCount').textContent = '第 ' + scriptCurrentChapter + ' 章';
+  document.getElementById('scriptChapterFill').style.width = ((scriptCurrentChapter % 5) / 5 * 100) + '%';
+  const chapterGoal = scriptCurrentCard.chapterGoals && scriptCurrentCard.chapterGoals[scriptCurrentChapter - 1];
+  if (chapterGoal) {
+    scriptAddMessage('narrator', null, '--- 第 ' + scriptCurrentChapter + ' 章 ---  ' + chapterGoal);
+  } else {
+    scriptAddMessage('narrator', null, '--- 第 ' + scriptCurrentChapter + ' 章 ---');
+  }
+  // Trigger decision point every 3 chapters
+  if (scriptCurrentChapter % 3 === 0) {
+    setTimeout(() => scriptTriggerDecision(), 1500);
+  }
 }
 function scriptTriggerEnding() {
   scriptAddMessage('narrator', null, '故事走向尾声...');
@@ -51040,19 +50913,18 @@ function scriptTriggerDecision() {
   if (!scriptHasUsableApiConfig()) return;
   const card = scriptCurrentCard;
   const myChar = card.characters[scriptMyRole];
-  const recentMsgs = scriptBuildFullStoryContinuityContext(70000);
-  const latestTail = scriptBuildRecentStoryTail(14);
+  const recentMsgs = scriptStoryMessages.slice(-8).map(m => {
+    if (m.type === 'narrator') return '[旁白] ' + m.text;
+    return (m.charName || myChar.name) + ': ' + m.text;
+  }).join('\n');
   scriptCallChatApi([{
     role: 'system',
     content: `你是剧本节点生成器。根据当前剧情，生成一个关键抉择点。严格只返回JSON：
 {"description": "抉择描述", "options": ["选项1", "选项2", "选项3"]}
-抉择点必须承接当前剧情，不要突然切换章节或场景；它只能从当前场景的未解决冲突、角色关系、刚发生的行动后果里自然长出来。
-如果当前剧情不适合重大抉择，请生成轻量选择，不要制造无关大转场。
-` + scriptContinuityRulesText() + `
 不要使用emoji。用中文。`
   }, {
     role: 'user',
-    content: `剧本: ${card.title}\n当前章节: 第${scriptCurrentChapter}章\n完整剧情记录:\n${recentMsgs}\n\n最新现场尾巴:\n${latestTail}\n\n请只基于当前剧情因果生成一个不会打断剧情的自然抉择点。`
+    content: `剧本: ${card.title}\n当前章节: 第${scriptCurrentChapter}章\n近期剧情:\n${recentMsgs}\n\n请生成一个关键抉择点。`
   }], { temperature: 0.85, max_tokens: 1000 }).then(text => {
     const json = scriptParseJsonFromAi(text, null, 'object');
     if (!json || !json.description || !Array.isArray(json.options)) throw new Error('关键抉择点JSON格式错误');
@@ -51080,8 +50952,11 @@ async function scriptGenerateAIResponse(trigger) {
   const card = scriptCurrentCard;
   const myChar = card.characters[scriptMyRole];
   const otherChars = card.characters.filter((c, i) => i !== scriptMyRole);
-  const fullStoryContext = scriptBuildFullStoryContinuityContext(90000);
-  const recentMsgs = scriptBuildRecentStoryTail(18);
+  const recentMsgs = scriptStoryMessages.slice(-10).map(m => {
+    if (m.type === 'narrator') return '[旁白] ' + m.text;
+    if (m.type === 'user') return myChar.name + ': ' + m.text;
+    return (m.charName || '角色') + ': ' + m.text;
+  }).join('\n');
   const charDescs = otherChars.map(c => {
     let desc = `【${c.name}】身份: ${c.role || '未知'}`;
     if (c.age) desc += ` / 年龄: ${c.age}`;
@@ -51113,25 +50988,17 @@ async function scriptGenerateAIResponse(trigger) {
   }
   let triggerNote = '';
   if (trigger === 'story_start') triggerNote = '这是故事的开场。请从开场情境开始推进，让角色们自然地出场和互动。';
-  else if (trigger === 'option') triggerNote = '用户刚点击了一个选项。必须把这个选项视为用户角色的真实行动/意图，立刻承接它产生的直接后果，并继续生成旁白、相关NPC反应和新的可选行动；不能只记录选择后停止。';
-  else if (trigger === 'decision') triggerNote = '用户刚做了一个重要决定。请先承接这个决定在当前场景造成的直接后果，再让相关角色做出符合性格的反应；不要借此突然跳到无关章节或地点。';
+  else if (trigger === 'decision') triggerNote = '用户刚做了一个重要决定。请根据这个决定推进故事，角色们要对此做出符合各自性格的反应。';
   else if (trigger === 'dialogue') triggerNote = '用户刚说了一句话。请让被对话的角色自然地回应，回应要符合该角色的说话风格和性格。';
   else if (trigger === 'action') triggerNote = '用户刚执行了一个行动。请描述行动的结果，并让周围的角色做出反应。';
   else if (trigger === 'custom_plot') triggerNote = '用户提供了自定义的剧情发展方向。请严格按照用户描述的剧情方向来推进故事，让角色们自然地在这个剧情框架下互动和反应。剧情要流畅且合理。';
-  else if (trigger === 'time_jump') triggerNote = '时间线刚发生了跳跃，但必须承接跳跃前的未解决事件和人物关系。请根据用户写明的时间变化，自然交代新时间点的场景、环境变化、人物状态与因果后果，不能无理由重置剧情。';
+  else if (trigger === 'time_jump') triggerNote = '时间线刚发生了跳跃。请根据旁白中描述的时间变化，自然地描述新时间点的场景、环境变化和角色状态。让故事流畅地过渡到新的时间节点，角色们应该根据时间流逝产生合理的变化。';
   else if (trigger.startsWith('ending_')) triggerNote = '故事进入结局阶段。结局类型: ' + trigger.replace('ending_', '') + '。请写出感人的结局场景，角色的对话要有终结感。';
-  // v25: 章节目标必须从当前剧本卡安全读取，不能使用未定义变量，否则用户发言/选择后会直接中断续写。
-  const _scriptChapterGoals = Array.isArray(card && card.chapterGoals) ? card.chapterGoals : [];
-  const currentChapterGoal = cleanTextContent ? cleanTextContent(_scriptChapterGoals[Math.max(0, scriptCurrentChapter - 1)] || '') : String(_scriptChapterGoals[Math.max(0, scriptCurrentChapter - 1)] || '');
-  const nextChapterGoal = cleanTextContent ? cleanTextContent(_scriptChapterGoals[Math.max(0, scriptCurrentChapter)] || '') : String(_scriptChapterGoals[Math.max(0, scriptCurrentChapter)] || '');
   const sysPrompt = `当前为沙盒角色扮演模式。你是故事推进引擎，负责扮演所有NPC角色。
 剧本: ${card.title}
 世界背景: ${card.world}${card.worldDetail ? '\n深层设定: ' + card.worldDetail : ''}
 核心矛盾: ${card.conflict}
 当前章节: 第${scriptCurrentChapter}章（无限章节，用户可自由决定何时杀青）
-当前章节大方向: ${currentChapterGoal || '未设定，请根据当前剧情自然推进'}
-下一章节参考方向: ${nextChapterGoal || '未设定，请根据当前剧情自然铺垫'}
-${scriptContinuityRulesText()}
 NPC角色详细设定:
 ${charDescs}
 用户扮演: ${myCharDesc}
@@ -51140,41 +51007,32 @@ ${charDescs}
 - 你只能扮演NPC和旁白，绝对不能替用户扮演的角色说台词、做选择、表达心理活动或安排对白。
 - dialogues数组里只能出现NPC角色名，不能出现用户扮演角色名。
 - 如果需要用户角色回应，只能在options里给用户选择，或在旁白里描述场景等待用户输入。
-
-【主要角色焦点保护】
-- 剧本可以有旁白、路人、临时NPC、环境事件和NPC之间的互动，但主线焦点必须始终围绕剧本卡里的主要角色：${card.characters.map(c => c.name).join('、')}。
-- 主要角色依然是主要角色，剧情推进、关键冲突、情绪变化、重要台词和关系发展要优先落在这些主要角色身上。
-- 临时NPC、路人、配角只能用于推动事件、制造阻碍、补充信息或烘托氛围，不能连续多轮抢走主要角色的戏份。
-- 如果本轮出现多个NPC，请优先让主要角色做出反应；非主要NPC的台词和行动要服务于主要角色与主线剧情。
-- 当用户选择和某个主要角色对话时，该主要角色必须成为本轮核心回应者，其他角色只做辅助反应。
 ${talkTargetNote}
 ${triggerNote}
 请以JSON格式回复，包含以下字段:
 {
-  "narrator": "小说式剧情推进旁白。不要只写角色和用户之间的对话，要根据用户操作、角色互动、当前事件和剧本发展趋势，详细描写场景变化、事件结果、环境、动作、心理气氛、NPC之间的反应和下一步矛盾推进。长度由剧情需要决定，可以是2-8句话，也可以分成更完整的一段小说式推进。",
+  "narrator": "旁白描述（第三人称，描述场景变化、氛围、角色的微表情和小动作等，2-3句话，要有画面感和文学性）",
   "dialogues": [
-    {"character": "NPC角色名", "action": "NPC说话时的动作描写（如：*轻轻拨了拨头发* 或 *靠在墙上双手抱胸* 等，用来展现肢体语言、表情变化、小动作）", "text": "NPC台词（只允许NPC说话。要符合该角色说话风格、口头禅、性格和此刻处境）"${isTurningPoint ? ', "innerThought": "这个NPC此刻内心真正的想法（只在重要时刻出现，展现其表面言行背后的真实心理）"' : ''}}
+    {"character": "角色名", "action": "角色说话时的动作描写（如：*轻轻拨了拨头发* 或 *靠在墙上双手抱胸* 等，用来展现角色的肢体语言和小动作，增加画面感）", "text": "角色的台词（要完全符合该角色的说话风格、口头禅、性格特点。像真人说话一样自然，可以包含语气词、停顿、犹豫等）"${isTurningPoint ? ', "innerThought": "这个角色此刻内心真正的想法（只在重要时刻出现，展现角色表面言行背后的真实心理）"' : ''}}
   ],
   "options": ["选项1", "选项2", "选项3"]
 }
 核心要求:
-1. 【小说式推进】剧本体验不是普通聊天，不要只写用户和角色之间的对话互动。每轮都要根据剧情逻辑推进事件，让故事像小说一样继续发生。
-2. 【主要角色优先】可以扩展场景、事件、配角和NPC互动，但剧本卡里的主要角色必须始终是剧情中心。旁白和NPC互动都要服务于主要角色、主线关系和核心矛盾，不能让无关NPC成为新主角。
-3. 【剧情描述优先】可以通过旁白详细描写场景、动作、事件后果、人物站位、环境变化、气氛、暗线、冲突升级或缓和。旁白可以承担主要推进功能，不必每次都靠台词推进。
-4. 【不限于单一角色对话】NPC之间可以互相说话、互相观察、产生冲突、合作、误会或各自行动；也可以出现短暂没有台词、主要由旁白推进的回合。
-5. 【长度和条数自适应】每次生成的内容长度、旁白详细程度、NPC对白条数都根据剧情需要判断：普通过渡可以短，关键事件、转折、发现、冲突、抉择前可以更长更细。不要固定每次1-3条。
-6. 【活人感】每个NPC说话要有独特语气和风格，像真实的人，不要千篇一律。
-7. 【性格驱动】NPC回应必须严格基于其性格、背景、目标、关系和当前处境。
-8. 【互动感】NPC之间也会互相影响和反应，不只是围着用户说话。
-9. 不要使用任何emoji。
-10. 【动作描写】有NPC对白时，每条对白都必须包含action字段，用*星号*包裹动作/表情/小动作，增加沉浸感。
-11. 【用户角色限制】不要生成用户扮演角色的对白、心理活动、动作决定或选择。用户扮演角色只能由用户自己输入或点击选项决定。AI如果需要用户角色回应，只能通过options给选择，或用旁白写“局面等待你的回应”。
-12. 【选项质量】选项要给用户有意义的下一步选择，可以是说话、行动、调查、离开、靠近某人、隐瞒、追问、改变计划等。${isTurningPoint ? '\n13. 【心声】这是重要的转折时刻，请为至少一个NPC添加innerThought字段，展现其内心独白' : ''}`;
+1. 【活人感】每个角色说话要有独特的语气和风格，像真实的人在对话，不要千篇一律
+2. 【性格驱动】角色的回应必须严格基于其性格、背景、目标和当前处境
+3. 【互动感】角色之间也会互相影响和反应，不只是对用户说话
+4. 不要使用任何emoji
+5. 旁白要有文学感，描写角色的微表情、肢体语言、环境氛围
+6. 选项要给用户有意义的选择，包括对话和行动
+7. 每次1-3条对话，推进适度
+8. 角色不会主动透露自己的秘密，除非剧情发展到那一步
+9. 【动作描写】每条对话都必须包含action字段，描写角色说话时的肢体语言、表情变化、小动作等，用*星号*包裹，增加沉浸感和画面感
+10. 【用户角色限制】不要生成用户扮演角色的对白。用户角色只能由用户输入或点击选项决定，AI不得代替用户说话或行动。${isTurningPoint ? '\n11. 【心声】这是重要的转折时刻，请为至少一个角色添加innerThought字段，展现其内心独白' : ''}`;
   try {
     const text = await scriptCallChatApi([
       { role: 'system', content: sysPrompt },
-      { role: 'user', content: (fullStoryContext ? ('【完整剧情记录，从头到尾按顺序】\n' + fullStoryContext + '\n\n【最新现场尾巴，必须从这里直接续写】\n' + recentMsgs) : '请开始故事。') }
-    ], { temperature: 0.88, max_tokens: 18000 });
+      { role: 'user', content: recentMsgs || '请开始故事。' }
+    ], { temperature: 0.85, max_tokens: 9000 });
     let json = scriptNormalizeStoryJson(scriptParseJsonFromAi(text, null, 'object'));
     // v15：用户扮演角色只能由用户输入/选择，AI生成结果里若误含用户角色对白，强制过滤。
     try {
@@ -51221,15 +51079,18 @@ async function scriptGenerateOptions() {
   }
   const card = scriptCurrentCard;
   const myChar = card.characters[scriptMyRole];
-  const recentMsgs = scriptBuildFullStoryContinuityContext(70000);
-  const latestTail = scriptBuildRecentStoryTail(12);
+  const recentMsgs = scriptStoryMessages.slice(-6).map(m => {
+    if (m.type === 'narrator') return '[旁白] ' + m.text;
+    if (m.type === 'user') return myChar.name + ': ' + m.text;
+    return (m.charName || '角色') + ': ' + m.text;
+  }).join('\n');
   try {
     const text = await scriptCallChatApi([{
       role: 'system',
-      content: `根据当前剧情为玩家生成3个行动选项。选项必须紧接最新现场，不能突然跳章节、换地点、重置关系或制造无关事件。选项可以是对白意图、行动、调查、靠近/离开某人、追问、隐瞒、推动当前事件或处理当前冲突；不要替用户角色写完整对白。格式：每行一个选项，用|||分隔。不要使用emoji。\n` + scriptContinuityRulesText()
+      content: `根据当前剧情为玩家生成3个行动选项。格式：每行一个选项，用|||分隔。不要使用emoji。`
     }, {
       role: 'user',
-      content: `用户扮演角色: ${myChar.name}\n完整剧情记录:\n${recentMsgs}\n\n最新现场尾巴:\n${latestTail}\n\n请生成3个能承接最新现场、推动当前剧情发展的行动选项。不要替用户角色说完整对白，只写可供用户选择的意图/行动方向。`
+      content: `角色: ${myChar.name}\n近期剧情:\n${recentMsgs}\n\n请生成3个行动选项。`
     }], { temperature: 0.8, max_tokens: 1600 });
     const options = text.split('|||').map(s => s.trim()).filter(s => s);
     const finalOptions = options.length >= 3 ? options.slice(0, 3) : text.split('\n').map(s => s.replace(/^\d+[\.\)、]\s*/, '').trim()).filter(s => s).slice(0, 3);
@@ -113173,195 +113034,6 @@ body.mono-fwd-modal-open {
   };
 })();
 </script>
-
-
-<script>
-/* Mono v22: 修复剧本/小说/导入生成中 text.replace is not a function
-   原因：部分 API/数据源会把文本字段返回成 object/array，旧代码直接 text.replace()。
-   处理：所有进入 cleanTextContent / safeParseJSON / parseTxtChapters 的值先统一转成字符串。 */
-(function(){
-  function monoToTextV22(v){
-    try{
-      if (v === null || v === undefined) return '';
-      if (typeof v === 'string') return v;
-      if (typeof v === 'number' || typeof v === 'boolean' || typeof v === 'bigint') return String(v);
-      if (v instanceof ArrayBuffer) {
-        try { return new TextDecoder('utf-8').decode(v); } catch(e) { return ''; }
-      }
-      if (ArrayBuffer.isView && ArrayBuffer.isView(v)) {
-        try { return new TextDecoder('utf-8').decode(v); } catch(e) { return ''; }
-      }
-      if (Array.isArray(v)) {
-        return v.map(function(item){
-          if (typeof item === 'string') return item;
-          if (!item || typeof item !== 'object') return monoToTextV22(item);
-          if (typeof item.text === 'string') return item.text;
-          if (typeof item.content === 'string') return item.content;
-          if (Array.isArray(item.content)) return monoToTextV22(item.content);
-          if (typeof item.message === 'string') return item.message;
-          if (typeof item.body === 'string') return item.body;
-          if (typeof item.value === 'string') return item.value;
-          return monoToTextV22(item.text || item.content || item.message || item.body || item.value || '');
-        }).join('');
-      }
-      if (typeof v === 'object') {
-        // OpenAI / Claude / Gemini / proxy 常见返回形态
-        if (typeof v.output_text === 'string') return v.output_text;
-        if (v.choices && Array.isArray(v.choices)) {
-          var ch = v.choices[0] || {};
-          if (ch.message && ch.message.content !== undefined) return monoToTextV22(ch.message.content);
-          if (ch.delta && ch.delta.content !== undefined) return monoToTextV22(ch.delta.content);
-          if (ch.text !== undefined) return monoToTextV22(ch.text);
-        }
-        if (v.message && v.message.content !== undefined) return monoToTextV22(v.message.content);
-        if (v.content !== undefined) return monoToTextV22(v.content);
-        if (v.text !== undefined) return monoToTextV22(v.text);
-        if (v.data !== undefined) return monoToTextV22(v.data);
-        if (v.result !== undefined) return monoToTextV22(v.result);
-        if (v.output !== undefined) return monoToTextV22(v.output);
-        if (v.response !== undefined) return monoToTextV22(v.response);
-        try { return JSON.stringify(v); } catch(e) { return String(v); }
-      }
-      return String(v);
-    }catch(err){
-      try { return String(v || ''); } catch(e2) { return ''; }
-    }
-  }
-  window.monoToTextV22 = monoToTextV22;
-
-  try {
-    window.cleanTextContent = cleanTextContent = function(text){
-      var s = monoToTextV22(text);
-      if (!s) return '';
-      return s
-        .replace(/\\n/g, ' ')
-        .replace(/\\r/g, ' ')
-        .replace(/\\t/g, ' ')
-        .replace(/\n+/g, ' ')
-        .replace(/\r+/g, ' ')
-        .replace(/\t+/g, ' ')
-        .replace(/###/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
-    };
-  } catch(e) {}
-
-  try {
-    window.safeParseJSON = safeParseJSON = function(text){
-      var s = monoToTextV22(text).trim()
-        .replace(/^```(?:json)?\s*/i, '')
-        .replace(/\s*```$/i, '')
-        .replace(/[“”]/g, '"')
-        .replace(/[‘’]/g, "'");
-      return JSON.parse(s);
-    };
-  } catch(e) {}
-
-  try {
-    window.parseTxtChapters = parseTxtChapters = function(text){
-      var raw = monoToTextV22(text);
-      if (!raw || !raw.trim()) raw = '正文为空';
-      const chapterRegex = /^[\s\u3000]*(第[零一二三四五六七八九十百千0-9０-９]+[章节卷回部篇集][\s　\S]{0,40}|Chapter\s*\d+[\s\S]{0,40}|CHAPTER\s*\d+[\s\S]{0,40}|【[^】]{1,30}】|〔[^〕]{1,30}〕|\[.{1,30}\]|第\s*\d+\s*[章节回])[\s\u3000]*$/im;
-      const lines = raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
-      const chapters = [];
-      let curTitle = '';
-      let curLines = [];
-      let foundAny = false;
-      for (let i = 0; i < lines.length; i++) {
-        const line = String(lines[i] || '').trim();
-        if (chapterRegex.test(line)) {
-          if (foundAny) chapters.push({ title: curTitle, content: curLines.join('\n').trim() });
-          else if (curLines.join('').trim().length > 0) chapters.push({ title: '序章', content: curLines.join('\n').trim() });
-          curTitle = line;
-          curLines = [];
-          foundAny = true;
-        } else {
-          curLines.push(lines[i]);
-        }
-      }
-      if (curLines.join('').trim().length > 0) chapters.push({ title: curTitle || '正文', content: curLines.join('\n').trim() });
-      if (chapters.length === 0) chapters.push({ title: '正文', content: raw.trim() });
-      return chapters;
-    };
-  } catch(e) {}
-
-  try {
-    var oldScriptParse = window.scriptParseJsonFromAi;
-    window.scriptParseJsonFromAi = scriptParseJsonFromAi = function(text, fallback, preferredShape){
-      if (text === null || text === undefined) return fallback;
-      if (Array.isArray(text)) return text;
-      if (typeof text === 'object') {
-        var maybe = monoToTextV22(text);
-        if (maybe && maybe !== '[object Object]') text = maybe;
-        else return text;
-      }
-      try {
-        if (typeof oldScriptParse === 'function') return oldScriptParse(String(text || ''), fallback, preferredShape);
-      } catch(e) {}
-      var s = monoToTextV22(text).trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
-      try { return JSON.parse(s); } catch(e2) {}
-      var startObj = s.indexOf('{'), endObj = s.lastIndexOf('}');
-      var startArr = s.indexOf('['), endArr = s.lastIndexOf(']');
-      var snippet = '';
-      if (preferredShape === 'array' && startArr >= 0 && endArr > startArr) snippet = s.slice(startArr, endArr + 1);
-      else if (startObj >= 0 && endObj > startObj) snippet = s.slice(startObj, endObj + 1);
-      else if (startArr >= 0 && endArr > startArr) snippet = s.slice(startArr, endArr + 1);
-      if (snippet) { try { return JSON.parse(snippet); } catch(e3) {} }
-      return fallback;
-    };
-  } catch(e) {}
-})();
-</script>
-
-
-<!-- MONO SCRIPT EXPERIENCE V24 TOKEN PATCH -->
-<script>
-(function(){
-  if (window.__monoScriptV24TokenPatch) return;
-  window.__monoScriptV24TokenPatch = true;
-
-  function _isTokenLimitError(err) {
-    var s = String((err && (err.message || err.stack)) || err || '').toLowerCase();
-    return /max_tokens|max token|max output|maximum context|context length|tokens|token limit|too many|request too large|413|400|422/.test(s);
-  }
-
-  try {
-    var _origScriptCallChatApi = (typeof scriptCallChatApi === 'function') ? scriptCallChatApi : null;
-    if (_origScriptCallChatApi && !_origScriptCallChatApi.__monoV24Wrapped) {
-      var _wrappedScriptCallChatApi = async function(messages, options) {
-        options = options || {};
-        var requested = Number(options.max_tokens || 16000) || 16000;
-        var candidates = [];
-        function add(n) {
-          n = Number(n) || 0;
-          if (n > 0 && candidates.indexOf(n) < 0) candidates.push(n);
-        }
-        add(requested);
-        // 剧本生成优先给更高输出空间；如果某些 API 不支持，会自动降档重试。
-        if (requested >= 10000) {
-          add(24000); add(22000); add(20000); add(18000); add(16000); add(14000); add(12000); add(8192); add(4096);
-        } else {
-          add(16000); add(12000); add(8192); add(4096);
-        }
-        var lastErr = null;
-        for (var i = 0; i < candidates.length; i++) {
-          try {
-            var nextOptions = Object.assign({}, options, { max_tokens: candidates[i] });
-            return await _origScriptCallChatApi(messages, nextOptions);
-          } catch (e) {
-            lastErr = e;
-            if (!_isTokenLimitError(e)) throw e;
-          }
-        }
-        throw lastErr || new Error('剧本生成失败：API 输出长度受限');
-      };
-      _wrappedScriptCallChatApi.__monoV24Wrapped = true;
-      scriptCallChatApi = window.scriptCallChatApi = _wrappedScriptCallChatApi;
-    }
-  } catch(e) { console.warn('script token fallback patch failed', e); }
-})();
-</script>
-<!-- /MONO SCRIPT EXPERIENCE V24 TOKEN PATCH -->
 
 </body>
 

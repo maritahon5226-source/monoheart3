@@ -37653,7 +37653,8 @@ function _showMomentsPersonaPickerModal() {
 // ── 构建朋友圈近期聊天上下文（纯文本） ──
 function _monoBuildPlainRecentChatContext(p) {
   if (!p || !Array.isArray(p.history)) return '';
-  var memCount = p.memoryCount || 100;
+  var memCount = monoPersonaMemoryLimit(p, 100);
+  monoEnsurePersonaHistoryLoaded(p);
   var userName = (typeof userProfile !== 'undefined' && userProfile && userProfile.name) ? userProfile.name : '用户';
   return p.history.slice(-memCount).map(function(m) {
     return (m.role === 'user' ? userName : p.name) + '：' + m.content;
@@ -38150,7 +38151,7 @@ async function generateForumComments(postId, title, content) {
     const r = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${apiConfig.key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: apiConfig.model, messages: [{ role: 'user', content: prompt }], temperature: 0.95, max_tokens: 800 })
+      body: JSON.stringify({ model: apiConfig.model, messages: [{ role: 'user', content: prompt }], temperature: 0.95, max_tokens: 1800 })
     });
     if (!r.ok) return;
     const data = await r.json();
@@ -39378,8 +39379,15 @@ function safeParseJSON(text) {
   return JSON.parse(s);
 }
 function cleanTextContent(text) {
-  if (!text) return '';
-  return text
+  if (text === null || text === undefined) return '';
+  if (typeof text !== 'string') {
+    try {
+      if (Array.isArray(text)) text = text.map(cleanTextContent).filter(Boolean).join(' ');
+      else if (typeof text === 'object') text = text.content || text.text || text.name || JSON.stringify(text);
+      else text = String(text);
+    } catch(e) { text = String(text || ''); }
+  }
+  return String(text)
     .replace(/\\n/g, ' ')
     .replace(/\\r/g, ' ')
     .replace(/\\t/g, ' ')
@@ -39389,6 +39397,37 @@ function cleanTextContent(text) {
     .replace(/###/g, '')
     .replace(/\s+/g, ' ')
     .trim();
+}
+function monoSafeTextForReplace(value) {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') return value;
+  try {
+    if (Array.isArray(value)) return value.map(monoSafeTextForReplace).join('\n');
+    if (typeof value === 'object') {
+      var extracted = (typeof _extractAssistantMessageContent === 'function') ? _extractAssistantMessageContent(value) : '';
+      if (extracted) return String(extracted);
+      return JSON.stringify(value);
+    }
+    return String(value);
+  } catch(e) { return String(value || ''); }
+}
+function monoEnsurePersonaHistoryLoaded(p) {
+  if (!p) return [];
+  if (Array.isArray(p.history)) return p.history;
+  try {
+    var raw = localStorage.getItem('mono_hist_' + p.id);
+    var arr = raw ? JSON.parse(raw) : [];
+    p.history = Array.isArray(arr) ? arr : [];
+  } catch(e) { p.history = []; }
+  return p.history;
+}
+function monoPersonaMemoryLimit(p, fallback) {
+  var n = parseInt(p && p.memoryCount, 10);
+  if (!isFinite(n) || n <= 0) n = fallback || 100;
+  return Math.max(1, n);
+}
+function monoStoryEscapeForOnclick(text) {
+  return String(text || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, ' ');
 }
 function _novelSourceText(keyword, tags, novel, mainCategory) {
   const parts = [];
@@ -45946,7 +45985,7 @@ async function triggerAutoReply() {
   // 本轮回复条数由同一次聊天 API 直接在 range 内生成：前端不预判、不随机、不拆句，只做安全上限。
 const modePrompt = BUILTIN_WB;
   const memCount = Math.max(1, Number(p.memoryCount) || 100);
-  if (!Array.isArray(p.history)) p.history = [];
+  monoEnsurePersonaHistoryLoaded(p);
   const recentChat = p.history.slice(-memCount).map(function(m) {
     const msgText = (m && (m.msgType === 'order_notify' || m.msgType === 'pay_request' || m.msgType === 'receive_notify') && typeof _buildOrderHistoryText === 'function')
       ? _buildOrderHistoryText(m)
@@ -46475,7 +46514,8 @@ ${monoOneShotChatInstruction()}${_monoOneShotStickerPack.prompt || ''}${monoBuil
     }
     const normalizedReplyMessages = messages.map(function(m) { return String(m || '').trim(); }).filter(Boolean);
     if (!_autoReplyCancelled) {
-      const latestRecentChat = p.history.slice(-(p.memoryCount || 100)).map(function(m) {
+      monoEnsurePersonaHistoryLoaded(p);
+      const latestRecentChat = p.history.slice(-monoPersonaMemoryLimit(p, 100)).map(function(m) {
         return `${m.role === 'user' ? userProfile.name : p.name}：${m.content || ''}`;
       }).join('\n');
       if (p.allowVoice) await tryPersonaSendVoice(p, normalizedReplyMessages);
@@ -50116,7 +50156,7 @@ async function scriptCallChatApi(messages, options) {
   var payload = {
     messages: messages,
     temperature: options && options.temperature != null ? options.temperature : 0.85,
-    max_tokens: options && options.max_tokens ? options.max_tokens : 2048,
+    max_tokens: options && options.max_tokens ? options.max_tokens : 6000,
     stream: false
   };
   if (typeof _applyApiModel === 'function') payload = _applyApiModel(payload, cfg.model);
@@ -50215,52 +50255,86 @@ function scriptParseJsonFromAi(text, fallback, preferredShape) {
 }
 function scriptNormalizeCard(card) {
   card = card && typeof card === 'object' ? card : {};
-  card.title = cleanTextContent(card.title || '未命名剧本');
+  card.title = cleanTextContent(card.title || card.name || '未命名剧本');
   card.tags = Array.isArray(card.tags) ? card.tags.map(cleanTextContent).filter(Boolean) : [];
-  card.world = cleanTextContent(card.world || '一个等待展开的世界。');
-  card.worldDetail = cleanTextContent(card.worldDetail || '');
-  card.conflict = cleanTextContent(card.conflict || '人物之间存在尚未解开的矛盾与牵引。');
-  card.characters = Array.isArray(card.characters) ? card.characters : [];
-  card.characters = card.characters.map(function(c, i) {
-    c = c && typeof c === 'object' ? c : {};
+  card.world = cleanTextContent(card.world || card.setting || '一个等待展开的世界。');
+  card.worldDetail = cleanTextContent(card.worldDetail || card.backgroundDetail || '');
+  card.conflict = cleanTextContent(card.conflict || card.coreConflict || '人物之间存在尚未解开的矛盾与牵引。');
+  var rawChars = [];
+  if (Array.isArray(card.characters)) rawChars = card.characters;
+  else if (Array.isArray(card.roles)) rawChars = card.roles;
+  else if (card.characters && typeof card.characters === 'object') {
+    rawChars = Object.keys(card.characters).map(function(k){ var v = card.characters[k]; if (v && typeof v === 'object') { v.name = v.name || k; return v; } return { name:k, personality:String(v||'') }; });
+  }
+  card.characters = rawChars.map(function(c, i) {
+    c = c && typeof c === 'object' ? c : { name: String(c || ('角色' + (i + 1))) };
     return {
-      name: cleanTextContent(c.name || ('角色' + (i + 1))),
-      role: cleanTextContent(c.role || '重要人物'),
+      name: cleanTextContent(c.name || c.characterName || ('角色' + (i + 1))),
+      role: cleanTextContent(c.role || c.identity || '重要人物'),
       age: cleanTextContent(c.age || ''),
-      appearance: cleanTextContent(c.appearance || ''),
-      personality: cleanTextContent(c.personality || ''),
-      background: cleanTextContent(c.background || ''),
-      speechStyle: cleanTextContent(c.speechStyle || ''),
-      goal: cleanTextContent(c.goal || ''),
-      fear: cleanTextContent(c.fear || ''),
-      relationships: cleanTextContent(c.relationships || ''),
-      quirk: cleanTextContent(c.quirk || ''),
+      appearance: cleanTextContent(c.appearance || c.look || ''),
+      personality: cleanTextContent(c.personality || c.traits || ''),
+      background: cleanTextContent(c.background || c.backstory || ''),
+      speechStyle: cleanTextContent(c.speechStyle || c.voice || c.tone || ''),
+      goal: cleanTextContent(c.goal || c.motivation || ''),
+      fear: cleanTextContent(c.fear || c.weakness || ''),
+      relationships: cleanTextContent(c.relationships || c.relationship || ''),
+      quirk: cleanTextContent(c.quirk || c.habit || ''),
       secret: cleanTextContent(c.secret || '')
     };
   }).filter(function(c) { return c.name; });
-  if (card.characters.length < 2) throw new Error('API 返回的角色数量不足，至少需要2个角色');
+
+  if (card.characters.length < 2) {
+    card.characters.push({
+      name: '关键NPC',
+      role: '推动剧情的重要人物',
+      age: '',
+      appearance: '',
+      personality: '敏锐、立场不明、能制造新的冲突和线索',
+      background: '与主线矛盾有关，会在剧情需要时出现，推动事件继续发展。',
+      speechStyle: '简洁、有信息量，不会抢走用户扮演角色的主动权',
+      goal: '推动剧情继续展开',
+      fear: '',
+      relationships: '与主角和核心矛盾存在潜在联系',
+      quirk: '',
+      secret: ''
+    });
+  }
+
   card.characters = card.characters.slice(0, 6);
-  card.opening = cleanTextContent(card.opening || '故事开始了。');
+  card.opening = cleanTextContent(card.opening || card.start || '故事开始了。');
   card.directions = Array.isArray(card.directions) ? card.directions.map(cleanTextContent).filter(Boolean).slice(0, 3) : [];
   card.chapters = Number(card.chapters) || 20;
   card.chapterGoals = Array.isArray(card.chapterGoals) ? card.chapterGoals.map(cleanTextContent).filter(Boolean) : [];
+  if (card.chapterGoals.length === 0) {
+    var total = Math.max(8, Math.min(25, Number(card.chapters) || 20));
+    for (var gi = 1; gi <= total; gi++) card.chapterGoals.push('第' + gi + '章：承接前文自然推进，不跳脱当前剧情。');
+  }
   card.ending = cleanTextContent(card.ending || '开放结局');
   return card;
 }
-function scriptNormalizeStoryJson(json) {
+function scriptNormalizeStoryJson(json, userCharacterName) {
   json = json && typeof json === 'object' ? json : {};
-  json.narrator = cleanTextContent(json.narrator || '');
-  json.dialogues = Array.isArray(json.dialogues) ? json.dialogues : [];
+  json.narrator = cleanTextContent(json.narrator || json.scene || json.description || '');
+  json.dialogues = Array.isArray(json.dialogues) ? json.dialogues : (Array.isArray(json.messages) ? json.messages : []);
+  var myName = cleanTextContent(userCharacterName || '');
   json.dialogues = json.dialogues.map(function(d) {
     d = d && typeof d === 'object' ? d : {};
     return {
-      character: cleanTextContent(d.character || d.name || ''),
-      action: cleanTextContent(d.action || ''),
+      character: cleanTextContent(d.character || d.name || d.sender || ''),
+      action: cleanTextContent(d.action || d.actionDesc || ''),
       text: cleanTextContent(d.text || d.dialogue || d.content || ''),
-      innerThought: cleanTextContent(d.innerThought || '')
+      innerThought: cleanTextContent(d.innerThought || d.thought || '')
     };
-  }).filter(function(d) { return d.character && d.text; }).slice(0, 3);
+  }).filter(function(d) {
+    if (!d.character || !d.text) return false;
+    if (myName && d.character === myName) return false;
+    return true;
+  }).slice(0, 3);
   json.options = Array.isArray(json.options) ? json.options.map(cleanTextContent).filter(Boolean).slice(0, 3) : [];
+  if (json.options.length < 3 && Array.isArray(json.choices)) {
+    json.options = json.options.concat(json.choices.map(cleanTextContent).filter(Boolean)).slice(0, 3);
+  }
   if (!json.narrator && json.dialogues.length === 0) throw new Error('API 返回内容不符合剧情 JSON 格式');
   return json;
 }
@@ -50335,19 +50409,21 @@ async function scriptGenerate(userPrompt) {
   "ending": "HE/BE/开放结局"
 }
 要求：
-1. 角色至少2个，最多6个
+1. 角色至少2个，最多6个；如果故事本身是单主角，也必须生成至少1个可互动的重要NPC，避免前端判定角色少于两个。
 2. 每个角色的人设要立体丰满，有血有肉，像真实的人
 3. 角色之间的关系要复杂有张力
 4. 故事要有层次感，有起承转合
 5. 不要使用任何emoji
 6. 所有内容用中文
 7. 章节数建议20-25章
-8. 每个角色的说话风格要独特且有辨识度`;
+8. 每个角色的说话风格要独特且有辨识度
+9. chapterGoals 必须是连续推进的大方向，不是硬切场景；后续互动要能从当前剧情自然走向章节目标。
+10. 剧情体验中用户会扮演其中一个角色，所以其他角色/NPC必须能推动故事，但不能代替用户角色说话。`;
   try {
     const text = await scriptCallChatApi([
       { role: 'system', content: sysPrompt },
       { role: 'user', content: userPrompt }
-    ], { temperature: 0.9, max_tokens: 5000 });
+    ], { temperature: 0.9, max_tokens: 12000 });
     const parsed = scriptParseJsonFromAi(text, null, 'object');
     if (!parsed) throw new Error('API 返回内容不符合剧本 JSON 格式');
     scriptCurrentCard = scriptNormalizeCard(parsed);
@@ -50913,7 +50989,7 @@ function scriptTriggerDecision() {
   }, {
     role: 'user',
     content: `剧本: ${card.title}\n当前章节: 第${scriptCurrentChapter}章\n近期剧情:\n${recentMsgs}\n\n请生成一个关键抉择点。`
-  }], { temperature: 0.85, max_tokens: 1000 }).then(text => {
+  }], { temperature: 0.85, max_tokens: 2200 }).then(text => {
     const json = scriptParseJsonFromAi(text, null, 'object');
     if (!json || !json.description || !Array.isArray(json.options)) throw new Error('关键抉择点JSON格式错误');
     const overlay = document.getElementById('scriptDecisionOverlay');
@@ -50921,7 +50997,7 @@ function scriptTriggerDecision() {
     document.getElementById('scriptDecisionDesc').textContent = cleanTextContent(json.description);
     const options = json.options.map(cleanTextContent).filter(Boolean).slice(0, 3);
     document.getElementById('scriptDecisionOptions').innerHTML = options.map((opt, i) =>
-      `<button class="script-option-btn" onclick="scriptMakeDecision(${i}, '${opt.replace(/'/g, "\\'")}')" style="margin-bottom:6px;">${opt}</button>`
+      `<button class="script-option-btn" onclick="scriptMakeDecision(${i}, '${monoStoryEscapeForOnclick(opt)}')" style="margin-bottom:6px;">${opt}</button>`
     ).join('');
     scriptDecisionPoints.push({ chapter: scriptCurrentChapter, description: json.description, options: options, msgIndex: scriptStoryMessages.length });
   }).catch(e => {
@@ -50938,13 +51014,25 @@ function scriptMakeDecision(idx, text) {
 async function scriptGenerateAIResponse(trigger) {
   if (!scriptHasUsableApiConfig()) return;
   const card = scriptCurrentCard;
+  if (!card || !Array.isArray(card.characters) || scriptMyRole === null || !card.characters[scriptMyRole]) return;
   const myChar = card.characters[scriptMyRole];
   const otherChars = card.characters.filter((c, i) => i !== scriptMyRole);
-  const recentMsgs = scriptStoryMessages.slice(-10).map(m => {
-    if (m.type === 'narrator') return '[旁白] ' + m.text;
-    if (m.type === 'user') return myChar.name + ': ' + m.text;
-    return (m.charName || '角色') + ': ' + m.text;
-  }).join('\n');
+
+  function scriptLineFromMsg(m) {
+    if (!m) return '';
+    if (m.type === 'narrator') return '[旁白] ' + cleanTextContent(m.text || '');
+    if (m.type === 'user') return '[用户扮演的角色｜' + myChar.name + '] ' + cleanTextContent(m.text || '');
+    return '[' + (m.charName || 'NPC') + '] ' + cleanTextContent(m.text || '');
+  }
+  const fullStoryContext = scriptStoryMessages.map(scriptLineFromMsg).filter(Boolean).join('\n') || '（暂无剧情，请从开场开始。）';
+  const recentMsgs = scriptStoryMessages.slice(-40).map(scriptLineFromMsg).filter(Boolean).join('\n') || '（暂无近期剧情。）';
+  const chapterGoals = Array.isArray(card.chapterGoals) ? card.chapterGoals : [];
+  const currentGoal = chapterGoals[scriptCurrentChapter - 1] || '';
+  const nextGoal = chapterGoals[scriptCurrentChapter] || '';
+  const directionText = Array.isArray(card.directions) ? card.directions.filter(Boolean).join('\n') : '';
+  const lastUserMove = [...scriptStoryMessages].reverse().find(m => m && m.type === 'user');
+  const lastUserText = lastUserMove ? cleanTextContent(lastUserMove.text || '') : '';
+
   const charDescs = otherChars.map(c => {
     let desc = `【${c.name}】身份: ${c.role || '未知'}`;
     if (c.age) desc += ` / 年龄: ${c.age}`;
@@ -50957,88 +51045,120 @@ async function scriptGenerateAIResponse(trigger) {
     if (c.quirk) desc += `\n  小癖好: ${c.quirk}`;
     if (c.secret) desc += `\n  隐藏秘密(角色自己不会主动透露): ${c.secret}`;
     return desc;
-  }).join('\n\n');
+  }).join('\n\n') || '（暂无 NPC；请使用旁白推进，但不要代替用户角色说话。）';
+
   let myCharDesc = `【${myChar.name}】身份: ${myChar.role || '未知'}`;
   if (myChar.personality) myCharDesc += ` / 性格: ${myChar.personality}`;
   if (myChar.background) myCharDesc += `\n  背景: ${myChar.background}`;
-  // Determine if this is a turning point where inner thoughts should appear
+  if (myChar.speechStyle) myCharDesc += `\n  说话风格: ${myChar.speechStyle}`;
+
   const isTurningPoint = trigger === 'decision' || trigger === 'story_start' ||
     trigger.startsWith('ending_') || trigger === 'time_jump' || trigger === 'custom_plot' ||
     scriptCurrentChapter === 3 || scriptCurrentChapter === 5 ||
     (scriptMessageCount > 0 && scriptMessageCount % 8 === 0);
-  // Talk target context
+
   let talkTargetNote = '';
   if (scriptTalkTarget !== null) {
     const targetChar = card.characters[scriptTalkTarget];
-    if (targetChar) {
-      talkTargetNote = `\n\n【重要】用户当前选择与「${targetChar.name}」对话。请让${targetChar.name}作为主要回应者，其他角色可以在旁边做出反应或小动作，但主要对话应该来自${targetChar.name}。`;
+    if (targetChar && targetChar.name !== myChar.name) {
+      talkTargetNote = `\n\n【当前对话对象】用户正在面向「${targetChar.name}」。请让${targetChar.name}作为主要回应者；其他角色只有在剧情相关时才可短暂反应。`;
     }
   }
+
   let triggerNote = '';
-  if (trigger === 'story_start') triggerNote = '这是故事的开场。请从开场情境开始推进，让角色们自然地出场和互动。';
-  else if (trigger === 'decision') triggerNote = '用户刚做了一个重要决定。请根据这个决定推进故事，角色们要对此做出符合各自性格的反应。';
-  else if (trigger === 'dialogue') triggerNote = '用户刚说了一句话。请让被对话的角色自然地回应，回应要符合该角色的说话风格和性格。';
-  else if (trigger === 'action') triggerNote = '用户刚执行了一个行动。请描述行动的结果，并让周围的角色做出反应。';
-  else if (trigger === 'custom_plot') triggerNote = '用户提供了自定义的剧情发展方向。请严格按照用户描述的剧情方向来推进故事，让角色们自然地在这个剧情框架下互动和反应。剧情要流畅且合理。';
-  else if (trigger === 'time_jump') triggerNote = '时间线刚发生了跳跃。请根据旁白中描述的时间变化，自然地描述新时间点的场景、环境变化和角色状态。让故事流畅地过渡到新的时间节点，角色们应该根据时间流逝产生合理的变化。';
-  else if (trigger.startsWith('ending_')) triggerNote = '故事进入结局阶段。结局类型: ' + trigger.replace('ending_', '') + '。请写出感人的结局场景，角色的对话要有终结感。';
-  const sysPrompt = `当前为沙盒角色扮演模式。你是故事推进引擎，负责扮演所有NPC角色。
+  if (trigger === 'story_start') triggerNote = '这是故事开场。请从 opening 承接，不要跳到后续章节；用旁白建立场景，并让和开场有关的 NPC 自然出现。';
+  else if (trigger === 'option') triggerNote = '用户刚点击了一个选项。必须明确承接这个选择，先写选择造成的直接结果，再写旁白推进、NPC反应，并生成新的可点击选项。';
+  else if (trigger === 'decision') triggerNote = '用户刚做了关键决定。必须承接该决定，不要跳脱当前剧情；根据该决定推动新局面。';
+  else if (trigger === 'dialogue') triggerNote = '用户刚以自己扮演的角色说了一句台词。NPC必须回应这句台词；严禁替用户角色继续说话、补台词或改写用户台词。';
+  else if (trigger === 'action') triggerNote = '用户刚执行了行动。请写出行动造成的合理结果，并让相关 NPC 做出反应；不要忽略行动。';
+  else if (trigger === 'custom_plot') triggerNote = '用户提供了剧情方向。请按用户方向推进，但必须与此前剧情连续，不能突然换章节或重置关系。';
+  else if (trigger === 'time_jump') triggerNote = '时间线发生跳跃。请平滑过渡，解释时间变化后的场景与角色状态，不要把章节目标写成硬切标题。';
+  else if (trigger.startsWith('ending_')) triggerNote = '故事进入结局阶段。结局类型: ' + trigger.replace('ending_', '') + '。请写出有终结感的结局场景。';
+
+  const sysPrompt = `当前为互动剧本体验。你是“小说式剧情推进引擎”，负责旁白、场景推进和所有 NPC，但绝对不能替用户扮演的角色说话。
 剧本: ${card.title}
 世界背景: ${card.world}${card.worldDetail ? '\n深层设定: ' + card.worldDetail : ''}
 核心矛盾: ${card.conflict}
-当前章节: 第${scriptCurrentChapter}章（无限章节，用户可自由决定何时杀青）
+预设走向参考:
+${directionText || '（无固定路线，按当前剧情自然推进）'}
+
+当前章节: 第${scriptCurrentChapter}章
+当前章节目标: ${currentGoal || '根据当前剧情自然推进，不要硬切章节。'}
+下一章方向参考: ${nextGoal || '暂无'}
+章节总规则:
+- 章节目标只是“远处方向”，不是每次回复都强行跳过去。
+- 章节转换必须由当前剧情自然走到，不能突然跳脱、重置场景、重置关系或插入无关选择。
+- 旁白可以主动制造新的小事件、新线索、新阻碍，把剧情引向章节大方向，但必须承接上一轮。
+
+用户扮演的角色:
+${myCharDesc}
+
 NPC角色详细设定:
 ${charDescs}
-用户扮演: ${myCharDesc}
 ${talkTargetNote}
+
+本轮触发原因:
 ${triggerNote}
-请以JSON格式回复，包含以下字段:
+
+【完整剧情记忆｜必须遵守】
+${fullStoryContext}
+
+【最近剧情重点】
+${recentMsgs}
+
+【用户本轮输入/选择】
+${lastUserText || '（无）'}
+
+请严格输出 JSON，禁止 markdown，格式：
 {
-  "narrator": "旁白描述（第三人称，描述场景变化、氛围、角色的微表情和小动作等，2-3句话，要有画面感和文学性）",
+  "narrator": "旁白描述：必须承接用户本轮输入/选择，写场景变化、动作结果、气氛、线索或剧情推进。可以主动推进新趋向。2-6句话，像小说，不要只写聊天互动。",
   "dialogues": [
-    {"character": "角色名", "action": "角色说话时的动作描写（如：*轻轻拨了拨头发* 或 *靠在墙上双手抱胸* 等，用来展现角色的肢体语言和小动作，增加画面感）", "text": "角色的台词（要完全符合该角色的说话风格、口头禅、性格特点。像真人说话一样自然，可以包含语气词、停顿、犹豫等）"${isTurningPoint ? ', "innerThought": "这个角色此刻内心真正的想法（只在重要时刻出现，展现角色表面言行背后的真实心理）"' : ''}}
+    {"character": "NPC角色名", "action": "该NPC说话时的动作/神态，用*星号*包裹", "text": "NPC台词。只允许NPC说话，不允许用户角色说话。"${isTurningPoint ? ', "innerThought": "该NPC此刻内心真正想法，重要时刻才写"' : ''}}
   ],
-  "options": ["选项1", "选项2", "选项3"]
+  "options": ["新的选择1", "新的选择2", "新的选择3"]
 }
-核心要求:
-1. 【活人感】每个角色说话要有独特的语气和风格，像真实的人在对话，不要千篇一律
-2. 【性格驱动】角色的回应必须严格基于其性格、背景、目标和当前处境
-3. 【互动感】角色之间也会互相影响和反应，不只是对用户说话
-4. 不要使用任何emoji
-5. 旁白要有文学感，描写角色的微表情、肢体语言、环境氛围
-6. 选项要给用户有意义的选择，包括对话和行动
-7. 每次1-3条对话，推进适度
-8. 角色不会主动透露自己的秘密，除非剧情发展到那一步
-9. 【动作描写】每条对话都必须包含action字段，描写角色说话时的肢体语言、表情变化、小动作等，用*星号*包裹，增加沉浸感和画面感${isTurningPoint ? '\n10. 【心声】这是重要的转折时刻，请为至少一个角色添加innerThought字段，展现其内心独白' : ''}`;
+
+硬性规则:
+1. dialogues 里的 character 只能从 NPC 中选择：${otherChars.map(c => c.name).join('、') || '无'}。绝对不能出现用户扮演的角色「${myChar.name}」。
+2. 不要替用户角色写台词、心理、决定或行动。用户角色只能由用户自己输入或点击选择。
+3. 不是每个 NPC 都要回复；只有当前剧情相关的 NPC 才出现。每次 0-3 条 NPC 台词都可以，重点是剧情连贯。
+4. 必须承接完整剧情记忆，不得忘记上一轮对话、选择、行动、关系变化或已经发生的事件。
+5. 旁白不是装饰，必须推动剧情：可以写环境变化、线索出现、NPC反应、冲突升级、角色移动、事件后果。
+6. 新选项必须接在当前剧情后面，不能突然跳到无关章节。
+7. 不要使用 emoji。`;
+
   try {
     const text = await scriptCallChatApi([
       { role: 'system', content: sysPrompt },
-      { role: 'user', content: recentMsgs || '请开始故事。' }
-    ], { temperature: 0.85, max_tokens: 3500 });
-    const json = scriptNormalizeStoryJson(scriptParseJsonFromAi(text, null, 'object'));
-    // Add narrator
+      { role: 'user', content: '请根据【用户本轮输入/选择】和完整剧情记忆继续生成下一段剧情。' }
+    ], { temperature: 0.86, max_tokens: 8000 });
+    const json = scriptNormalizeStoryJson(scriptParseJsonFromAi(text, null, 'object'), myChar.name);
     if (json.narrator) {
       document.getElementById('scriptNarrator').textContent = json.narrator;
       scriptAddMessage('narrator', null, json.narrator);
     }
-    // Add dialogues with action descriptions
     if (json.dialogues) {
       json.dialogues.forEach(d => {
+        if (!d || d.character === myChar.name) return;
         scriptAddMessage('npc', d.character, d.text, d.innerThought || null, d.action || null);
       });
     }
-    // Update options
     if (json.options && scriptCurrentMode === 'options') {
       const list = document.getElementById('scriptOptionsList');
       if (list) {
         list.innerHTML = json.options.map((opt, i) =>
-          `<button class="script-option-btn" onclick="scriptSelectOption('${opt.replace(/'/g, "\\'")}')">${opt}</button>`
+          `<button class="script-option-btn" onclick="scriptSelectOption('${monoStoryEscapeForOnclick(opt)}')">${opt}</button>`
         ).join('');
       }
     }
+    scriptSaveLiveSession();
   } catch (e) {
     console.warn('Story AI response failed:', e);
     _showApiErrorToast('剧情生成失败', e);
+    const list = document.getElementById('scriptOptionsList');
+    if (list && scriptCurrentMode === 'options') {
+      list.innerHTML = '<div style="font-size:11px;color:#999;padding:10px;text-align:center;">剧情生成失败：' + cleanTextContent(e && e.message ? e.message : e) + '<br><button class="script-generate-btn" style="margin-top:8px;" onclick="scriptGenerateAIResponse(\'' + trigger + '\')">重试继续剧情</button></div>';
+    }
   }
 }
 async function scriptGenerateOptions() {
@@ -51049,7 +51169,7 @@ async function scriptGenerateOptions() {
   }
   const card = scriptCurrentCard;
   const myChar = card.characters[scriptMyRole];
-  const recentMsgs = scriptStoryMessages.slice(-6).map(m => {
+  const recentMsgs = scriptStoryMessages.slice(-40).map(m => {
     if (m.type === 'narrator') return '[旁白] ' + m.text;
     if (m.type === 'user') return myChar.name + ': ' + m.text;
     return (m.charName || '角色') + ': ' + m.text;
@@ -51057,17 +51177,17 @@ async function scriptGenerateOptions() {
   try {
     const text = await scriptCallChatApi([{
       role: 'system',
-      content: `根据当前剧情为玩家生成3个行动选项。格式：每行一个选项，用|||分隔。不要使用emoji。`
+      content: `根据当前剧情为玩家生成3个行动选项。必须承接上一轮剧情和用户刚做出的选择/台词/行动；选项要推动后续剧情，不要跳脱章节。格式：每行一个选项，用|||分隔。不要使用emoji。`
     }, {
       role: 'user',
       content: `角色: ${myChar.name}\n近期剧情:\n${recentMsgs}\n\n请生成3个行动选项。`
-    }], { temperature: 0.8, max_tokens: 800 });
+    }], { temperature: 0.8, max_tokens: 1800 });
     const options = text.split('|||').map(s => s.trim()).filter(s => s);
     const finalOptions = options.length >= 3 ? options.slice(0, 3) : text.split('\n').map(s => s.replace(/^\d+[\.\)、]\s*/, '').trim()).filter(s => s).slice(0, 3);
     const list = document.getElementById('scriptOptionsList');
     if (list && finalOptions.length > 0) {
       list.innerHTML = finalOptions.map(opt =>
-        `<button class="script-option-btn" onclick="scriptSelectOption('${opt.replace(/'/g, "\\'")}')">${opt}</button>`
+        `<button class="script-option-btn" onclick="scriptSelectOption('${monoStoryEscapeForOnclick(opt)}')">${opt}</button>`
       ).join('');
     }
   } catch (e) {
@@ -51499,7 +51619,7 @@ function scriptRestartFromNode(archiveIdx, nodeIdx) {
   overlay.style.display = 'flex';
   document.getElementById('scriptDecisionDesc').textContent = dp.description;
   document.getElementById('scriptDecisionOptions').innerHTML = dp.options.map((opt, i) =>
-    `<button class="script-option-btn" onclick="scriptMakeDecision(${i}, '${opt.replace(/'/g, "\\'")}')" style="margin-bottom:6px;">${opt}</button>`
+    `<button class="script-option-btn" onclick="scriptMakeDecision(${i}, '${monoStoryEscapeForOnclick(opt)}')" style="margin-bottom:6px;">${opt}</button>`
   ).join('');
 }
 function scriptExportArchive() {
@@ -52670,7 +52790,8 @@ async function triggerAutoMessage(personaId) {
   if (anchorTs && (Date.now() - anchorTs) < minMs) return;
   _autoMsgLocks[personaId] = true;
   _autoMsgLastAttemptAt[personaId] = Date.now();
-  const memCount = p.memoryCount || 100;
+  const memCount = monoPersonaMemoryLimit(p, 100);
+  monoEnsurePersonaHistoryLoaded(p);
   const recentChat = p.history.slice(-memCount).map(function(m) {
     const msgText = (m && (m.msgType === 'order_notify' || m.msgType === 'pay_request' || m.msgType === 'receive_notify') && typeof _buildOrderHistoryText === 'function')
       ? _buildOrderHistoryText(m)
@@ -52837,7 +52958,8 @@ async function generateAutoDiaryOnly(personaId) {
   if (!apiConfig.url || !apiConfig.key || !apiConfig.model) return;
   const p = personas.find(x => x.id == personaId);
   if (!p) return;
-  const memCount = p.memoryCount || 100;
+  const memCount = monoPersonaMemoryLimit(p, 100);
+  monoEnsurePersonaHistoryLoaded(p);
   const recentChat = p.history.slice(-memCount).map(function(m) {
     const msgText = (m && (m.msgType === 'order_notify' || m.msgType === 'pay_request' || m.msgType === 'receive_notify') && typeof _buildOrderHistoryText === 'function')
       ? _buildOrderHistoryText(m)
@@ -76123,7 +76245,7 @@ async function generateDrama() {
         lines.push('铁律2【父母认知】：' + (persona.name||'角色') + ' 和 ' + (up.name||'用户') + ' 是所有孩子的爸爸/妈妈，孩子必须以爸爸/妈妈称呼他们，任何情况下都不能违反。');
         return lines.join('\n');
       })()}, {role:'user', content: prompt}],
-      max_tokens: 800,
+      max_tokens: 1800,
       temperature: 1.0,
       response_format: { type: 'json_object' }
     };
@@ -77459,7 +77581,7 @@ async function generateGrandchild(pid, babyIdx) {
           { role: 'system', content: '你是一个专业的人物生成器，专门生成有真实感、立体感的人物档案。只输出纯JSON对象，不含任何说明文字。' },
           { role: 'user', content: prompt }
         ],
-        max_tokens: 800, temperature: 0.9
+        max_tokens: 1800, temperature: 0.9
       })
     });
     if (!resp.ok) throw new Error('API错误 ' + resp.status);

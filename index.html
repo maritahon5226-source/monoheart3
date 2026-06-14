@@ -30347,6 +30347,52 @@ function _splitRunOnChatMessage(text) {
   }
   return parts.length ? parts : [clean];
 }
+
+// ── API 偶尔不遵守 ### 时的兜底拆泡：避免多句被塞进同一个聊天气泡 ──
+function _monoFallbackSplitSingleApiBubble(text, maxParts) {
+  var clean = String(text || '')
+    .replace(/\r/g, '\n')
+    .replace(/\\n/g, '\n')
+    .replace(/^[\s"'“”‘’「」]+|[\s"'“”‘’「」]+$/g, '')
+    .trim();
+  if (!clean) return [];
+  var limit = Math.max(1, parseInt(maxParts, 10) || 1);
+  if (limit <= 1) return [clean.replace(/\s*\n+\s*/g, ' ')];
+
+  var rawPieces = [];
+  if (/\n/.test(clean)) {
+    rawPieces = clean.split(/\n+/).map(function(x){ return x.trim(); }).filter(Boolean);
+  } else {
+    // 先按强停顿标点拆，再按聊天里常见的逗号/语气停顿拆。保留问号/叹号/省略号的情绪。
+    var tmp = clean
+      .replace(/([！？!?…]+)\s*/g, '$1###')
+      .replace(/[。．；;]+\s*/g, '###')
+      .replace(/[，,、]+\s*/g, '###')
+      .replace(/\s+(?=(但是|可是|不过|而且|然后|所以|其实|反正|等下|等等|先|不是|别|我|你|这|那))/g, '###');
+    rawPieces = tmp.split(/#{3,}/).map(function(x){ return x.trim(); }).filter(Boolean);
+  }
+
+  // 如果还是只有一段，但明显太长，就按语气词/转折词再切一次。
+  if (rawPieces.length <= 1 && clean.length > 22) {
+    var marked = clean
+      .replace(/(但是|可是|不过|而且|然后|所以|其实|反正|等下|等等|先别|不是我说|我刚刚|你真的|你这|那你)/g, '###$1')
+      .replace(/([啦吧呀啊呢嘛哦哎诶唉哈])(?=(我|你|他|她|这|那|别|先|再|也|又|但|可|还|要|会|想|能|就))/g, '$1###');
+    rawPieces = marked.split(/#{3,}/).map(function(x){ return x.trim(); }).filter(Boolean);
+  }
+
+  var out = [];
+  rawPieces.forEach(function(piece) {
+    var p = String(piece || '').trim();
+    if (!p) return;
+    // 避免把“你”“啊”这种单字碎片单独成泡，合并到上一条。
+    if (out.length && p.length <= 1) out[out.length - 1] += p;
+    else out.push(p);
+  });
+
+  if (out.length <= 1) return [clean.replace(/\s*\n+\s*/g, ' ')];
+  return out.slice(0, limit);
+}
+
 function _normalizeChatReplyMessages(rawContent, opts) {
   opts = opts || {};
   const formatOverride = _detectChatFormattingOverride(opts.styleContext || opts.formatContext || '');
@@ -30356,10 +30402,11 @@ function _normalizeChatReplyMessages(rawContent, opts) {
   // exactApiParts：主聊天回复已经在 prompt 里要求 API 直接生成 N 条消息。
   // 这里不能再按标点/长度二次拆分，否则会变回“一段长文被切成几条”。
   if (opts.exactApiParts) {
-    if (parts.length <= 1 && /\n/.test(cleaned)) {
-      parts = cleaned.split(/\n+/).map(function(s) { return s.trim(); }).filter(Boolean);
-    }
     const maxPartsExact = opts.maxParts || parts.length || 1;
+    // 正常情况：API 用 ### 主动分条；异常情况：API 把多句塞进一条时，前端兜底拆成多条真实气泡。
+    if (parts.length <= 1 && cleaned) {
+      parts = _monoFallbackSplitSingleApiBubble(cleaned, maxPartsExact);
+    }
     return parts.map(function(part) {
       let line = monoStripChatTimeLabelText(String(part || '').trim());
       line = line.replace(/^\s*(?:\d+[.、)]|[-*•])\s*/g, '');
@@ -46310,6 +46357,9 @@ ${_buildPersonaIdentityPrompt(p)}
    - 如果只发 1 条，不要使用 ###。如果发多条，直接用 ### 分隔每条真实聊天气泡。
    - 你的目标不是控制条数，而是让角色这一轮说完整、说自然、说得像活人。
 4. 【API 直接生成完整 range 内回复】你必须在同一次回复里直接生成 ${minReply} 到 ${maxReply} 条之间的自然聊天气泡。最少值、最多值、以及中间值都允许被选中；不要先写一段长文再让系统切开。每一条都要能独立作为一条消息发出去。
+   - ⚠️ 如果你决定发多条，输出格式必须是：第一条###第二条###第三条。
+   - ⚠️ 禁止把多个短句、多个分句、多个问题塞进同一个气泡；一句话该停顿就直接用 ### 变成下一条气泡。
+   - ⚠️ 禁止用换行、空格、逗号或句号假装分条；真正分条只能使用 ###。
 5. 禁止在不同消息里重复同一个意思或反复表达同一种情绪。
 5.5. 绝对不要把任何系统时间标记当作台词输出；禁止出现类似 [6月4 day 22:58] 睡不着？ 这种格式。
 6. 如果对话告一段落，角色可以根据人设主动延伸——分享自己的事、抛出新话题、发出疑问，方式必须符合这个角色的性格。
@@ -51131,7 +51181,7 @@ ${lastUserText || '（无）'}
     const text = await scriptCallChatApi([
       { role: 'system', content: sysPrompt },
       { role: 'user', content: '请根据【用户本轮输入/选择】和完整剧情记忆继续生成下一段剧情。' }
-    ], { temperature: 0.86, max_tokens: 8000 });
+    ], { temperature: 0.86, max_tokens: 18000 });
     const json = scriptNormalizeStoryJson(scriptParseJsonFromAi(text, null, 'object'), myChar.name);
     if (json.narrator) {
       document.getElementById('scriptNarrator').textContent = json.narrator;

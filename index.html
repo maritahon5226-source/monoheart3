@@ -28823,6 +28823,9 @@ async function regenerateMsg(idx) {
     const data = await response.json();
     const replyText = _extractAssistantMessageContent(data);
     let messages = replyText.split('###').map(s=>s.trim()).filter(s=>s);
+    if (typeof _monoSplitTextIntoSeparateChatBubbles === 'function') {
+      messages = messages.flatMap(function(m){ return _monoSplitTextIntoSeparateChatBubbles(m, max回复); });
+    }
     // 微信模式下：强制每条消息去除换行
     if (isWechatMode) {
       messages = messages.map(m => m.replace(/[\r\n]+/g, ''));
@@ -30347,6 +30350,24 @@ function _splitRunOnChatMessage(text) {
   }
   return parts.length ? parts : [clean];
 }
+function _monoSplitTextIntoSeparateChatBubbles(text, maxParts) {
+  var clean = String(text == null ? '' : text)
+    .replace(/\\n/g, '\n')
+    .replace(/<br\s*\/?\s*>/gi, '\n')
+    .replace(/\r/g, '\n')
+    .trim();
+  if (!clean) return [];
+  var limit = Math.max(1, parseInt(maxParts, 10) || 1);
+  var parts = clean.split(/#{3,}/).map(function(x){ return String(x || '').trim(); }).filter(Boolean);
+  if (parts.length <= 1) {
+    parts = clean.split(/\n+/).map(function(x){ return String(x || '').trim(); }).filter(Boolean);
+  }
+  if (!parts.length) return [];
+  return parts.map(function(part){
+    return String(part || '').replace(/\s*\n+\s*/g, ' ').replace(/[ \t]{2,}/g, ' ').trim();
+  }).filter(Boolean).slice(0, limit);
+}
+
 function _normalizeChatReplyMessages(rawContent, opts) {
   opts = opts || {};
   const formatOverride = _detectChatFormattingOverride(opts.styleContext || opts.formatContext || '');
@@ -30367,27 +30388,20 @@ function _normalizeChatReplyMessages(rawContent, opts) {
       return line;
     }).filter(Boolean).slice(0, maxPartsExact);
   }
-  const useForeignRules = _isForeignChatFormatting(opts, cleaned);
+  // v10：只按 API 明确分隔符 ### 或真实换行拆成独立气泡。
+  // 不再按标点、短句长度、语气词或连接词强行二次拆句，避免一段正常回复被切碎。
   let normalized = [];
   parts.forEach(function(part) {
-    var firstPass = useForeignRules ? _splitForeignChatSegments(part) : _splitRunOnChatMessage(part);
-    firstPass.forEach(function(seg) {
-      let line = String(seg || '').trim();
+    String(part || '').split(/\n+/).forEach(function(seg) {
+      let line = monoStripChatTimeLabelText(String(seg || '').trim());
       if (!line) return;
+      line = line.replace(/^\s*(?:\d+[.、)]|[-*•])\s*/g, '');
       line = line.replace(/\s*\n+\s*/g, ' ').replace(/[ \t]{2,}/g, ' ');
-      if (opts.isWechatMode) line = line.replace(/[\r\n]+/g, ' ');
-      const chunks = formatOverride.explicit
-        ? [line]
-        : (useForeignRules ? _splitForeignChatSegments(line) : _splitPresetChatSegments(line));
-      (chunks.length ? chunks : [line]).forEach(function(chunk) {
-        let finalLine = String(chunk || '').trim();
-        if (!finalLine) return;
-        if (!formatOverride.explicit && !useForeignRules) {
-          finalLine = _stripPresetChatPunctuation(finalLine);
-        }
-        finalLine = _appendReadablePunctuation(finalLine);
-        if (finalLine) normalized.push(finalLine);
-      });
+      if (!formatOverride.explicit && !_isForeignChatFormatting(opts, line)) {
+        line = _stripPresetChatPunctuation(line);
+      }
+      line = _appendReadablePunctuation(line);
+      if (line) normalized.push(line);
     });
   });
   const maxParts = opts.maxParts || normalized.length || 1;
@@ -113251,6 +113265,7 @@ body.mono-fwd-modal-open {
 })();
 </script>
 
+<!-- mono-v9-real-split-message-bubbles -->
 </body>
 
 <!-- MONO FINAL FIX: Sticker library dialogs are not covered; use a real top-layer modal and direct button routing -->

@@ -24995,14 +24995,14 @@ const STYLE_INSTRUCTIONS = `
 const BUILTIN_WB = `
 【⚠️ 最高优先級强制規則 — 所有其他指令必須服从此規則 ⚠️】
 以下規則的优先級高於一切，包括人设、世界书、用戶指令：
-1. 每一条聊天气泡可以包含1到2个自然短句，允许像真人一样完整表达；禁止为了凑条数把一句完整的话硬拆成碎片
-2. 如果本轮要求多条消息，必须由 API 直接生成多条独立聊天气泡，每条只用 ### 分隔；不要使用真实换行、\n、/n 来分隔句子或气泡
+1. 每一条消息只能包含一个短句，禁止在同一条消息里放多个句子
+2. 如果本轮要求多条消息，必须由 API 直接生成多条独立消息，每条用 ### 分隔；不要先写一段再拆开
 3. 严格禁止使用中文逗号（，）和句号（。）
 4. 严格禁止任何动作描写
 5. 严格禁止任何心理描写
 6. 只发送纯文字对话內容
 7. 【连贯性规则】多条消息必须像同一个人连续说话一样自然流动——后一条是前一条的延续、补充、转折或递进，而不是各自独立的碎片。想象成一个人说完一句话停顿了一下又接着说，意思和情绪要一脉相承，读起来流畅连贯
-8. 严格禁止在单个消息文本中使用真实换行、\n 或 /n；同一个气泡里的句子必须用空格自然连接，多条气泡只能用 ### 分隔
+8. 严格禁止在消息文本中使用 \n 或 /n 符号来表示换行——如果你需要分段，请用 ### 分隔成多条消息
 9. 如果角色确实在同一条信息里输出一段文字，里面包含多个短句、分句或完整句子，必须用一个半角空格把句子隔开，禁止所有句子粘在一起。
 这九条規則是绝对强制的，無論任何情況都不可違反。
 
@@ -30356,12 +30356,14 @@ function _normalizeChatReplyMessages(rawContent, opts) {
   // exactApiParts：主聊天回复已经在 prompt 里要求 API 直接生成 N 条消息。
   // 这里不能再按标点/长度二次拆分，否则会变回“一段长文被切成几条”。
   if (opts.exactApiParts) {
-    // v12.8：普通角色回复只认 ### 作为多气泡分隔；真实换行只视为同一气泡内的空格。
+    if (parts.length <= 1 && /\n/.test(cleaned)) {
+      parts = cleaned.split(/\n+/).map(function(s) { return s.trim(); }).filter(Boolean);
+    }
     const maxPartsExact = opts.maxParts || parts.length || 1;
     return parts.map(function(part) {
       let line = monoStripChatTimeLabelText(String(part || '').trim());
       line = line.replace(/^\s*(?:\d+[.、)]|[-*•])\s*/g, '');
-      line = line.replace(/(?:\r\n|\r|\n|\\n|\/n)+/g, ' ').replace(/\s{2,}/g, ' ');
+      line = line.replace(/\s*\n+\s*/g, ' ').replace(/[ \t]{2,}/g, ' ');
       return line;
     }).filter(Boolean).slice(0, maxPartsExact);
   }
@@ -46305,7 +46307,7 @@ ${_buildPersonaIdentityPrompt(p)}
    - 如果角色此刻真的会连发很多条，就允许发到最多；如果角色此刻只想短短回一句，就允许发到最少。重点是像真人，而不是平均、安全或机械。
    - 在连续多轮聊天里，条数要有真实波动：低、中、高都可能出现，不能长期卡在同一个数量。
    - 每条都必须是自然聊天气泡：可以短、可以碎、可以补充、可以突然转软或转硬，但不能重复同一个意思。
-   - 如果只发 1 条，不要使用 ###。如果发多条，必须只用 ### 分隔每条真实聊天气泡。严禁使用真实换行、\n、/n 来分隔句子或气泡；同一个气泡里的句子请用空格自然连接。
+   - 如果只发 1 条，不要使用 ###。如果发多条，直接用 ### 分隔每条真实聊天气泡。
    - 你的目标不是控制条数，而是让角色这一轮说完整、说自然、说得像活人。
 4. 【API 直接生成完整 range 内回复】你必须在同一次回复里直接生成 ${minReply} 到 ${maxReply} 条之间的自然聊天气泡。最少值、最多值、以及中间值都允许被选中；不要先写一段长文再让系统切开。每一条都要能独立作为一条消息发出去。
 5. 禁止在不同消息里重复同一个意思或反复表达同一种情绪。
@@ -46314,7 +46316,7 @@ ${_buildPersonaIdentityPrompt(p)}
 7. 允许并鼓励角色展现细腻的情绪层次：轻微的不耐烦、隐约的开心、说了一半又收回去、突然沉默或简短——这些都比永远热情更真实。
 8. 角色有记忆，可以呼应用户之前说过的细节，体现"我有在听"。
 8.2. 如果最近消息里出现了图片、表情包、模拟语音、外卖卡等特殊消息，要把它们当成已经真实发生的聊天事件，自然接话、关心、吐槽或追问，不要装作没看到。
-8.5. 默认消息风格是自然聊天气泡：每个气泡可以是1到2个自然短句，允许表达完整，不要把一句完整的话硬拆成很多碎片。多条气泡只能用 ### 分隔；禁止在同一个气泡里使用真实换行。
+8.5. 默认消息风格是短句分开发，尽量不要用逗号和句号；问号、感叹号、省略号可以保留来表达情绪。除非你的人设或世界书明确要求别的格式，否则都按这个默认风格来写。不要先写长段再拆；生成时就按第3条由你自己判断出的消息数量来写。
 8.6. 不要总是用反问来推进对话，尽量少用“是……还是……”“要不要……”“有没有……”这种句式；能直接表达情绪、判断或态度时，就直接说。
 8.7. 禁止反问式复述用户：不要把用户刚刚的话换成“你就这么……？”“你现在是在……？”“所以我就是……？”“那你要我……？”这种反问。反问只能用于角色真实情绪爆发，不能当作复述用户的开场。
 9. 【线下连续性】如果你的记忆里存在近期线下互动、线下剧情总结、见面时发生过的事，你必须把它们当作真实已发生事件来理解当前私聊。只要用户提到相关情绪、约定、场景或延续性话题，你都要能自然接住，绝不能表现得像完全忘记了线下发生过什么。
@@ -112957,561 +112959,190 @@ body.mono-fwd-modal-open {
 </script>
 
 
-
-<!-- MONO HOTFIX v12.5: Multi-world data isolation + chat persona anti-overlap/anti-clear guard -->
-<script id="mono-multiworld-data-isolation-v125">
-(function(){
-  'use strict';
-  if (window.__monoMultiWorldDataIsolationV125) return;
-  window.__monoMultiWorldDataIsolationV125 = true;
-
-  function rawLS(){ return window._monoRawLocalStorage || window.localStorage; }
-  function rawGet(k){ try { return rawLS().getItem(k); } catch(e){ return null; } }
-  function rawSet(k,v){ try { rawLS().setItem(k, v); } catch(e){} try { if (window._idb) { var tx = window._idb.transaction('kv','readwrite'); tx.objectStore('kv').put(v,k); } } catch(e){} }
-  function rawRemove(k){ try { rawLS().removeItem(k); } catch(e){} try { if (window._idb) { var tx = window._idb.transaction('kv','readwrite'); tx.objectStore('kv').delete(k); } } catch(e){} }
-  function parse(raw, fallback){ try { var x = JSON.parse(raw == null ? '' : raw); return x == null ? fallback : x; } catch(e){ return fallback; } }
-  function isEnabled(){ return rawGet('mono_multiworld_enabled') === 'true' || (function(){ try { return window.localStorage.getItem('mono_multiworld_enabled') === 'true'; } catch(e){ return false; } })(); }
-  function activeId(){ return String(rawGet('mono_multiworld_active') || (function(){ try { return window.localStorage.getItem('mono_multiworld_active'); } catch(e){ return ''; } })() || 'world_1'); }
-  function mwKey(worldId, baseKey){ return 'mono_mw_' + String(worldId || 'world_1') + '_' + String(baseKey).replace(/^mono_/, ''); }
-  function safeArrayRaw(raw){ var arr = parse(raw, []); return Array.isArray(arr) ? arr : []; }
-  function now(){ return String(Date.now()); }
-
-  /* 这些是聊天软件最容易错乱/丢失的主数据；动态 history/bg 由 saveData 原流程保存后再跟随当前世界前缀。 */
-  var CHAT_BASE_KEYS = [
-    'mono_personas',
-    'mono_groups',
-    'mono_current_chat_id',
-    'mono_offline_sessions',
-    'mono_offline_settings',
-    'mono_blackbox_records',
-    'mono_friend_circles',
-    'mono_moments_posts',
-    'mono_role_phone_records',
-    'mono_location_traces',
-    'mono_loc_char_locations',
-    'mono_decrypt_cases',
-    'mono_script_sessions'
-  ];
-
-  function mirrorBaseKeyToWorld(worldId, baseKey){
-    if (!isEnabled()) return;
-    var exact = mwKey(worldId, baseKey);
-    var val = null;
-    try { val = window.localStorage.getItem(baseKey); } catch(e) {}
-    if (val == null) val = rawGet(exact);
-    if (val == null) return;
-    rawSet(exact, val);
-    rawSet(exact + '_backup_v125', val);
-    rawSet(exact + '_saved_at_v125', now());
-  }
-
-  function mirrorCurrentChatData(reason){
-    if (!isEnabled()) return;
-    var wid = activeId();
-    try {
-      /* 先让原保存流程把顶层 personas/groups/history/bg 写入“当前世界前缀 key”。 */
-      if (typeof saveData === 'function' && !window.__monoMwSavingNow) {
-        window.__monoMwSavingNow = true;
-        try { saveData(); } finally { window.__monoMwSavingNow = false; }
-      }
-    } catch(e) {}
-    CHAT_BASE_KEYS.forEach(function(k){ mirrorBaseKeyToWorld(wid, k); });
-    rawSet('mono_mw_' + wid + '_last_snapshot_reason_v125', reason || 'auto');
-  }
-
-  function initializeEmptyWorldIfNeeded(worldId){
-    if (!isEnabled()) return;
-    var pKey = mwKey(worldId, 'mono_personas');
-    var gKey = mwKey(worldId, 'mono_groups');
-    var pRaw = rawGet(pKey);
-    var backup = rawGet(pKey + '_backup_v125');
-    if (pRaw == null && backup != null) {
-      rawSet(pKey, backup);
-      pRaw = backup;
-    }
-    /* 只允许 world_1 从旧无前缀 mono_personas 迁移一次；其他新世界绝不继承旧世界角色。 */
-    if (pRaw == null) {
-      if (String(worldId) === 'world_1') {
-        var legacy = rawGet('mono_personas');
-        rawSet(pKey, legacy != null ? legacy : '[]');
-      } else {
-        rawSet(pKey, '[]');
-      }
-    }
-    if (rawGet(gKey) == null) rawSet(gKey, String(worldId) === 'world_1' && rawGet('mono_groups') != null ? rawGet('mono_groups') : '[]');
-  }
-
-  function loadActiveChatDataIntoRuntime(reason){
-    if (!isEnabled()) return;
-    var wid = activeId();
-    initializeEmptyWorldIfNeeded(wid);
-    var pRaw = rawGet(mwKey(wid, 'mono_personas'));
-    var gRaw = rawGet(mwKey(wid, 'mono_groups'));
-    var ps = safeArrayRaw(pRaw);
-    var gs = safeArrayRaw(gRaw);
-
-    /* 关键：同步写入 proxy 当前 key，避免旧代码读到无前缀 mono_personas 或上一世界缓存。 */
-    try { window.localStorage.setItem('mono_personas', JSON.stringify(ps)); } catch(e) {}
-    try { window.localStorage.setItem('mono_groups', JSON.stringify(gs)); } catch(e) {}
-    try { if (typeof personas !== 'undefined') personas = ps; } catch(e) {}
-    try { window.personas = ps; } catch(e) {}
-    try { if (typeof groups !== 'undefined') groups = gs; } catch(e) {}
-    try { window.groups = gs; } catch(e) {}
-
-    /* 如果 currentId 指向了别的世界的角色，立即清掉，防止进入空世界还显示旧聊天。 */
-    try {
-      var ok = ps.some(function(p){ return p && String(p.id) === String(currentId); });
-      if (!ok) currentId = ps[0] && ps[0].id ? ps[0].id : null;
-    } catch(e) {}
-
-    setTimeout(function(){
-      try { if (typeof renderPersonaList === 'function') renderPersonaList(); } catch(e) {}
-      try { if (typeof renderChatList === 'function') renderChatList(); } catch(e) {}
-      try { if (typeof renderMessages === 'function') renderMessages(); } catch(e) {}
-      try { if (typeof renderGroups === 'function') renderGroups(); } catch(e) {}
-      try { if (typeof renderCcRoomDrawer === 'function') renderCcRoomDrawer(); } catch(e) {}
-      try { if (typeof renderRolePhoneDrawer === 'function') renderRolePhoneDrawer(); } catch(e) {}
-    }, 60);
-    rawSet('mono_mw_' + wid + '_loaded_at_v125', now());
-  }
-
-  /* 切换世界前先保存旧世界。用 pointerdown/touchstart 抢在旧 click handler 之前执行，避免 click handler 先改 active。 */
-  function preSwitchSnapshot(e){
-    try {
-      var btn = e.target && e.target.closest && e.target.closest('[data-mw-switch], #mwSwitchConfirm, [data-final-ok]');
-      if (!btn) return;
-      window.__monoMwSwitchingFromV125 = activeId();
-      mirrorCurrentChatData('before-switch');
-    } catch(err) {}
-  }
-  document.addEventListener('pointerdown', preSwitchSnapshot, true);
-  document.addEventListener('touchstart', preSwitchSnapshot, true);
-  document.addEventListener('mousedown', preSwitchSnapshot, true);
-
-  /* 包装 saveData：保存角色时一定镜像到当前世界，不再只停留在某个缓存层。 */
-  function installSaveWrap(){
-    try {
-      var fn = (typeof saveData !== 'undefined') ? saveData : window.saveData;
-      if (typeof fn !== 'function' || fn.__monoMwIsolationV125) return;
-      var wrapped = function(){
-        var ret = fn.apply(this, arguments);
-        if (!window.__monoMwSavingNow) {
-          window.__monoMwSavingNow = true;
-          try { CHAT_BASE_KEYS.forEach(function(k){ mirrorBaseKeyToWorld(activeId(), k); }); }
-          finally { window.__monoMwSavingNow = false; }
-        }
-        return ret;
-      };
-      wrapped.__monoMwIsolationV125 = true;
-      wrapped.__monoOriginal = fn;
-      try { saveData = wrapped; } catch(e) {}
-      try { window.saveData = wrapped; } catch(e) {}
-    } catch(e) {}
-  }
-
-  /* 包装 mwSwitchWorld：凡是通过函数切换，先保存当前世界。 */
-  function installSwitchWrap(){
-    try {
-      var fn = (typeof mwSwitchWorld !== 'undefined') ? mwSwitchWorld : window.mwSwitchWorld;
-      if (typeof fn !== 'function' || fn.__monoMwIsolationV125) return;
-      var wrapped = function(worldId){
-        mirrorCurrentChatData('mwSwitchWorld-wrap');
-        return fn.apply(this, arguments);
-      };
-      wrapped.__monoMwIsolationV125 = true;
-      wrapped.__monoOriginal = fn;
-      try { mwSwitchWorld = wrapped; } catch(e) {}
-      try { window.mwSwitchWorld = wrapped; } catch(e) {}
-    } catch(e) {}
-  }
-
-  window.monoForceReloadActiveWorldData = function(){ loadActiveChatDataIntoRuntime('manual'); };
-  window.monoSnapshotCurrentWorldData = function(){ mirrorCurrentChatData('manual'); };
-
-  installSaveWrap();
-  installSwitchWrap();
-  if (typeof afterDB === 'function') {
-    try { afterDB(function(){ installSaveWrap(); installSwitchWrap(); loadActiveChatDataIntoRuntime('afterDB'); }); } catch(e) {}
-  }
-  document.addEventListener('DOMContentLoaded', function(){ installSaveWrap(); installSwitchWrap(); loadActiveChatDataIntoRuntime('DOMContentLoaded'); });
-  window.addEventListener('pagehide', function(){ mirrorCurrentChatData('pagehide'); });
-  window.addEventListener('beforeunload', function(){ mirrorCurrentChatData('beforeunload'); });
-  setTimeout(function(){ installSaveWrap(); installSwitchWrap(); loadActiveChatDataIntoRuntime('t300'); }, 300);
-  setTimeout(function(){ installSaveWrap(); installSwitchWrap(); loadActiveChatDataIntoRuntime('t1200'); }, 1200);
-})();
-</script>
-
-
-
-<!-- MONO HOTFIX v12.6: Chat role data anti-loss + strict world snapshot recovery -->
-<script id="mono-chat-persona-loss-guard-v126">
-(function(){
-  'use strict';
-  if (window.__monoChatPersonaLossGuardV126) return;
-  window.__monoChatPersonaLossGuardV126 = true;
-
-  function ls(){ return window._monoRawLocalStorage || window.localStorage; }
-  function get(k){ try { return ls().getItem(k); } catch(e){ try { return window.localStorage.getItem(k); } catch(_e){ return null; } } }
-  function set(k,v){
-    try { ls().setItem(k, v); } catch(e) { try { window.localStorage.setItem(k, v); } catch(_e){} }
-    try { if (window._idb) { var tx = window._idb.transaction('kv','readwrite'); tx.objectStore('kv').put(v,k); } } catch(e) {}
-  }
-  function del(k){
-    try { ls().removeItem(k); } catch(e) { try { window.localStorage.removeItem(k); } catch(_e){} }
-    try { if (window._idb) { var tx = window._idb.transaction('kv','readwrite'); tx.objectStore('kv').delete(k); } } catch(e) {}
-  }
-  function parse(raw, fallback){ try { var v = JSON.parse(raw == null ? '' : raw); return v == null ? fallback : v; } catch(e){ return fallback; } }
-  function isArr(x){ return Array.isArray(x); }
-  function now(){ return Date.now ? Date.now() : +new Date(); }
-  function enabled(){
-    try { if (window.mwIsEnabled && window.mwIsEnabled()) return true; } catch(e){}
-    return get('mono_multiworld_enabled') === 'true';
-  }
-  function activeWorld(){
-    try { if (window.mwGetActiveId) return String(window.mwGetActiveId() || 'world_1'); } catch(e){}
-    var id = get('mono_mw_active_id') || get('mono_active_world_id') || get('mono_current_world_id');
-    return String(id || 'world_1');
-  }
-  function personasRef(){
-    try { if (typeof personas !== 'undefined' && Array.isArray(personas)) return personas; } catch(e){}
-    if (Array.isArray(window.personas)) return window.personas;
-    return [];
-  }
-  function groupsRef(){
-    try { if (typeof groups !== 'undefined' && Array.isArray(groups)) return groups; } catch(e){}
-    if (Array.isArray(window.groups)) return window.groups;
-    return [];
-  }
-  function worldKey(wid, base){ return 'mono_mw_' + String(wid || activeWorld()) + '_' + String(base).replace(/^mono_/, ''); }
-  function histKey(wid, id){ return worldKey(wid, 'mono_hist_' + id); }
-  function bgKey(wid, id){ return worldKey(wid, 'mono_bg_' + id); }
-  function slimPersonas(list, wid){
-    return (Array.isArray(list) ? list : []).map(function(p){
-      var o = Object.assign({}, p || {});
-      if (!o.id) o.id = 'persona_' + now() + '_' + Math.random().toString(36).slice(2,8);
-      if (o.chatBgImage && o.chatBgImage !== '__ref__') {
-        set(bgKey(wid, o.id), o.chatBgImage);
-        set('mono_bg_' + o.id, o.chatBgImage);
-      }
-      if (Array.isArray(o.history)) {
-        var histJson = JSON.stringify((typeof window.monoSlimChatHistoryForStorage === 'function') ? window.monoSlimChatHistoryForStorage(o.id, o.history) : o.history);
-        if (o.history.length) {
-          set(histKey(wid, o.id), histJson);
-          set('mono_hist_' + o.id, histJson);
-        } else {
-          del(histKey(wid, o.id));
-          del('mono_hist_' + o.id);
-        }
-      } else if (o.history === '__hist_ref__' || o.history == null) {
-        var old = get(histKey(wid, o.id)) || get('mono_hist_' + o.id);
-        if (old) { set(histKey(wid, o.id), old); set('mono_hist_' + o.id, old); }
-      }
-      o.chatBgImage = o.chatBgImage ? '__ref__' : (o.chatBgImage || '');
-      o.history = '__hist_ref__';
-      return o;
-    });
-  }
-  function count(list){ return Array.isArray(list) ? list.filter(function(p){ return p && p.id; }).length : 0; }
-  function loadWorldPersonas(wid){ return parse(get(worldKey(wid,'mono_personas')), []); }
-  function loadBasePersonas(){ return parse(get('mono_personas'), []); }
-  function restoreHistAndBg(list, wid){
-    return (Array.isArray(list) ? list : []).map(function(p){
-      var o = Object.assign({}, p || {});
-      if (!o.id) return o;
-      if (o.chatBgImage === '__ref__' || o.chatBgImage == null) o.chatBgImage = get(bgKey(wid,o.id)) || get('mono_bg_' + o.id) || '';
-      if (o.history === '__hist_ref__' || !Array.isArray(o.history)) o.history = parse(get(histKey(wid,o.id)) || get('mono_hist_' + o.id), []);
-      return o;
-    }).filter(function(p){ return p && p.id; });
-  }
-  function backupSuffix(){ return '_backup_v126'; }
-
-  function mirror(reason){
-    var wid = activeWorld();
-    var cur = personasRef();
-    var existing = loadWorldPersonas(wid);
-    var curCount = count(cur);
-    var existingCount = count(existing);
-
-    // 防止页面刚打开、切换世界、保存异常时把已有角色覆盖成空数组。
-    if (enabled() && curCount === 0 && existingCount > 0 && !window.__monoAllowEmptyPersonaSaveV126) {
-      try { console.warn('[mono v12.6] 已拦截一次空角色覆盖保存：', reason, wid, 'existing=', existingCount); } catch(e){}
-      hydrate(wid, 'blocked-empty-save');
-      return false;
-    }
-
-    var slim = slimPersonas(cur, wid);
-    var json = JSON.stringify(slim);
-    set(worldKey(wid,'mono_personas'), json);
-    set(worldKey(wid,'mono_personas') + backupSuffix(), json);
-    set('mono_personas', json);
-    set('mono_personas_backup_v126', json);
-
-    var gJson = JSON.stringify(groupsRef());
-    set(worldKey(wid,'mono_groups'), gJson);
-    set(worldKey(wid,'mono_groups') + backupSuffix(), gJson);
-    set('mono_groups', gJson);
-    set(worldKey(wid,'mono_last_good_saved_at'), String(now()));
-    set(worldKey(wid,'mono_last_good_reason'), String(reason || 'save'));
-    return true;
-  }
-
-  function hydrate(wid, reason){
-    wid = wid || activeWorld();
-    var list = loadWorldPersonas(wid);
-    var used = 'world';
-    if (count(list) === 0) {
-      var bak = parse(get(worldKey(wid,'mono_personas') + backupSuffix()), []);
-      if (count(bak) > 0) { list = bak; used = 'world-backup'; }
-    }
-    // 只有默认世界允许从旧 mono_personas 迁移，避免新世界又混入其他世界。
-    if (count(list) === 0 && String(wid) === 'world_1') {
-      var base = loadBasePersonas();
-      if (count(base) > 0) { list = base; used = 'legacy-base'; }
-    }
-    var full = restoreHistAndBg(list, wid);
-    try { if (typeof personas !== 'undefined') personas = full; } catch(e){}
-    window.personas = full;
-    var g = parse(get(worldKey(wid,'mono_groups')), null);
-    if (!Array.isArray(g)) g = parse(get('mono_groups'), []);
-    try { if (typeof groups !== 'undefined') groups = g; } catch(e){}
-    window.groups = g;
-    if (count(full) > 0) {
-      set('mono_personas', JSON.stringify(slimPersonas(full, wid)));
-      set(worldKey(wid,'mono_personas'), JSON.stringify(slimPersonas(full, wid)));
-    }
-    try {
-      var cid = (typeof currentId !== 'undefined') ? currentId : window.currentId;
-      if (cid && !full.some(function(p){ return p && p.id === cid; })) { if (typeof currentId !== 'undefined') currentId = null; window.currentId = null; }
-    } catch(e){}
-    try { if (typeof renderContactList === 'function') renderContactList(); else if (window.renderContactList) window.renderContactList(); } catch(e){}
-    try { if (typeof renderMessages === 'function') renderMessages(); else if (window.renderMessages) window.renderMessages(); } catch(e){}
-    try { console.log('[mono v12.6] hydrate personas', wid, reason, used, count(full)); } catch(e){}
-    return full;
-  }
-
-  // 包装 saveData：保存后再做世界级强镜像；保存前也防止空数组覆盖。
-  function wrapSave(){
-    var old = null;
-    try { old = (typeof saveData !== 'undefined') ? saveData : window.saveData; } catch(e){ old = window.saveData; }
-    if (!old || old.__monoLossGuardV126) return;
-    var wrapped = function(){
-      var wid = activeWorld();
-      var curCount = count(personasRef());
-      var existingCount = count(loadWorldPersonas(wid));
-      if (enabled() && curCount === 0 && existingCount > 0 && !window.__monoAllowEmptyPersonaSaveV126) {
-        try { console.warn('[mono v12.6] saveData 空覆盖已阻止', wid); } catch(e){}
-        hydrate(wid, 'saveData-empty-block');
-        return;
-      }
-      var r;
-      try { r = old.apply(this, arguments); } catch(err) { try { console.error('[mono v12.6] 原 saveData 报错，仍尝试镜像保存', err); } catch(e){} }
-      mirror('saveData-wrap');
-      return r;
-    };
-    wrapped.__monoLossGuardV126 = true;
-    try { saveData = wrapped; } catch(e){}
-    window.saveData = wrapped;
-  }
-
-  // 包装角色保存，避免刚新建/编辑完还没来得及落盘就切世界或刷新。
-  function wrapPersonaSave(){
-    var old = null;
-    try { old = (typeof savePersona !== 'undefined') ? savePersona : window.savePersona; } catch(e){ old = window.savePersona; }
-    if (!old || old.__monoLossGuardV126) return;
-    var wrapped = function(){
-      var r = old.apply(this, arguments);
-      setTimeout(function(){ mirror('savePersona-wrap'); }, 0);
-      setTimeout(function(){ mirror('savePersona-wrap-late'); }, 300);
-      return r;
-    };
-    wrapped.__monoLossGuardV126 = true;
-    try { savePersona = wrapped; } catch(e){}
-    window.savePersona = wrapped;
-  }
-
-  // 切世界前一定先保存当前世界；进入后页面 reload 前也保存。
-  function wrapWorldSwitch(){
-    var old = null;
-    try { old = (typeof mwSwitchWorld !== 'undefined') ? mwSwitchWorld : window.mwSwitchWorld; } catch(e){ old = window.mwSwitchWorld; }
-    if (old && !old.__monoLossGuardV126) {
-      var wrapped = function(id){ mirror('before-mwSwitchWorld:' + id); return old.apply(this, arguments); };
-      wrapped.__monoLossGuardV126 = true;
-      try { mwSwitchWorld = wrapped; } catch(e){}
-      window.mwSwitchWorld = wrapped;
-    }
-  }
-
-  document.addEventListener('pointerdown', function(ev){
-    var t = ev.target && ev.target.closest ? ev.target.closest('[data-mw-switch], .mw-world-card, .world-card, [onclick*="mwSwitchWorld"]') : null;
-    if (t) mirror('pointerdown-world-switch');
-  }, true);
-  document.addEventListener('click', function(ev){
-    var clearBtn = ev.target && ev.target.closest ? ev.target.closest('[data-mono-allow-empty-persona-save], [onclick*="deletePersona"], [onclick*="clearAllPersona"], [onclick*="executeClearChatHistory"]') : null;
-    if (clearBtn) { window.__monoAllowEmptyPersonaSaveV126 = true; setTimeout(function(){ window.__monoAllowEmptyPersonaSaveV126 = false; }, 3000); }
-  }, true);
-  window.addEventListener('pagehide', function(){ mirror('pagehide'); }, true);
-  window.addEventListener('beforeunload', function(){ mirror('beforeunload'); }, true);
-  document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'hidden') mirror('visibility-hidden'); }, true);
-
-  window.monoForceBackupCurrentWorld = function(){ return mirror('manual-force-backup'); };
-  window.monoRecoverCurrentWorldCharacters = function(){ return hydrate(activeWorld(), 'manual-recover'); };
-  window.monoAllowEmptyPersonaSaveOnce = function(){ window.__monoAllowEmptyPersonaSaveV126 = true; setTimeout(function(){ window.__monoAllowEmptyPersonaSaveV126 = false; }, 3000); };
-
-  function init(){
-    wrapSave(); wrapPersonaSave(); wrapWorldSwitch();
-    if (enabled()) hydrate(activeWorld(), 'startup');
-    setTimeout(function(){ wrapSave(); wrapPersonaSave(); wrapWorldSwitch(); mirror('startup-late'); }, 600);
-    setTimeout(function(){ wrapSave(); wrapPersonaSave(); wrapWorldSwitch(); mirror('startup-later'); }, 1800);
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, {once:true}); else init();
-})();
-</script>
-
-
-
 <script>
-/* MONO v12.7 same-world chat/persona anti-loss guard
-   Fixes: personas/chat history disappearing inside ONE world because saveData() can save an empty runtime array,
-   or remove mono_hist_<id> when the runtime persona has an unhydrated/temporary empty history. */
+// ===================== v12.9 PATCH: Import chat/persona visibility + multi-world sync =====================
 (function(){
-  if (window.__monoSameWorldChatLossGuardV127) return;
-  window.__monoSameWorldChatLossGuardV127 = true;
+  if (window.__monoImportPersonaVisibilityV129) return;
+  window.__monoImportPersonaVisibilityV129 = true;
 
-  const PERSONA_KEY = 'mono_personas';
-  const GROUP_KEY = 'mono_groups';
-  const BACKUP_KEY = 'mono_personas_backup_same_world_v127';
-  const GROUP_BACKUP_KEY = 'mono_groups_backup_same_world_v127';
-  const HIST_BACKUP_PREFIX = 'mono_hist_backup_same_world_v127_';
-
-  function parse(raw, fb){ try { const v = JSON.parse(raw || ''); return v == null ? fb : v; } catch(e){ return fb; } }
-  function getLS(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
-  function setLS(k,v){ try { localStorage.setItem(k, v); } catch(e){} }
-  function removeLS(k){ try { localStorage.removeItem(k); } catch(e){} }
-  function isNonEmptyArrayRaw(raw){ const a = parse(raw, null); return Array.isArray(a) && a.length > 0; }
-  function isHistNonEmptyRaw(raw){ const a = parse(raw, null); return Array.isArray(a) && a.length > 0; }
-  function getRuntimePersonas(){
-    try { if (typeof personas !== 'undefined' && Array.isArray(personas)) return personas; } catch(e){}
-    try { if (Array.isArray(window.personas)) return window.personas; } catch(e){}
+  function rawLS(){
+    try { if (window._monoRawLocalStorage && window._monoRawLocalStorage.getItem) return window._monoRawLocalStorage; } catch(e) {}
+    return window.localStorage;
+  }
+  function parseJson(raw, fallback){
+    try { return raw ? JSON.parse(raw) : fallback; } catch(e) { return fallback; }
+  }
+  function getKey(k){
+    var v = null;
+    try { v = localStorage.getItem(k); } catch(e) {}
+    if ((v == null || v === '') && rawLS() && rawLS() !== localStorage) {
+      try { v = rawLS().getItem(k); } catch(e) {}
+    }
+    return v;
+  }
+  function setKey(k, v){
+    try { localStorage.setItem(k, v); } catch(e) {}
+    try { if (rawLS() && rawLS() !== localStorage) rawLS().setItem(k, v); } catch(e) {}
+    try {
+      if (window._idb && window._idb.transaction) {
+        var tx = window._idb.transaction('kv', 'readwrite');
+        tx.objectStore('kv').put(v, k);
+      }
+    } catch(e) {}
+  }
+  function getActiveWorldId(){
+    try { if (typeof mwGetActiveId === 'function') return String(mwGetActiveId() || 'world_1'); } catch(e) {}
+    return String(getKey('mono_multiworld_active') || 'world_1');
+  }
+  function readHist(p){
+    if (!p) return [];
+    if (Array.isArray(p.history)) return p.history;
+    var id = String(p.id || '');
+    if (!id) return [];
+    return parseJson(getKey('mono_hist_' + id), []);
+  }
+  function normalizePersonasList(list){
+    if (!Array.isArray(list)) return [];
+    var seen = Object.create(null), out = [];
+    list.forEach(function(item, index){
+      if (!item || typeof item !== 'object') return;
+      var p = Object.assign({}, item);
+      if (!p.id) p.id = 'p_import_' + Date.now() + '_' + index + '_' + Math.random().toString(36).slice(2,8);
+      var id = String(p.id);
+      if (seen[id]) return;
+      seen[id] = true;
+      if (!p.name) p.name = p.nickname || p.displayName || '导入角色';
+      if (!p.nickname) p.nickname = p.name;
+      if (!p.persona) p.persona = p.description || p.prompt || '一个简单的角色设定';
+      p.history = readHist(p);
+      out.push(p);
+    });
+    return out;
+  }
+  function slimAndPersist(list){
+    list = normalizePersonasList(list);
+    var slim = list.map(function(p){
+      var s = Object.assign({}, p);
+      var id = String(p.id || '');
+      if (id && Array.isArray(p.history)) {
+        try {
+          if (p.history.length > 0) setKey('mono_hist_' + id, JSON.stringify(p.history));
+        } catch(e) {}
+      }
+      if (id && s.chatBgImage && s.chatBgImage !== '__ref__') {
+        try { setKey('mono_bg_' + id, String(s.chatBgImage)); } catch(e) {}
+        s.chatBgImage = '__ref__';
+      }
+      s.history = '__hist_ref__';
+      return s;
+    });
+    var json = JSON.stringify(slim);
+    setKey('mono_personas', json);
+    setKey('mono_personas_import_backup_v129', json);
+    setKey('mono_personas_v11_recover_latest', json);
+    try {
+      var wid = getActiveWorldId();
+      if (wid) {
+        setKey('mono_mw_' + wid + '_personas', json);
+        setKey('mono_mw_' + wid + '_personas_import_backup_v129', json);
+      }
+    } catch(e) {}
+    try { if (Array.isArray(window.personas)) { window.personas.length = 0; list.forEach(function(p){ window.personas.push(p); }); } else window.personas = list.slice(); } catch(e) {}
+    try { if (typeof personas !== 'undefined' && Array.isArray(personas)) { personas.length = 0; list.forEach(function(p){ personas.push(p); }); } } catch(e) {}
+    return list;
+  }
+  function extractPersonasFromRaw(raw){
+    if (!raw || typeof raw !== 'object') return [];
+    if (raw.chat && Array.isArray(raw.chat.personas)) return raw.chat.personas;
+    if (Array.isArray(raw.personas)) return raw.personas;
+    if (Array.isArray(raw.characters)) return raw.characters;
+    if (raw.data && raw.data.chat && Array.isArray(raw.data.chat.personas)) return raw.data.chat.personas;
     return [];
   }
-  function setRuntimePersonas(arr){
-    if (!Array.isArray(arr)) return;
-    try { personas = arr; } catch(e){}
-    try { window.personas = arr; } catch(e){}
+  function bestVisiblePersonaList(){
+    var candidates = [];
+    function add(label, arr){ if (Array.isArray(arr) && arr.length) candidates.push({ label: label, list: arr }); }
+    add('window.personas', normalizePersonasList(window.personas));
+    try { if (typeof personas !== 'undefined') add('global personas', normalizePersonasList(personas)); } catch(e) {}
+    add('mono_personas', normalizePersonasList(parseJson(getKey('mono_personas'), [])));
+    add('active world', normalizePersonasList(parseJson(getKey('mono_mw_' + getActiveWorldId() + '_personas'), [])));
+    add('import raw', normalizePersonasList(extractPersonasFromRaw(window.__monoLastImportRawV129)));
+    add('import backup', normalizePersonasList(parseJson(getKey('mono_personas_import_backup_v129'), [])));
+    candidates.sort(function(a,b){ return b.list.length - a.list.length; });
+    return candidates.length ? candidates[0].list : [];
   }
-  function getIdsFromRaw(raw){
-    const arr = parse(raw, []);
-    return Array.isArray(arr) ? arr.map(p => p && p.id).filter(Boolean) : [];
-  }
-  function currentWorldId(){
-    try { if (typeof mwGetActiveId === 'function') return mwGetActiveId() || 'world_1'; } catch(e){}
-    try { return localStorage.getItem('mono_multiworld_active') || 'world_1'; } catch(e){}
-    return 'world_1';
-  }
-  function worldPersonaKey(){ return 'mono_mw_' + currentWorldId() + '_personas'; }
-  function worldPersonaBackupKey(){ return 'mono_mw_' + currentWorldId() + '_personas_backup_same_world_v127'; }
-  function histKey(id){ return 'mono_hist_' + id; }
-  function histBackupKey(id){ return HIST_BACKUP_PREFIX + id; }
-
-  function snapshotNonEmpty(){
-    const raw = getLS(PERSONA_KEY);
-    if (isNonEmptyArrayRaw(raw)) {
-      setLS(BACKUP_KEY, raw);
-      setLS(worldPersonaBackupKey(), raw);
-    }
-    const wRaw = getLS(worldPersonaKey());
-    if (isNonEmptyArrayRaw(wRaw)) setLS(worldPersonaBackupKey(), wRaw);
-    const ids = new Set([].concat(getIdsFromRaw(raw), getIdsFromRaw(wRaw), getRuntimePersonas().map(p => p && p.id).filter(Boolean)));
-    ids.forEach(id => {
-      const hr = getLS(histKey(id));
-      if (isHistNonEmptyRaw(hr)) setLS(histBackupKey(id), hr);
-    });
-    const gr = getLS(GROUP_KEY);
-    if (isNonEmptyArrayRaw(gr)) setLS(GROUP_BACKUP_KEY, gr);
-  }
-
-  function restoreIfAccidentallyEmptied(beforePersonasRaw, beforeWorldRaw){
-    const after = getLS(PERSONA_KEY);
-    const backup = getLS(BACKUP_KEY) || getLS(worldPersonaBackupKey()) || beforePersonasRaw || beforeWorldRaw;
-    if ((!isNonEmptyArrayRaw(after)) && isNonEmptyArrayRaw(backup)) {
-      setLS(PERSONA_KEY, backup);
-      setLS(worldPersonaKey(), backup);
-      setRuntimePersonas(parse(backup, []));
-      try { console.warn('[mono v12.7] blocked accidental empty mono_personas overwrite, restored backup.'); } catch(e){}
-    }
-    const ids = new Set([].concat(getIdsFromRaw(getLS(PERSONA_KEY)), getIdsFromRaw(getLS(worldPersonaKey())), getIdsFromRaw(backup)));
-    ids.forEach(id => {
-      const h = getLS(histKey(id));
-      const hb = getLS(histBackupKey(id));
-      // If a previous non-empty chat existed and saveData removed/emptied it, restore it.
-      if ((!isHistNonEmptyRaw(h)) && isHistNonEmptyRaw(hb)) setLS(histKey(id), hb);
-    });
-    const groupsNow = getLS(GROUP_KEY);
-    const groupsBackup = getLS(GROUP_BACKUP_KEY);
-    if ((!isNonEmptyArrayRaw(groupsNow)) && isNonEmptyArrayRaw(groupsBackup)) setLS(GROUP_KEY, groupsBackup);
-  }
-
-  function hydrateRuntimeFromStorageIfNeeded(){
-    const runtime = getRuntimePersonas();
-    if (runtime && runtime.length) return;
-    const raw = getLS(PERSONA_KEY) || getLS(worldPersonaKey()) || getLS(BACKUP_KEY) || getLS(worldPersonaBackupKey());
-    if (isNonEmptyArrayRaw(raw)) setRuntimePersonas(parse(raw, []));
-  }
-
-  // Initial repair on page load.
-  hydrateRuntimeFromStorageIfNeeded();
-  restoreIfAccidentallyEmptied(getLS(PERSONA_KEY), getLS(worldPersonaKey()));
-  snapshotNonEmpty();
-
-  // Wrap saveData: never allow a temporary empty runtime state to destroy same-world data.
-  const oldSaveData = window.saveData || (typeof saveData === 'function' ? saveData : null);
-  if (typeof oldSaveData === 'function') {
-    const guardedSaveData = function(){
-      hydrateRuntimeFromStorageIfNeeded();
-      const beforePersonasRaw = getLS(PERSONA_KEY);
-      const beforeWorldRaw = getLS(worldPersonaKey());
-      snapshotNonEmpty();
-      const runtime = getRuntimePersonas();
-      if ((!runtime || runtime.length === 0) && (isNonEmptyArrayRaw(beforePersonasRaw) || isNonEmptyArrayRaw(beforeWorldRaw) || isNonEmptyArrayRaw(getLS(BACKUP_KEY)))) {
-        restoreIfAccidentallyEmptied(beforePersonasRaw, beforeWorldRaw);
-        return;
+  window.monoImportVisibilitySyncV129 = function(reason){
+    var list = bestVisiblePersonaList();
+    if (!list.length) return false;
+    list = slimAndPersist(list);
+    try { if (typeof renderContactList === 'function') renderContactList(); } catch(e) { try { window.renderContactList && window.renderContactList(); } catch(_) {} }
+    try {
+      var cur = (typeof currentId !== 'undefined') ? currentId : window.currentId;
+      var exists = list.some(function(p){ return String(p.id) === String(cur); });
+      if (!exists && list[0] && list[0].id) {
+        try { currentId = list[0].id; } catch(e) { window.currentId = list[0].id; }
+        if (typeof selectPersona === 'function') selectPersona(list[0].id);
+        else if (window.selectPersona) window.selectPersona(list[0].id);
       }
-      let ret;
-      try { ret = oldSaveData.apply(this, arguments); }
-      finally {
-        restoreIfAccidentallyEmptied(beforePersonasRaw, beforeWorldRaw);
-        snapshotNonEmpty();
+    } catch(e) {}
+    try { if (typeof renderMessages === 'function') renderMessages({ fast:true }); } catch(e) {}
+    try { console.log('[v12.9 import sync] restored personas after import:', reason || '', list.length); } catch(e) {}
+    return true;
+  };
+
+  // Remember the raw JSON the user selected, so old/top-level backup formats can still be recovered after confirmImport().
+  document.addEventListener('change', function(ev){
+    try {
+      var input = ev.target;
+      if (!input || input.type !== 'file' || !input.files || !input.files[0]) return;
+      if (!/import/i.test(String(input.id || input.name || input.getAttribute('onchange') || ''))) return;
+      var file = input.files[0];
+      if (!/\.json$/i.test(file.name || '') && !/json/i.test(file.type || '')) return;
+      var reader = new FileReader();
+      reader.onload = function(e){
+        var raw = parseJson(String(e.target && e.target.result || ''), null);
+        if (raw && typeof raw === 'object') window.__monoLastImportRawV129 = raw;
+      };
+      reader.readAsText(file);
+    } catch(e) {}
+  }, true);
+
+  function wrapConfirmImport(){
+    try {
+      var orig = window.confirmImport;
+      if (typeof orig !== 'function' || orig.__monoV129Wrapped) return;
+      var wrapped = async function(){
+        var result = await orig.apply(this, arguments);
+        // Original import schedules a reload after about 2s; sync immediately before the reload happens.
+        try { window.monoImportVisibilitySyncV129('after confirmImport'); } catch(e) {}
+        setTimeout(function(){ try { window.monoImportVisibilitySyncV129('after confirmImport delayed'); } catch(e) {} }, 250);
+        setTimeout(function(){ try { window.monoImportVisibilitySyncV129('before scheduled reload'); } catch(e) {} }, 1200);
+        return result;
+      };
+      wrapped.__monoV129Wrapped = true;
+      window.confirmImport = wrapped;
+      try { confirmImport = wrapped; } catch(e) {}
+    } catch(e) {}
+  }
+  wrapConfirmImport();
+  document.addEventListener('DOMContentLoaded', wrapConfirmImport);
+  setTimeout(wrapConfirmImport, 0);
+  setTimeout(wrapConfirmImport, 800);
+
+  function autoRestoreOnBoot(){
+    try {
+      var cur = normalizePersonasList(parseJson(getKey('mono_personas'), []));
+      var active = normalizePersonasList(parseJson(getKey('mono_mw_' + getActiveWorldId() + '_personas'), []));
+      var backup = normalizePersonasList(parseJson(getKey('mono_personas_import_backup_v129'), []));
+      if ((!cur.length || !active.length) && backup.length) {
+        slimAndPersist(backup);
+        try { if (typeof renderContactList === 'function') renderContactList(); } catch(e) {}
       }
-      return ret;
-    };
-    try { window.saveData = guardedSaveData; } catch(e){}
-    try { saveData = guardedSaveData; } catch(e){}
+    } catch(e) {}
   }
-
-  // Wrap getPersonaWithBg so missing chat history can recover from backup immediately when opening a chat.
-  const oldGetPersonaWithBg = window.getPersonaWithBg || (typeof getPersonaWithBg === 'function' ? getPersonaWithBg : null);
-  if (typeof oldGetPersonaWithBg === 'function') {
-    const guardedGetPersonaWithBg = function(p){
-      const out = oldGetPersonaWithBg.apply(this, arguments);
-      try {
-        if (out && out.id && (!Array.isArray(out.history) || out.history.length === 0)) {
-          const hb = getLS(histBackupKey(out.id));
-          if (isHistNonEmptyRaw(hb)) {
-            out.history = parse(hb, []);
-            setLS(histKey(out.id), hb);
-          }
-        }
-      } catch(e){}
-      return out;
-    };
-    try { window.getPersonaWithBg = guardedGetPersonaWithBg; } catch(e){}
-    try { getPersonaWithBg = guardedGetPersonaWithBg; } catch(e){}
-  }
-
-  // Backup before app background/refresh.
-  ['visibilitychange','pagehide','beforeunload'].forEach(function(ev){
-    window.addEventListener(ev, function(){ snapshotNonEmpty(); restoreIfAccidentallyEmptied(getLS(PERSONA_KEY), getLS(worldPersonaKey())); }, true);
-  });
+  document.addEventListener('DOMContentLoaded', function(){ setTimeout(autoRestoreOnBoot, 120); });
+  setTimeout(autoRestoreOnBoot, 0);
+  setTimeout(autoRestoreOnBoot, 1200);
 })();
 </script>
 
@@ -115592,29 +115223,6 @@ body.mono-fwd-modal-open {
   }, true);
 })();
 
-
-// v12.8 普通角色回复气泡换行兜底修复层：同一个聊天气泡内禁止真实换行；多气泡只认 ###。
-(function(){
-  function monoNormalizeSingleBubbleTextV128(text) {
-    return String(text == null ? '' : text)
-      .replace(/(?:\r\n|\r|\n|\\n|\/n)+/g, ' ')
-      .replace(/\s{2,}/g, ' ')
-      .trim();
-  }
-  window.monoNormalizeSingleBubbleTextV128 = monoNormalizeSingleBubbleTextV128;
-  try {
-    if (typeof window._normalizeChat回复Messages === 'function' && !window._normalizeChat回复Messages._v128NoNewline) {
-      var oldNormalize = window._normalizeChat回复Messages;
-      var wrapped = function(rawContent, opts) {
-        var out = oldNormalize(rawContent, opts) || [];
-        return out.map(monoNormalizeSingleBubbleTextV128).filter(Boolean);
-      };
-      wrapped._v128NoNewline = true;
-      window._normalizeChat回复Messages = wrapped;
-      try { _normalizeChat回复Messages = wrapped; } catch(e) {}
-    }
-  } catch(e) {}
-})();
 </script>
 
 </html>

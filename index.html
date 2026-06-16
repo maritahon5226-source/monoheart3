@@ -28823,9 +28823,6 @@ async function regenerateMsg(idx) {
     const data = await response.json();
     const replyText = _extractAssistantMessageContent(data);
     let messages = replyText.split('###').map(s=>s.trim()).filter(s=>s);
-    if (typeof _monoSplitTextIntoSeparateChatBubbles === 'function') {
-      messages = messages.flatMap(function(m){ return _monoSplitTextIntoSeparateChatBubbles(m, max回复); });
-    }
     // 微信模式下：强制每条消息去除换行
     if (isWechatMode) {
       messages = messages.map(m => m.replace(/[\r\n]+/g, ''));
@@ -30350,24 +30347,6 @@ function _splitRunOnChatMessage(text) {
   }
   return parts.length ? parts : [clean];
 }
-function _monoSplitTextIntoSeparateChatBubbles(text, maxParts) {
-  var clean = String(text == null ? '' : text)
-    .replace(/\\n/g, '\n')
-    .replace(/<br\s*\/?\s*>/gi, '\n')
-    .replace(/\r/g, '\n')
-    .trim();
-  if (!clean) return [];
-  var limit = Math.max(1, parseInt(maxParts, 10) || 1);
-  var parts = clean.split(/#{3,}/).map(function(x){ return String(x || '').trim(); }).filter(Boolean);
-  if (parts.length <= 1) {
-    parts = clean.split(/\n+/).map(function(x){ return String(x || '').trim(); }).filter(Boolean);
-  }
-  if (!parts.length) return [];
-  return parts.map(function(part){
-    return String(part || '').replace(/\s*\n+\s*/g, ' ').replace(/[ \t]{2,}/g, ' ').trim();
-  }).filter(Boolean).slice(0, limit);
-}
-
 function _normalizeChatReplyMessages(rawContent, opts) {
   opts = opts || {};
   const formatOverride = _detectChatFormattingOverride(opts.styleContext || opts.formatContext || '');
@@ -30388,20 +30367,27 @@ function _normalizeChatReplyMessages(rawContent, opts) {
       return line;
     }).filter(Boolean).slice(0, maxPartsExact);
   }
-  // v10：只按 API 明确分隔符 ### 或真实换行拆成独立气泡。
-  // 不再按标点、短句长度、语气词或连接词强行二次拆句，避免一段正常回复被切碎。
+  const useForeignRules = _isForeignChatFormatting(opts, cleaned);
   let normalized = [];
   parts.forEach(function(part) {
-    String(part || '').split(/\n+/).forEach(function(seg) {
-      let line = monoStripChatTimeLabelText(String(seg || '').trim());
+    var firstPass = useForeignRules ? _splitForeignChatSegments(part) : _splitRunOnChatMessage(part);
+    firstPass.forEach(function(seg) {
+      let line = String(seg || '').trim();
       if (!line) return;
-      line = line.replace(/^\s*(?:\d+[.、)]|[-*•])\s*/g, '');
       line = line.replace(/\s*\n+\s*/g, ' ').replace(/[ \t]{2,}/g, ' ');
-      if (!formatOverride.explicit && !_isForeignChatFormatting(opts, line)) {
-        line = _stripPresetChatPunctuation(line);
-      }
-      line = _appendReadablePunctuation(line);
-      if (line) normalized.push(line);
+      if (opts.isWechatMode) line = line.replace(/[\r\n]+/g, ' ');
+      const chunks = formatOverride.explicit
+        ? [line]
+        : (useForeignRules ? _splitForeignChatSegments(line) : _splitPresetChatSegments(line));
+      (chunks.length ? chunks : [line]).forEach(function(chunk) {
+        let finalLine = String(chunk || '').trim();
+        if (!finalLine) return;
+        if (!formatOverride.explicit && !useForeignRules) {
+          finalLine = _stripPresetChatPunctuation(finalLine);
+        }
+        finalLine = _appendReadablePunctuation(finalLine);
+        if (finalLine) normalized.push(finalLine);
+      });
     });
   });
   const maxParts = opts.maxParts || normalized.length || 1;
@@ -51145,7 +51131,7 @@ ${lastUserText || '（无）'}
     const text = await scriptCallChatApi([
       { role: 'system', content: sysPrompt },
       { role: 'user', content: '请根据【用户本轮输入/选择】和完整剧情记忆继续生成下一段剧情。' }
-    ], { temperature: 0.86, max_tokens: 18000 });
+    ], { temperature: 0.86, max_tokens: 8000 });
     const json = scriptNormalizeStoryJson(scriptParseJsonFromAi(text, null, 'object'), myChar.name);
     if (json.narrator) {
       document.getElementById('scriptNarrator').textContent = json.narrator;
@@ -110255,6 +110241,173 @@ body.mono-fwd-modal-open {
 </script>
 
 
+<script>
+/* === MONO MULTIWORLD SWITCH FINAL FIX v3 ===
+   参考 05-19 版本对齐多世界切换：
+   - 世界列表同时从 raw localStorage、proxy localStorage 读取并合并
+   - 点击按钮时直接信任 data-mw-switch 的世界 id
+   - 若世界列表暂时缺失该 id，会先补回世界列表再切换
+   - active / enabled 同时写回 raw / proxy / IDB，确保刷新后仍停留在目标世界
+*/
+(function(){
+  'use strict';
+  if (window.__monoMultiWorldSwitchFinalFixV3) return;
+  window.__monoMultiWorldSwitchFinalFixV3 = true;
+
+  function rawLS(){ return window._monoRawLocalStorage || window.localStorage; }
+  function parseList(raw){
+    try {
+      var arr = JSON.parse(raw || '[]');
+      return Array.isArray(arr) ? arr : [];
+    } catch(e){
+      return [];
+    }
+  }
+  function uniqMerge(a, b){
+    var map = {};
+    var out = [];
+    (a || []).concat(b || []).forEach(function(w){
+      if (!w || !w.id) return;
+      var id = String(w.id);
+      if (!map[id]) {
+        map[id] = Object.assign({}, w, { id: id });
+        out.push(map[id]);
+      } else {
+        Object.assign(map[id], w, { id: id });
+      }
+    });
+    return out;
+  }
+  function getWorldsMerged(){
+    var raw = [];
+    var prox = [];
+    try { raw = parseList(rawLS().getItem('mono_multiworld_worlds')); } catch(e) {}
+    try { prox = parseList(window.localStorage.getItem('mono_multiworld_worlds')); } catch(e) {}
+    return uniqMerge(raw, prox);
+  }
+  function saveWorldsEverywhere(worlds){
+    var json = JSON.stringify(worlds || []);
+    try { rawLS().setItem('mono_multiworld_worlds', json); } catch(e) {}
+    try { window.localStorage.setItem('mono_multiworld_worlds', json); } catch(e) {}
+    try {
+      if (window._idb) {
+        var tx = window._idb.transaction('kv', 'readwrite');
+        tx.objectStore('kv').put(json, 'mono_multiworld_worlds');
+      }
+    } catch(e) {}
+  }
+  function ensureWorldExists(worldId, fallbackName){
+    worldId = String(worldId || '').trim();
+    if (!worldId) return null;
+    var worlds = getWorldsMerged();
+    var world = worlds.find(function(w){ return w && String(w.id) === worldId; });
+    if (!world) {
+      world = { id: worldId, name: fallbackName || '未命名世界', desc: '', userPersona: '', createdAt: Date.now() };
+      worlds.push(world);
+    }
+    saveWorldsEverywhere(worlds);
+    return world;
+  }
+  function writeActive(worldId, done){
+    worldId = String(worldId || '').trim();
+    try { rawLS().setItem('mono_multiworld_enabled', 'true'); } catch(e) {}
+    try { rawLS().setItem('mono_multiworld_active', worldId); } catch(e) {}
+    try { window.localStorage.setItem('mono_multiworld_enabled', 'true'); } catch(e) {}
+    try { window.localStorage.setItem('mono_multiworld_active', worldId); } catch(e) {}
+    try { if (window.__monoRealLSSet) window.__monoRealLSSet('mono_multiworld_active', worldId); } catch(e) {}
+    var finished = false;
+    function finish(){
+      if (finished) return;
+      finished = true;
+      if (typeof done === 'function') done();
+    }
+    try {
+      if (window._idb) {
+        var tx = window._idb.transaction('kv', 'readwrite');
+        var st = tx.objectStore('kv');
+        st.put('true', 'mono_multiworld_enabled');
+        st.put(worldId, 'mono_multiworld_active');
+        tx.oncomplete = finish;
+        tx.onerror = finish;
+        tx.onabort = finish;
+        setTimeout(finish, 400);
+        return;
+      }
+    } catch(e) {}
+    finish();
+  }
+  function finalSwitch(worldId, fallbackName){
+    worldId = String(worldId || '').trim();
+    if (!worldId) {
+      alert('世界 ID 为空，请重新打开“我的”再试。');
+      return;
+    }
+    ensureWorldExists(worldId, fallbackName);
+    writeActive(worldId, function(){
+      try { sessionStorage.setItem('mono_after_world_switch', worldId); } catch(e) {}
+      location.reload();
+    });
+  }
+  function confirmSwitch(worldId, fallbackName){
+    worldId = String(worldId || '').trim();
+    if (!worldId) {
+      alert('世界 ID 为空，请重新打开“我的”再试。');
+      return;
+    }
+    var world = ensureWorldExists(worldId, fallbackName);
+    var name = (world && world.name) || fallbackName || '该世界';
+    var old = document.getElementById('monoMwFinalConfirm');
+    if (old) old.remove();
+    var div = document.createElement('div');
+    div.id = 'monoMwFinalConfirm';
+    div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:20px;';
+    div.innerHTML = '<div style="width:min(320px,92vw);background:#fff;border-radius:18px;padding:22px;box-shadow:0 18px 60px rgba(0,0,0,.25);font-family:inherit;">'
+      + '<div style="font-weight:800;font-size:16px;margin-bottom:8px;">切换世界</div>'
+      + '<div style="font-size:13px;line-height:1.6;color:#333;margin-bottom:18px;">进入「<b></b>」？页面会重新载入到该世界。</div>'
+      + '<div style="display:flex;gap:10px;">'
+      + '<button type="button" data-final-cancel style="flex:1;padding:10px;border-radius:12px;border:1px solid #ddd;background:#f6f6f6;font-weight:700;font-family:inherit;">取消</button>'
+      + '<button type="button" data-final-ok style="flex:1;padding:10px;border-radius:12px;border:0;background:#1a1a1a;color:#fff;font-weight:800;font-family:inherit;">进入</button>'
+      + '</div></div>';
+    document.body.appendChild(div);
+    var b = div.querySelector('b');
+    if (b) b.textContent = name;
+    div.querySelector('[data-final-cancel]').onclick = function(){ div.remove(); };
+    div.querySelector('[data-final-ok]').onclick = function(){ div.remove(); finalSwitch(worldId, name); };
+  }
+  function getButtonWorldName(btn){
+    try {
+      var card = btn.closest('div[style*="display:flex"]');
+      var title = card && card.querySelector('div[style*="font-size:13px"]');
+      return title ? (title.textContent || '').replace('当前', '').trim() : '';
+    } catch(e) {
+      return '';
+    }
+  }
+  function install(){
+    try { window.mwSwitchWorld = function(id){ confirmSwitch(id); }; } catch(e) {}
+    try { mwSwitchWorld = window.mwSwitchWorld; } catch(e) {}
+  }
+
+  document.addEventListener('click', function(e){
+    var btn = e.target && e.target.closest && e.target.closest('[data-mw-switch]');
+    if (!btn) return;
+    var id = btn.getAttribute('data-mw-switch');
+    if (!id) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+    confirmSwitch(id, getButtonWorldName(btn));
+  }, true);
+
+  install();
+  document.addEventListener('DOMContentLoaded', install);
+  setTimeout(install, 250);
+  setTimeout(install, 1000);
+})();
+</script>
+
+
+
 <!-- FIX: Sticker library edit modal top-layer + safe edit binding -->
 <style id="sticker-edit-modal-top-layer-fix">
   #stickerAddModal.sticker-add-modal-overlay {
@@ -112805,467 +112958,6 @@ body.mono-fwd-modal-open {
 })();
 </script>
 
-<script>
-/* === MONO MULTIWORLD STABLE STORAGE GUARD v8 ===
-   修复：反复切换世界后角色/聊天室空白、角色微信入口消失。
-   原则：只接管多世界保存/恢复/切换，不改 API、聊天生成、UI 功能逻辑。
-*/
-(function(){
-  'use strict';
-  if (window.__monoMultiWorldStableGuardV6) return;
-  window.__monoMultiWorldStableGuardV6 = true;
-
-  function rawLS(){ return window._monoRawLocalStorage || window.localStorage; }
-  function rawGet(k){ try { return rawLS().getItem(k); } catch(e){ return null; } }
-  function rawSet(k,v){
-    try { rawLS().setItem(k, String(v)); } catch(e){}
-    try {
-      if (window._idb) {
-        var tx = window._idb.transaction('kv','readwrite');
-        tx.objectStore('kv').put(String(v), k);
-      }
-    } catch(e){}
-  }
-  function rawRemove(k){
-    try { rawLS().removeItem(k); } catch(e){}
-    try {
-      if (window._idb) {
-        var tx = window._idb.transaction('kv','readwrite');
-        tx.objectStore('kv').delete(k);
-      }
-    } catch(e){}
-  }
-  function proxySet(k,v){ try { window.localStorage.setItem(k, String(v)); } catch(e){} }
-  function proxyGet(k){ try { return window.localStorage.getItem(k); } catch(e){ return null; } }
-  function parseJSON(raw, fb){ try { var v = JSON.parse(raw || ''); return v == null ? fb : v; } catch(e){ return fb; } }
-  function isArrayNonEmpty(raw){
-    var a = parseJSON(raw, null);
-    return Array.isArray(a) && a.length > 0;
-  }
-  function nonEmptySerialized(v){
-    if (v == null || v === '') return false;
-    if (v === '[]' || v === '{}' || v === 'null' || v === '""') return false;
-    try {
-      var x = JSON.parse(v);
-      if (Array.isArray(x)) return x.length > 0;
-      if (x && typeof x === 'object') return Object.keys(x).length > 0;
-      return !!x;
-    } catch(e){ return true; }
-  }
-  function chooseBest(candidates){
-    var first = null;
-    for (var i=0;i<candidates.length;i++) {
-      var v = candidates[i];
-      if (v == null) continue;
-      if (first == null) first = v;
-      if (nonEmptySerialized(v)) return v;
-    }
-    return first;
-  }
-  function getLex(name, fb){ try { return (0, eval)('typeof '+name+' !== "undefined" ? '+name+' : undefined'); } catch(e){ return fb; } }
-  function setLex(name, val){
-    try { window[name] = val; } catch(e){}
-    try { window.__monoTmpLexicalValue = val; (0, eval)(name + ' = window.__monoTmpLexicalValue'); } catch(e){}
-    try { delete window.__monoTmpLexicalValue; } catch(e){}
-  }
-  function activeWorld(){
-    try {
-      var pend = (sessionStorage.getItem('mono_after_world_switch') || sessionStorage.getItem('mono_pending_world_switch_v8') || rawGet('mono_multiworld_pending_active') || '');
-      if (!pend && typeof URL === 'function') {
-        try { pend = new URL(location.href).searchParams.get('mw_active') || ''; } catch(_e) {}
-      }
-      if (pend) return String(pend);
-    } catch(e) {}
-    return String(rawGet('mono_multiworld_active') || proxyGet('mono_multiworld_active') || 'world_1');
-  }
-  function isEnabled(){ return rawGet('mono_multiworld_enabled') === 'true' || proxyGet('mono_multiworld_enabled') === 'true'; }
-  function wKey(wid, base){ return 'mono_mw_' + String(wid || activeWorld()) + '_' + String(base).replace(/^mono_/, ''); }
-  function bKey(wid, base){ return 'mono_mw_backup_' + String(wid || activeWorld()) + '_' + String(base).replace(/^mono_/, ''); }
-  function ccBase(wid){ return 'mono_cc_rooms_' + String(wid || activeWorld()); }
-  function ccWorldKey(wid){ return wKey(wid, ccBase(wid)); }
-  function ccBackupKey(wid){ return bKey(wid, ccBase(wid)); }
-
-  var BASE_KEYS = [
-    'mono_personas','mono_groups','mono_moments','mono_diary','mono_world_books','mono_novel_shelf',
-    'mono_group_chats','mono_forum','mono_forum_sections','mono_offline_sessions','mono_offline_settings',
-    'mono_instagram_app_v3','mono_ig_stories','mono_task_data','mono_wallet','mono_music_saved',
-    'mono_memo_items','mono_baby_data','mono_baby_settings','mono_health_v2','mono_decrypt_state_v1',
-    'mono_live_photo_settings','mono_live_photo_cards','mono_dressing_room_state'
-  ];
-
-  function saveRawAndBackup(wid, base, value, allowEmpty){
-    wid = String(wid || activeWorld());
-    if (!allowEmpty && !nonEmptySerialized(value)) return false;
-    rawSet(wKey(wid, base), value);
-    if (nonEmptySerialized(value)) rawSet(bKey(wid, base), value);
-    if (wid === activeWorld()) proxySet(base, value);
-    return true;
-  }
-  function readBestBase(wid, base){
-    wid = String(wid || activeWorld());
-    return chooseBest([
-      rawGet(wKey(wid, base)),
-      rawGet(bKey(wid, base)),
-      wid === activeWorld() ? proxyGet(base) : null,
-      rawGet(base)
-    ]);
-  }
-  function readBestCcRooms(wid){
-    wid = String(wid || activeWorld());
-    var base = ccBase(wid);
-    return chooseBest([
-      rawGet(ccWorldKey(wid)),
-      rawGet(ccBackupKey(wid)),
-      rawGet(base),
-      wid === activeWorld() ? proxyGet(base) : null
-    ]);
-  }
-  function saveCcRooms(wid, value, allowEmpty){
-    wid = String(wid || activeWorld());
-    if (!allowEmpty && !nonEmptySerialized(value)) return false;
-    var base = ccBase(wid);
-    rawSet(ccWorldKey(wid), value);
-    rawSet(base, value); // 兼容旧补丁/旧入口
-    if (nonEmptySerialized(value)) {
-      rawSet(ccBackupKey(wid), value);
-      rawSet('mono_cc_rooms_backup_' + wid, value);
-    }
-    if (wid === activeWorld()) proxySet(base, value);
-    return true;
-  }
-  function normalizePersonaArray(arr){
-    if (!Array.isArray(arr)) return [];
-    return arr.filter(function(p){ return p && (p.id != null || p.name); }).map(function(p, idx){
-      var o = Object.assign({}, p);
-      if (o.id == null || o.id === '') o.id = 'persona_' + Date.now() + '_' + idx;
-      if (!Array.isArray(o.history)) o.history = [];
-      return o;
-    });
-  }
-  function slimAndStorePersonas(wid, arr){
-    wid = String(wid || activeWorld());
-    arr = normalizePersonaArray(arr);
-    var slim = arr.map(function(p){
-      var s = Object.assign({}, p);
-      if (s.chatBgImage && s.chatBgImage !== '__ref__') {
-        saveRawAndBackup(wid, 'mono_bg_' + p.id, s.chatBgImage, false);
-        s.chatBgImage = '__ref__';
-      }
-      if (Array.isArray(p.history) && p.history.length) {
-        var hist = p.history;
-        try { if (typeof monoSlimChatHistoryForStorage === 'function') hist = monoSlimChatHistoryForStorage(p.id, p.history); } catch(e){}
-        saveRawAndBackup(wid, 'mono_hist_' + p.id, JSON.stringify(hist), false);
-      } else {
-        // 绝不因为一次空内存就删除历史。只有用户真正清空聊天时，原功能会走自己的删除流程。
-      }
-      s.history = '__hist_ref__';
-      return s;
-    });
-    var json = JSON.stringify(slim);
-    saveRawAndBackup(wid, 'mono_personas', json, false);
-    return slim;
-  }
-  function hydratePersonas(wid){
-    wid = String(wid || activeWorld());
-    var raw = readBestBase(wid, 'mono_personas');
-    var arr = parseJSON(raw, []);
-    if (!Array.isArray(arr) || !arr.length) return [];
-    return arr.map(function(p){
-      var o = Object.assign({}, p || {});
-      var pid = o.id;
-      if (pid != null && o.chatBgImage === '__ref__') {
-        o.chatBgImage = chooseBest([rawGet(wKey(wid, 'mono_bg_' + pid)), rawGet(bKey(wid, 'mono_bg_' + pid)), wid === activeWorld() ? proxyGet('mono_bg_' + pid) : null]) || '';
-      }
-      if (pid != null && (o.history === '__hist_ref__' || !Array.isArray(o.history))) {
-        var hraw = chooseBest([rawGet(wKey(wid, 'mono_hist_' + pid)), rawGet(bKey(wid, 'mono_hist_' + pid)), wid === activeWorld() ? proxyGet('mono_hist_' + pid) : null]);
-        var hist = parseJSON(hraw, []);
-        o.history = Array.isArray(hist) ? hist : [];
-      }
-      if (!Array.isArray(o.history)) o.history = [];
-      return o;
-    });
-  }
-  function ensureWorldsList(worldId, name){
-    var raw = parseJSON(rawGet('mono_multiworld_worlds'), []);
-    var prox = parseJSON(proxyGet('mono_multiworld_worlds'), []);
-    var map = {}, out = [];
-    (Array.isArray(raw)?raw:[]).concat(Array.isArray(prox)?prox:[]).forEach(function(w){
-      if (!w || !w.id) return;
-      var id = String(w.id);
-      if (!map[id]) { map[id] = Object.assign({}, w, {id:id}); out.push(map[id]); }
-      else Object.assign(map[id], w, {id:id});
-    });
-    if (worldId) {
-      var found = out.find(function(w){ return String(w.id) === String(worldId); });
-      if (!found) out.push({ id:String(worldId), name:name || '未命名世界', desc:'', userPersona:'', createdAt:Date.now() });
-    }
-    if (!out.length) out.push({ id:'world_1', name:'默认世界', desc:'', userPersona:'', createdAt:Date.now() });
-    var json = JSON.stringify(out);
-    rawSet('mono_multiworld_worlds', json);
-    proxySet('mono_multiworld_worlds', json);
-    return out;
-  }
-  function snapshotCurrentWorld(reason){
-    if (!isEnabled()) return;
-    var wid = activeWorld();
-    var mem = normalizePersonaArray(getLex('personas', window.personas || []));
-    var stored = hydratePersonas(wid);
-    // 如果内存空但磁盘/备份有角色，不保存空白，先恢复。
-    if (!mem.length && stored.length) {
-      setLex('personas', stored); try { window.personas = stored; } catch(e){}
-      mem = stored;
-    }
-    if (mem.length) slimAndStorePersonas(wid, mem);
-
-    var gr = getLex('groups', window.groups || []);
-    if (Array.isArray(gr) && gr.length) saveRawAndBackup(wid, 'mono_groups', JSON.stringify(gr), false);
-    BASE_KEYS.forEach(function(base){
-      if (base === 'mono_personas' || base === 'mono_groups') return;
-      var v = wid === activeWorld() ? proxyGet(base) : rawGet(wKey(wid, base));
-      if (nonEmptySerialized(v)) saveRawAndBackup(wid, base, v, false);
-    });
-    var cc = readBestCcRooms(wid);
-    if (nonEmptySerialized(cc)) saveCcRooms(wid, cc, false);
-  }
-  function migrateLegacyToWorldIfNeeded(wid){
-    wid = String(wid || activeWorld());
-    var hasWorldPersonas = isArrayNonEmpty(rawGet(wKey(wid, 'mono_personas'))) || isArrayNonEmpty(rawGet(bKey(wid, 'mono_personas')));
-    var legacy = rawGet('mono_personas');
-    if (!hasWorldPersonas && isArrayNonEmpty(legacy)) saveRawAndBackup(wid, 'mono_personas', legacy, false);
-    // 同时迁移每个角色的旧历史/背景
-    var arr = parseJSON(legacy, []);
-    if (Array.isArray(arr)) arr.forEach(function(p){
-      if (!p || p.id == null) return;
-      var h = rawGet('mono_hist_' + p.id);
-      if (nonEmptySerialized(h) && !nonEmptySerialized(rawGet(wKey(wid, 'mono_hist_' + p.id)))) saveRawAndBackup(wid, 'mono_hist_' + p.id, h, false);
-      var b = rawGet('mono_bg_' + p.id);
-      if (nonEmptySerialized(b) && !nonEmptySerialized(rawGet(wKey(wid, 'mono_bg_' + p.id)))) saveRawAndBackup(wid, 'mono_bg_' + p.id, b, false);
-    });
-    BASE_KEYS.forEach(function(base){
-      if (base === 'mono_personas') return;
-      var legacyV = rawGet(base);
-      if (nonEmptySerialized(legacyV) && !nonEmptySerialized(rawGet(wKey(wid, base))) && !nonEmptySerialized(rawGet(bKey(wid, base)))) saveRawAndBackup(wid, base, legacyV, false);
-    });
-    var cc = readBestCcRooms(wid);
-    if (nonEmptySerialized(cc)) saveCcRooms(wid, cc, false);
-  }
-  function restoreActiveWorld(){
-    if (!isEnabled()) return;
-    var wid = activeWorld();
-    ensureWorldsList(wid);
-    migrateLegacyToWorldIfNeeded(wid);
-    var ps = hydratePersonas(wid);
-    if (ps.length) {
-      setLex('personas', ps); try { window.personas = ps; } catch(e){}
-      try {
-        var cid = getLex('currentId', window.currentId);
-        if (!cid || !ps.some(function(p){ return String(p.id) === String(cid); })) setLex('currentId', ps[0].id);
-      } catch(e){}
-      // 回写当前 active 的 proxy cache，避免旧 _cache 仍然是 []。
-      try { proxySet('mono_personas', JSON.stringify(ps.map(function(p){ var s=Object.assign({},p); s.history='__hist_ref__'; if(s.chatBgImage) s.chatBgImage='__ref__'; return s; }))); } catch(e){}
-    }
-    var groupsRaw = readBestBase(wid, 'mono_groups');
-    var groups = parseJSON(groupsRaw, []);
-    if (Array.isArray(groups) && groups.length) { setLex('groups', groups); try { window.groups = groups; } catch(e){} proxySet('mono_groups', JSON.stringify(groups)); }
-    var cc = readBestCcRooms(wid);
-    if (cc != null) saveCcRooms(wid, cc, true);
-    try { if (typeof renderContactList === 'function') renderContactList(); } catch(e){}
-    try { if (typeof renderMessages === 'function') renderMessages(); } catch(e){}
-    try { if (typeof renderGroupList === 'function') renderGroupList(); } catch(e){}
-    try { if (typeof renderCcRoomDrawer === 'function') renderCcRoomDrawer(); } catch(e){}
-    try { if (typeof renderRolePhoneDrawer === 'function') renderRolePhoneDrawer(); } catch(e){}
-    try { if (typeof mwRefreshUI === 'function') mwRefreshUI(); } catch(e){}
-  }
-
-  // saveData 保护：任何自动保存都不能把非空世界写成空白。
-  (function installSaveGuard(){
-    try {
-      var old = saveData;
-      if (typeof old !== 'function' || old.__monoMwStableGuardV6) return;
-      var guarded = function(){
-        if (window.__monoWorldSwitchingStableV6) return;
-        if (isEnabled()) {
-          var wid = activeWorld();
-          var mem = normalizePersonaArray(getLex('personas', window.personas || []));
-          var stored = hydratePersonas(wid);
-          if (!mem.length && stored.length) {
-            setLex('personas', stored); try { window.personas = stored; } catch(e){}
-            restoreActiveWorld();
-            return;
-          }
-        }
-        var r = old.apply(this, arguments);
-        try { if (isEnabled()) snapshotCurrentWorld('saveData'); } catch(e){}
-        return r;
-      };
-      guarded.__monoMwStableGuardV6 = true;
-      guarded.__monoOriginal = old;
-      saveData = guarded; try { window.saveData = guarded; } catch(e){}
-    } catch(e){}
-  })();
-
-  function writeActive(worldId, cb){
-    // v8: 把“目标世界”写成最高优先级的 pending + raw truth。
-    // 原因：页面 reload 后 IndexedDB 里的旧 active 可能先进入 _cache，导致又显示原世界。
-    worldId = String(worldId || 'world_1');
-    try { sessionStorage.setItem('mono_after_world_switch', worldId); } catch(e){}
-    try { sessionStorage.setItem('mono_pending_world_switch_v8', worldId); } catch(e){}
-    rawSet('mono_multiworld_pending_active', worldId);
-    rawSet('mono_multiworld_enabled','true');
-    rawSet('mono_multiworld_active', worldId);
-    // 必须通过 proxySet 再写一次，刷新被 IndexedDB 预载出来的 _cache。
-    proxySet('mono_multiworld_enabled','true');
-    proxySet('mono_multiworld_active', worldId);
-    proxySet('mono_multiworld_pending_active', worldId);
-    try { if (window.__monoRealLSSet) window.__monoRealLSSet('mono_multiworld_active', worldId); } catch(e){}
-    try { if (window.__monoRealLSSet) window.__monoRealLSSet('mono_multiworld_enabled', 'true'); } catch(e){}
-    try {
-      if (window._idb) {
-        var tx = window._idb.transaction('kv','readwrite');
-        var st = tx.objectStore('kv');
-        st.put('true','mono_multiworld_enabled');
-        st.put(worldId,'mono_multiworld_active');
-        st.put(worldId,'mono_multiworld_pending_active');
-      }
-    } catch(e){}
-    setTimeout(function(){ if (cb) cb(); }, 20);
-  }
-  function hardReloadAfterWorldSwitch(worldId){
-    var done = false;
-    function withWorldParam(){
-      try {
-        var u = new URL(location.href);
-        u.searchParams.set('mw_active', String(worldId || activeWorld()));
-        u.searchParams.set('mwts', String(Date.now()));
-        return u.toString();
-      } catch(e) {
-        var href = location.href.replace(/([?&])mwts=\d+/, '$1mwts=' + Date.now());
-        href = href.replace(/([?&])mw_active=[^&]*/, '$1mw_active=' + encodeURIComponent(String(worldId || activeWorld())));
-        if (href.indexOf('mw_active=') < 0) href += (href.indexOf('?') >= 0 ? '&' : '?') + 'mw_active=' + encodeURIComponent(String(worldId || activeWorld())) + '&mwts=' + Date.now();
-        return href;
-      }
-    }
-    function go(){
-      if (done) return;
-      done = true;
-      var href = withWorldParam();
-      try { location.replace(href); return; } catch(e){}
-      try { location.href = href; return; } catch(e){}
-      try { location.reload(); } catch(e){}
-    }
-    setTimeout(go, 160);
-    setTimeout(go, 700);
-  }
-  function switchToWorld(worldId, fallbackName){
-    worldId = String(worldId || '').trim();
-    if (!worldId) { try { alert('世界 ID 为空，请重新打开“我的”再试。'); } catch(e){} return; }
-    ensureWorldsList(worldId, fallbackName);
-    try { snapshotCurrentWorld('switch-before-' + worldId); } catch(e){}
-    window.__monoWorldSwitchingStableV6 = true;
-    writeActive(worldId, function(){
-      try { sessionStorage.setItem('mono_after_world_switch', worldId); } catch(e){}
-      // Soft switch immediately so clicking “进入” visibly changes even if reload is blocked/delayed.
-      window.__monoWorldSwitchingStableV6 = false;
-      try { restoreActiveWorld(); } catch(e){}
-      try { if (typeof mwRefreshUI === 'function') mwRefreshUI(); } catch(e){}
-      try { if (typeof renderContactList === 'function') renderContactList(); } catch(e){}
-      try { if (typeof renderCcRoomDrawer === 'function') renderCcRoomDrawer(); } catch(e){}
-      try { if (typeof renderRolePhoneDrawer === 'function') renderRolePhoneDrawer(); } catch(e){}
-      hardReloadAfterWorldSwitch(worldId);
-    });
-  }
-  function showConfirm(worldId, fallbackName){
-    worldId = String(worldId || '').trim();
-    if (!worldId) return;
-    var worlds = ensureWorldsList(worldId, fallbackName);
-    var w = worlds.find(function(x){ return x && String(x.id) === worldId; });
-    var name = (w && w.name) || fallbackName || '该世界';
-    var old = document.getElementById('monoMwStableConfirmV6'); if (old) old.remove();
-    var div = document.createElement('div');
-    div.id = 'monoMwStableConfirmV6';
-    div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:20px;';
-    div.innerHTML = '<div style="width:min(320px,92vw);background:#fff;border-radius:18px;padding:22px;box-shadow:0 18px 60px rgba(0,0,0,.25);font-family:inherit;">'
-      + '<div style="font-weight:800;font-size:16px;margin-bottom:8px;">切换世界</div>'
-      + '<div style="font-size:13px;line-height:1.6;color:#333;margin-bottom:6px;">进入「<b></b>」？</div>'
-      + '<div style="font-size:11px;line-height:1.6;color:#999;margin-bottom:18px;">会先保存当前世界的最后非空数据，再载入目标世界。</div>'
-      + '<div style="display:flex;gap:10px;">'
-      + '<button type="button" data-cancel style="flex:1;padding:10px;border-radius:12px;border:1px solid #ddd;background:#f6f6f6;font-weight:700;font-family:inherit;">取消</button>'
-      + '<button type="button" data-ok style="flex:1;padding:10px;border-radius:12px;border:0;background:#1a1a1a;color:#fff;font-weight:800;font-family:inherit;">进入</button>'
-      + '</div></div>';
-    document.body.appendChild(div);
-    var b = div.querySelector('b'); if (b) b.textContent = name;
-    div.querySelector('[data-cancel]').onclick = function(){ div.remove(); };
-    div.querySelector('[data-ok]').onclick = function(){ div.remove(); switchToWorld(worldId, name); };
-  }
-  function getBtnName(btn){ try { return (btn.closest('div') && btn.closest('div').textContent || '').replace('当前','').trim().slice(0,32); } catch(e){ return ''; } }
-  function installSwitch(){
-    try { window.mwSwitchWorld = function(id){ showConfirm(id); }; } catch(e){}
-    try { mwSwitchWorld = window.mwSwitchWorld; } catch(e){}
-  }
-  document.addEventListener('click', function(e){
-    var btn = e.target && e.target.closest && e.target.closest('[data-mw-switch]');
-    if (!btn) return;
-    var id = btn.getAttribute('data-mw-switch');
-    if (!id) return;
-    e.preventDefault(); e.stopPropagation(); if (e.stopImmediatePropagation) e.stopImmediatePropagation();
-    showConfirm(id, getBtnName(btn));
-  }, true);
-
-  function syncActiveTruthBeforeBoot(){
-    var target = '';
-    try { target = sessionStorage.getItem('mono_after_world_switch') || sessionStorage.getItem('mono_pending_world_switch_v8') || ''; } catch(e){}
-    if (!target) target = rawGet('mono_multiworld_pending_active') || '';
-    if (!target) {
-      try { target = new URL(location.href).searchParams.get('mw_active') || ''; } catch(e){}
-    }
-    if (!target) target = rawGet('mono_multiworld_active') || proxyGet('mono_multiworld_active') || 'world_1';
-    target = String(target || 'world_1');
-    rawSet('mono_multiworld_enabled','true');
-    rawSet('mono_multiworld_active', target);
-    // 关键：刷新 proxy/_cache，否则 mwGetActiveId()/mwRefreshUI 仍会拿到 IndexedDB 旧值。
-    proxySet('mono_multiworld_enabled','true');
-    proxySet('mono_multiworld_active', target);
-    try {
-      if (window._idb) {
-        var tx = window._idb.transaction('kv','readwrite');
-        var st = tx.objectStore('kv');
-        st.put('true','mono_multiworld_enabled');
-        st.put(target,'mono_multiworld_active');
-      }
-    } catch(e){}
-    return target;
-  }
-  function clearPendingWorldSwitchLater(target){
-    setTimeout(function(){
-      try {
-        var now = rawGet('mono_multiworld_active') || proxyGet('mono_multiworld_active');
-        if (!target || String(now) === String(target)) {
-          sessionStorage.removeItem('mono_after_world_switch');
-          sessionStorage.removeItem('mono_pending_world_switch_v8');
-          rawRemove('mono_multiworld_pending_active');
-          try { localStorage.removeItem('mono_multiworld_pending_active'); } catch(e){}
-        }
-      } catch(e){}
-    }, 1800);
-  }
-  function boot(){
-    try { window.__monoWorldSwitchingStableV6 = false; } catch(e){}
-    var target = syncActiveTruthBeforeBoot();
-    restoreActiveWorld();
-    installSwitch();
-    clearPendingWorldSwitchLater(target);
-  }
-  installSwitch();
-  if (typeof afterDB === 'function') { try { afterDB(function(){ setTimeout(boot, 30); setTimeout(boot, 450); }); } catch(e){} }
-  document.addEventListener('DOMContentLoaded', function(){ setTimeout(boot, 60); setTimeout(boot, 650); });
-  setTimeout(boot, 1200);
-  setTimeout(boot, 2200);
-  window.monoRepairCurrentWorldDataStableV8 = boot;
-  window.monoSnapshotCurrentWorldStableV8 = snapshotCurrentWorld;
-})();
-</script>
-
-<!-- mono-v9-real-split-message-bubbles -->
 </body>
 
 <!-- MONO FINAL FIX: Sticker library dialogs are not covered; use a real top-layer modal and direct button routing -->

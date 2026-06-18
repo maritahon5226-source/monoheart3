@@ -31002,7 +31002,12 @@ function renderMessages(opts) {
       ? (p.bubbleUserFontColor ? ' style="color:' + p.bubbleUserFontColor + '"' : '')
       : (p.bubbleAiFontColor  ? ' style="color:' + p.bubbleAiFontColor  + '"' : '');
     // ── 处理 [reply:原文] 引用指令：必须匹配真实的近期连续用户消息，否则只清除指令 ──
-    let displayContent = _splitChatBubbleLines(msgContent.replace(/\\n/g, '\n'), 14).replace(/\n/g, '<br>');
+    // 只保留用户/AI 原本发出的换行，不再每 14 个中文自动强制断行
+    let displayContent = String(msgContent || '')
+      .replace(/\\n/g, '\n')
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .replace(/\n/g, '<br>');
     if (!isUser && displayContent) {
       const replyMatch = displayContent.match(/^\[reply:([\s\S]*?)\]\s*/i);
       if (replyMatch) {
@@ -44932,7 +44937,10 @@ function _splitChatBubbleLines(text, maxCharsPerLine) {
   }).join('\n');
 }
 function _formatChatBubbleHtml(text) {
-  return _splitChatBubbleLines(text, 14)
+  return String(text || '')
+    .replace(/\\n/g, '\n')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')

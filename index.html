@@ -32145,7 +32145,6 @@ function mwRenderWorldsList() {
   const activeId = mwGetActiveId();
   const list = document.getElementById('mwWorldsList');
   const relEntry = document.getElementById('mwRelMapEntry');
-  if (!list) return;
   list.innerHTML = worlds.map(w => {
     const isActive = w.id === activeId;
     const safeName = w.name.replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -32157,9 +32156,9 @@ function mwRenderWorldsList() {
         ${safeDesc ? `<div style="font-size:10px;color:#999;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${safeDesc}</div>` : ''}
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0;">
-        ${!isActive ? `<button type="button" data-mw-switch="${String(w.id).replace(/"/g, '&quot;')}" style="font-size:10px;font-weight:700;padding:5px 11px;border-radius:16px;border:1.5px solid #1a1a1a;background:#1a1a1a;color:#fff;cursor:pointer;font-family:inherit;">进入</button>` : ''}
-        <button type="button" data-mw-settings="${String(w.id).replace(/"/g, '&quot;')}" style="font-size:10px;font-weight:700;padding:5px 11px;border-radius:16px;border:1.5px solid #ddd;background:#fff;cursor:pointer;font-family:inherit;color:#666;">设定</button>
-        ${worlds.length > 1 ? `<button type="button" data-mw-delete="${String(w.id).replace(/"/g, '&quot;')}" style="font-size:10px;font-weight:700;padding:5px 11px;border-radius:16px;border:1.5px solid #ffcccc;background:#fff8f8;cursor:pointer;font-family:inherit;color:#c00;">删除</button>` : ''}
+        ${!isActive ? `<button data-mw-switch="${w.id}" style="font-size:10px;font-weight:700;padding:5px 11px;border-radius:16px;border:1.5px solid #1a1a1a;background:#1a1a1a;color:#fff;cursor:pointer;font-family:inherit;">进入</button>` : ''}
+        <button data-mw-settings="${w.id}" style="font-size:10px;font-weight:700;padding:5px 11px;border-radius:16px;border:1.5px solid #ddd;background:#fff;cursor:pointer;font-family:inherit;color:#666;">设定</button>
+        ${worlds.length > 1 ? `<button data-mw-delete="${w.id}" style="font-size:10px;font-weight:700;padding:5px 11px;border-radius:16px;border:1.5px solid #ffcccc;background:#fff8f8;cursor:pointer;font-family:inherit;color:#c00;">删除</button>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -32184,40 +32183,46 @@ function mwRenderWorldsList() {
     if (ccEntry) ccEntry.style.display = active.charChatEnabled ? 'block' : 'none';
   }
 }
-function mwSwitchWorldNow(worldId) {
-  if (!worldId) return;
-  try { if (window.__monoRealLSSet) window.__monoRealLSSet('mono_multiworld_active', worldId); } catch(e) {}
-  try { localStorage.setItem('mono_multiworld_active', worldId); } catch(e) {}
-  try {
-    if (window._idb) {
-      const tx = window._idb.transaction('kv', 'readwrite');
-      tx.objectStore('kv').put(worldId, 'mono_multiworld_active');
-      tx.oncomplete = function() { location.reload(); };
-      tx.onerror = function() { location.reload(); };
-      tx.onabort = function() { location.reload(); };
-      return;
-    }
-  } catch(e) {}
-  location.reload();
-}
 // ── 切换世界 ──
-async function mwSwitchWorld(worldId) {
+function mwSwitchWorld(worldId) {
   const worlds = mwGetWorlds();
   const world = worlds.find(w => w.id === worldId);
   if (!world) { alert('找不到该世界，请重新打开"我的"。'); return; }
-  let ok = false;
-  if (window.monoInAppConfirm) {
-    ok = await window.monoInAppConfirm({
-      title: '切换世界',
-      note: '进入「' + world.name + '」后页面会重新加载，当前世界数据会先自动保存。',
-      confirmText: '进入',
-      cancelText: '取消'
-    });
-  } else {
-    ok = window.confirm('进入「' + world.name + '」？\n\n切换后页面将重新加载，当前世界数据已自动保存。');
-  }
-  if (!ok) return;
-  mwSwitchWorldNow(worldId);
+  // Use a custom confirmation dialog instead of native confirm (which can be blocked in some browsers)
+  const confirmDiv = document.createElement('div');
+  confirmDiv.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
+  confirmDiv.innerHTML = `<div style="background:#fff;border-radius:16px;padding:24px;max-width:320px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,0.2);">
+    <div style="font-size:15px;font-weight:700;margin-bottom:8px;">切换世界</div>
+    <div style="font-size:13px;color:#333;margin-bottom:6px;">进入「<b>${world.name}</b>」？</div>
+    <div style="font-size:11px;color:#999;margin-bottom:20px;line-height:1.6;">切换后页面将重新加载，当前世界数据已自动保存。</div>
+    <div style="display:flex;gap:10px;">
+      <button id="mwSwitchCancel" style="flex:1;padding:10px;border-radius:10px;border:1px solid #ddd;background:#f5f5f5;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">取消</button>
+      <button id="mwSwitchConfirm" style="flex:1;padding:10px;border-radius:10px;border:none;background:#1a1a1a;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">进入</button>
+    </div>
+  </div>`;
+  document.body.appendChild(confirmDiv);
+  document.getElementById('mwSwitchCancel').onclick = function() { document.body.removeChild(confirmDiv); };
+  document.getElementById('mwSwitchConfirm').onclick = function() {
+    document.body.removeChild(confirmDiv);
+    // Directly write to real localStorage AND cache to ensure it persists
+    try { window.__monoRealLSSet ? window.__monoRealLSSet('mono_multiworld_active', worldId) : null; } catch(e) {}
+    localStorage.setItem('mono_multiworld_active', worldId);
+    // Also write directly to underlying storage to be safe
+    try {
+      const _rl = Object.getOwnPropertyDescriptor ? Object.getOwnPropertyDescriptor(window, 'localStorage') : null;
+      // Use IDB if available
+      if (window._idb) {
+        const tx = window._idb.transaction('kv', 'readwrite');
+        tx.objectStore('kv').put(worldId, 'mono_multiworld_active');
+        tx.oncomplete = function() { location.reload(); };
+        tx.onerror = function() { location.reload(); };
+      } else {
+        location.reload();
+      }
+    } catch(e) {
+      location.reload();
+    }
+  };
 }
 // ── 新建世界 ──
 function mwCreateWorld() {
@@ -96302,8 +96307,8 @@ function _getDiaryEntries(ownerId) {
   if (ownerId === 'user') {
     return data.filter(d => d.authorType === 'user' || (!d.authorType && d.author && typeof userProfile !== 'undefined' && d.author.includes(userProfile.name)));
   } else {
-    const pid = parseInt(ownerId);
-    return data.filter(d => d.authorType === 'persona' && d.personaId == pid);
+    const pid = String(ownerId);
+    return data.filter(d => d && d.authorType === 'persona' && String(d.personaId) === pid);
   }
 }
 
@@ -109816,11 +109821,10 @@ body.mono-fwd-modal-open {
 
 <script>
 /* === MONO MULTIWORLD SWITCH FINAL FIX v3 ===
-   参考 05-19 版本对齐多世界切换：
+   修复 v2 误报“找不到该世界”：
    - 世界列表同时从 raw localStorage、proxy localStorage 读取并合并
    - 点击按钮时直接信任 data-mw-switch 的世界 id
-   - 若世界列表暂时缺失该 id，会先补回世界列表再切换
-   - active / enabled 同时写回 raw / proxy / IDB，确保刷新后仍停留在目标世界
+   - 若 raw 列表缺失该 id，会先补回世界列表再切换，避免刷新后 active 世界丢失
 */
 (function(){
   'use strict';
@@ -109829,25 +109833,16 @@ body.mono-fwd-modal-open {
 
   function rawLS(){ return window._monoRawLocalStorage || window.localStorage; }
   function parseList(raw){
-    try {
-      var arr = JSON.parse(raw || '[]');
-      return Array.isArray(arr) ? arr : [];
-    } catch(e){
-      return [];
-    }
+    try { var arr = JSON.parse(raw || '[]'); return Array.isArray(arr) ? arr : []; }
+    catch(e){ return []; }
   }
-  function uniqMerge(a, b){
-    var map = {};
-    var out = [];
+  function uniqMerge(a,b){
+    var map = {}, out = [];
     (a || []).concat(b || []).forEach(function(w){
       if (!w || !w.id) return;
       var id = String(w.id);
-      if (!map[id]) {
-        map[id] = Object.assign({}, w, { id: id });
-        out.push(map[id]);
-      } else {
-        Object.assign(map[id], w, { id: id });
-      }
+      if (!map[id]) { map[id] = Object.assign({}, w, { id: id }); out.push(map[id]); }
+      else { Object.assign(map[id], w, { id: id }); }
     });
     return out;
   }
@@ -109877,8 +109872,10 @@ body.mono-fwd-modal-open {
     if (!world) {
       world = { id: worldId, name: fallbackName || '未命名世界', desc: '', userPersona: '', createdAt: Date.now() };
       worlds.push(world);
+      saveWorldsEverywhere(worlds);
+    } else {
+      saveWorldsEverywhere(worlds);
     }
-    saveWorldsEverywhere(worlds);
     return world;
   }
   function writeActive(worldId, done){
@@ -109889,11 +109886,7 @@ body.mono-fwd-modal-open {
     try { window.localStorage.setItem('mono_multiworld_active', worldId); } catch(e) {}
     try { if (window.__monoRealLSSet) window.__monoRealLSSet('mono_multiworld_active', worldId); } catch(e) {}
     var finished = false;
-    function finish(){
-      if (finished) return;
-      finished = true;
-      if (typeof done === 'function') done();
-    }
+    function finish(){ if (finished) return; finished = true; if (done) done(); }
     try {
       if (window._idb) {
         var tx = window._idb.transaction('kv', 'readwrite');
@@ -109902,7 +109895,6 @@ body.mono-fwd-modal-open {
         st.put(worldId, 'mono_multiworld_active');
         tx.oncomplete = finish;
         tx.onerror = finish;
-        tx.onabort = finish;
         setTimeout(finish, 400);
         return;
       }
@@ -109911,10 +109903,7 @@ body.mono-fwd-modal-open {
   }
   function finalSwitch(worldId, fallbackName){
     worldId = String(worldId || '').trim();
-    if (!worldId) {
-      alert('世界 ID 为空，请重新打开“我的”再试。');
-      return;
-    }
+    if (!worldId) { alert('世界 ID 为空，请重新打开“我的”再试。'); return; }
     ensureWorldExists(worldId, fallbackName);
     writeActive(worldId, function(){
       try { sessionStorage.setItem('mono_after_world_switch', worldId); } catch(e) {}
@@ -109923,10 +109912,7 @@ body.mono-fwd-modal-open {
   }
   function confirmSwitch(worldId, fallbackName){
     worldId = String(worldId || '').trim();
-    if (!worldId) {
-      alert('世界 ID 为空，请重新打开“我的”再试。');
-      return;
-    }
+    if (!worldId) { alert('世界 ID 为空，请重新打开“我的”再试。'); return; }
     var world = ensureWorldExists(worldId, fallbackName);
     var name = (world && world.name) || fallbackName || '该世界';
     var old = document.getElementById('monoMwFinalConfirm');
@@ -109942,8 +109928,7 @@ body.mono-fwd-modal-open {
       + '<button type="button" data-final-ok style="flex:1;padding:10px;border-radius:12px;border:0;background:#1a1a1a;color:#fff;font-weight:800;font-family:inherit;">进入</button>'
       + '</div></div>';
     document.body.appendChild(div);
-    var b = div.querySelector('b');
-    if (b) b.textContent = name;
+    var b = div.querySelector('b'); if (b) b.textContent = name;
     div.querySelector('[data-final-cancel]').onclick = function(){ div.remove(); };
     div.querySelector('[data-final-ok]').onclick = function(){ div.remove(); finalSwitch(worldId, name); };
   }
@@ -109951,16 +109936,13 @@ body.mono-fwd-modal-open {
     try {
       var card = btn.closest('div[style*="display:flex"]');
       var title = card && card.querySelector('div[style*="font-size:13px"]');
-      return title ? (title.textContent || '').replace('当前', '').trim() : '';
-    } catch(e) {
-      return '';
-    }
+      return title ? (title.textContent || '').replace('当前','').trim() : '';
+    } catch(e) { return ''; }
   }
   function install(){
     try { window.mwSwitchWorld = function(id){ confirmSwitch(id); }; } catch(e) {}
     try { mwSwitchWorld = window.mwSwitchWorld; } catch(e) {}
   }
-
   document.addEventListener('click', function(e){
     var btn = e.target && e.target.closest && e.target.closest('[data-mw-switch]');
     if (!btn) return;
@@ -109971,7 +109953,6 @@ body.mono-fwd-modal-open {
     if (e.stopImmediatePropagation) e.stopImmediatePropagation();
     confirmSwitch(id, getButtonWorldName(btn));
   }, true);
-
   install();
   document.addEventListener('DOMContentLoaded', install);
   setTimeout(install, 250);
@@ -112624,6 +112605,643 @@ body.mono-fwd-modal-open {
     return { recentEntries: textParts.join('\n\n'), messages: messages };
   };
   try { _buildFullSessionContext = window._buildFullSessionContext; } catch(e) {}
+})();
+</script>
+
+<style id="mono-final-chat-fixes-style">
+#chatPage .msg-content,
+.gc-page .msg-content {
+  display: flex !important;
+  flex-direction: column !important;
+  max-width: min(72%, 420px) !important;
+  width: fit-content !important;
+  min-width: 0 !important;
+}
+#chatPage .bubble,
+#chatPage .bubble-transfer,
+#chatPage .bubble-call,
+#chatPage .bubble-voice,
+#chatPage .bubble-fwd,
+#chatPage .bubble-image-caption,
+.gc-page .bubble,
+.gc-page .bubble-transfer {
+  width: fit-content !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+}
+#chatPage .msg-row.user .bubble,
+#chatPage .msg-row.user .bubble-transfer,
+#chatPage .msg-row.user .bubble-call,
+#chatPage .msg-row.user .bubble-voice,
+#chatPage .msg-row.user .bubble-fwd,
+.gc-page .msg-row.user .bubble,
+.gc-page .msg-row.user .bubble-transfer {
+  align-self: flex-end !important;
+}
+#chatPage .msg-row.ai .bubble,
+#chatPage .msg-row.ai .bubble-transfer,
+#chatPage .msg-row.ai .bubble-call,
+#chatPage .msg-row.ai .bubble-voice,
+#chatPage .msg-row.ai .bubble-fwd,
+.gc-page .msg-row.ai .bubble,
+.gc-page .msg-row.ai .bubble-transfer {
+  align-self: flex-start !important;
+}
+#chatPage .quote-block,
+.gc-page .quote-block {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  width: auto !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+#chatPage .quote-block > span,
+.gc-page .quote-block > span {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+#chatPage .bubble-transfer,
+.gc-page .bubble-transfer {
+  display: inline-flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+  min-width: 168px !important;
+  max-width: min(100%, 270px) !important;
+}
+#chatPage .bubble-transfer-header,
+.gc-page .bubble-transfer-header {
+  white-space: normal !important;
+  word-break: break-word !important;
+}
+#chatPage .bubble-transfer-note,
+.gc-page .bubble-transfer-note {
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+}
+</style>
+<script id="mono-final-chat-fixes-script">
+(function(){
+  'use strict';
+  if (window.__monoFinalChatFixesInstalled) return;
+  window.__monoFinalChatFixesInstalled = true;
+
+  function rawLS() {
+    try { return window._monoRawLocalStorage || window.localStorage; } catch (e) { return window.localStorage; }
+  }
+  function safeParse(raw, fallback) {
+    try {
+      var value = JSON.parse(raw || '');
+      return value == null ? fallback : value;
+    } catch (e) {
+      return fallback;
+    }
+  }
+  function escHtml(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+  function hasDataImage(value) {
+    return typeof value === 'string' && /^data:image\//i.test(value);
+  }
+  function replaceLivePersonas(list) {
+    try {
+      if (typeof personas !== 'undefined' && Array.isArray(personas)) {
+        personas.length = 0;
+        (list || []).forEach(function(item){ personas.push(item); });
+      } else {
+        window.personas = list || [];
+      }
+    } catch (e) {
+      window.personas = list || [];
+    }
+  }
+  function hydratePersonasFromStorage() {
+    var live = [];
+    try {
+      if (typeof personas !== 'undefined' && Array.isArray(personas)) live = personas.slice();
+      else if (Array.isArray(window.personas)) live = window.personas.slice();
+    } catch (e) {}
+    var stored = safeParse(localStorage.getItem('mono_personas') || '[]', []);
+    var byId = {};
+    var ordered = [];
+    live.concat(Array.isArray(stored) ? stored : []).forEach(function(item){
+      if (!item || !item.id) return;
+      var id = String(item.id);
+      if (!byId[id]) {
+        byId[id] = Object.assign({}, item);
+        ordered.push(byId[id]);
+      } else {
+        Object.assign(byId[id], item);
+      }
+    });
+    ordered.forEach(function(item){
+      if (item.chatBgImage === '__ref__') {
+        try { item.chatBgImage = localStorage.getItem('mono_bg_' + item.id) || ''; } catch (e) { item.chatBgImage = ''; }
+      }
+      if (item.history === '__hist_ref__' || !Array.isArray(item.history)) {
+        try {
+          var histRaw = localStorage.getItem('mono_hist_' + item.id);
+          item.history = histRaw ? JSON.parse(histRaw) : [];
+        } catch (e) {
+          item.history = [];
+        }
+      }
+      if (!Array.isArray(item.history)) item.history = [];
+      if (!Array.isArray(item.memoryCore)) item.memoryCore = [];
+    });
+    return ordered;
+  }
+  function persistPersonasCompat(list) {
+    var next = Array.isArray(list) ? list.slice() : [];
+    replaceLivePersonas(next);
+    if (typeof saveData === 'function') {
+      saveData();
+      return;
+    }
+    var slim = next.map(function(item){
+      var out = Object.assign({}, item);
+      if (out.chatBgImage && out.chatBgImage !== '__ref__') {
+        try { localStorage.setItem('mono_bg_' + out.id, out.chatBgImage); } catch (e) {}
+        out.chatBgImage = '__ref__';
+      }
+      if (Array.isArray(out.history)) {
+        try {
+          if (out.history.length > 0) localStorage.setItem('mono_hist_' + out.id, JSON.stringify(out.history));
+          else localStorage.removeItem('mono_hist_' + out.id);
+        } catch (e) {}
+      }
+      out.history = '__hist_ref__';
+      return out;
+    });
+    try { localStorage.setItem('mono_personas', JSON.stringify(slim)); } catch (e) {}
+  }
+  function writeMasksWithAvatars(list) {
+    var masks = Array.isArray(list) ? list.slice() : [];
+    var normalized = masks.map(function(mask){
+      if (typeof monoNormalizeUserMask === 'function') return monoNormalizeUserMask(mask || {});
+      return Object.assign({}, mask || {});
+    });
+    var json = JSON.stringify(normalized);
+    var stamp = String(Date.now());
+    try { localStorage.setItem('mono_user_masks', json); } catch (e) {}
+    try { localStorage.setItem('mono_user_masks_backup_v11', json); } catch (e) {}
+    try { localStorage.setItem('mono_user_masks_saved_at_v11', stamp); } catch (e) {}
+    try { rawLS().setItem('mono_user_masks', json); } catch (e) {}
+    try { rawLS().setItem('mono_user_masks_backup_v11', json); } catch (e) {}
+    try { rawLS().setItem('mono_user_masks_saved_at_v11', stamp); } catch (e) {}
+    normalized.forEach(function(mask){
+      if (!mask || !mask.id || !hasDataImage(mask.avatar)) return;
+      try {
+        if (typeof monoUserMaskAvatarBlobKey === 'function' && window._monoIdbBlobSet) {
+          window._monoIdbBlobSet(monoUserMaskAvatarBlobKey(mask.id), mask.avatar).catch(function(){});
+        }
+      } catch (e) {}
+    });
+  }
+  function looksLikeHeartVoicePayload(raw) {
+    var text = String(raw || '').trim();
+    if (!text || text.charAt(0) !== '{' || text.charAt(text.length - 1) !== '}') return false;
+    if (!/"thoughts"\s*:/.test(text)) return false;
+    return /"emotion"\s*:|"heartRate"\s*:|"notificationLines"\s*:|"jealousy"\s*:/.test(text);
+  }
+  function tryApplyHeartVoice(persona, raw) {
+    if (!persona) return null;
+    var text = String(raw || '').trim();
+    if (!text) return null;
+    try {
+      var parsed = JSON.parse(text);
+      if (!parsed || typeof parsed !== 'object') return null;
+      if (!parsed.thoughts && !parsed.notificationLines) return null;
+      var hv = (typeof _normalizeHeartVoicePayload === 'function') ? _normalizeHeartVoicePayload(parsed) : parsed;
+      persona.lastHeartVoice = hv;
+      return hv;
+    } catch (e) {
+      return null;
+    }
+  }
+  function sanitizePersonaHeartVoiceArtifacts(persona) {
+    if (!persona || !Array.isArray(persona.history)) return false;
+    var changed = false;
+    persona.history.forEach(function(message){
+      if (!message || message.role !== 'assistant' || message.msgType) return;
+      var content = String(message.content || '');
+      if (!content) return;
+      var nextContent = content;
+      var hvMatch = nextContent.match(/\[heart_voice\]\s*(\{[\s\S]*?\})\s*(?:\[\/heart_voice\]|$)/i);
+      if (hvMatch && hvMatch[1]) {
+        if (tryApplyHeartVoice(persona, hvMatch[1])) changed = true;
+        nextContent = nextContent.replace(hvMatch[0], '').trim();
+      }
+      if (!nextContent && looksLikeHeartVoicePayload(content)) {
+        if (tryApplyHeartVoice(persona, content)) changed = true;
+        message._hiddenContext = true;
+      } else if (looksLikeHeartVoicePayload(nextContent)) {
+        if (tryApplyHeartVoice(persona, nextContent)) changed = true;
+        nextContent = '';
+        message._hiddenContext = true;
+      }
+      if (nextContent !== content) {
+        message.content = nextContent;
+        changed = true;
+      }
+    });
+    return changed;
+  }
+  function splitLongReplyText(raw, maxParts) {
+    var text = String(raw || '')
+      .replace(/\[heart_voice\][\s\S]*?(?:\[\/heart_voice\]|$)/gi, ' ')
+      .replace(/\[memory:\s*[\s\S]*?\]/gi, ' ')
+      .replace(/\r\n/g, '\n')
+      .trim();
+    if (!text) return [];
+    var pieces = text
+      .split(/\n+/)
+      .map(function(line){ return String(line || '').trim(); })
+      .filter(Boolean);
+    if (pieces.length === 1) {
+      var sentencePieces = [];
+      String(pieces[0]).replace(/[^。！？!?…]+[。！？!?…]?/g, function(chunk){
+        var part = String(chunk || '').trim();
+        if (part) sentencePieces.push(part);
+        return chunk;
+      });
+      if (sentencePieces.length > 1) pieces = sentencePieces;
+    }
+    var compact = [];
+    var buffer = '';
+    var limit = /[\u4e00-\u9fff]/.test(text) ? 26 : 52;
+    pieces.forEach(function(piece){
+      if (!buffer) {
+        buffer = piece;
+        return;
+      }
+      if ((buffer + ' ' + piece).length <= limit) {
+        buffer += ' ' + piece;
+      } else {
+        compact.push(buffer.trim());
+        buffer = piece;
+      }
+    });
+    if (buffer) compact.push(buffer.trim());
+    compact = compact.filter(Boolean);
+    if (!compact.length) compact = [text];
+    return compact.slice(0, Math.max(1, maxParts || compact.length));
+  }
+  function compactNpcRelationContext(ownerPersona, npc) {
+    var userLabel = '默认用户';
+    try {
+      var maskId = ownerPersona && ownerPersona.userMaskId;
+      var masks = safeParse(localStorage.getItem('mono_user_masks') || '[]', []);
+      var mask = (Array.isArray(masks) ? masks : []).find(function(item){ return item && String(item.id) === String(maskId || ''); });
+      if (mask && mask.name) userLabel = '用户面具「' + mask.name + '」';
+    } catch (e) {}
+    return [
+      '【用户联络人关系认知】',
+      '你是从角色「' + ((ownerPersona && ownerPersona.name) || (npc && npc.ownerPersonaName) || '某角色') + '」的角色微信里同步到用户联络人中的 NPC。',
+      '当前对话用户身份：' + userLabel + '。不同用户面具是不同的人，不能混同记忆和关系。',
+      '你与来源角色的关系：' + (npc && (npc.relationSummary || npc.relationDetail || npc.identity) ? String(npc.relationSummary || npc.relationDetail || npc.identity) : '有关联') + '。',
+      '聊天时要同时记住：你自己的身份、你和来源角色的关系、当前用户身份。'
+    ].join('\n');
+  }
+  function findNpcByIdSafe(npcId) {
+    try {
+      if (typeof monoFindRoleNpcById === 'function') {
+        var npc = monoFindRoleNpcById(npcId);
+        if (npc) return npc;
+      }
+    } catch (e) {}
+    try {
+      var store = safeParse(localStorage.getItem('mono_role_npcs_v1') || localStorage.getItem('mono_role_npcs') || '{}', {});
+      var keys = Object.keys(store || {});
+      for (var i = 0; i < keys.length; i++) {
+        var hit = (Array.isArray(store[keys[i]]) ? store[keys[i]] : []).find(function(item){
+          return item && String(item.id) === String(npcId);
+        });
+        if (hit) return hit;
+      }
+    } catch (e) {}
+    return null;
+  }
+  function isNpcAlreadyAdded(npcId) {
+    return hydratePersonasFromStorage().some(function(item){
+      return item && String(item._roleNpcId || '') === String(npcId);
+    });
+  }
+  function syncNpcUserContact(ownerPersonaId, npcId) {
+    var personasList = hydratePersonasFromStorage();
+    var ownerPersona = personasList.find(function(item){ return item && String(item.id) === String(ownerPersonaId); }) || null;
+    var npc = findNpcByIdSafe(npcId);
+    if (!ownerPersona || !npc) return false;
+    var idx = personasList.findIndex(function(item){ return item && String(item._roleNpcId || '') === String(npc.id); });
+    var old = idx >= 0 ? personasList[idx] : null;
+    var personaId = old && old.id ? old.id : ('roleNpcPersona_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8));
+    var histKey = 'mono_hist_' + personaId;
+    var directHist = [];
+    try {
+      directHist = old && Array.isArray(old.history) ? old.history.slice() : safeParse(localStorage.getItem(histKey) || '[]', []);
+    } catch (e) { directHist = []; }
+    if (!Array.isArray(directHist)) directHist = [];
+    directHist = directHist.filter(function(item){ return !(item && item._roleNpcUserRelationContext); });
+    directHist.unshift({
+      role: 'system',
+      content: compactNpcRelationContext(ownerPersona, npc),
+      _hiddenContext: true,
+      _roleNpcUserRelationContext: true,
+      timestamp: Date.now()
+    });
+    try { localStorage.setItem(histKey, JSON.stringify(directHist)); } catch (e) {}
+    var nextPersona = Object.assign({}, old || {}, {
+      id: personaId,
+      name: String(npc.name || '').trim() || 'NPC',
+      nickname: (old && old.nickname) || String(npc.name || '').trim() || 'NPC',
+      avatar: npc.avatar || (old && old.avatar) || '',
+      persona: String(npc.persona || '').trim() || (((npc.name || 'NPC') + '是' + (ownerPersona.name || '某角色') + '世界中的 NPC。身份：' + (npc.identity || '未填写') + '。关系：' + (npc.relationSummary || npc.relationDetail || '有关联') + '。')),
+      history: directHist,
+      memoryCore: Array.isArray(old && old.memoryCore) ? old.memoryCore.slice() : [],
+      userMaskId: ownerPersona.userMaskId || (old && old.userMaskId) || '',
+      _roleNpcPersona: true,
+      _roleNpcId: String(npc.id),
+      _roleNpcOwnerId: String(ownerPersona.id || ''),
+      _roleNpcOwnerName: String(ownerPersona.name || ''),
+      _roleNpcIdentity: String(npc.identity || ''),
+      _roleNpcRelationSummary: String(npc.relationSummary || ''),
+      _roleNpcRelationDetail: String(npc.relationDetail || ''),
+      _roleNpcLinkNotes: Array.isArray(npc.linkNotes) ? npc.linkNotes.slice() : [],
+      updatedAt: Date.now()
+    });
+    if (idx >= 0) personasList[idx] = nextPersona;
+    else personasList.push(nextPersona);
+    persistPersonasCompat(personasList);
+    return true;
+  }
+  function removeNpcUserContact(npcId) {
+    var personasList = hydratePersonasFromStorage();
+    var removed = [];
+    personasList = personasList.filter(function(item){
+      var hit = item && String(item._roleNpcId || '') === String(npcId);
+      if (hit) removed.push(item);
+      return !hit;
+    });
+    removed.forEach(function(item){
+      try { localStorage.removeItem('mono_hist_' + item.id); } catch (e) {}
+    });
+    persistPersonasCompat(personasList);
+    return true;
+  }
+
+  var originalNormalizeChatReplyMessages = window._normalizeChatReplyMessages;
+  if (typeof originalNormalizeChatReplyMessages === 'function' && !originalNormalizeChatReplyMessages.__monoFinalLongReplyFixed) {
+    var wrappedNormalizeChatReplyMessages = function(rawContent, opts) {
+      var result = originalNormalizeChatReplyMessages.apply(this, arguments);
+      opts = opts || {};
+      if (!opts.exactApiParts) return result;
+      if (Array.isArray(result) && result.length === 1 && String(rawContent || '').indexOf('###') === -1) {
+        var single = String(result[0] || '').trim();
+        if (single.length >= 70) {
+          var split = splitLongReplyText(rawContent, opts.maxParts || 3);
+          if (split.length > 1) return split;
+        }
+      }
+      return result;
+    };
+    wrappedNormalizeChatReplyMessages.__monoFinalLongReplyFixed = true;
+    wrappedNormalizeChatReplyMessages.__monoOriginal = originalNormalizeChatReplyMessages;
+    window._normalizeChatReplyMessages = wrappedNormalizeChatReplyMessages;
+    try { _normalizeChatReplyMessages = wrappedNormalizeChatReplyMessages; } catch (e) {}
+  }
+
+  var originalRenderTransferBubble = window.renderTransferBubble;
+  if (typeof originalRenderTransferBubble === 'function' && !originalRenderTransferBubble.__monoFinalTransferFixed) {
+    var wrappedRenderTransferBubble = function(m, idx, isUser, avatarSrc, authorName, isSelected) {
+      var statusMap = {
+        pending: ['待处理', 'transfer-status-pending'],
+        accepted: ['已收款', 'transfer-status-accepted'],
+        declined: ['已婉拒', 'transfer-status-declined'],
+        user_accepted: ['已接受', 'transfer-status-accepted'],
+        user_declined: ['已拒绝', 'transfer-status-declined']
+      };
+      var tuple = statusMap[m && m.transferStatus] || statusMap.pending;
+      var statusText = tuple[0];
+      var statusClass = tuple[1];
+      var actionBtns = '';
+      if (!isUser && m && m.transferStatus === 'pending') {
+        actionBtns = '<div class="transfer-action-btns">'
+          + '<div class="transfer-action-btn transfer-accept-btn" onclick="handleUserTransferAction(' + idx + ',\'accept\')">接受</div>'
+          + '<div class="transfer-action-btn transfer-decline-btn" onclick="handleUserTransferAction(' + idx + ',\'decline\')">拒绝</div>'
+          + '</div>';
+      }
+      var headerMain = isUser ? '转账' : '角色转账';
+      var headerSub = isUser ? '' : ('<div style="margin-top:2px;font-size:10px;opacity:.72;font-weight:600;letter-spacing:0;text-transform:none;">' + escHtml(authorName || '角色') + '</div>');
+      var noteHtml = m && m.transferNote ? _formatChatBubbleHtml(m.transferNote) : '';
+      var noteTranslation = m && m.transferNoteTranslation ? _formatChatBubbleHtml(m.transferNoteTranslation) : '';
+      var bubbleHtml = '<div class="bubble-transfer ' + (isUser ? 'user-transfer' : 'persona-transfer') + '">'
+        + '<div class="bubble-transfer-header"><div>' + headerMain + '</div>' + headerSub + '</div>'
+        + '<div class="bubble-transfer-amount">¥' + parseFloat((m && m.transferAmt) || 0).toFixed(2) + '</div>'
+        + (noteHtml ? '<div class="bubble-transfer-note">' + noteHtml + (noteTranslation ? '<div style="margin-top:4px;font-size:10px;color:rgba(255,255,255,0.58);font-style:italic;border-top:1px solid rgba(255,255,255,0.15);padding-top:4px;">' + noteTranslation + '</div>' : '') + '</div>' : '')
+        + '<span class="bubble-transfer-status ' + statusClass + '">' + statusText + '</span>'
+        + actionBtns
+        + '</div>';
+      if (isUser) {
+        return '<div class="msg-row user ' + (isSelected ? 'selected' : '') + '" data-idx="' + idx + '">'
+          + '<div class="msg-content" style="align-items:flex-end;">' + bubbleHtml + '</div>'
+          + '<div class="msg-meta"><img src="' + escHtml(avatarSrc || '') + '" class="msg-avatar"><span class="msg-name">' + escHtml(String(authorName || '你').substring(0, 4)) + '</span></div>'
+          + '</div>';
+      }
+      return '<div class="msg-row ai ' + (isSelected ? 'selected' : '') + '" data-idx="' + idx + '">'
+        + '<div class="msg-meta"><img src="' + escHtml(avatarSrc || '') + '" class="msg-avatar"><span class="msg-name">' + escHtml(String(authorName || '角色').substring(0, 4)) + '</span></div>'
+        + '<div class="msg-content" style="align-items:flex-start;">' + bubbleHtml + '</div>'
+        + '</div>';
+    };
+    wrappedRenderTransferBubble.__monoFinalTransferFixed = true;
+    wrappedRenderTransferBubble.__monoOriginal = originalRenderTransferBubble;
+    window.renderTransferBubble = wrappedRenderTransferBubble;
+    try { renderTransferBubble = wrappedRenderTransferBubble; } catch (e) {}
+  }
+
+  var originalBuildRelInject = window._mwBuildRelInjectForChar;
+  if (typeof originalBuildRelInject === 'function' && !originalBuildRelInject.__monoFinalScoped) {
+    var wrappedBuildRelInject = function(charName, contextNames, isGroupChat) {
+      if (typeof mwIsEnabled !== 'function' || !mwIsEnabled()) return '';
+      if (typeof mwGetRelEntries !== 'function') return '';
+      var entries = (mwGetRelEntries() || []).filter(function(entry){ return entry && entry.a && entry.b; });
+      if (!entries.length) return '';
+      var personaMaskNodeId = '';
+      try {
+        var list = hydratePersonasFromStorage();
+        var selfPersona = list.find(function(item){ return item && item.name === charName; });
+        if (selfPersona && selfPersona.userMaskId && typeof _mwRelUserMaskNodeId === 'function') {
+          personaMaskNodeId = _mwRelUserMaskNodeId(selfPersona.userMaskId);
+        }
+      } catch (e) {}
+      var userName = '用户（我）';
+      try {
+        var up = safeParse(localStorage.getItem('mono_user_profile') || '{}', {});
+        if (up && up.name) userName = up.name;
+      } catch (e) {}
+      function resolveUserSideName(name, nodeId) {
+        try {
+          if (nodeId === '__user__') return userName;
+          if (typeof _mwIsUserNodeId === 'function' && _mwIsUserNodeId(nodeId) && typeof _mwResolveNodeName === 'function') {
+            return _mwResolveNodeName(nodeId, name || userName);
+          }
+        } catch (e) {}
+        return name || userName;
+      }
+      function slotNode(entry, slot) {
+        try { return typeof _mwGetEntryNodeId === 'function' ? _mwGetEntryNodeId(entry, slot) : ''; } catch (e) { return ''; }
+      }
+      function userSideMatches(entry, slot) {
+        var nodeId = slotNode(entry, slot);
+        try {
+          if (typeof _mwIsUserNodeId !== 'function' || !_mwIsUserNodeId(nodeId)) return true;
+        } catch (e) {
+          return true;
+        }
+        if (!personaMaskNodeId) return nodeId === '__user__';
+        return nodeId === personaMaskNodeId;
+      }
+      var myEntries = entries.filter(function(entry){
+        if (entry.a === charName) return userSideMatches(entry, 'b');
+        if (entry.b === charName) return userSideMatches(entry, 'a');
+        return false;
+      });
+      var contextEntries = (contextNames && contextNames.length > 0)
+        ? entries.filter(function(entry){
+            return entry.a !== charName && entry.b !== charName && contextNames.indexOf(entry.a) >= 0 && contextNames.indexOf(entry.b) >= 0;
+          })
+        : [];
+      if (!myEntries.length && !(isGroupChat && contextEntries.length)) return '';
+      var inject = '\n\n# 当前相关关系记忆\n---\n';
+      inject += '只参考和你当前身份直接相关的关系；不要把世界里其他无关角色的关系当成你的既有记忆。\n';
+      if (myEntries.length) {
+        inject += '\n## 你与当前相关对象的关系\n';
+        myEntries.forEach(function(entry){
+          var isA = entry.a === charName;
+          var otherName = resolveUserSideName(isA ? entry.b : entry.a, isA ? slotNode(entry, 'b') : slotNode(entry, 'a'));
+          inject += '· 你 与 ' + otherName + '：【' + (entry.label || '有关联') + '】\n';
+          if (entry.detail) inject += '  详情：' + entry.detail + '\n';
+        });
+      }
+      if (isGroupChat && contextEntries.length) {
+        inject += '\n## 当前场景里其他成员之间的已知关系\n';
+        contextEntries.forEach(function(entry){
+          var nameA = resolveUserSideName(entry.a, slotNode(entry, 'a'));
+          var nameB = resolveUserSideName(entry.b, slotNode(entry, 'b'));
+          inject += '· ' + nameA + ' 与 ' + nameB + '：【' + (entry.label || '有关联') + '】\n';
+          if (entry.detail) inject += '  详情：' + entry.detail + '\n';
+        });
+      }
+      inject += '---\n';
+      return inject;
+    };
+    wrappedBuildRelInject.__monoFinalScoped = true;
+    wrappedBuildRelInject.__monoOriginal = originalBuildRelInject;
+    window._mwBuildRelInjectForChar = wrappedBuildRelInject;
+    try { _mwBuildRelInjectForChar = wrappedBuildRelInject; } catch (e) {}
+  }
+
+  ['openPersonaForumModal', 'generatePersonaForumPost', 'diaryOpenAiModal', 'diaryRunAiGenerate'].forEach(function(name){
+    var fn = window[name];
+    if (typeof fn !== 'function' || fn.__monoFinalHydrated) return;
+    var wrapped = function() {
+      replaceLivePersonas(hydratePersonasFromStorage());
+      return fn.apply(this, arguments);
+    };
+    wrapped.__monoFinalHydrated = true;
+    wrapped.__monoOriginal = fn;
+    window[name] = wrapped;
+    try { eval(name + ' = window[name]'); } catch (e) {}
+  });
+
+  var originalToggleNpcUserContact = window.monoToggleRoleNpcUserContact;
+  window.monoToggleRoleNpcUserContact = function(ownerPersonaId, npcId) {
+    var ok;
+    if (isNpcAlreadyAdded(npcId)) ok = removeNpcUserContact(npcId);
+    else ok = syncNpcUserContact(ownerPersonaId, npcId);
+    try { if (typeof renderContactList === 'function') renderContactList(); } catch (e) {}
+    try {
+      var list = hydratePersonasFromStorage();
+      var owner = list.find(function(item){ return item && String(item.id) === String(ownerPersonaId); });
+      if (owner && typeof monoOpenRolePhone === 'function') monoOpenRolePhone(owner.id);
+    } catch (e) {}
+    if (!ok && typeof originalToggleNpcUserContact === 'function') {
+      return originalToggleNpcUserContact.apply(this, arguments);
+    }
+    return false;
+  };
+  window.monoSyncRoleNpcToUserContact = syncNpcUserContact;
+  window.monoRemoveRoleNpcUserContact = function(npc) {
+    if (!npc || !npc.id) return false;
+    return removeNpcUserContact(npc.id);
+  };
+
+  var originalMonoSaveUserMasks = window.monoSaveUserMasks;
+  if (typeof originalMonoSaveUserMasks === 'function' && !originalMonoSaveUserMasks.__monoFinalAvatarFixed) {
+    var wrappedMonoSaveUserMasks = function(nextMasks) {
+      var result = originalMonoSaveUserMasks.apply(this, arguments);
+      var masks = Array.isArray(nextMasks) ? nextMasks : ((typeof userMasks !== 'undefined' && Array.isArray(userMasks)) ? userMasks : (window.userMasks || []));
+      writeMasksWithAvatars(masks);
+      return result;
+    };
+    wrappedMonoSaveUserMasks.__monoFinalAvatarFixed = true;
+    wrappedMonoSaveUserMasks.__monoOriginal = originalMonoSaveUserMasks;
+    window.monoSaveUserMasks = wrappedMonoSaveUserMasks;
+    try { monoSaveUserMasks = wrappedMonoSaveUserMasks; } catch (e) {}
+  }
+
+  var renderSaveLock = false;
+  var originalRenderMessages = window.renderMessages;
+  if (typeof originalRenderMessages === 'function' && !originalRenderMessages.__monoFinalSanitized) {
+    var wrappedRenderMessages = function() {
+      try {
+        var activeId = null;
+        try { activeId = typeof currentId !== 'undefined' ? currentId : window.currentId; } catch (e) {}
+        if (activeId != null) {
+          var list = hydratePersonasFromStorage();
+          var active = list.find(function(item){ return item && String(item.id) === String(activeId); });
+          if (active && sanitizePersonaHeartVoiceArtifacts(active)) {
+            persistPersonasCompat(list);
+            if (!renderSaveLock) {
+              renderSaveLock = true;
+              setTimeout(function(){ renderSaveLock = false; }, 80);
+            }
+          }
+        }
+      } catch (e) {}
+      return originalRenderMessages.apply(this, arguments);
+    };
+    wrappedRenderMessages.__monoFinalSanitized = true;
+    wrappedRenderMessages.__monoOriginal = originalRenderMessages;
+    window.renderMessages = wrappedRenderMessages;
+    try { renderMessages = wrappedRenderMessages; } catch (e) {}
+  }
+
+  setTimeout(function(){
+    try { replaceLivePersonas(hydratePersonasFromStorage()); } catch (e) {}
+    try {
+      var masks = (typeof userMasks !== 'undefined' && Array.isArray(userMasks)) ? userMasks : (window.userMasks || []);
+      writeMasksWithAvatars(masks);
+    } catch (e) {}
+    try {
+      var activeId = typeof currentId !== 'undefined' ? currentId : window.currentId;
+      var list = hydratePersonasFromStorage();
+      var active = list.find(function(item){ return item && String(item.id) === String(activeId); });
+      if (active && sanitizePersonaHeartVoiceArtifacts(active)) persistPersonasCompat(list);
+    } catch (e) {}
+  }, 80);
 })();
 </script>
 

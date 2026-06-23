@@ -58242,7 +58242,7 @@ function renderTaskContent() {
     } else if (isCompleted) {
       claimBtnClass += ' ready';
       claimBtnText = '領取奖励';
-      claimBtnOnclick = `onclick="claimDailyReward(${taskCurrentCharId},'${taskType}')"`;
+      claimBtnOnclick = `onclick="claimDailyReward('${monoJsSingleQuote(taskCurrentCharId)}','${taskType}')"`;
     }
     let statusClass = isCompleted ? 'done' : 'pending';
     let statusText = isCompleted ? 'COMPLETE' : 'IN PROGRESS';
@@ -110892,6 +110892,43 @@ body.mono-fwd-modal-open {
     }
     return out;
   };
+})();
+</script>
+
+
+<script>
+/* Mono task reward click safety patch: keeps daily reward buttons clickable even when persona ids are strings. */
+(function(){
+  function monoTaskRewardFixExpose(){
+    try { if (typeof claimDailyReward === 'function') window.claimDailyReward = claimDailyReward; } catch(e) {}
+    try { if (typeof doClaimReward === 'function') window.doClaimReward = doClaimReward; } catch(e) {}
+    try { if (typeof saveAndCloseReward === 'function') window.saveAndCloseReward = saveAndCloseReward; } catch(e) {}
+    try { if (typeof regenCurrentReward === 'function') window.regenCurrentReward = regenCurrentReward; } catch(e) {}
+    try { if (typeof retryPendingReward === 'function') window.retryPendingReward = retryPendingReward; } catch(e) {}
+    try { if (typeof closeTaskRewardPopup === 'function') window.closeTaskRewardPopup = closeTaskRewardPopup; } catch(e) {}
+  }
+  monoTaskRewardFixExpose();
+  document.addEventListener('click', function(ev){
+    var btn = ev.target && ev.target.closest ? ev.target.closest('.task-claim-btn.ready') : null;
+    if (!btn) return;
+    // Inline onclick handles the normal path. This fallback only repairs old/broken rendered buttons.
+    var raw = btn.getAttribute('onclick') || '';
+    if (raw && raw.indexOf("claimDailyReward('") !== -1) return;
+    if (raw && raw.indexOf('claimDailyReward(') !== -1) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      try {
+        var match = raw.match(/claimDailyReward\((.*?),\s*'([^']+)'\)/);
+        var taskType = match ? match[2] : '';
+        var personaId = (typeof taskCurrentCharId !== 'undefined') ? taskCurrentCharId : null;
+        if (personaId != null && taskType && typeof window.claimDailyReward === 'function') {
+          window.claimDailyReward(personaId, taskType);
+        }
+      } catch(err) {
+        console.error('任务奖励按钮修复触发失败:', err);
+      }
+    }
+  }, true);
 })();
 </script>
 

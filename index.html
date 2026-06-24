@@ -111503,6 +111503,199 @@ body.mono-fwd-modal-open {
 })();
 </script>
 
+
+<script id="mono-strict-secondary-api-persistence-v2">
+/* MONO HOTFIX 2026-06-24 v2: 副 API 重新进入后不再被初始化逻辑覆盖成默认 API。
+   重点：保存/切换副 API 时写入稳定备份；启动时如果发现默认 API 是误覆盖，会恢复最后使用的副 API。 */
+(function(){
+  'use strict';
+  if (window.__monoStrictSecondaryApiPersistenceV2) return;
+  window.__monoStrictSecondaryApiPersistenceV2 = true;
+
+  var SEC_KEY = 'mono_secondary_apis';
+  var ACT_KEY = 'mono_active_api';
+  var EFF_KEY = 'mono_effective_api';
+  var CFG_KEY = 'mono_active_api_config';
+  var LAST_KEY = 'mono_last_non_preset_api';
+  var USER_PRESET_KEY = 'mono_user_chose_preset_api';
+
+  function rawLS(){ return window._monoRawLocalStorage || window.localStorage; }
+  function safeJson(raw, fb){ try { var v = JSON.parse(raw || ''); return v == null ? fb : v; } catch(e){ return fb; } }
+  function readRaw(key){ try { return rawLS().getItem(key); } catch(e){ return null; } }
+  function readProxy(key){ try { return window.localStorage.getItem(key); } catch(e){ return null; } }
+  function writeAll(key, val){
+    try { window.localStorage.setItem(key, val); } catch(e) {}
+    try { rawLS().setItem(key, val); } catch(e) {}
+    try { rawLS().setItem('__stable__' + key, val); } catch(e) {}
+  }
+  function norm(cfg){
+    try { if (typeof window._normalizeApiConfigObject === 'function') return window._normalizeApiConfigObject(cfg || {}); } catch(e) {}
+    cfg = cfg || {};
+    return {
+      id: String(cfg.id || ''),
+      name: String(cfg.name || ''),
+      url: String(cfg.url || cfg.baseUrl || '').trim().replace(/\/+$/,''),
+      key: String(cfg.key || cfg.apiKey || '').trim(),
+      model: String(cfg.model || '').trim() || '__auto__'
+    };
+  }
+  function mergeApis(){
+    var candidates = [];
+    [readProxy(SEC_KEY), readRaw(SEC_KEY), readRaw('__stable__' + SEC_KEY)].forEach(function(raw){
+      var arr = safeJson(raw, []);
+      if (Array.isArray(arr)) candidates.push(arr);
+    });
+    try { if (Array.isArray(window.secondaryApis)) candidates.push(window.secondaryApis); } catch(e) {}
+    var map = {};
+    candidates.forEach(function(arr){
+      arr.forEach(function(a){
+        if (!a) return;
+        var id = String(a.id || '');
+        if (!id) return;
+        map[id] = Object.assign({}, map[id] || {}, a);
+      });
+    });
+    var out = Object.keys(map).map(function(k){ return map[k]; });
+    if (out.length) writeAll(SEC_KEY, JSON.stringify(out));
+    try {
+      if (Array.isArray(window.secondaryApis)) { window.secondaryApis.length = 0; out.forEach(function(a){ window.secondaryApis.push(a); }); }
+    } catch(e) {}
+    return out;
+  }
+  function findApi(id){
+    id = String(id || '');
+    if (!id || id === 'preset') return null;
+    return mergeApis().find(function(a){ return a && String(a.id) === id; }) || null;
+  }
+  function getActiveIdRaw(){
+    return String(readProxy(ACT_KEY) || readRaw(ACT_KEY) || readRaw('__stable__' + ACT_KEY) || 'preset');
+  }
+  function chooseRestoredActiveId(){
+    var id = getActiveIdRaw();
+    if (id !== 'preset' && findApi(id)) return id;
+
+    // 只有用户明确点过“切换预设”时，才保留 preset；否则把误覆盖恢复为上次副 API。
+    var userChosePreset = String(readRaw(USER_PRESET_KEY) || readProxy(USER_PRESET_KEY) || '') === 'true';
+    var last = String(readRaw(LAST_KEY) || readProxy(LAST_KEY) || readRaw('__stable__' + LAST_KEY) || '');
+    if (!userChosePreset && last && last !== 'preset' && findApi(last)) return last;
+    return 'preset';
+  }
+  function persistActive(id){
+    id = String(id || 'preset');
+    writeAll(ACT_KEY, id);
+    if (id && id !== 'preset') {
+      writeAll(LAST_KEY, id);
+      writeAll(USER_PRESET_KEY, 'false');
+    } else {
+      writeAll(USER_PRESET_KEY, 'true');
+    }
+    try { window.activeApiId = id; } catch(e) {}
+  }
+  function applyStrictActive(){
+    var apis = mergeApis();
+    var id = chooseRestoredActiveId();
+    var cfg = null;
+    if (id !== 'preset') cfg = apis.find(function(a){ return a && String(a.id) === id; }) || null;
+    if (!cfg) {
+      id = 'preset';
+      try { cfg = (typeof window._getPresetApiConfig === 'function') ? window._getPresetApiConfig() : safeJson(readProxy('mono_api') || readRaw('mono_api') || '{}', {}); } catch(e) { cfg = safeJson(readProxy('mono_api') || readRaw('mono_api') || '{}', {}); }
+    }
+    cfg = norm(cfg);
+    if (cfg && (cfg.url || cfg.key || cfg.model)) {
+      try { window.apiConfig = cfg; } catch(e) {}
+      writeAll(EFF_KEY, JSON.stringify(cfg));
+      writeAll(CFG_KEY, JSON.stringify(cfg));
+    }
+    // 这里不要把用户明确选择 preset 的记录误改掉；只同步真实 id。
+    writeAll(ACT_KEY, id);
+    if (id !== 'preset') { writeAll(LAST_KEY, id); writeAll(USER_PRESET_KEY, 'false'); }
+    try { window.activeApiId = id; } catch(e) {}
+    try { if (Array.isArray(window.secondaryApis)) { window.secondaryApis.length = 0; apis.forEach(function(a){ window.secondaryApis.push(a); }); } } catch(e) {}
+    return cfg;
+  }
+
+  // 页面刚解析到补丁时先恢复一次，避免后面的初始化读到 preset。
+  try { applyStrictActive(); } catch(e) {}
+
+  var oldSwitch = window.switchActiveApi;
+  window.switchActiveApi = function(id){
+    id = String(id || 'preset');
+    if (id !== 'preset' && !findApi(id)) mergeApis();
+    persistActive(id);
+    var r;
+    try { if (typeof oldSwitch === 'function') r = oldSwitch.apply(this, arguments); } catch(e) { console.warn('[api persist] old switch failed:', e); }
+    // oldSwitch 内部可能又写 preset，最后再强制写回用户真正点击的 id。
+    persistActive(id);
+    try { applyStrictActive(); } catch(e) {}
+    try { if (typeof window.renderSecondaryApiList === 'function') window.renderSecondaryApiList(); } catch(e) {}
+    try { if (typeof window.renderActiveApiIndicator === 'function') window.renderActiveApiIndicator(); } catch(e) {}
+    try { if (typeof window.updateFabPanel === 'function') window.updateFabPanel(); } catch(e) {}
+    return r;
+  };
+
+  var oldSaveSecondary = window.saveSecondaryApis;
+  window.saveSecondaryApis = function(){
+    var r; try { if (typeof oldSaveSecondary === 'function') r = oldSaveSecondary.apply(this, arguments); } catch(e) {}
+    try { mergeApis(); } catch(e) {}
+    return r;
+  };
+
+  var oldSaveForm = window.saveSecApiForm;
+  window.saveSecApiForm = function(){
+    var before = mergeApis().map(function(a){ return String(a.id); });
+    var editing = '';
+    try { editing = String(window.editingSecApiId || ''); } catch(e) {}
+    var r; try { if (typeof oldSaveForm === 'function') r = oldSaveForm.apply(this, arguments); } catch(e) { console.warn('[api persist] save form failed:', e); throw e; }
+    try {
+      var after = mergeApis();
+      var target = editing && findApi(editing) ? editing : '';
+      if (!target) {
+        var created = after.find(function(a){ return before.indexOf(String(a.id)) < 0; });
+        if (created) target = String(created.id);
+      }
+      // 用户保存副 API 后，默认直接把它设为当前使用；避免“保存了副 API 但重开又显示默认”。
+      if (target && target !== 'preset') {
+        persistActive(target);
+        applyStrictActive();
+      }
+      try { if (typeof window.renderSecondaryApiList === 'function') window.renderSecondaryApiList(); } catch(e) {}
+      try { if (typeof window.renderActiveApiIndicator === 'function') window.renderActiveApiIndicator(); } catch(e) {}
+      try { if (typeof window.updateFabPanel === 'function') window.updateFabPanel(); } catch(e) {}
+    } catch(e) {}
+    return r;
+  };
+
+  var oldInit = window.initApiSwitcher;
+  window.initApiSwitcher = function(){
+    try { applyStrictActive(); } catch(e) {}
+    var r; try { if (typeof oldInit === 'function') r = oldInit.apply(this, arguments); } catch(e) { console.warn('[api persist] init guarded:', e); }
+    try { applyStrictActive(); } catch(e) {}
+    try { if (typeof window.renderSecondaryApiList === 'function') window.renderSecondaryApiList(); } catch(e) {}
+    try { if (typeof window.renderActiveApiIndicator === 'function') window.renderActiveApiIndicator(); } catch(e) {}
+    return r;
+  };
+
+  var oldApply = window.applyActiveApi;
+  window.applyActiveApi = function(){
+    var idBefore = chooseRestoredActiveId();
+    try { persistActive(idBefore); } catch(e) {}
+    var r; try { if (typeof oldApply === 'function') r = oldApply.apply(this, arguments); } catch(e) {}
+    try { applyStrictActive(); } catch(e) {}
+    return r;
+  };
+
+  // 兼容所有请求读取函数：任何地方取当前 API 都先按严格当前副 API 解析。
+  window.monoGetStrictActiveApiConfig = function(){ return applyStrictActive(); };
+  window._getCurrentActiveApiConfig = window.monoGetStrictActiveApiConfig;
+  window._getCurrentEffectiveApiConfig = window.monoGetStrictActiveApiConfig;
+
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden) { try { applyStrictActive(); } catch(e) {} } });
+  window.addEventListener('pageshow', function(){ try { applyStrictActive(); } catch(e) {} });
+  setTimeout(function(){ try { applyStrictActive(); if (typeof window.renderActiveApiIndicator === 'function') window.renderActiveApiIndicator(); } catch(e) {} }, 0);
+  setTimeout(function(){ try { applyStrictActive(); if (typeof window.renderActiveApiIndicator === 'function') window.renderActiveApiIndicator(); } catch(e) {} }, 800);
+})();
+</script>
+
 </body>
 
 <!-- MONO FINAL FIX: Sticker library dialogs are not covered; use a real top-layer modal and direct button routing -->

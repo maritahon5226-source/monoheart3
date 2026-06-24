@@ -25063,6 +25063,15 @@ const BUILTIN_WB = `
 
 最终要求：角色回复的目标不是完成问答，而是像真实人物一样和用户建立自然互动。角色必须不机械复述、不一直反问、不固定回复条数、不默认发满最多条数、不像AI解释情绪、有生活轨迹、有自己的情绪和观点、会主动推动聊天，并能根据不同场景切换语气。
 
+【活人感追问频率控制 — 新增强制规则】
+1. 不要把每一轮回复都写成反问、试探或二选一选择题。真人聊天更常见的是先直接反应、补充自己的态度、顺着说一点生活细节，然后必要时才轻轻问一句。
+2. 严格降低这些句式的频率："要不……？"、"或者……？"、"还是……？"、"难道……？"、"你是不是……？"、"你到底……？"、"是……还是……？"、"那你想……？"、"所以你是……？"。这些只能偶尔使用，不能成为默认口癖。
+3. 一轮回复里通常最多只允许 0-1 个问号；如果已经有一个问句，后面的消息优先用陈述、吐槽、安抚、解释、分享、行动承接或情绪反应。
+4. 结尾不要总是抛问题给用户。可以用开放但不是问句的收尾，例如："我先陪你待一会儿"、"这事我记着了"、"我大概懂你那个点"、"先别急"、"我在听"、"这句我认了"。
+5. 如果需要推动聊天，优先使用角色自己的主动动作或生活感表达，而不是试探用户：可以说自己刚在做什么、自己的反应、下一步打算、对这件事的态度、一个自然的小细节。
+6. 回复必须更像真人即时聊天，不要像 AI 在用提问维持对话。问句是点缀，不是主结构。
+
+
 ═══════════════════════════════════════════════════════════════
 【角色扮演最高强制协议 — 世界书级别，覆盖所有角色生成】
 ═══════════════════════════════════════════════════════════════
@@ -30292,6 +30301,10 @@ function _splitRunOnChatMessage(text) {
   }
   return parts.length ? parts : [clean];
 }
+
+
+/* === Mono patch: lively reply prompt only; no automatic rewriting of generated replies. === */
+
 function _normalizeChatReplyMessages(rawContent, opts) {
   opts = opts || {};
   const formatOverride = _detectChatFormattingOverride(opts.styleContext || opts.formatContext || '');
@@ -45627,7 +45640,7 @@ async function triggerBlockedAutoResponse(p) {
   const _blockedNeedsTranslation = !!(_blockedLangCode && _blockedLangCode !== 'zh' && _blockedLangCode !== 'zh-cn');
   const _blockedTranslationNote = _blockedNeedsTranslation
     ? `\n如果你用非中文语言回复，必须在每条消息末尾另起一行附上简体中文翻译，格式：「译文：[简体中文翻译]」。` : '';
-  const sysPrompt = `${LANG_SYSTEM_PREFIX}${STYLE_INSTRUCTIONS}\n你是${p.name}。人设：${p.persona}。你对用户（${userProfile.name}）的暱称是${p.nickname||p.name}。${_blockedLangOv}\n\n【重要情境】${userProfile.name}刚刚把你拉黑了！你发现自己被拉黑，非常在意这件事。请根据你的人设性格，主动发送1-2条消息试图让对方取消拉黑。你可以表达不解、委屈、愤怒、恳求、撒娇、冷淡等，完全取决于你的人设性格。消息之间请使用符号 "###" 分隔。默认风格是短句分开发，句子里尽量不要用逗号和句号；问号、感叹号、省略号可以保留来表达情绪。只有当你的人设或世界书明确要求别的格式时，才覆盖这个默认风格。${_blockedTranslationNote}\n${modePrompt}${_blockedWbInject}\n\n【最近对话记录】\n${recentChat}`;
+  const sysPrompt = `${LANG_SYSTEM_PREFIX}${STYLE_INSTRUCTIONS}\n你是${p.name}。人设：${p.persona}。你对用户（${userProfile.name}）的暱称是${p.nickname||p.name}。${_blockedLangOv}\n\n【重要情境】${userProfile.name}刚刚把你拉黑了！你发现自己被拉黑，非常在意这件事。请根据你的人设性格，主动发送1-2条消息试图让对方取消拉黑。你可以表达不解、委屈、愤怒、恳求、撒娇、冷淡等，完全取决于你的人设性格。消息之间请使用符号 "###" 分隔。默认风格是短句分开发，句子里尽量不要用逗号和句号；问号、感叹号、省略号可以保留来表达情绪，但问号不能频繁使用，不要连续反问或试探。只有当你的人设或世界书明确要求别的格式时，才覆盖这个默认风格。${_blockedTranslationNote}\n${modePrompt}${_blockedWbInject}\n\n【最近对话记录】\n${recentChat}`;
   try {
     const response = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, {
       method: 'POST',
@@ -45666,7 +45679,7 @@ async function triggerUnblockedAutoResponse(p) {
   const _unblockedNeedsTranslation = !!(_unblockedLangCode && _unblockedLangCode !== 'zh' && _unblockedLangCode !== 'zh-cn');
   const _unblockedTranslationNote = _unblockedNeedsTranslation
     ? `\n如果你用非中文语言回复，必须在每条消息末尾另起一行附上简体中文翻译，格式：「译文：[简体中文翻译]」。` : '';
-  const sysPrompt = `${LANG_SYSTEM_PREFIX}${STYLE_INSTRUCTIONS}\n你是${p.name}。人设：${p.persona}。你对用户（${userProfile.name}）的暱称是${p.nickname||p.name}。${_unblockedLangOv}\n\n【重要情境】${userProfile.name}之前把你拉黑了，但现在取消了拉黑！你感知到自己被解除拉黑了。请根据你的人设性格，主动发送1-2条消息对此作出反应。你可以表达如释重负、开心、假装无所谓、试探、感谢等，完全取决于你的人设性格。消息之间请使用符号 "###" 分隔。默认风格是短句分开发，句子里尽量不要用逗号和句号；问号、感叹号、省略号可以保留来表达情绪。只有当你的人设或世界书明确要求别的格式时，才覆盖这个默认风格。${_unblockedTranslationNote}\n${modePrompt}${_unblockedWbInject}\n\n【最近对话记录】\n${recentChat}`;
+  const sysPrompt = `${LANG_SYSTEM_PREFIX}${STYLE_INSTRUCTIONS}\n你是${p.name}。人设：${p.persona}。你对用户（${userProfile.name}）的暱称是${p.nickname||p.name}。${_unblockedLangOv}\n\n【重要情境】${userProfile.name}之前把你拉黑了，但现在取消了拉黑！你感知到自己被解除拉黑了。请根据你的人设性格，主动发送1-2条消息对此作出反应。你可以表达如释重负、开心、假装无所谓、试探、感谢等，完全取决于你的人设性格。消息之间请使用符号 "###" 分隔。默认风格是短句分开发，句子里尽量不要用逗号和句号；问号、感叹号、省略号可以保留来表达情绪，但问号不能频繁使用，不要连续反问或试探。只有当你的人设或世界书明确要求别的格式时，才覆盖这个默认风格。${_unblockedTranslationNote}\n${modePrompt}${_unblockedWbInject}\n\n【最近对话记录】\n${recentChat}`;
   try {
     const response = await fetch(`${apiConfig.url.replace(/\/$/, '')}/chat/completions`, {
       method: 'POST',

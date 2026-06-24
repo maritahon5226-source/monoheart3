@@ -265,7 +265,7 @@ async function bgGenerateAndNotify() {
         // Schedule next random interval for this persona
         p.nextAutoMsgDelay = minMs + Math.random() * (maxMs - minMs);
         await swIdbSet(db, BG_STORE, 'bgPersonas', personaList);
-        await self.registration.showNotification('Mono Heart · ' + p.name, {
+        await self.registration.showNotification(p.name || '角色', {
           body: parts[0].substring(0, 80),
           icon: p.avatar || undefined,
           tag: 'mono-bg-' + p.id,
@@ -392,7 +392,7 @@ self.addEventListener('message', e => {
             await sendLog('✅ 消息已写入 IDB pending 队列');
 
             try {
-              await self.registration.showNotification('[测试] Mono Heart · ' + p.name, {
+              await self.registration.showNotification('[测试] ' + (p.name || '角色'), {
                 body: parts[0].substring(0, 80),
                 icon: p.avatar || undefined,
                 tag: 'mono-bg-test-' + p.id,
@@ -724,7 +724,9 @@ self.addEventListener('notificationclick', e => {
     'mono_custom_image_widget_v1','mono_hidden_regular_widgets_v1',
     'mono_spotify_widget_text_v1','mono_multiworld_enabled','mono_multiworld_worlds',
     'mono_multiworld_active','mono_voice_lang',
-    'mono_user_profile','mono_user_masks','mono_couple_space_v1'  // 用户资料、用户面具与情侣空间跨世界共享，永不加世界前缀
+    'mono_user_profile','mono_user_masks','mono_user_masks_backup_v11','mono_user_masks_saved_at_v11','mono_user_mask_avatar_cache_v8','mono_couple_space_v1',
+    'mono_secondary_apis','mono_active_api','mono_effective_api','mono_active_api_config','mono_low_priority_api_enabled','mono_low_priority_api_id','mono_low_priority_features','mono_aux_features_enabled','mono_aux_api_id','mono_one_shot_chat_enabled',
+    'mono_loc_relations','mono_loc_user_pos','mono_loc_char_pos','mono_loc_traces','mono_loc_char_regions','mono_loc_user_region','mono_loc_trace_date','mono_loc_sel_char'  // 用户资料、用户面具、API与情侣定位跨世界共享，永不加世界前缀
   ]);
   const _MW_SHARED_PREFIXES = ['mono_icon_', 'mono_rel_map_', 'mono_mw_'];
   function _mwTransformKey(key) {
@@ -29956,7 +29958,7 @@ function _showHeartVoicePopupCard(p, line, opts) {
     '<div class="heart-voice-notif-top">'
       + '<div class="heart-voice-notif-app">'
         + '<img src="' + _hvEsc(p.avatar || makeAvatar(p.name || '?', '#f2f2f2', '#1a1a1a')) + '" alt="">'
-        + '<span>Mono Heart · ' + _hvEsc(p.name || '角色') + '</span>'
+        + '<span>' + _hvEsc(p.name || '角色') + '</span>'
       + '</div>'
       + '<div class="heart-voice-notif-time">' + timeLabel + '</div>'
     + '</div>'
@@ -32219,13 +32221,13 @@ function mwSwitchWorld(worldId) {
       if (window._idb) {
         const tx = window._idb.transaction('kv', 'readwrite');
         tx.objectStore('kv').put(worldId, 'mono_multiworld_active');
-        tx.oncomplete = function() { location.reload(); };
-        tx.onerror = function() { location.reload(); };
+        tx.oncomplete = function() { (window.monoSafeReload ? window.monoSafeReload('legacy') : location.reload()); };
+        tx.onerror = function() { (window.monoSafeReload ? window.monoSafeReload('legacy') : location.reload()); };
       } else {
-        location.reload();
+        (window.monoSafeReload ? window.monoSafeReload('legacy') : location.reload());
       }
     } catch(e) {
-      location.reload();
+      (window.monoSafeReload ? window.monoSafeReload('legacy') : location.reload());
     }
   };
 }
@@ -48514,7 +48516,7 @@ async function confirmImport() {
   }
   // 桌件/页面/图标位置系统均为封闭 IIFE，无法从外部重建内存状态，
   // 必须刷新页面让各自的 boot() 从 localStorage 重新初始化。
-  setTimeout(() => { location.reload(); }, 2000);
+  setTimeout(() => { (window.monoSafeReload ? window.monoSafeReload('legacy') : location.reload()); }, 2000);
 }
 // ===================== 黑盒子 BLACK BOX =====================
 let bbCurrentCharId = null;
@@ -52211,7 +52213,7 @@ function sendBrowserNotif(name, text, avatar) {
   if (!('Notification' in window)) return;
   if (Notification.permission !== 'granted') return;
 
-  const title = 'Mono Heart · ' + name;
+  const title = name || '角色';
   const tag = 'mono-msg-' + Date.now();
   const notifOpts = {
     body: text,
@@ -81763,7 +81765,7 @@ window.iphResetLayout = function() {
     });
   });
   // Reload page to fully restore original DOM order
-  location.reload();
+  (window.monoSafeReload ? window.monoSafeReload('legacy') : location.reload());
 };
 /* ── suppress clicks during edit ── */
 let _savedClicks = new WeakMap();
@@ -109915,7 +109917,7 @@ body.mono-fwd-modal-open {
     ensureWorldExists(worldId, fallbackName);
     writeActive(worldId, function(){
       try { sessionStorage.setItem('mono_after_world_switch', worldId); } catch(e) {}
-      location.reload();
+      (window.monoSafeReload ? window.monoSafeReload('legacy') : location.reload());
     });
   }
   function confirmSwitch(worldId, fallbackName){
@@ -110929,6 +110931,575 @@ body.mono-fwd-modal-open {
       }
     }
   }, true);
+})();
+</script>
+
+
+<script>
+/* === MONO HOTFIX 2026-06-24: stable location/API/mask persistence + no chat reload ===
+   Fixes:
+   1) 情侣定位绑定/生成记录关闭网页后丢失
+   2) 用户面具头像像角色头像一样稳定保存和显示
+   3) 当前选择的副 API 关闭重开后不再回落默认 API
+   4) 聊天发送/角色回复后不允许表单默认提交导致整页刷新
+*/
+(function(){
+  'use strict';
+  if (window.__monoHotfixPersistReloadV1) return;
+  window.__monoHotfixPersistReloadV1 = true;
+
+  function rawLS(){ return window._monoRawLocalStorage || window.localStorage; }
+  function parseJson(v, fb){ try { var x = JSON.parse(v || ''); return x == null ? fb : x; } catch(e){ return fb; } }
+  function writeBoth(key, val){
+    try { localStorage.setItem(key, val); } catch(e) {}
+    try { rawLS().setItem(key, val); } catch(e) {}
+    try { rawLS().setItem('__stable__' + key, val); } catch(e) {}
+  }
+  function readAny(key, fb){
+    var v = null;
+    try { v = localStorage.getItem(key); } catch(e) {}
+    if (v == null || v === '') { try { v = rawLS().getItem(key); } catch(e) {} }
+    if (v == null || v === '') { try { v = rawLS().getItem('__stable__' + key); } catch(e) {} }
+    return (v == null || v === '') ? fb : v;
+  }
+
+  // ---------- A. 副 API 当前选择：跨世界/重进网页稳定 ----------
+  var SEC_KEY = 'mono_secondary_apis';
+  var ACT_KEY = 'mono_active_api';
+  var EFF_KEY = 'mono_effective_api';
+  function normalizeApi(cfg){
+    try { if (typeof _normalizeApiConfigObject === 'function') return _normalizeApiConfigObject(cfg || {}); } catch(e) {}
+    cfg = cfg || {};
+    return { url:String(cfg.url || cfg.baseUrl || '').trim().replace(/\/+$/,''), key:String(cfg.key || cfg.apiKey || '').trim(), model:String(cfg.model || '').trim() || '__auto__' };
+  }
+  function getSecondaryApisStable(){
+    var arr = parseJson(readAny(SEC_KEY, '[]'), []);
+    return Array.isArray(arr) ? arr : [];
+  }
+  function getActiveApiIdStable(){
+    return String(readAny(ACT_KEY, 'preset') || 'preset');
+  }
+  function persistApiSwitcherStable(id, arr){
+    try { if (!Array.isArray(arr)) arr = (typeof secondaryApis !== 'undefined' && Array.isArray(secondaryApis)) ? secondaryApis : getSecondaryApisStable(); } catch(e) { arr = getSecondaryApisStable(); }
+    writeBoth(SEC_KEY, JSON.stringify(arr || []));
+    writeBoth(ACT_KEY, String(id || getActiveApiIdStable() || 'preset'));
+  }
+  function applyActiveApiStable(){
+    try {
+      var arr = getSecondaryApisStable();
+      var id = getActiveApiIdStable();
+      var cfg = null;
+      if (id !== 'preset') cfg = arr.find(function(a){ return a && String(a.id) === String(id); }) || null;
+      if (!cfg) {
+        if (id !== 'preset') {
+          // 副 API 不存在才回落；同时把真实原因保存，避免每次静默回默认。
+          id = 'preset';
+          writeBoth(ACT_KEY, 'preset');
+        }
+        cfg = parseJson(readAny('mono_api', '{}'), {});
+      }
+      cfg = normalizeApi(cfg);
+      if (cfg && (cfg.url || cfg.key || cfg.model)) {
+        try { apiConfig = cfg; } catch(e) { window.apiConfig = cfg; }
+        writeBoth(EFF_KEY, JSON.stringify(cfg));
+        writeBoth('mono_active_api_config', JSON.stringify(cfg));
+      }
+      try { activeApiId = id; } catch(e) { window.activeApiId = id; }
+      try { secondaryApis = arr; } catch(e) { window.secondaryApis = arr; }
+      return cfg;
+    } catch(e) { return null; }
+  }
+  window.monoApplyActiveApiStable = applyActiveApiStable;
+  var oldInitApiSwitcher = window.initApiSwitcher;
+  window.initApiSwitcher = function(){
+    try { applyActiveApiStable(); } catch(e) {}
+    var r; try { if (typeof oldInitApiSwitcher === 'function') r = oldInitApiSwitcher.apply(this, arguments); } catch(e) { console.warn('[mono hotfix] initApiSwitcher guarded:', e); }
+    try { applyActiveApiStable(); persistApiSwitcherStable(getActiveApiIdStable()); } catch(e) {}
+    return r;
+  };
+  var oldSwitchActiveApi = window.switchActiveApi;
+  window.switchActiveApi = function(id){
+    writeBoth(ACT_KEY, String(id || 'preset'));
+    try { activeApiId = String(id || 'preset'); } catch(e) {}
+    var r; try { if (typeof oldSwitchActiveApi === 'function') r = oldSwitchActiveApi.apply(this, arguments); } catch(e) { console.warn('[mono hotfix] switchActiveApi guarded:', e); }
+    try { persistApiSwitcherStable(String(id || 'preset')); applyActiveApiStable(); } catch(e) {}
+    return r;
+  };
+  var oldApplyActiveApi = window.applyActiveApi;
+  window.applyActiveApi = function(){
+    var r; try { if (typeof oldApplyActiveApi === 'function') r = oldApplyActiveApi.apply(this, arguments); } catch(e) {}
+    try { applyActiveApiStable(); persistApiSwitcherStable(getActiveApiIdStable()); } catch(e) {}
+    return r;
+  };
+  try { applyActiveApiStable(); } catch(e) {}
+
+  // ---------- B. 情侣定位：绑定角色/生成记录稳定保存，不再因打开页面被清空 ----------
+  var LOC_KEYS = ['mono_loc_relations','mono_loc_user_pos','mono_loc_char_pos','mono_loc_traces','mono_loc_char_regions','mono_loc_user_region','mono_loc_trace_date','mono_loc_sel_char'];
+  function locReadObj(key, fb){ return parseJson(readAny(key, ''), fb); }
+  function locWriteSnapshot(){
+    try { writeBoth('mono_loc_relations', JSON.stringify(Array.isArray(locRelations) ? locRelations : [])); } catch(e) {}
+    try { if (locUserLocation) writeBoth('mono_loc_user_pos', JSON.stringify(locUserLocation)); } catch(e) {}
+    try { writeBoth('mono_loc_char_pos', JSON.stringify(locCharLocations || {})); } catch(e) {}
+    try { writeBoth('mono_loc_traces', JSON.stringify(locDailyTraces || {})); } catch(e) {}
+    try { writeBoth('mono_loc_char_regions', JSON.stringify(locCharRegions || {})); } catch(e) {}
+    try { writeBoth('mono_loc_user_region', String(locUserRegionName || '')); } catch(e) {}
+    try { writeBoth('mono_loc_trace_date', String(locLastTraceDate || new Date().toISOString().slice(0,10))); } catch(e) {}
+    try { if (locSelectedCharId != null && locSelectedCharId !== '') writeBoth('mono_loc_sel_char', String(locSelectedCharId)); } catch(e) {}
+  }
+  function locRestoreSnapshot(){
+    try { locRelations = locReadObj('mono_loc_relations', []); if (!Array.isArray(locRelations)) locRelations = []; } catch(e) { locRelations = []; }
+    try { locUserLocation = locReadObj('mono_loc_user_pos', null); } catch(e) { locUserLocation = null; }
+    try { locCharLocations = locReadObj('mono_loc_char_pos', {}); } catch(e) { locCharLocations = {}; }
+    try { locDailyTraces = locReadObj('mono_loc_traces', {}); } catch(e) { locDailyTraces = {}; }
+    try { locCharRegions = locReadObj('mono_loc_char_regions', {}); } catch(e) { locCharRegions = {}; }
+    try { locUserRegionName = readAny('mono_loc_user_region', '') || ''; } catch(e) { locUserRegionName = ''; }
+    try { locLastTraceDate = readAny('mono_loc_trace_date', '') || new Date().toISOString().slice(0,10); } catch(e) { locLastTraceDate = ''; }
+    try { var s = readAny('mono_loc_sel_char', ''); locSelectedCharId = s ? s : null; } catch(e) {}
+    locWriteSnapshot();
+  }
+  window.loadLocData = locRestoreSnapshot;
+  window.saveLocData = locWriteSnapshot;
+  try { loadLocData = locRestoreSnapshot; saveLocData = locWriteSnapshot; } catch(e) {}
+  // 旧逻辑打开/半夜会把 locDailyTraces = {}，这里改为只更新日期，不清除记录。
+  window._checkMidnightReset = function(){
+    try {
+      var today = new Date().toISOString().slice(0,10);
+      if (!locLastTraceDate) locLastTraceDate = today;
+      writeBoth('mono_loc_trace_date', String(locLastTraceDate));
+      locWriteSnapshot();
+    } catch(e) {}
+  };
+  try { _checkMidnightReset = window._checkMidnightReset; } catch(e) {}
+  try { locRestoreSnapshot(); } catch(e) {}
+  window.addEventListener('pagehide', function(){ try { locWriteSnapshot(); } catch(e) {} });
+  window.addEventListener('beforeunload', function(){ try { locWriteSnapshot(); } catch(e) {} });
+
+  // ---------- C. 用户面具头像：同步 localStorage 小缓存 + IDB，大图显示不再闪回文字头像 ----------
+  var MASK_KEY = 'mono_user_masks';
+  var MASK_BAK = 'mono_user_masks_backup_v11';
+  var MASK_AV_CACHE = 'mono_user_mask_avatar_cache_v8';
+  function isDataImg(v){ return typeof v === 'string' && /^data:image\//.test(v) && v.length > 50; }
+  function maskBlobKey(id){
+    try { if (typeof monoUserMaskAvatarBlobKey === 'function') return monoUserMaskAvatarBlobKey(id); } catch(e) {}
+    return 'user_mask_avatar_' + String(id || '');
+  }
+  function readMaskAvatarCache(){ return parseJson(readAny(MASK_AV_CACHE, '{}'), {}); }
+  function writeMaskAvatarCache(cache){ writeBoth(MASK_AV_CACHE, JSON.stringify(cache || {})); }
+  function mergeMaskAvatars(list){
+    var arr = Array.isArray(list) ? list : [];
+    var cache = readMaskAvatarCache();
+    return arr.map(function(m){
+      m = Object.assign({}, m || {});
+      var id = String(m.id || '');
+      if ((!isDataImg(m.avatar)) && id && isDataImg(cache[id])) {
+        m.avatar = cache[id];
+        m.hasCustomAvatar = true;
+      }
+      try { if (typeof monoNormalizeUserMask === 'function') m = monoNormalizeUserMask(m); } catch(e) {}
+      return m;
+    });
+  }
+  var oldMonoLoadUserMasks = window.monoLoadUserMasks;
+  window.monoLoadUserMasks = function(){
+    var arr = [];
+    try { if (typeof oldMonoLoadUserMasks === 'function') arr = oldMonoLoadUserMasks.apply(this, arguments) || []; } catch(e) {}
+    if (!arr.length) arr = parseJson(readAny(MASK_KEY, '[]'), []);
+    if (!arr.length) arr = parseJson(readAny(MASK_BAK, '[]'), []);
+    return mergeMaskAvatars(arr);
+  };
+  try { monoLoadUserMasks = window.monoLoadUserMasks; } catch(e) {}
+  var oldMonoSaveUserMasks = window.monoSaveUserMasks;
+  window.monoSaveUserMasks = function(nextMasks){
+    var full = mergeMaskAvatars(Array.isArray(nextMasks) ? nextMasks : []);
+    var cache = readMaskAvatarCache();
+    full.forEach(function(m){
+      if (!m || !m.id) return;
+      if (isDataImg(m.avatar)) {
+        cache[String(m.id)] = m.avatar;
+        try { if (window._monoIdbBlobSet) window._monoIdbBlobSet(maskBlobKey(m.id), m.avatar).catch(function(){}); } catch(e) {}
+      }
+    });
+    writeMaskAvatarCache(cache);
+    var slim = full.map(function(m){ var x = Object.assign({}, m); if (isDataImg(x.avatar)) x.avatar = ''; return x; });
+    writeBoth(MASK_KEY, JSON.stringify(slim));
+    writeBoth(MASK_BAK, JSON.stringify(slim));
+    writeBoth('mono_user_masks_saved_at_v11', String(Date.now()));
+    try { userMasks = full; window.userMasks = full; } catch(e) {}
+    var r; try { if (typeof oldMonoSaveUserMasks === 'function') r = oldMonoSaveUserMasks.call(this, full); } catch(e) {}
+    try { if (typeof monoRefreshUserIdentityUi === 'function') monoRefreshUserIdentityUi(); } catch(e) {}
+    return r;
+  };
+  try { monoSaveUserMasks = window.monoSaveUserMasks; } catch(e) {}
+  async function hydrateMasksFromIdbAndCache(){
+    try {
+      var masks = window.monoLoadUserMasks();
+      if (window._monoIdbBlobGet) {
+        var cache = readMaskAvatarCache();
+        for (var i=0;i<masks.length;i++) {
+          var m = masks[i]; if (!m || !m.id) continue;
+          if (!isDataImg(m.avatar)) {
+            try {
+              var av = await window._monoIdbBlobGet(maskBlobKey(m.id));
+              if (isDataImg(av)) { m.avatar = av; m.hasCustomAvatar = true; cache[String(m.id)] = av; }
+            } catch(e) {}
+          }
+        }
+        writeMaskAvatarCache(cache);
+      }
+      try { userMasks = masks; window.userMasks = masks; } catch(e) {}
+      try { if (typeof monoRefreshUserIdentityUi === 'function') monoRefreshUserIdentityUi(); } catch(e) {}
+    } catch(e) {}
+  }
+  setTimeout(hydrateMasksFromIdbAndCache, 50);
+  setTimeout(hydrateMasksFromIdbAndCache, 600);
+  window.addEventListener('pagehide', function(){ try { window.monoSaveUserMasks((typeof userMasks !== 'undefined' && Array.isArray(userMasks)) ? userMasks : (window.userMasks || [])); } catch(e) {} });
+
+  // ---------- D. 聊天发送/角色回复：阻止按钮默认 submit 引起整页刷新 ----------
+  function isChatish(el){
+    try { return !!(el && el.closest && el.closest('#chatPage, #contactsDrawer, #groupChatPage, #datingChatPage, #callPage, .chat-messages, .chat-footer, #inputBar, #typingArea')); } catch(e) { return false; }
+  }
+  function neutralizeChatButtons(root){
+    try {
+      (root || document).querySelectorAll('#chatPage button:not([type]), #contactsDrawer button:not([type]), #groupChatPage button:not([type]), #datingChatPage button:not([type]), #callPage button:not([type]), #typingArea button:not([type]), #inputBar button:not([type])').forEach(function(btn){ btn.setAttribute('type','button'); });
+    } catch(e) {}
+  }
+  document.addEventListener('submit', function(ev){
+    if (isChatish(ev.target)) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      return false;
+    }
+  }, true);
+  document.addEventListener('click', function(ev){
+    var btn = ev.target && ev.target.closest ? ev.target.closest('button') : null;
+    if (btn && isChatish(btn) && !btn.getAttribute('type')) btn.setAttribute('type','button');
+  }, true);
+  neutralizeChatButtons(document);
+  try { new MutationObserver(function(muts){ muts.forEach(function(m){ (m.addedNodes||[]).forEach(function(n){ if (n && n.nodeType === 1) neutralizeChatButtons(n); }); }); }).observe(document.documentElement, { childList:true, subtree:true }); } catch(e) {}
+
+  // 如果聊天页刚刚发送/生成消息，拦截非用户主动的 location.reload 调用（世界切换/导入仍保留，因为有专门按钮流程）。
+  try {
+    var markChatActivity = function(){ window.__monoRecentChatActivityAt = Date.now(); };
+    ['sendMessage','sendChat','sendCurrentMessage','generateReply','getAIResponse','sendGroupMessage'].forEach(function(name){
+      var old = window[name];
+      if (typeof old !== 'function' || old.__monoNoReloadWrapped) return;
+      var wrapped = function(){ markChatActivity(); return old.apply(this, arguments); };
+      wrapped.__monoNoReloadWrapped = true;
+      window[name] = wrapped;
+      try { eval(name + ' = wrapped'); } catch(e) {}
+    });
+  } catch(e) {}
+
+  console.log('[Mono Hotfix] stable location/API/masks + chat no-submit loaded');
+})();
+</script>
+
+
+<script id="mono-chat-reply-refresh-after-reply-final-fix">
+(function(){
+  if (window.__monoChatReplyRefreshAfterReplyFinalFix) return;
+  window.__monoChatReplyRefreshAfterReplyFinalFix = true;
+
+  var criticalUntil = 0;
+  var replyDepth = 0;
+  var originalReload = null;
+
+  function now(){ return Date.now ? Date.now() : new Date().getTime(); }
+  function mark(ms){
+    ms = ms || 12000;
+    criticalUntil = Math.max(criticalUntil, now() + ms);
+    try { window.__monoRecentChatActivityAt = now(); } catch(e) {}
+  }
+  function isChatVisible(){
+    try {
+      var p = document.getElementById('chatPage');
+      if (!p) return false;
+      var cs = window.getComputedStyle ? getComputedStyle(p) : null;
+      return p.classList.contains('active') || !p.classList.contains('hidden') || (cs && cs.display !== 'none' && cs.visibility !== 'hidden');
+    } catch(e) { return false; }
+  }
+  function hasReplyLock(){
+    try {
+      if (window._auto回复Locks && typeof window._auto回复Locks === 'object') {
+        return Object.keys(window._auto回复Locks).some(function(k){ return !!window._auto回复Locks[k]; });
+      }
+    } catch(e) {}
+    return false;
+  }
+  function intentionalReloadAllowed(){
+    try { return window.__monoAllowIntentionalReloadUntil && now() < window.__monoAllowIntentionalReloadUntil; } catch(e) { return false; }
+  }
+  function inCriticalReplyWindow(){
+    return !intentionalReloadAllowed() && (replyDepth > 0 || hasReplyLock() || now() < criticalUntil);
+  }
+  window.monoMarkChatReplyNoReload = mark;
+  window.monoAllowNextIntentionalReload = function(ms){ window.__monoAllowIntentionalReloadUntil = now() + (ms || 6000); };
+
+  function wrapGlobalFunction(name){
+    try {
+      var old = window[name];
+      if (typeof old !== 'function' || old.__monoNoRefreshAfterReplyWrapped) return;
+      var wrapped = function(){
+        mark(18000);
+        replyDepth++;
+        var ret;
+        try { ret = old.apply(this, arguments); }
+        catch(err) { replyDepth = Math.max(0, replyDepth - 1); mark(12000); throw err; }
+        if (ret && typeof ret.then === 'function') {
+          return ret.finally(function(){ replyDepth = Math.max(0, replyDepth - 1); mark(15000); });
+        }
+        replyDepth = Math.max(0, replyDepth - 1);
+        mark(15000);
+        return ret;
+      };
+      wrapped.__monoNoRefreshAfterReplyWrapped = true;
+      window[name] = wrapped;
+      try { eval(name + ' = wrapped'); } catch(e) {}
+    } catch(e) {}
+  }
+
+  [
+    'sendMessage','triggerAuto回复','triggerAutoReply','generateReply','getAIResponse',
+    '_handleAuto回复AfterSend','_tryAuto回复WhenNotTyping','tryPersonaSendVoice',
+    'maybeGenerateReadHeartVoicePopup','maybeGenerateReadHeartVoicePopup','renderMessages'
+  ].forEach(wrapGlobalFunction);
+
+  // 角色回复落地后，saveData/renderMessages/语音/通知链路有时会触发旧的重载兜底；回复窗口内禁止它刷新整页。
+  try {
+    if (typeof window.saveData === 'function' && !window.saveData.__monoNoRefreshAfterReplyWrapped) {
+      var oldSaveData = window.saveData;
+      var saveWrapped = function(){ if (isChatVisible()) mark(12000); return oldSaveData.apply(this, arguments); };
+      saveWrapped.__monoNoRefreshAfterReplyWrapped = true;
+      window.saveData = saveWrapped;
+      try { saveData = saveWrapped; } catch(e) {}
+    }
+  } catch(e) {}
+
+  try {
+    if (typeof Location !== 'undefined' && Location.prototype && Location.prototype.reload && !Location.prototype.reload.__monoChatReplyGuarded) {
+      originalReload = Location.prototype.reload;
+      var reloadWrapped = function(){
+        if (inCriticalReplyWindow()) {
+          console.warn('[Mono Hotfix] 已拦截角色回复完成后误触发的整页刷新。');
+          mark(12000);
+          return;
+        }
+        return originalReload.apply(this, arguments);
+      };
+      reloadWrapped.__monoChatReplyGuarded = true;
+      Location.prototype.reload = reloadWrapped;
+    }
+  } catch(e) {}
+
+  // 某些浏览器不允许改 Location.prototype.reload，则改写源代码里的 reload 调用兜底函数。
+  window.monoSafeReload = function(reason){
+    if (inCriticalReplyWindow()) {
+      console.warn('[Mono Hotfix] 阻止刷新：' + (reason || 'chat reply'));
+      mark(12000);
+      return false;
+    }
+    try {
+      if (originalReload) originalReload.call(window.location);
+      else window.location.reload();
+    } catch(e) {}
+    return true;
+  };
+
+  document.addEventListener('submit', function(e){
+    if (isChatVisible() || inCriticalReplyWindow()) {
+      e.preventDefault();
+      e.stopPropagation();
+      mark(12000);
+      return false;
+    }
+  }, true);
+
+  document.addEventListener('click', function(e){
+    try {
+      var t = e.target && e.target.closest ? e.target.closest('button,input[type="submit"],a,[onclick]') : null;
+      if (!t) return;
+      var txt = (t.textContent || t.value || t.getAttribute('aria-label') || '').trim();
+      var oc = t.getAttribute && String(t.getAttribute('onclick') || '');
+      if (/切换世界|进入「|数据导入|导入|还原主屏幕|重新载入|刷新页面/.test(txt + ' ' + oc)) {
+        window.monoAllowNextIntentionalReload(8000);
+      }
+      if (isChatVisible() && t.tagName === 'BUTTON' && !t.getAttribute('type')) t.setAttribute('type','button');
+    } catch(err) {}
+  }, true);
+
+  // 如果旧逻辑已经把页面跳转排进 setTimeout，beforeunload 最后兜底拦截。
+  window.addEventListener('beforeunload', function(e){
+    if (inCriticalReplyWindow()) {
+      try { e.preventDefault(); } catch(_) {}
+      e.returnValue = '';
+      mark(12000);
+      return '';
+    }
+  }, true);
+
+  // 回复期间生成的按钮全部改为 button，避免回复渲染后表单默认提交造成刷新。
+  function neutralizeChatButtons(root){
+    try {
+      if (!root || !root.querySelectorAll) return;
+      root.querySelectorAll('#chatPage button:not([type]), #chatBox button:not([type]), #typingArea button:not([type])').forEach(function(btn){ btn.setAttribute('type','button'); });
+    } catch(e) {}
+  }
+  neutralizeChatButtons(document);
+  try {
+    new MutationObserver(function(muts){
+      if (!isChatVisible() && !inCriticalReplyWindow()) return;
+      muts.forEach(function(m){ (m.addedNodes || []).forEach(function(n){ if (n && n.nodeType === 1) neutralizeChatButtons(n); }); });
+    }).observe(document.documentElement, { childList:true, subtree:true });
+  } catch(e) {}
+
+  console.log('[Mono Hotfix] chat reply after-response refresh guard loaded');
+})();
+</script>
+
+
+<script id="mono-final-stop-refresh-after-ai-reply-stronger-fix">
+(function(){
+  if(window.__monoFinalStopRefreshAfterAiReplyStrongerFix) return;
+  window.__monoFinalStopRefreshAfterAiReplyStrongerFix = true;
+
+  var lockUntil = 0;
+  var lastChatDomSig = '';
+  var originalReload = null;
+  var originalAssign = null;
+  var originalReplace = null;
+
+  function now(){ return Date.now ? Date.now() : new Date().getTime(); }
+  function mark(ms){
+    lockUntil = Math.max(lockUntil, now() + (ms || 30000));
+    try { window.__monoRecentChatActivityAt = now(); } catch(e) {}
+  }
+  function allowIntentional(){
+    try { return !!(window.__monoAllowIntentionalReloadUntil && now() < window.__monoAllowIntentionalReloadUntil); } catch(e){ return false; }
+  }
+  function chatPageIsOpen(){
+    try{
+      var ids=['chatPage','groupChatPage','datingChatPage'];
+      for(var i=0;i<ids.length;i++){
+        var p=document.getElementById(ids[i]);
+        if(!p) continue;
+        var cs=getComputedStyle(p);
+        var visible = cs.display !== 'none' && cs.visibility !== 'hidden' && p.offsetParent !== null;
+        if(visible || p.classList.contains('active') || document.body.classList.contains(ids[i]+'-open')) return true;
+      }
+    }catch(e){}
+    return false;
+  }
+  function inReplySafeWindow(){
+    return !allowIntentional() && (now() < lockUntil || chatPageIsOpen());
+  }
+  function block(reason){
+    if(inReplySafeWindow()){
+      try { console.warn('[Mono Hotfix] 已阻止角色回复后的误刷新：' + (reason || 'unknown')); } catch(e) {}
+      mark(30000);
+      return true;
+    }
+    return false;
+  }
+
+  window.monoMarkChatReplyNoReload = function(ms){ mark(ms || 30000); };
+  window.monoAllowNextIntentionalReload = function(ms){ window.__monoAllowIntentionalReloadUntil = now() + (ms || 8000); };
+
+  // 1) 只要聊天 DOM 出现新消息/头像/语音气泡变化，就认为正处于回复落地阶段，延长禁止刷新窗口。
+  function chatSignature(){
+    try{
+      var nodes=document.querySelectorAll('#chatPage .message, #chatPage .chat-bubble, #chatPage [data-message-id], #chatMessages > *, #messages > *, #chatList > *, .chat-messages > *, #groupChatPage .message, #datingChatPage .message');
+      return String(nodes.length) + ':' + (nodes[nodes.length-1] ? (nodes[nodes.length-1].textContent||'').slice(-80) : '');
+    }catch(e){ return ''; }
+  }
+  function checkChatDom(){
+    var sig=chatSignature();
+    if(sig && sig !== lastChatDomSig){
+      lastChatDomSig=sig;
+      if(chatPageIsOpen()) mark(30000);
+    }
+  }
+  setInterval(checkChatDom, 350);
+  try{
+    new MutationObserver(function(muts){
+      for(var i=0;i<muts.length;i++){
+        var t=muts[i].target;
+        if(t && t.closest && t.closest('#chatPage,#groupChatPage,#datingChatPage,.chat-messages,#chatMessages,#messages,#chatList')){
+          mark(30000); break;
+        }
+      }
+    }).observe(document.documentElement,{childList:true,subtree:true,characterData:true});
+  }catch(e){}
+
+  // 2) 包住常见异步回复函数。很多函数不是挂在 window 上，所以 DOM 监听是主力；这里作为补充。
+  function wrap(name){
+    try{
+      var fn=window[name];
+      if(typeof fn !== 'function' || fn.__monoNoAfterReplyReloadStrong) return;
+      var w=function(){
+        mark(45000);
+        var r;
+        try{ r=fn.apply(this,arguments); }
+        catch(err){ mark(30000); throw err; }
+        if(r && typeof r.then==='function'){
+          return r.then(function(v){ mark(45000); return v; }, function(err){ mark(30000); throw err; });
+        }
+        mark(30000); return r;
+      };
+      w.__monoNoAfterReplyReloadStrong=true;
+      window[name]=w;
+      try{ eval(name+' = w'); }catch(e){}
+    }catch(e){}
+  }
+  ['sendMessage','sendCurrentMessage','sendChat','generateReply','getAIResponse','triggerAuto回复','triggerAutoReply','renderMessages','renderChat','saveData','saveAll','saveWorldData','tryPersonaSendVoice','maybeSendVoice','showNotification','sendBackgroundNotification'].forEach(wrap);
+
+  // 3) 拦截 reload / assign / replace。世界切换、数据导入、还原主屏幕会先放行。
+  try{
+    if(typeof Location !== 'undefined' && Location.prototype){
+      if(Location.prototype.reload && !Location.prototype.reload.__monoStrongGuard){
+        originalReload=Location.prototype.reload;
+        Location.prototype.reload=function(){ if(block('location.reload')) return; return originalReload.apply(this,arguments); };
+        Location.prototype.reload.__monoStrongGuard=true;
+      }
+      if(Location.prototype.assign && !Location.prototype.assign.__monoStrongGuard){
+        originalAssign=Location.prototype.assign;
+        Location.prototype.assign=function(url){ if(block('location.assign')) return; return originalAssign.apply(this,arguments); };
+        Location.prototype.assign.__monoStrongGuard=true;
+      }
+      if(Location.prototype.replace && !Location.prototype.replace.__monoStrongGuard){
+        originalReplace=Location.prototype.replace;
+        Location.prototype.replace=function(url){ if(block('location.replace')) return; return originalReplace.apply(this,arguments); };
+        Location.prototype.replace.__monoStrongGuard=true;
+      }
+    }
+  }catch(e){}
+
+  window.monoSafeReload=function(reason){
+    if(block(reason || 'monoSafeReload')) return false;
+    try{
+      if(originalReload) originalReload.call(window.location);
+      else window.location.reload();
+    }catch(e){}
+    return true;
+  };
+
+  // 4) 回复结束后如果某个旧逻辑设置了 form action / submit，聊天页打开时全部禁止。
+  document.addEventListener('submit',function(e){
+    if(chatPageIsOpen() || now()<lockUntil){
+      e.preventDefault(); e.stopPropagation(); mark(30000); return false;
+    }
+  },true);
+  document.addEventListener('click',function(e){
+    try{
+      var t=e.target && e.target.closest ? e.target.closest('button,a,[onclick],input[type="submit"]') : null;
+      if(!t) return;
+      var s=((t.textContent||'')+' '+(t.value||'')+' '+(t.getAttribute('onclick')||'')).trim();
+      if(/切换世界|进入「|数据导入|导入|还原主屏幕|刷新页面|重新载入/.test(s)) window.monoAllowNextIntentionalReload(10000);
+      if(chatPageIsOpen() && t.tagName==='BUTTON' && !t.getAttribute('type')) t.setAttribute('type','button');
+    }catch(err){}
+  },true);
+
+  try{ checkChatDom(); }catch(e){}
+  console.log('[Mono Hotfix] stronger stop-refresh-after-AI-reply loaded');
 })();
 </script>
 

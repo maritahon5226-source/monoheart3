@@ -26085,7 +26085,7 @@ function _getCurrentActiveApiConfig() {
   // 用户在悬浮 API / 副 API 面板切换后，真实来源应优先看 mono_active_api；
   // 否则缓存还停留在默认 API 时，低优先/小功能/独立功能都会误用默认 API。
   try {
-    const currentActiveId = localStorage.getItem('mono_active_api') || 'preset';
+    const currentActiveId = (typeof monoResolveSavedActiveApiId === 'function') ? monoResolveSavedActiveApiId() : (localStorage.getItem('mono_active_api') || 'preset');
     if (currentActiveId !== 'preset') {
       const apis = JSON.parse(localStorage.getItem('mono_secondary_apis') || '[]');
       const matched = Array.isArray(apis) ? apis.find(function(item) { return item && item.id === currentActiveId; }) : null;
@@ -27284,6 +27284,23 @@ function monoUserMaskAvatarBlobKey(maskId) {
 function monoHasDataImage(value) {
   return typeof value === 'string' && value.indexOf('data:image') === 0 && value.length > 50;
 }
+
+// ── Strong persistence patch: user mask avatars use the same two-layer restore as角色头像 ──
+const MONO_USER_MASK_AVATAR_LOCAL_PREFIX = 'mono_user_mask_avatar_local_';
+function monoUserMaskAvatarLocalKey(maskId) { return MONO_USER_MASK_AVATAR_LOCAL_PREFIX + String(maskId || ''); }
+function monoReadUserMaskAvatarBackup(maskId) {
+  try {
+    const v = localStorage.getItem(monoUserMaskAvatarLocalKey(maskId));
+    return monoHasDataImage(v) ? v : '';
+  } catch(e) { return ''; }
+}
+function monoWriteUserMaskAvatarBackup(maskId, avatar) {
+  if (!maskId || !monoHasDataImage(avatar)) return;
+  try { localStorage.setItem(monoUserMaskAvatarLocalKey(maskId), avatar); } catch(e) {}
+}
+function monoRemoveUserMaskAvatarBackup(maskId) {
+  try { localStorage.removeItem(monoUserMaskAvatarLocalKey(maskId)); } catch(e) {}
+}
 function monoNormalizeUserProfile(raw) {
   const src = raw && typeof raw === 'object' ? Object.assign({}, raw) : {};
   const backupAvatar = monoReadUserAvatarBackup();
@@ -27306,8 +27323,9 @@ function monoNormalizeUserMask(raw) {
   const item = raw && typeof raw === 'object' ? Object.assign({}, raw) : {};
   const id = item.id || ('mask_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7));
   const name = String(item.name || '未命名面具').trim() || '未命名面具';
-  const hasCustomAvatar = item.hasCustomAvatar == null ? monoHasDataImage(item.avatar) : !!item.hasCustomAvatar;
-  const avatar = monoHasDataImage(item.avatar) ? String(item.avatar) : makeUserAvatar(name);
+  const backupAvatar = monoReadUserMaskAvatarBackup(id);
+  const hasCustomAvatar = item.hasCustomAvatar == null ? (monoHasDataImage(item.avatar) || monoHasDataImage(backupAvatar)) : !!item.hasCustomAvatar;
+  const avatar = monoHasDataImage(item.avatar) ? String(item.avatar) : (monoHasDataImage(backupAvatar) ? backupAvatar : makeUserAvatar(name));
   return {
     id: id,
     name: name,
@@ -27331,8 +27349,11 @@ async function monoSyncUserMaskAvatarsToIdb(masks) {
   for (let i = 0; i < list.length; i += 1) {
     const mask = monoNormalizeUserMask(list[i]);
     const key = monoUserMaskAvatarBlobKey(mask.id);
-    if (mask.hasCustomAvatar && monoHasDataImage(mask.avatar) && window._monoIdbBlobSet) {
-      try { await window._monoIdbBlobSet(key, mask.avatar); } catch(e) {}
+    if (mask.hasCustomAvatar && monoHasDataImage(mask.avatar)) {
+      monoWriteUserMaskAvatarBackup(mask.id, mask.avatar);
+      if (window._monoIdbBlobSet) {
+        try { await window._monoIdbBlobSet(key, mask.avatar); } catch(e) {}
+      }
     }
   }
 }
@@ -27340,10 +27361,25 @@ function monoSaveUserMasks(nextMasks) {
   userMasks = (Array.isArray(nextMasks) ? nextMasks : []).map(monoNormalizeUserMask);
   const storable = userMasks.map(function(mask) {
     const item = Object.assign({}, mask);
-    if (item.hasCustomAvatar && monoHasDataImage(item.avatar)) item.avatar = '';
+    if (item.hasCustomAvatar && monoHasDataImage(item.avatar)) {
+      monoWriteUserMaskAvatarBackup(item.id, item.avatar);
+      // 和角色头像一样：本地先保留一份可立即显示的头像；IDB 再做第二层备份。
+      // 如果 localStorage 空间不足，才退回只保存标记，等待 IDB 恢复。
+      try { JSON.stringify(item); } catch(e) { item.avatar = ''; }
+    }
     return item;
   });
-  localStorage.setItem(MONO_USER_MASKS_KEY, JSON.stringify(storable));
+  try {
+    localStorage.setItem(MONO_USER_MASKS_KEY, JSON.stringify(storable));
+  } catch(e) {
+    // 头像过大导致 localStorage 满时，不清除真实头像：列表只保存标记，头像仍从单独备份/IDB 恢复。
+    const light = storable.map(function(item) {
+      const copy = Object.assign({}, item);
+      if (copy.hasCustomAvatar && monoHasDataImage(copy.avatar)) copy.avatar = '';
+      return copy;
+    });
+    try { localStorage.setItem(MONO_USER_MASKS_KEY, JSON.stringify(light)); } catch(e2) {}
+  }
   monoSyncUserMaskAvatarsToIdb(userMasks).catch(function(){});
   monoRefreshUserIdentityUi();
 }
@@ -27356,6 +27392,7 @@ function monoRestoreUserMaskAvatarsFromIdb() {
     Promise.all((userMasks || []).map(function(mask) {
       return window._monoIdbBlobGet(monoUserMaskAvatarBlobKey(mask.id)).then(function(av) {
         if (monoHasDataImage(av)) {
+          monoWriteUserMaskAvatarBackup(mask.id, av);
           return monoNormalizeUserMask(Object.assign({}, mask, { avatar: av, hasCustomAvatar: true }));
         }
         if (mask.hasCustomAvatar && monoHasDataImage(mask.avatar)) {
@@ -72724,21 +72761,78 @@ let secondaryApis = [];
 let activeApiId = 'preset'; // 'preset' means the main apiConfig
 let fabEnabled = false;
 let editingSecApiId = null; // null = adding new, string = editing existing
+
+// ── Strong persistence patch: active secondary API survives reload/world init ──
+const ACTIVE_API_BACKUP_KEY = 'mono_active_api_backup';
+const ACTIVE_API_CONFIG_BACKUP_KEY = 'mono_active_api_config_backup';
+function monoNormalizeSecondaryApiList(list) {
+  return (Array.isArray(list) ? list : []).filter(function(api) {
+    return api && typeof api === 'object' && api.id && (api.url || api.key || api.model);
+  });
+}
+function monoSaveActiveApiBackup(id, cfg) {
+  try {
+    if (id && id !== 'preset') {
+      localStorage.setItem(ACTIVE_API_KEY, id);
+      localStorage.setItem(ACTIVE_API_BACKUP_KEY, id);
+      const api = cfg || (Array.isArray(secondaryApis) ? secondaryApis.find(function(a){ return a && a.id === id; }) : null);
+      if (api) localStorage.setItem(ACTIVE_API_CONFIG_BACKUP_KEY, JSON.stringify(_normalizeApiConfigObject(api)));
+    } else {
+      localStorage.setItem(ACTIVE_API_KEY, 'preset');
+      // 用户真的手动切回预设时才清理备份，避免下次启动被误恢复。
+      localStorage.removeItem(ACTIVE_API_BACKUP_KEY);
+      localStorage.removeItem(ACTIVE_API_CONFIG_BACKUP_KEY);
+    }
+  } catch(e) {}
+}
+function monoResolveSavedActiveApiId() {
+  try {
+    secondaryApis = monoNormalizeSecondaryApiList(secondaryApis);
+    const primary = localStorage.getItem(ACTIVE_API_KEY) || '';
+    const backup = localStorage.getItem(ACTIVE_API_BACKUP_KEY) || '';
+    const exists = function(id) { return id && id !== 'preset' && secondaryApis.some(function(a){ return a && a.id === id; }); };
+    if (exists(primary)) return primary;
+    if (exists(backup)) {
+      localStorage.setItem(ACTIVE_API_KEY, backup);
+      return backup;
+    }
+    // 旧版本有时会把 active 写回 preset，但 effective/config 仍然是副 API；根据 url+model 反查恢复。
+    let cached = null;
+    try { cached = JSON.parse(localStorage.getItem(ACTIVE_API_CONFIG_BACKUP_KEY) || localStorage.getItem(EFFECTIVE_API_STORAGE_KEY) || 'null'); } catch(e) { cached = null; }
+    if (cached && (cached.url || cached.key || cached.model)) {
+      const matched = secondaryApis.find(function(a) {
+        return a && ((cached.id && a.id === cached.id) ||
+          (String(a.url || '') === String(cached.url || '') && String(a.model || '') === String(cached.model || '') && String(a.key || '') === String(cached.key || '')));
+      });
+      if (matched) {
+        localStorage.setItem(ACTIVE_API_KEY, matched.id);
+        localStorage.setItem(ACTIVE_API_BACKUP_KEY, matched.id);
+        return matched.id;
+      }
+    }
+  } catch(e) {}
+  return 'preset';
+}
+function monoForceRestoreActiveApiAfterBoot() {
+  try {
+    const restored = monoResolveSavedActiveApiId();
+    if (restored && restored !== activeApiId) activeApiId = restored;
+    applyActiveApi();
+    renderSecondaryApiList();
+    renderLowPriorityApiSettings();
+    renderActiveApiIndicator();
+    updateFabPanel();
+  } catch(e) {}
+}
 // ── Init ──
 function initApiSwitcher() {
-  try { secondaryApis = JSON.parse(localStorage.getItem(SEC_API_STORAGE_KEY) || '[]'); } catch(e) { secondaryApis = []; }
-  activeApiId = localStorage.getItem(ACTIVE_API_KEY) || 'preset';
+  try { secondaryApis = monoNormalizeSecondaryApiList(JSON.parse(localStorage.getItem(SEC_API_STORAGE_KEY) || '[]')); } catch(e) { secondaryApis = []; }
+  activeApiId = monoResolveSavedActiveApiId();
   fabEnabled = localStorage.getItem(FAB_ENABLED_KEY) === 'true';
-  // Validate that activeApiId still exists
-  if (activeApiId !== 'preset') {
-    const exists = secondaryApis.find(a => a.id === activeApiId);
-    if (!exists) {
-      activeApiId = 'preset';
-      localStorage.setItem(ACTIVE_API_KEY, 'preset');
-    }
-  }
-  // Apply the active API to the global apiConfig
+  // Apply the active API to the global apiConfig. 这里必须先恢复副 API，再允许默认 API 初始化。
   applyActiveApi();
+  setTimeout(monoForceRestoreActiveApiAfterBoot, 80);
+  setTimeout(monoForceRestoreActiveApiAfterBoot, 500);
   // Render secondary API list in settings
   renderSecondaryApiList();
   renderLowPriorityApiSettings();
@@ -72759,14 +72853,20 @@ function initApiSwitcher() {
 }
 // ── Apply active API to global apiConfig ──
 function applyActiveApi() {
+  secondaryApis = monoNormalizeSecondaryApiList(secondaryApis);
+  const resolvedId = monoResolveSavedActiveApiId();
+  if (resolvedId && resolvedId !== activeApiId) activeApiId = resolvedId;
   if (activeApiId === 'preset') {
     apiConfig = _normalizeApiConfigObject(_getPresetApiConfig());
   } else {
     const secApi = secondaryApis.find(a => a.id === activeApiId);
     if (secApi) {
       apiConfig = _normalizeApiConfigObject(secApi);
+      monoSaveActiveApiBackup(activeApiId, secApi);
     } else {
       apiConfig = _normalizeApiConfigObject(_getPresetApiConfig());
+      activeApiId = 'preset';
+      localStorage.setItem(ACTIVE_API_KEY, 'preset');
     }
   }
   spyDataCache = {};
@@ -72782,9 +72882,9 @@ function getActiveApiName() {
 }
 // ── Switch active API ──
 function switchActiveApi(id) {
-  // If switching to preset, save current preset data first
-  activeApiId = id;
-  localStorage.setItem(ACTIVE_API_KEY, id);
+  // 当前选择哪个 API，就稳定保存哪个 API；下次打开直接继续连接它。
+  activeApiId = id || 'preset';
+  monoSaveActiveApiBackup(activeApiId);
   applyActiveApi();
   renderSecondaryApiList();
   renderLowPriorityApiSettings();
@@ -72969,7 +73069,9 @@ function monoToggleAuxFeatures(enabled) {
 }
 // ── Save secondary APIs to storage ──
 function saveSecondaryApis() {
+  secondaryApis = monoNormalizeSecondaryApiList(secondaryApis);
   localStorage.setItem(SEC_API_STORAGE_KEY, JSON.stringify(secondaryApis));
+  if (activeApiId && activeApiId !== 'preset') monoSaveActiveApiBackup(activeApiId);
 }
 // ── Add / Edit secondary API form ──
 function showSecApiForm(editId) {
@@ -73095,6 +73197,7 @@ function saveSecApiForm() {
       api.url = url;
       api.key = key;
       api.model = model;
+      if (activeApiId === editingSecApiId) monoSaveActiveApiBackup(editingSecApiId, api);
     }
   } else {
     // Add new
@@ -73106,9 +73209,12 @@ function saveSecApiForm() {
       model
     };
     secondaryApis.push(newApi);
+    activeApiId = newApi.id;
+    monoSaveActiveApiBackup(newApi.id, newApi);
   }
   
   saveSecondaryApis();
+  if (activeApiId && activeApiId !== 'preset') monoSaveActiveApiBackup(activeApiId);
   renderSecondaryApiList();
   updateFabPanel();
   hideSecApiForm();
@@ -111738,6 +111844,262 @@ body.mono-fwd-modal-open {
 })();
 </script>
 
+
+
+<script id="mono-secondary-api-never-disappear-fix-v3">
+/* MONO FIX 2026-06-27 v3
+   解决：退出网页/重新进入后，之前添加的所有副 API 列表被启动缓存或旧初始化逻辑覆盖成空。
+   做法：副 API 列表使用主 key + 原生 localStorage 保险库 + stable 保险库三层保存；启动时合并所有来源，禁止非手动删除把非空列表写成 []。 */
+(function(){
+  'use strict';
+  if (window.__monoSecondaryApiNeverDisappearFixV3) return;
+  window.__monoSecondaryApiNeverDisappearFixV3 = true;
+
+  var SEC_KEY = 'mono_secondary_apis';
+  var ACT_KEY = 'mono_active_api';
+  var EFF_KEY = 'mono_effective_api';
+  var CFG_KEY = 'mono_active_api_config';
+  var LAST_KEY = 'mono_last_non_preset_api';
+  var USER_PRESET_KEY = 'mono_user_chose_preset_api';
+  var VAULT_KEY = 'mono_secondary_apis_vault_v3';
+  var VAULT_STABLE_KEY = '__stable__' + VAULT_KEY;
+  var ALLOW_EMPTY_UNTIL = 0;
+
+  function rawLS(){ return window._monoRawLocalStorage || window.localStorage; }
+  function safeJson(raw, fb){ try { var v = JSON.parse(raw || ''); return v == null ? fb : v; } catch(e){ return fb; } }
+  function readProxy(key){ try { return window.localStorage.getItem(key); } catch(e){ return null; } }
+  function readRaw(key){ try { return rawLS().getItem(key); } catch(e){ return null; } }
+  function writeRaw(key, val){ try { rawLS().setItem(key, val); } catch(e){} }
+  function writeProxy(key, val){ try { window.localStorage.setItem(key, val); } catch(e){} }
+  function apiUsable(a){ return !!(a && typeof a === 'object' && String(a.id || '').trim() && (String(a.url || '').trim() || String(a.key || '').trim() || String(a.model || '').trim())); }
+  function cleanApi(a){
+    a = Object.assign({}, a || {});
+    a.id = String(a.id || '').trim();
+    a.name = String(a.name || a.id || '副 API').trim();
+    a.url = String(a.url || a.baseUrl || '').trim().replace(/\/+$/,'');
+    a.key = String(a.key || a.apiKey || '').trim();
+    a.model = String(a.model || '').trim();
+    return a;
+  }
+  function dedupe(lists){
+    var map = {};
+    (lists || []).forEach(function(list){
+      (Array.isArray(list) ? list : []).forEach(function(a){
+        a = cleanApi(a);
+        if (!apiUsable(a)) return;
+        map[a.id] = Object.assign({}, map[a.id] || {}, a);
+      });
+    });
+    return Object.keys(map).map(function(id){ return map[id]; });
+  }
+  function readAllSecondarySources(){
+    var lists = [];
+    [
+      readProxy(SEC_KEY),
+      readRaw(SEC_KEY),
+      readRaw('__stable__' + SEC_KEY),
+      readRaw(VAULT_KEY),
+      readRaw(VAULT_STABLE_KEY)
+    ].forEach(function(raw){
+      var arr = safeJson(raw, []);
+      if (Array.isArray(arr)) lists.push(arr);
+    });
+    try { if (typeof secondaryApis !== 'undefined' && Array.isArray(secondaryApis)) lists.push(secondaryApis); } catch(e) {}
+    try { if (Array.isArray(window.secondaryApis)) lists.push(window.secondaryApis); } catch(e) {}
+    // 兼容旧多世界误前缀：把 mono_mw_xxx_secondary_apis 里保存过的副 API 也捞回来。
+    try {
+      var r = rawLS();
+      for (var i=0; i<r.length; i++) {
+        var k = r.key(i);
+        if (k && /^mono_mw_.+_secondary_apis$/.test(k)) {
+          var arr2 = safeJson(r.getItem(k), []);
+          if (Array.isArray(arr2)) lists.push(arr2);
+        }
+      }
+    } catch(e) {}
+    return dedupe(lists);
+  }
+  function writeSecondaryEverywhere(arr){
+    arr = dedupe([arr]);
+    var str = JSON.stringify(arr);
+    writeRaw(SEC_KEY, str);
+    writeRaw('__stable__' + SEC_KEY, str);
+    writeRaw(VAULT_KEY, str);
+    writeRaw(VAULT_STABLE_KEY, str);
+    // 通过代理再写一次，让 IndexedDB/cache 也同步成非空列表。
+    try { writeProxy(SEC_KEY, str); } catch(e) {}
+    try {
+      if (typeof secondaryApis !== 'undefined' && Array.isArray(secondaryApis)) {
+        secondaryApis.length = 0; arr.forEach(function(a){ secondaryApis.push(a); });
+      }
+    } catch(e) {}
+    try {
+      if (Array.isArray(window.secondaryApis)) {
+        window.secondaryApis.length = 0; arr.forEach(function(a){ window.secondaryApis.push(a); });
+      } else {
+        window.secondaryApis = arr.slice();
+      }
+    } catch(e) {}
+    return arr;
+  }
+  function healSecondaryApis(){
+    var arr = readAllSecondarySources();
+    if (arr.length) writeSecondaryEverywhere(arr);
+    return arr;
+  }
+  function findApi(id){
+    id = String(id || '');
+    if (!id || id === 'preset') return null;
+    return healSecondaryApis().find(function(a){ return String(a.id) === id; }) || null;
+  }
+  function getActiveId(){
+    return String(readProxy(ACT_KEY) || readRaw(ACT_KEY) || readRaw('__stable__' + ACT_KEY) || readRaw(LAST_KEY) || 'preset');
+  }
+  function writeActive(id){
+    id = String(id || 'preset');
+    writeProxy(ACT_KEY, id); writeRaw(ACT_KEY, id); writeRaw('__stable__' + ACT_KEY, id);
+    if (id !== 'preset') { writeRaw(LAST_KEY, id); writeRaw('__stable__' + LAST_KEY, id); writeRaw(USER_PRESET_KEY, 'false'); }
+    else { writeRaw(USER_PRESET_KEY, 'true'); }
+    try { activeApiId = id; } catch(e) { window.activeApiId = id; }
+  }
+  function normalizeCfg(cfg){
+    try { if (typeof _normalizeApiConfigObject === 'function') return _normalizeApiConfigObject(cfg || {}); } catch(e) {}
+    cfg = cfg || {};
+    return { url:String(cfg.url || cfg.baseUrl || '').trim().replace(/\/+$/,''), key:String(cfg.key || cfg.apiKey || '').trim(), model:String(cfg.model || '').trim() };
+  }
+  function applyActiveSafely(){
+    var arr = healSecondaryApis();
+    var id = getActiveId();
+    var chosePreset = String(readRaw(USER_PRESET_KEY) || '') === 'true';
+    if (id === 'preset' && !chosePreset) {
+      var last = String(readRaw(LAST_KEY) || readRaw('__stable__' + LAST_KEY) || '');
+      if (last && findApi(last)) id = last;
+    }
+    var api = id !== 'preset' ? arr.find(function(a){ return String(a.id) === id; }) : null;
+    if (!api && id !== 'preset') id = 'preset';
+    var cfg = api || (typeof _getPresetApiConfig === 'function' ? _getPresetApiConfig() : safeJson(readRaw('mono_api') || readProxy('mono_api') || '{}', {}));
+    cfg = normalizeCfg(cfg);
+    try { apiConfig = cfg; } catch(e) { window.apiConfig = cfg; }
+    writeProxy(EFF_KEY, JSON.stringify(cfg)); writeRaw(EFF_KEY, JSON.stringify(cfg));
+    writeProxy(CFG_KEY, JSON.stringify(cfg)); writeRaw(CFG_KEY, JSON.stringify(cfg));
+    writeActive(id);
+    return cfg;
+  }
+
+  // 先把当前任何来源中的副 API 捞出来，防止后面旧初始化读到 []。
+  try { healSecondaryApis(); } catch(e) {}
+
+  // 拦截“非用户删除”情况下把副 API 写成空数组的行为。
+  try {
+    var ls = window.localStorage;
+    if (ls && !ls.__monoSecApiSetGuardV3) {
+      var oldSet = ls.setItem.bind(ls);
+      ls.setItem = function(key, val){
+        try {
+          if (String(key) === SEC_KEY) {
+            var next = safeJson(String(val || ''), []);
+            if (Array.isArray(next) && next.length === 0 && Date.now() > ALLOW_EMPTY_UNTIL) {
+              var old = readAllSecondarySources();
+              if (old.length) val = JSON.stringify(old);
+            }
+            var arr = safeJson(String(val || ''), []);
+            if (Array.isArray(arr) && arr.length) {
+              var str = JSON.stringify(dedupe([arr]));
+              writeRaw(SEC_KEY, str); writeRaw('__stable__' + SEC_KEY, str); writeRaw(VAULT_KEY, str); writeRaw(VAULT_STABLE_KEY, str);
+            }
+          }
+        } catch(e) {}
+        return oldSet(key, val);
+      };
+      ls.__monoSecApiSetGuardV3 = true;
+    }
+  } catch(e) {}
+
+  function wrapLater(){
+    try {
+      if (typeof saveSecondaryApis === 'function' && !saveSecondaryApis.__monoSecApiWrappedV3) {
+        var oldSave = saveSecondaryApis;
+        saveSecondaryApis = window.saveSecondaryApis = function(){
+          var before = healSecondaryApis();
+          var r; try { r = oldSave.apply(this, arguments); } catch(e) { throw e; }
+          var after = readAllSecondarySources();
+          if (!after.length && before.length && Date.now() > ALLOW_EMPTY_UNTIL) after = before;
+          writeSecondaryEverywhere(after);
+          return r;
+        };
+        saveSecondaryApis.__monoSecApiWrappedV3 = true;
+      }
+      if (typeof saveSecApiForm === 'function' && !saveSecApiForm.__monoSecApiWrappedV3) {
+        var oldForm = saveSecApiForm;
+        saveSecApiForm = window.saveSecApiForm = function(){
+          var beforeIds = healSecondaryApis().map(function(a){ return String(a.id); });
+          var editing = ''; try { editing = String(editingSecApiId || ''); } catch(e) {}
+          var r = oldForm.apply(this, arguments);
+          var after = healSecondaryApis();
+          var target = editing && findApi(editing) ? editing : '';
+          if (!target) {
+            var created = after.find(function(a){ return beforeIds.indexOf(String(a.id)) < 0; });
+            if (created) target = String(created.id);
+          }
+          if (target && target !== 'preset') { writeActive(target); applyActiveSafely(); }
+          try { if (typeof renderSecondaryApiList === 'function') renderSecondaryApiList(); } catch(e) {}
+          try { if (typeof renderActiveApiIndicator === 'function') renderActiveApiIndicator(); } catch(e) {}
+          try { if (typeof updateFabPanel === 'function') updateFabPanel(); } catch(e) {}
+          return r;
+        };
+        saveSecApiForm.__monoSecApiWrappedV3 = true;
+      }
+      if (typeof deleteSecondaryApi === 'function' && !deleteSecondaryApi.__monoSecApiWrappedV3) {
+        var oldDel = deleteSecondaryApi;
+        deleteSecondaryApi = window.deleteSecondaryApi = function(){
+          ALLOW_EMPTY_UNTIL = Date.now() + 5000;
+          var r = oldDel.apply(this, arguments);
+          var arr = readAllSecondarySources();
+          // 删除操作结束后按真实剩余列表重写保险库；允许真的删到 0 个。
+          var str = JSON.stringify(dedupe([arr]));
+          writeRaw(SEC_KEY, str); writeRaw('__stable__' + SEC_KEY, str); writeRaw(VAULT_KEY, str); writeRaw(VAULT_STABLE_KEY, str); writeProxy(SEC_KEY, str);
+          ALLOW_EMPTY_UNTIL = 0;
+          return r;
+        };
+        deleteSecondaryApi.__monoSecApiWrappedV3 = true;
+      }
+      if (typeof initApiSwitcher === 'function' && !initApiSwitcher.__monoSecApiWrappedV3) {
+        var oldInit = initApiSwitcher;
+        initApiSwitcher = window.initApiSwitcher = function(){
+          try { healSecondaryApis(); } catch(e) {}
+          var r = oldInit.apply(this, arguments);
+          try { healSecondaryApis(); applyActiveSafely(); } catch(e) {}
+          return r;
+        };
+        initApiSwitcher.__monoSecApiWrappedV3 = true;
+      }
+      if (typeof applyActiveApi === 'function' && !applyActiveApi.__monoSecApiWrappedV3) {
+        var oldApply = applyActiveApi;
+        applyActiveApi = window.applyActiveApi = function(){
+          try { healSecondaryApis(); } catch(e) {}
+          var r; try { r = oldApply.apply(this, arguments); } catch(e) {}
+          try { applyActiveSafely(); } catch(e) {}
+          return r;
+        };
+        applyActiveApi.__monoSecApiWrappedV3 = true;
+      }
+    } catch(e) {}
+  }
+
+  window.monoHealSecondaryApis = healSecondaryApis;
+  window.monoApplyActiveApiSafely = applyActiveSafely;
+  window.monoGetStrictActiveApiConfig = applyActiveSafely;
+  window._getCurrentActiveApiConfig = applyActiveSafely;
+  window._getCurrentEffectiveApiConfig = applyActiveSafely;
+
+  wrapLater();
+  setTimeout(wrapLater, 0);
+  setTimeout(function(){ wrapLater(); try { healSecondaryApis(); applyActiveSafely(); } catch(e) {} }, 120);
+  setTimeout(function(){ wrapLater(); try { healSecondaryApis(); applyActiveSafely(); if (typeof renderSecondaryApiList === 'function') renderSecondaryApiList(); if (typeof renderActiveApiIndicator === 'function') renderActiveApiIndicator(); } catch(e) {} }, 900);
+  window.addEventListener('pageshow', function(){ try { healSecondaryApis(); applyActiveSafely(); } catch(e) {} });
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden) { try { healSecondaryApis(); applyActiveSafely(); } catch(e) {} } });
+})();
+</script>
 </body>
 
 <!-- MONO FINAL FIX: Sticker library dialogs are not covered; use a real top-layer modal and direct button routing -->

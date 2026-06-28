@@ -114458,4 +114458,205 @@ body.mono-fwd-modal-open {
 })();
 </script>
 
+
+
+<script id="mono-secondary-api-model-save-force-fix-v4">
+/* MONO FIX 2026-06-28 v4
+   修复：编辑副 API 时，提取模型后选择新模型并保存，但卡片/当前连接仍显示和使用旧模型。
+   原因：旧保存流程会在关闭弹窗后丢失 editingSecApiId，且保险库/active backup 有时会把旧 model 重新合并回来。
+   做法：保存前捕获表单里的真实选择；保存后强制把该副 API 的 model 写入所有副 API 保险库，并立即把当前连接切到这个新 model。 */
+(function(){
+  'use strict';
+  if (window.__monoSecondaryApiModelSaveForceFixV4) return;
+  window.__monoSecondaryApiModelSaveForceFixV4 = true;
+
+  var SEC_KEY = 'mono_secondary_apis';
+  var ACT_KEY = 'mono_active_api';
+  var ACT_BACKUP_KEY = 'mono_active_api_backup';
+  var CFG_BACKUP_KEY = 'mono_active_api_config_backup';
+  var EFF_KEY = 'mono_effective_api';
+  var CFG_KEY = 'mono_active_api_config';
+  var LAST_KEY = 'mono_last_non_preset_api';
+  var USER_PRESET_KEY = 'mono_user_chose_preset_api';
+  var VAULT_KEY = 'mono_secondary_apis_vault_v3';
+  var VAULT_STABLE_KEY = '__stable__' + VAULT_KEY;
+
+  function rawLS(){ return window._monoRawLocalStorage || window.localStorage; }
+  function safeJson(raw, fb){ try { var v = JSON.parse(raw || ''); return v == null ? fb : v; } catch(e){ return fb; } }
+  function readRaw(k){ try { return rawLS().getItem(k); } catch(e){ return null; } }
+  function writeRaw(k,v){ try { rawLS().setItem(k,v); } catch(e){} }
+  function writeProxy(k,v){ try { window.localStorage.setItem(k,v); } catch(e){} }
+  function val(id){ var el = document.getElementById(id); return el ? String(el.value || '').trim() : ''; }
+  function normUrl(u){ try { if (typeof _normalizeApiBaseUrl === 'function') return _normalizeApiBaseUrl(String(u || '').trim()); } catch(e) {} return String(u || '').trim().replace(/\/+$/,''); }
+  function normCfg(a){
+    try { if (typeof _normalizeApiConfigObject === 'function') return _normalizeApiConfigObject(a || {}); } catch(e) {}
+    a = a || {};
+    return { id:String(a.id||''), name:String(a.name||''), url:normUrl(a.url || a.baseUrl || ''), key:String(a.key || a.apiKey || '').trim(), model:String(a.model || '').trim() };
+  }
+  function apiOk(a){ return !!(a && String(a.id||'').trim() && (String(a.url||'').trim() || String(a.key||'').trim() || String(a.model||'').trim())); }
+  function cleanApi(a){
+    a = Object.assign({}, a || {});
+    a.id = String(a.id || '').trim();
+    a.name = String(a.name || a.id || '副 API').trim();
+    a.url = normUrl(a.url || a.baseUrl || '');
+    a.key = String(a.key || a.apiKey || '').trim();
+    a.model = String(a.model || '').trim();
+    return a;
+  }
+  function mergeLists(lists){
+    var map = {};
+    (lists || []).forEach(function(list){
+      (Array.isArray(list) ? list : []).forEach(function(a){
+        a = cleanApi(a);
+        if (!apiOk(a)) return;
+        map[a.id] = Object.assign({}, map[a.id] || {}, a);
+      });
+    });
+    return Object.keys(map).map(function(id){ return map[id]; });
+  }
+  function readAllApis(){
+    var lists = [];
+    [
+      readRaw(SEC_KEY), readRaw('__stable__' + SEC_KEY), readRaw(VAULT_KEY), readRaw(VAULT_STABLE_KEY),
+      (function(){ try { return window.localStorage.getItem(SEC_KEY); } catch(e){ return null; } })()
+    ].forEach(function(raw){ var arr = safeJson(raw, []); if (Array.isArray(arr)) lists.push(arr); });
+    try { if (typeof secondaryApis !== 'undefined' && Array.isArray(secondaryApis)) lists.push(secondaryApis); } catch(e) {}
+    try { if (Array.isArray(window.secondaryApis)) lists.push(window.secondaryApis); } catch(e) {}
+    return mergeLists(lists);
+  }
+  function writeAllApis(arr){
+    arr = mergeLists([arr]);
+    var str = JSON.stringify(arr);
+    writeRaw(SEC_KEY, str);
+    writeRaw('__stable__' + SEC_KEY, str);
+    writeRaw(VAULT_KEY, str);
+    writeRaw(VAULT_STABLE_KEY, str);
+    writeProxy(SEC_KEY, str);
+    try {
+      if (typeof secondaryApis !== 'undefined' && Array.isArray(secondaryApis)) {
+        secondaryApis.length = 0; arr.forEach(function(a){ secondaryApis.push(a); });
+      }
+    } catch(e) {}
+    try {
+      if (Array.isArray(window.secondaryApis)) { window.secondaryApis.length = 0; arr.forEach(function(a){ window.secondaryApis.push(a); }); }
+      else window.secondaryApis = arr.slice();
+    } catch(e) {}
+    return arr;
+  }
+  function setActiveToApi(api){
+    if (!api || !api.id) return;
+    var cfg = normCfg(api);
+    var id = String(api.id);
+    writeProxy(ACT_KEY, id); writeRaw(ACT_KEY, id); writeRaw('__stable__' + ACT_KEY, id);
+    writeRaw(ACT_BACKUP_KEY, id); writeRaw('__stable__' + ACT_BACKUP_KEY, id);
+    writeRaw(LAST_KEY, id); writeRaw('__stable__' + LAST_KEY, id);
+    writeRaw(USER_PRESET_KEY, 'false');
+    writeRaw(CFG_BACKUP_KEY, JSON.stringify(cfg)); writeProxy(CFG_BACKUP_KEY, JSON.stringify(cfg));
+    writeRaw(EFF_KEY, JSON.stringify(cfg)); writeProxy(EFF_KEY, JSON.stringify(cfg));
+    writeRaw(CFG_KEY, JSON.stringify(cfg)); writeProxy(CFG_KEY, JSON.stringify(cfg));
+    try { activeApiId = id; } catch(e) { window.activeApiId = id; }
+    try { apiConfig = cfg; } catch(e) { window.apiConfig = cfg; }
+    try { spyDataCache = {}; } catch(e) {}
+  }
+  function forceApplyCapturedSecondaryApi(capture){
+    if (!capture || !capture.name || !capture.url || !capture.key || !capture.model) return;
+    var arr = readAllApis();
+    var targetId = capture.editingId || '';
+    var target = targetId ? arr.find(function(a){ return String(a.id) === targetId; }) : null;
+    if (!target) {
+      // 添加新副 API 时，旧保存函数通常已经创建了 id；按名称/URL/Key 找回它。
+      target = arr.slice().reverse().find(function(a){
+        return String(a.name||'') === capture.name && String(a.url||'') === capture.url && String(a.key||'') === capture.key;
+      }) || null;
+      if (target) targetId = String(target.id || '');
+    }
+    if (!target) {
+      // 兜底：旧函数如果没成功创建，也不要让用户选择的模型丢失。
+      targetId = 'secapi_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
+      target = { id: targetId };
+      arr.push(target);
+    }
+    target.name = capture.name;
+    target.url = capture.url;
+    target.key = capture.key;
+    target.model = capture.model;
+    arr = arr.map(function(a){ return String(a.id) === targetId ? Object.assign({}, a, target) : a; });
+    if (!arr.some(function(a){ return String(a.id) === targetId; })) arr.push(target);
+    arr = writeAllApis(arr);
+    var finalApi = arr.find(function(a){ return String(a.id) === targetId; }) || target;
+    // 保存哪个副 API，就立刻连接哪个副 API 的最新模型；避免旧 active backup 继续使用旧模型。
+    setActiveToApi(finalApi);
+    try { if (typeof renderSecondaryApiList === 'function') renderSecondaryApiList(); } catch(e) {}
+    try { if (typeof renderLowPriorityApiSettings === 'function') renderLowPriorityApiSettings(); } catch(e) {}
+    try { if (typeof renderActiveApiIndicator === 'function') renderActiveApiIndicator(); } catch(e) {}
+    try { if (typeof updateFabPanel === 'function') updateFabPanel(); } catch(e) {}
+    try { if (typeof updateFabVisibility === 'function') updateFabVisibility(); } catch(e) {}
+    var st = document.getElementById('secApiFetchStatus');
+    if (st) { st.textContent = '✓ 已保存并切换到模型：' + capture.model; st.style.color = '#22c55e'; }
+  }
+
+  function captureSecApiForm(){
+    var editing = '';
+    try { if (typeof editingSecApiId !== 'undefined') editing = String(editingSecApiId || ''); } catch(e) {}
+    return {
+      editingId: editing,
+      name: val('secApiName'),
+      url: normUrl(val('secApiUrl')),
+      key: val('secApiKey'),
+      model: val('secApiModelSelect')
+    };
+  }
+
+  function wrapSave(){
+    try {
+      if (typeof saveSecApiForm !== 'function' || saveSecApiForm.__monoModelForceWrappedV4) return;
+      var old = saveSecApiForm;
+      saveSecApiForm = window.saveSecApiForm = function(){
+        var cap = captureSecApiForm();
+        var r;
+        try { r = old.apply(this, arguments); }
+        finally {
+          // 只在表单内容完整时强制落库；如果旧函数因为缺字段弹窗返回，这里不会误写。
+          if (cap.name && cap.url && cap.key && cap.model) {
+            setTimeout(function(){ forceApplyCapturedSecondaryApi(cap); }, 0);
+          }
+        }
+        return r;
+      };
+      saveSecApiForm.__monoModelForceWrappedV4 = true;
+    } catch(e) {}
+  }
+
+  function wrapFetchModels(){
+    try {
+      if (typeof fetchSecApiModels !== 'function' || fetchSecApiModels.__monoModelForceWrappedV4) return;
+      var oldFetch = fetchSecApiModels;
+      fetchSecApiModels = window.fetchSecApiModels = async function(){
+        var editing = ''; try { if (typeof editingSecApiId !== 'undefined') editing = String(editingSecApiId || ''); } catch(e) {}
+        var oldModel = '';
+        try {
+          var api = editing ? readAllApis().find(function(a){ return String(a.id) === editing; }) : null;
+          oldModel = api ? String(api.model || '') : '';
+        } catch(e) {}
+        var r = await oldFetch.apply(this, arguments);
+        // 提取完模型后保留旧模型作为默认选项，但用户之后选择的新 option 会被保存补丁强制捕获。
+        try {
+          var sel = document.getElementById('secApiModelSelect');
+          if (sel && oldModel && !sel.value) sel.value = oldModel;
+        } catch(e) {}
+        return r;
+      };
+      fetchSecApiModels.__monoModelForceWrappedV4 = true;
+    } catch(e) {}
+  }
+
+  function init(){ wrapSave(); wrapFetchModels(); }
+  init();
+  setTimeout(init, 0);
+  setTimeout(init, 300);
+  setTimeout(init, 1200);
+  window.monoForceApplySecondaryApiModelSelection = function(){ forceApplyCapturedSecondaryApi(captureSecApiForm()); };
+})();
+</script>
+
 </html>
